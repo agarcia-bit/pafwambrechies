@@ -238,7 +238,8 @@ function renderAnnuaireList() {
 
   const filtered = annuaireData.filter(m => {
     const matchCat = annuaireFilter === 'Tous' || m.categorie === annuaireFilter;
-    const matchQ   = !q || m.nom.toLowerCase().includes(q) || (m.description || '').toLowerCase().includes(q);
+    const fullName = [m.prenom_contact, m.nom_contact, m.nom_entreprise].filter(Boolean).join(' ').toLowerCase();
+    const matchQ   = !q || fullName.includes(q) || (m.description || '').toLowerCase().includes(q);
     return matchCat && matchQ;
   });
 
@@ -247,31 +248,38 @@ function renderAnnuaireList() {
     return;
   }
 
-  container.innerHTML = filtered.map(m => `
+  container.innerHTML = filtered.map(m => {
+    const initial = (m.nom_entreprise || m.prenom_contact || '?').charAt(0).toUpperCase();
+    const contact = [m.prenom_contact, m.nom_contact].filter(Boolean).join(' ');
+    return `
     <div class="merchant-card" onclick="openMerchantModal(${m.id})">
       ${m.photo_url
-        ? `<img src="${escHtml(m.photo_url)}" class="merchant-photo" alt="${escHtml(m.nom)}" loading="lazy" />`
-        : `<div class="merchant-photo-placeholder">${escHtml(m.nom.charAt(0).toUpperCase())}</div>`
+        ? `<img src="${escHtml(m.photo_url)}" class="merchant-photo" alt="${escHtml(m.nom_entreprise || '')}" loading="lazy" />`
+        : `<div class="merchant-photo-placeholder">${escHtml(initial)}</div>`
       }
       <div class="merchant-body">
+        <div class="merchant-name">${escHtml(m.nom_entreprise || contact)}</div>
+        ${contact && m.nom_entreprise ? `<div class="merchant-contact">${escHtml(contact)}</div>` : ''}
         <span class="badge badge-muted">${escHtml(m.categorie)}</span>
-        <div class="merchant-name">${escHtml(m.nom)}</div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function openMerchantModal(id) {
   const m = annuaireData.find(x => x.id === id);
   if (!m) return;
+  const contact = [m.prenom_contact, m.nom_contact].filter(Boolean).join(' ');
+  const initial = (m.nom_entreprise || m.prenom_contact || '?').charAt(0).toUpperCase();
   const content = document.getElementById('merchant-modal-content');
   content.innerHTML = `
     ${m.photo_url
-      ? `<img src="${escHtml(m.photo_url)}" class="modal-photo" alt="${escHtml(m.nom)}" />`
-      : `<div class="modal-photo-placeholder">${escHtml(m.nom.charAt(0).toUpperCase())}</div>`}
+      ? `<img src="${escHtml(m.photo_url)}" class="modal-photo" alt="${escHtml(m.nom_entreprise || '')}" />`
+      : `<div class="modal-photo-placeholder">${escHtml(initial)}</div>`}
     <div class="modal-body">
       <span class="badge badge-muted">${escHtml(m.categorie)}</span>
-      <h2 class="modal-name">${escHtml(m.nom)}</h2>
+      <h2 class="modal-name">${escHtml(m.nom_entreprise || contact)}</h2>
+      ${contact ? `<p class="modal-contact-name">${escHtml(contact)}</p>` : ''}
       ${m.description ? `<p class="modal-desc">${escHtml(m.description)}</p>` : ''}
       <div class="modal-contacts">
         ${m.adresse   ? `<div class="modal-contact"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escHtml(m.adresse)}</div>` : ''}
@@ -291,7 +299,7 @@ function closeMerchantModal() {
 window.closeMerchantModal = closeMerchantModal;
 
 async function initAnnuaire() {
-  const { data, error } = await sb.from('annuaire').select('*').order('nom');
+  const { data, error } = await sb.from('annuaire').select('*').order('nom_entreprise');
   if (!error && data) annuaireData = data;
   renderAnnuaireCats();
   renderAnnuaireList();
@@ -1050,12 +1058,14 @@ async function renderAdminEvents(el) {
 }
 
 async function renderAdminAnnuaire(el) {
-  const { data = [] } = await sb.from('annuaire').select('id, nom, categorie, photo_url').order('nom');
+  const { data = [] } = await sb.from('annuaire').select('id, nom_entreprise, prenom_contact, nom_contact, categorie, photo_url').order('nom_entreprise');
   el.innerHTML = `
     <button class="btn-new-idea" style="margin-bottom:12px" onclick="toggleAdminForm('admin-ann-form')">+ Ajouter un commerçant</button>
     <div id="admin-ann-form" class="card hidden" style="margin-bottom:12px">
       <form id="form-ann">
-        <div class="form-group"><label>Nom *</label><input type="text" id="ann-nom" required /></div>
+        <div class="form-group"><label>Nom de l'entreprise *</label><input type="text" id="ann-nom-entreprise" required /></div>
+        <div class="form-group"><label>Prénom du contact</label><input type="text" id="ann-prenom-contact" /></div>
+        <div class="form-group"><label>Nom du contact</label><input type="text" id="ann-nom-contact" /></div>
         <div class="form-group"><label>Catégorie *</label>
           <select id="ann-categorie">
             <option value="Alimentation">Alimentation</option>
@@ -1085,8 +1095,8 @@ async function renderAdminAnnuaire(el) {
         <div class="admin-item">
           ${m.photo_url ? `<img src="${escHtml(m.photo_url)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover;flex-shrink:0" />` : ''}
           <div class="admin-item-info">
-            <span class="admin-item-title">${escHtml(m.nom)}</span>
-            <span class="admin-item-meta">${escHtml(m.categorie)}</span>
+            <span class="admin-item-title">${escHtml(m.nom_entreprise || [m.prenom_contact, m.nom_contact].filter(Boolean).join(' '))}</span>
+            <span class="admin-item-meta">${[m.prenom_contact, m.nom_contact].filter(Boolean).join(' ')}${m.prenom_contact || m.nom_contact ? ' · ' : ''}${escHtml(m.categorie)}</span>
           </div>
           <button class="admin-delete-btn" onclick="adminDeleteItem('annuaire', ${m.id})">Supprimer</button>
         </div>`).join('') : '<div class="empty-state">Aucun commerçant.</div>'}
@@ -1108,8 +1118,10 @@ async function renderAdminAnnuaire(el) {
     }
 
     const { error } = await sb.from('annuaire').insert({
-      nom:         document.getElementById('ann-nom').value.trim(),
-      categorie:   document.getElementById('ann-categorie').value,
+      nom_entreprise:  document.getElementById('ann-nom-entreprise').value.trim(),
+      prenom_contact:  document.getElementById('ann-prenom-contact').value.trim() || null,
+      nom_contact:     document.getElementById('ann-nom-contact').value.trim() || null,
+      categorie:       document.getElementById('ann-categorie').value,
       adresse:     document.getElementById('ann-adresse').value.trim() || null,
       telephone:   document.getElementById('ann-telephone').value.trim() || null,
       email:       document.getElementById('ann-email').value.trim() || null,

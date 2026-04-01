@@ -2,16 +2,16 @@
 -- Photos annuaire – À exécuter dans l'éditeur SQL Supabase
 -- ============================================================
 
--- 1. Ajouter les colonnes à la table annuaire
+-- 1. Colonnes annuaire (migration nom → nom_entreprise + contacts séparés)
+ALTER TABLE public.annuaire RENAME COLUMN nom TO nom_entreprise;
+ALTER TABLE public.annuaire ADD COLUMN IF NOT EXISTS prenom_contact text;
+ALTER TABLE public.annuaire ADD COLUMN IF NOT EXISTS nom_contact text;
 ALTER TABLE public.annuaire ADD COLUMN IF NOT EXISTS photo_url text;
 ALTER TABLE public.annuaire ADD COLUMN IF NOT EXISTS email text;
 ALTER TABLE public.annuaire ADD COLUMN IF NOT EXISTS linkedin text;
 ALTER TABLE public.annuaire ADD COLUMN IF NOT EXISTS instagram text;
 
--- 2. Politique de lecture publique sur le bucket (à créer d'abord via Dashboard)
--- Storage → New bucket → nom : "annuaire-photos" → cocher "Public bucket"
--- Puis exécuter :
-
+-- 2. Bucket de stockage pour les photos
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('annuaire-photos', 'annuaire-photos', true)
 ON CONFLICT (id) DO NOTHING;

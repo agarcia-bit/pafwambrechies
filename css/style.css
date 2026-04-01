@@ -268,6 +268,7 @@ body {
 }
 .merchant-body { padding: 10px 10px 12px; }
 .merchant-name { font-size: .88rem; font-weight: 700; color: var(--text); margin: 4px 0 2px; line-height: 1.3; }
+.merchant-contact { font-size: .78rem; color: var(--text-muted); margin-bottom: 3px; }
 .merchant-detail {
   padding: 0 10px 12px; border-top: 1px solid var(--border); margin-top: 8px; padding-top: 10px;
   display: none;
@@ -609,7 +610,8 @@ body {
   border-radius: 20px 20px 0 0;
 }
 .modal-body { padding: 16px 20px 24px; }
-.modal-name { font-size: 1.4rem; font-weight: 800; color: var(--text); margin: 8px 0 4px; line-height: 1.2; }
+.modal-name { font-size: 1.4rem; font-weight: 800; color: var(--text); margin: 8px 0 2px; line-height: 1.2; }
+.modal-contact-name { font-size: .95rem; color: var(--text-muted); margin: 0 0 8px; }
 .modal-desc { font-size: .9rem; color: var(--text-muted); line-height: 1.6; margin: 12px 0; }
 .modal-contacts { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
 .modal-contact {
