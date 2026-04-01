@@ -1,4 +1,4 @@
-/* ── CSS Custom Properties ───────────────────────────────────────────────── */
+/* ── CSS Custom Properties ──────────────────────────────────────────────── */
 :root {
   --primary:        #1A56DB;
   --primary-dark:   #1240A8;
@@ -21,7 +21,7 @@
   --safe-bottom:    env(safe-area-inset-bottom, 0px);
 }
 
-/* ── Reset & base ────────────────────────────────────────────────────────── */
+/* ── Reset & base ───────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { height: 100%; font-size: 16px; }
 body {
@@ -33,22 +33,26 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── App shell ───────────────────────────────────────────────────────────── */
+/* ── App shell ─────────────────────────────────────────────────────────── */
 #app {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
 }
 
-/* ── Header ──────────────────────────────────────────────────────────────── */
+/* ── Header ────────────────────────────────────────────────────────────── */
 .header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-  height: var(--header-height);
+  height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
   box-shadow: 0 2px 12px rgba(26,86,219,.35);
-  padding-top: env(safe-area-inset-top, 0);
+  overflow: hidden;
+  -webkit-transform: translateZ(0);
 }
 .header-inner {
   display: flex;
@@ -56,15 +60,25 @@ body {
   gap: 10px;
   height: var(--header-height);
   padding: 0 16px;
+  overflow: hidden;
 }
-.header-logo svg { flex-shrink: 0; display: block; }
-.header-titles { display: flex; flex-direction: column; }
+.header-logo { flex-shrink: 0; }
+.header-logo svg { display: block; }
+.header-titles {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
 .header-title {
   color: #fff;
   font-size: 1.05rem;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: .01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .header-sub {
   color: rgba(255,255,255,.75);
@@ -72,12 +86,16 @@ body {
   font-weight: 400;
   letter-spacing: .04em;
   text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* ── Main ────────────────────────────────────────────────────────────────── */
+/* ── Main ──────────────────────────────────────────────────────────────── */
 #main {
   flex: 1;
   overflow-y: auto;
+  padding-top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
   padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 8px);
   overscroll-behavior-y: contain;
 }
@@ -93,7 +111,7 @@ body {
 .section-title { font-size: 1.4rem; font-weight: 700; color: var(--text); line-height: 1.2; }
 .section-desc { font-size: .85rem; color: var(--text-muted); margin-top: 2px; }
 
-/* ── Card ────────────────────────────────────────────────────────────────── */
+/* ── Card ──────────────────────────────────────────────────────────────── */
 .card {
   background: var(--card);
   border-radius: var(--radius);
@@ -103,7 +121,7 @@ body {
 }
 .card-list { display: flex; flex-direction: column; }
 
-/* ── Badge ───────────────────────────────────────────────────────────────── */
+/* ── Badge ──────────────────────────────────────────────────────────────── */
 .badge {
   display: inline-block;
   font-size: .7rem;
@@ -119,7 +137,7 @@ body {
 .badge-success { background: #DCFCE7; color: #166534; }
 .badge-muted   { background: #F3F4F6; color: var(--text-muted); }
 
-/* ── Actus ───────────────────────────────────────────────────────────────── */
+/* ── Actus ──────────────────────────────────────────────────────────────── */
 .actu-card {
   background: var(--card);
   border-radius: var(--radius);
@@ -158,7 +176,7 @@ body {
 }
 .actu-body.open { display: block; }
 
-/* ── Search bar ──────────────────────────────────────────────────────────── */
+/* ── Search bar ────────────────────────────────────────────────────────── */
 .search-bar { position: relative; margin-bottom: 12px; }
 .search-icon {
   position: absolute;
@@ -183,7 +201,7 @@ body {
 }
 .search-bar input:focus { border-color: var(--primary); }
 
-/* ── Chips ───────────────────────────────────────────────────────────────── */
+/* ── Chips ──────────────────────────────────────────────────────────────── */
 .chips {
   display: flex;
   gap: 6px;
@@ -249,7 +267,7 @@ body {
 .offer-expiry svg { flex-shrink: 0; }
 .offer-tag { background: var(--accent); color: #fff; font-size: .8rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; }
 
-/* ── Boîte à idées ───────────────────────────────────────────────────────── */
+/* ── Boîte à idées ────────────────────────────────────────────────────────────── */
 .idea-form-card { margin-bottom: 12px; }
 .form-group { margin-bottom: 14px; }
 .form-group label { display: block; font-size: .84rem; font-weight: 600; color: var(--text); margin-bottom: 5px; }
@@ -294,7 +312,7 @@ body {
 }
 .idea-card {
   background: var(--card); border-radius: var(--radius);
-  box-shadow: var(--shadow-sm); padding: 14px 16px; margin-bottom: 10px;
+  box-shadow: var(--shadow-sm)); padding: 14px 16px; margin-bottom: 10px;
   border: 1px solid var(--border);
 }
 .idea-card-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
@@ -302,7 +320,7 @@ body {
 .idea-card-date { font-size: .76rem; color: var(--text-muted); margin-left: auto; }
 .idea-card-text { font-size: .88rem; color: var(--text); line-height: 1.55; }
 
-/* ── Calendrier ──────────────────────────────────────────────────────────── */
+/* ── Calendrier ────────────────────────────────────────────────────────────── */
 .calendar-card { padding: 14px 12px; }
 .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .cal-nav-btn {
@@ -363,7 +381,7 @@ body {
 .event-meta { font-size: .8rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 2px; }
 .event-meta span { display: flex; align-items: center; gap: 4px; }
 
-/* ── Bottom navigation ───────────────────────────────────────────────────── */
+/* ── Bottom navigation ───────────────────────────────────────────────────────── */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0;
   height: calc(var(--nav-height) + var(--safe-bottom));
@@ -371,6 +389,9 @@ body {
   background: var(--card); border-top: 1px solid var(--border);
   display: grid; grid-template-columns: repeat(5, 1fr);
   box-shadow: 0 -2px 12px rgba(0,0,0,.08); z-index: 200;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  will-change: transform;
 }
 .nav-item {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
@@ -384,5 +405,5 @@ body {
 .nav-icon { width: 22px; height: 22px; transition: stroke-width .15s; }
 .nav-item.active .nav-icon { stroke-width: 2.2; }
 
-/* ── Utilities ───────────────────────────────────────────────────────────── */
+/* ── Utilities ────────────────────────────────────────────────────────────── */
 .hidden { display: none !important; }
