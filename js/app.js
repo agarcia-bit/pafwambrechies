@@ -248,23 +248,33 @@ function renderAnnuaireList() {
   }
 
   container.innerHTML = filtered.map(m => `
-    <div class="merchant-card">
-      <span class="badge badge-muted">${escHtml(m.categorie)}</span>
-      <div class="merchant-name">${escHtml(m.nom)}</div>
-      <div class="merchant-desc">${escHtml(m.description || '')}</div>
-      <div class="merchant-info">
-        <span>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          ${escHtml(m.adresse || '')}
-        </span>
-        <a href="tel:${escHtml((m.telephone || '').replace(/\s/g, ''))}">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          ${escHtml(m.telephone || '')}
-        </a>
+    <div class="merchant-card" onclick="toggleMerchantDetail(${m.id})">
+      ${m.photo_url
+        ? `<img src="${escHtml(m.photo_url)}" class="merchant-photo" alt="${escHtml(m.nom)}" loading="lazy" />`
+        : `<div class="merchant-photo-placeholder">${escHtml(m.nom.charAt(0).toUpperCase())}</div>`
+      }
+      <div class="merchant-body">
+        <span class="badge badge-muted">${escHtml(m.categorie)}</span>
+        <div class="merchant-name">${escHtml(m.nom)}</div>
+      </div>
+      <div class="merchant-detail" id="merchant-detail-${m.id}">
+        ${m.description ? `<div class="merchant-desc">${escHtml(m.description)}</div>` : ''}
+        <div class="merchant-info">
+          ${m.adresse ? `<span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escHtml(m.adresse)}</span>` : ''}
+          ${m.telephone ? `<a href="tel:${escHtml(m.telephone.replace(/\s/g,''))}" onclick="event.stopPropagation()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${escHtml(m.telephone)}</a>` : ''}
+        </div>
       </div>
     </div>
   `).join('');
 }
+
+function toggleMerchantDetail(id) {
+  document.querySelectorAll('.merchant-detail').forEach(d => {
+    if (d.id === 'merchant-detail-' + id) d.classList.toggle('open');
+    else d.classList.remove('open');
+  });
+}
+window.toggleMerchantDetail = toggleMerchantDetail;
 
 async function initAnnuaire() {
   const { data, error } = await sb.from('annuaire').select('*').order('nom');
@@ -1026,7 +1036,7 @@ async function renderAdminEvents(el) {
 }
 
 async function renderAdminAnnuaire(el) {
-  const { data = [] } = await sb.from('annuaire').select('id, nom, categorie').order('nom');
+  const { data = [] } = await sb.from('annuaire').select('id, nom, categorie, photo_url').order('nom');
   el.innerHTML = `
     <button class="btn-new-idea" style="margin-bottom:12px" onclick="toggleAdminForm('admin-ann-form')">+ Ajouter un commerçant</button>
     <div id="admin-ann-form" class="card hidden" style="margin-bottom:12px">
@@ -1045,12 +1055,18 @@ async function renderAdminAnnuaire(el) {
         <div class="form-group"><label>Adresse</label><input type="text" id="ann-adresse" /></div>
         <div class="form-group"><label>Téléphone</label><input type="tel" id="ann-telephone" /></div>
         <div class="form-group"><label>Description</label><textarea id="ann-description" rows="3"></textarea></div>
+        <div class="form-group">
+          <label>Photo</label>
+          <input type="file" id="ann-photo" accept="image/*" />
+          <p style="font-size:.76rem;color:var(--text-muted);margin-top:4px">JPG, PNG, WebP – max 2 Mo</p>
+        </div>
         <button type="submit" class="btn btn-primary">Enregistrer</button>
       </form>
     </div>
     <div class="admin-list">
       ${data.length ? data.map(m => `
         <div class="admin-item">
+          ${m.photo_url ? `<img src="${escHtml(m.photo_url)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover;flex-shrink:0" />` : ''}
           <div class="admin-item-info">
             <span class="admin-item-title">${escHtml(m.nom)}</span>
             <span class="admin-item-meta">${escHtml(m.categorie)}</span>
@@ -1060,13 +1076,29 @@ async function renderAdminAnnuaire(el) {
     </div>`;
   el.querySelector('#form-ann').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const submitBtn = el.querySelector('#form-ann .btn-primary');
+    submitBtn.disabled = true; submitBtn.textContent = 'Enregistrement…';
+
+    let photo_url = null;
+    const photoFile = document.getElementById('ann-photo').files[0];
+    if (photoFile) {
+      const ext  = photoFile.name.split('.').pop().toLowerCase();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: upErr } = await sb.storage.from('annuaire-photos').upload(path, photoFile);
+      if (upErr) { showToast('Erreur upload photo : ' + upErr.message, 'error'); submitBtn.disabled = false; submitBtn.textContent = 'Enregistrer'; return; }
+      const { data: urlData } = sb.storage.from('annuaire-photos').getPublicUrl(path);
+      photo_url = urlData.publicUrl;
+    }
+
     const { error } = await sb.from('annuaire').insert({
       nom:         document.getElementById('ann-nom').value.trim(),
       categorie:   document.getElementById('ann-categorie').value,
       adresse:     document.getElementById('ann-adresse').value.trim() || null,
       telephone:   document.getElementById('ann-telephone').value.trim() || null,
       description: document.getElementById('ann-description').value.trim() || null,
+      photo_url,
     });
+    submitBtn.disabled = false; submitBtn.textContent = 'Enregistrer';
     if (error) { showToast('Erreur.', 'error'); return; }
     showToast('Commerçant ajouté !', 'success');
     loadAdminSub();

@@ -250,24 +250,38 @@ body {
 }
 .chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
-/* ── Annuaire ────────────────────────────────────────────────────────────── */
+/* ── Annuaire – grille ───────────────────────────────────────────────────── */
+#annuaire-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .merchant-card {
-  background: var(--card);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 14px 16px;
-  margin-bottom: 10px;
+  background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+  overflow: hidden; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: box-shadow .15s;
 }
-.merchant-name { font-size: 1rem; font-weight: 700; margin: 6px 0 4px; }
-.merchant-desc { font-size: .84rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 8px; }
+.merchant-card:active { box-shadow: var(--shadow-sm); }
+.merchant-photo {
+  width: 100%; aspect-ratio: 1; object-fit: cover; display: block;
+}
+.merchant-photo-placeholder {
+  width: 100%; aspect-ratio: 1; background: var(--primary-light);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; font-weight: 800; color: var(--primary);
+}
+.merchant-body { padding: 10px 10px 12px; }
+.merchant-name { font-size: .88rem; font-weight: 700; color: var(--text); margin: 4px 0 2px; line-height: 1.3; }
+.merchant-detail {
+  padding: 0 10px 12px; border-top: 1px solid var(--border); margin-top: 8px; padding-top: 10px;
+  display: none;
+}
+.merchant-detail.open { display: block; }
+.merchant-desc { font-size: .82rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 8px; }
 .merchant-info { display: flex; flex-direction: column; gap: 4px; }
 .merchant-info a {
   display: flex; align-items: center; gap: 6px;
-  font-size: .82rem; color: var(--primary); text-decoration: none;
+  font-size: .8rem; color: var(--primary); text-decoration: none;
 }
 .merchant-info span {
   display: flex; align-items: center; gap: 6px;
-  font-size: .82rem; color: var(--text-muted);
+  font-size: .8rem; color: var(--text-muted);
 }
 .merchant-info a svg, .merchant-info span svg { flex-shrink: 0; }
 
