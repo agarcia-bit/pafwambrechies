@@ -274,7 +274,7 @@ async function initAnnuaire() {
 /* ============================================================
    OFFRES
    ============================================================ */
-const CATEGORIES_OFFRES = ['Tous', 'Commerce', 'Service BtoB', 'Restauration', 'Beauté', 'Santé', 'Alimentation'];
+const CATEGORIES_OFFRES = ['Tous', 'Particulier', 'Professionnel'];
 let offresFilter = 'Tous';
 let offresData   = [];
 
