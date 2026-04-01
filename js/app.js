@@ -187,7 +187,6 @@ async function renderActus() {
           <span class="actu-date">${formatDate(a.date)}</span>
         </div>
         <div class="actu-title">${escHtml(a.titre)}</div>
-        <div class="actu-excerpt">${escHtml(a.excerpt || '')}</div>
         <button class="actu-expand-btn" id="btn-actu-${a.id}" aria-expanded="false">
           Lire la suite
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
