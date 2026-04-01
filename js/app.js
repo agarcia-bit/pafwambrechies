@@ -146,9 +146,7 @@ function showSection(id) {
   const btn = document.querySelector(`.nav-item[data-section="${id}"]`);
   if (btn) btn.classList.add('active');
 
-  const main = document.getElementById('main');
-  main.scrollTop = 0;
-  requestAnimationFrame(() => { main.scrollTop = 0; });
+  document.getElementById('main').scrollTop = 0;
 }
 
 document.querySelectorAll('.nav-item').forEach(btn => {
