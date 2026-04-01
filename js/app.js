@@ -148,7 +148,7 @@ function showSection(id) {
 
   const main = document.getElementById('main');
   main.scrollTop = 0;
-  main.scrollTo({ top: 0, behavior: 'instant' });
+  requestAnimationFrame(() => { main.scrollTop = 0; });
 }
 
 document.querySelectorAll('.nav-item').forEach(btn => {
