@@ -17,6 +17,7 @@ VALUES ('annuaire-photos', 'annuaire-photos', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- 3. Permettre aux admins d'uploader
+DROP POLICY IF EXISTS "Admins peuvent uploader des photos" ON storage.objects;
 CREATE POLICY "Admins peuvent uploader des photos"
 ON storage.objects FOR INSERT TO authenticated
 WITH CHECK (
@@ -25,6 +26,7 @@ WITH CHECK (
 );
 
 -- 4. Lecture publique des photos
+DROP POLICY IF EXISTS "Lecture publique des photos annuaire" ON storage.objects;
 CREATE POLICY "Lecture publique des photos annuaire"
 ON storage.objects FOR SELECT TO public
 USING (bucket_id = 'annuaire-photos');
