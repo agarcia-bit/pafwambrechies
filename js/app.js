@@ -213,7 +213,7 @@ window.toggleActu = toggleActu;
 /* ============================================================
    ANNUAIRE
    ============================================================ */
-const CATEGORIES_ANNUAIRE = ['Tous', 'Alimentation', 'Beauté', 'Mode & Maison', 'Restauration', 'Santé', 'Services'];
+const CATEGORIES_ANNUAIRE = ['Tous', 'Commerçant', 'Restauration', 'Services'];
 let annuaireFilter = 'Tous';
 let annuaireSearch = '';
 let annuaireData = [];
@@ -1068,11 +1068,8 @@ async function renderAdminAnnuaire(el) {
         <div class="form-group"><label>Nom du contact</label><input type="text" id="ann-nom-contact" /></div>
         <div class="form-group"><label>Catégorie *</label>
           <select id="ann-categorie">
-            <option value="Alimentation">Alimentation</option>
-            <option value="Beauté">Beauté</option>
-            <option value="Mode &amp; Maison">Mode &amp; Maison</option>
+            <option value="Commerçant">Commerçant</option>
             <option value="Restauration">Restauration</option>
-            <option value="Santé">Santé</option>
             <option value="Services">Services</option>
           </select>
         </div>
