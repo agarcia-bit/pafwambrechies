@@ -245,9 +245,13 @@ function renderActusList() {
 
 async function renderActus() {
   document.getElementById('actus-list').innerHTML = '<div class="loading">Chargement…</div>';
-  const { data, error } = await sb.from('actus')
+  let { data, error } = await sb.from('actus')
     .select('*, actus_likes(count), actus_commentaires(id, prenom, texte, created_at)')
     .order('date', { ascending: false });
+  if (error) {
+    // Fallback sans likes/commentaires si les tables n'existent pas encore
+    ({ data, error } = await sb.from('actus').select('*').order('date', { ascending: false }));
+  }
   if (error) { document.getElementById('actus-list').innerHTML = '<div class="empty-state">Impossible de charger les actualités.</div>'; return; }
   actuData = data || [];
   renderActusCats();
