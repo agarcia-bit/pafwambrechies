@@ -11,6 +11,7 @@ const SUPABASE_KEY = 'sb_publishable_jCDrtwqzqjbsq0NEIwUbPQ_EFeoFaDh';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
+let currentProfile = null; // { prenom, nom } depuis la table profiles
 let appInitialized = false;
 
 /* ============================================================
@@ -62,9 +63,16 @@ function showAuthScreen() {
   document.getElementById('app').classList.add('hidden');
 }
 
+async function loadProfile() {
+  if (!currentUser) return;
+  const { data } = await sb.from('profiles').select('prenom, nom').eq('id', currentUser.id).single();
+  currentProfile = data || null;
+}
+
 function showApp() {
   document.getElementById('auth-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
+  loadProfile();
   initApp();
 }
 
@@ -469,8 +477,7 @@ async function addComment(e, ideeId) {
   const texte = input ? input.value.trim() : '';
   if (!texte) return;
 
-  const meta = currentUser.user_metadata || {};
-  const prenom = [meta.prenom, meta.nom_entreprise].filter(Boolean).join(' - ') || currentUser.email?.split('@')[0] || 'Anonyme';
+  const prenom = [currentProfile?.prenom, currentProfile?.nom].filter(Boolean).join(' - ') || currentUser.email?.split('@')[0] || 'Anonyme';
 
   const { error } = await sb.from('idees_commentaires').insert({
     idee_id: ideeId,
