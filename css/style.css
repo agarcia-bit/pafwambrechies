@@ -308,6 +308,8 @@ body {
 .idea-form-card { margin-bottom: 12px; }
 .form-group { margin-bottom: 14px; }
 .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-row-2 .form-group { min-width: 0; }
+.form-row-2 .form-group input { width: 100%; box-sizing: border-box; }
 .form-group label { display: block; font-size: .84rem; font-weight: 600; color: var(--text); margin-bottom: 5px; }
 .form-group input,
 .form-group select,
