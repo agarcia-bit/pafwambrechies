@@ -436,6 +436,7 @@ body {
   padding: 10px 12px; font-size: .85rem; margin-top: 10px; text-align: center;
 }
 .auth-footer { font-size: .75rem; color: #9CA3AF; text-align: center; margin-top: 20px; }
+.auth-card .btn-primary { background: var(--accent); }
 
 /* ── Header right buttons ─────────────────────────────────────────────────── */
 .header-actions { display: flex; gap: 4px; margin-left: auto; }
