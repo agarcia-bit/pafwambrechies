@@ -1,5 +1,5 @@
 // Service Worker - PAF Wambrechies
-// Cache-first strategy for all static assets
+// Cache-first strategy for all static assets + Push notifications
 
 const CACHE_NAME = 'paf-wambrechies-v1';
 
@@ -91,4 +91,22 @@ self.addEventListener('fetch', event => {
         });
     })
   );
+});
+
+// ── Push notifications ───────────────────────────────────────────────────────
+self.addEventListener('push', event => {
+  const data = event.data ? event.data.json() : {};
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'PAF Wambrechies', {
+      body:  data.body || '',
+      icon:  '/icons/icon.svg',
+      badge: '/icons/icon.svg',
+      data:  { url: data.url || '/' }
+    })
+  );
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(clients.openWindow(event.notification.data.url));
 });

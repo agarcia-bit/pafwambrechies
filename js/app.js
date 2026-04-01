@@ -1,239 +1,17 @@
 /* ── PAF Wambrechies – Application principale ─────────────────────────────
-   Vanilla JS, no dependencies.
+   Vanilla JS + Supabase backend
    Sections : actus · annuaire · offres · boîte à idées · calendrier
 ──────────────────────────────────────────────────────────────────────────── */
 
 /* ============================================================
-   DATA
+   SUPABASE CLIENT
    ============================================================ */
-const DATA = {
+const SUPABASE_URL = 'https://ancwbfyjzaebxahtlqkm.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_jCDrtwqzqjbsq0NEIwUbPQ_EFeoFaDh';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  actus: [
-    {
-      id: 1,
-      titre: "Braderie de printemps 2026",
-      date: "2026-04-12",
-      categorie: "Événement",
-      excerpt: "La grande braderie printanière revient le 12 avril sur la Grand-Place ! Plus de 50 exposants attendus.",
-      contenu: "La braderie de printemps se tiendra le samedi 12 avril de 9 h à 18 h sur la Grand-Place de Wambrechies. Plus de 50 commerçants et artisans seront présents. Au programme : animations musicales en plein air, jeux pour enfants, dégustation de produits locaux et vide-grenier. Venez profiter de cette journée festive avec toute la famille !"
-    },
-    {
-      id: 2,
-      titre: "Nouveau parking gratuit rue de la Lys",
-      date: "2026-03-20",
-      categorie: "Infos pratiques",
-      excerpt: "La mairie a inauguré 40 nouvelles places de stationnement gratuites à deux pas du centre-ville.",
-      contenu: "Bonne nouvelle pour les commerçants et leurs clients : un nouveau parking gratuit de 40 places a été ouvert rue de la Lys, à moins de 100 mètres de la Grand-Place. Il est accessible 7j/7, 24h/24. Cette initiative fait suite aux demandes répétées de la PAF auprès de la municipalité. Merci à tous les adhérents qui ont soutenu cette démarche !"
-    },
-    {
-      id: 3,
-      titre: "Résultats du concours vitrine de Pâques",
-      date: "2026-03-28",
-      categorie: "Concours",
-      excerpt: "Le jury a délibéré ! Découvrez les trois lauréats du concours de décoration de vitrine.",
-      contenu: "Le concours de décoration de vitrine sur le thème de Pâques a réuni 18 participants cette année, un record ! Après délibération du jury citoyen, les lauréats sont : 1er prix – Boulangerie Artisanale Leroy ; 2e prix – Fleuriste Les Jardins de Flandre ; 3e prix – Librairie Au Fil des Pages. Félicitations à tous les participants pour leur créativité !"
-    },
-    {
-      id: 4,
-      titre: "Compte-rendu de la réunion PAF – mars 2026",
-      date: "2026-03-15",
-      categorie: "Association",
-      excerpt: "Retour sur les décisions prises lors de la réunion mensuelle : budget événements, communication digitale et agenda.",
-      contenu: "La réunion mensuelle du bureau PAF du 15 mars a réuni 24 adhérents. Points abordés : validation du budget pour la braderie (5 500 €), lancement de la newsletter mensuelle numérique, discussion sur l'organisation du marché nocturne d'avril, et présentation de la nouvelle application mobile pour les adhérents. La prochaine réunion aura lieu le 19 avril à 19 h à la salle des associations."
-    },
-    {
-      id: 5,
-      titre: "Bienvenue à nos 3 nouveaux adhérents !",
-      date: "2026-03-05",
-      categorie: "Association",
-      excerpt: "La PAF accueille trois nouveaux commerçants wambrechiens en ce début de printemps.",
-      contenu: "La PAF est heureuse d'accueillir trois nouveaux membres : La Crêperie du Moulin (rue du Château), le Cabinet de Kinésithérapie Duplessis (allée des Flandres) et le Salon de Thé Chez Léonie (Grand-Place). Ils bénéficieront dès maintenant de tous les avantages de l'adhésion. N'hésitez pas à leur souhaiter la bienvenue !"
-    }
-  ],
-
-  annuaire: [
-    {
-      id: 1, nom: "Boulangerie Artisanale Leroy",
-      categorie: "Alimentation",
-      adresse: "3 Grand-Place, Wambrechies",
-      telephone: "03 20 68 12 45",
-      description: "Pains spéciaux, viennoiseries et pâtisseries faites maison. Ouvert du mardi au dimanche."
-    },
-    {
-      id: 2, nom: "Fleuriste Les Jardins de Flandre",
-      categorie: "Mode & Maison",
-      adresse: "17 rue du Château, Wambrechies",
-      telephone: "03 20 68 34 21",
-      description: "Compositions florales sur mesure, plantes, bouquets de saison et deuil."
-    },
-    {
-      id: 3, nom: "Restaurant La Brasserie du Canal",
-      categorie: "Restauration",
-      adresse: "8 quai de la Lys, Wambrechies",
-      telephone: "03 20 39 55 60",
-      description: "Cuisine traditionnelle du Nord, spécialités flamandes, terrasse au bord du canal."
-    },
-    {
-      id: 4, nom: "Pharmacie Centrale de Wambrechies",
-      categorie: "Santé",
-      adresse: "2 Grand-Place, Wambrechies",
-      telephone: "03 20 68 10 08",
-      description: "Pharmacie de garde, conseils en parapharmacie, vaccinations et tests. Livraison à domicile."
-    },
-    {
-      id: 5, nom: "Coiffure Style & Co",
-      categorie: "Beauté",
-      adresse: "11 rue de Marquette, Wambrechies",
-      telephone: "03 20 68 47 99",
-      description: "Coiffure mixte et enfants, colorations végétales, extensions. Sur rendez-vous et sans rendez-vous."
-    },
-    {
-      id: 6, nom: "Optique Wambrechies",
-      categorie: "Santé",
-      adresse: "5 rue de la Lys, Wambrechies",
-      telephone: "03 20 77 22 14",
-      description: "Lunettes de vue, solaires et lentilles. Bilan de vue gratuit, tiers payant accepté."
-    },
-    {
-      id: 7, nom: "Épicerie Fine du Terroir",
-      categorie: "Alimentation",
-      adresse: "14 Grand-Place, Wambrechies",
-      telephone: "03 20 68 58 03",
-      description: "Produits locaux et régionaux, bières artisanales, fromages affinés, charcuterie de qualité."
-    },
-    {
-      id: 8, nom: "Auto-École du Pont",
-      categorie: "Services",
-      adresse: "22 rue du Pont, Wambrechies",
-      telephone: "03 20 68 31 77",
-      description: "Formation permis B, moto (A1/A2/A), code de la route. Financement CPF accepté."
-    },
-    {
-      id: 9, nom: "Cabinet Médical Dr Martin",
-      categorie: "Santé",
-      adresse: "6 allée des Flandres, Wambrechies",
-      telephone: "03 20 39 44 20",
-      description: "Médecine générale, pédiatrie et suivi grossesse. Téléconsultation disponible."
-    },
-    {
-      id: 10, nom: "Librairie Papeterie Au Fil des Pages",
-      categorie: "Services",
-      adresse: "9 Grand-Place, Wambrechies",
-      telephone: "03 20 68 19 55",
-      description: "Livres, papeterie, presse, jeux de société et cadeaux. Commandes spéciales sous 48 h."
-    }
-  ],
-
-  offres: [
-    {
-      id: 1,
-      commercant: "Boulangerie Artisanale Leroy",
-      titre: "–15 % sur toutes les pâtisseries",
-      description: "Présentez votre carte adhérent PAF et bénéficiez de 15 % de réduction sur l'ensemble de la gamme de pâtisseries.",
-      expiration: "2026-04-30",
-      tag: "–15 %"
-    },
-    {
-      id: 2,
-      commercant: "Fleuriste Les Jardins de Flandre",
-      titre: "Un bouquet offert dès 30 € d'achat",
-      description: "Pour tout achat de 30 € ou plus, recevez un bouquet de saison en cadeau. Sur présentation de la carte adhérent.",
-      expiration: "2026-05-15",
-      tag: "Cadeau"
-    },
-    {
-      id: 3,
-      commercant: "La Brasserie du Canal",
-      titre: "Menu du jour à –10 %",
-      description: "10 % de réduction sur le menu du jour du lundi au vendredi, midi uniquement, sur présentation de votre carte PAF.",
-      expiration: "2026-06-30",
-      tag: "–10 %"
-    },
-    {
-      id: 4,
-      commercant: "Pharmacie Centrale",
-      titre: "Bilan minceur offert",
-      description: "Analyse de composition corporelle (poids, IMC, masse graisseuse) offerte pour tout adhérent PAF. Sur rendez-vous.",
-      expiration: "2026-05-31",
-      tag: "Offert"
-    },
-    {
-      id: 5,
-      commercant: "Coiffure Style & Co",
-      titre: "Coupe + brushing à –20 %",
-      description: "20 % de réduction sur la prestation coupe + brushing pour femme ou homme. Valable du lundi au mercredi.",
-      expiration: "2026-04-30",
-      tag: "–20 %"
-    },
-    {
-      id: 6,
-      commercant: "Optique Wambrechies",
-      titre: "Bilan de vue 100 % gratuit",
-      description: "Profitez d'un bilan visuel complet offert, sans engagement d'achat. Prenez rendez-vous en mentionnant votre adhésion PAF.",
-      expiration: "2026-06-15",
-      tag: "Gratuit"
-    }
-  ],
-
-  evenements: [
-    {
-      id: 1, titre: "Braderie de printemps",
-      date: "2026-04-12",
-      heure: "09:00 – 18:00",
-      lieu: "Grand-Place, Wambrechies",
-      description: "Grande braderie annuelle avec exposants, animations et restauration."
-    },
-    {
-      id: 2, titre: "Marché nocturne",
-      date: "2026-04-18",
-      heure: "18:00 – 23:00",
-      lieu: "Place de l'Église, Wambrechies",
-      description: "Marché vespéral, artisanat local, dégustations et musique live."
-    },
-    {
-      id: 3, titre: "Atelier dégustation vins & fromages",
-      date: "2026-04-25",
-      heure: "19:30 – 22:00",
-      lieu: "Épicerie Fine du Terroir",
-      description: "Soirée dégustation organisée par l'Épicerie Fine. Places limitées – inscription obligatoire."
-    },
-    {
-      id: 4, titre: "Fête du Muguet",
-      date: "2026-05-01",
-      heure: "10:00 – 13:00",
-      lieu: "Grand-Place, Wambrechies",
-      description: "Distribution de muguet et petit marché festif pour le 1er mai."
-    },
-    {
-      id: 5, titre: "Journée Portes Ouvertes des commerces",
-      date: "2026-05-10",
-      heure: "10:00 – 18:00",
-      lieu: "Tous les commerces PAF",
-      description: "Les adhérents PAF ouvrent leurs portes et proposent des démonstrations et offres spéciales."
-    },
-    {
-      id: 6, titre: "Concert en plein air",
-      date: "2026-05-17",
-      heure: "15:00 – 19:00",
-      lieu: "Parc du Château, Wambrechies",
-      description: "Concert gratuit de musiques du monde, en partenariat avec la PAF et la mairie."
-    },
-    {
-      id: 7, titre: "Grand Vide-Grenier",
-      date: "2026-05-24",
-      heure: "08:00 – 17:00",
-      lieu: "Parking de la Mairie, Wambrechies",
-      description: "Vide-grenier géant. Inscriptions des exposants ouvertes jusqu'au 17 mai."
-    },
-    {
-      id: 8, titre: "Soirée gastronomique PAF",
-      date: "2026-05-31",
-      heure: "19:30 – 23:30",
-      lieu: "La Brasserie du Canal",
-      description: "Dîner de gala annuel des adhérents PAF. Menu gastronomique 4 services. Réservation obligatoire."
-    }
-  ]
-};
+let currentUser = null;
+let appInitialized = false;
 
 /* ============================================================
    HELPERS
@@ -259,6 +37,95 @@ function escHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+let toastTimer = null;
+function showToast(msg, type) {
+  let toast = document.getElementById('paf-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'paf-toast';
+    toast.className = 'toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.className = 'toast' + (type ? ' toast-' + type : '');
+  // Force reflow then show
+  void toast.offsetWidth;
+  toast.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+/* ============================================================
+   AUTH
+   ============================================================ */
+function showAuthScreen() {
+  document.getElementById('auth-screen').classList.remove('hidden');
+  document.getElementById('app').classList.add('hidden');
+}
+
+function showApp() {
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  initApp();
+}
+
+async function initAuth() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    showApp();
+  } else {
+    showAuthScreen();
+  }
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if (session) {
+      currentUser = session.user;
+      showApp();
+    } else {
+      currentUser = null;
+      appInitialized = false;
+      showAuthScreen();
+    }
+  });
+
+  const form = document.getElementById('auth-form');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email    = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    const submitBtn = document.getElementById('auth-submit');
+    const errorEl  = document.getElementById('auth-error');
+
+    errorEl.classList.add('hidden');
+    errorEl.textContent = '';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Connexion…';
+
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Se connecter';
+
+    if (error) {
+      let msg = 'Erreur de connexion. Vérifiez vos identifiants.';
+      if (error.message && error.message.toLowerCase().includes('invalid')) {
+        msg = 'Email ou mot de passe incorrect.';
+      } else if (error.message && error.message.toLowerCase().includes('email')) {
+        msg = 'Adresse email invalide.';
+      }
+      errorEl.textContent = msg;
+      errorEl.classList.remove('hidden');
+    }
+  });
+}
+
+async function logout() {
+  await sb.auth.signOut();
+  appInitialized = false;
+}
+window.logout = logout;
+
 /* ============================================================
    NAVIGATION
    ============================================================ */
@@ -272,7 +139,6 @@ function showSection(id) {
   const btn = document.querySelector(`.nav-item[data-section="${id}"]`);
   if (btn) btn.classList.add('active');
 
-  // Scroll main content to top
   document.getElementById('main').scrollTo(0, 0);
 }
 
@@ -283,9 +149,23 @@ document.querySelectorAll('.nav-item').forEach(btn => {
 /* ============================================================
    ACTUS
    ============================================================ */
-function renderActus() {
+async function renderActus() {
   const container = document.getElementById('actus-list');
-  container.innerHTML = DATA.actus.map(a => `
+  container.innerHTML = '<div class="loading">Chargement…</div>';
+
+  const { data, error } = await sb.from('actus').select('*').order('date', { ascending: false });
+
+  if (error) {
+    container.innerHTML = '<div class="empty-state">Impossible de charger les actualités.</div>';
+    return;
+  }
+
+  if (!data || !data.length) {
+    container.innerHTML = '<div class="empty-state">Aucune actualité pour le moment.</div>';
+    return;
+  }
+
+  container.innerHTML = data.map(a => `
     <div class="actu-card">
       <div class="actu-header" onclick="toggleActu(${a.id})">
         <div class="actu-meta">
@@ -293,13 +173,13 @@ function renderActus() {
           <span class="actu-date">${formatDate(a.date)}</span>
         </div>
         <div class="actu-title">${escHtml(a.titre)}</div>
-        <div class="actu-excerpt">${escHtml(a.excerpt)}</div>
+        <div class="actu-excerpt">${escHtml(a.excerpt || '')}</div>
         <button class="actu-expand-btn" id="btn-actu-${a.id}" aria-expanded="false">
           Lire la suite
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
       </div>
-      <div class="actu-body" id="body-actu-${a.id}">${escHtml(a.contenu)}</div>
+      <div class="actu-body" id="body-actu-${a.id}">${escHtml(a.contenu || '')}</div>
     </div>
   `).join('');
 }
@@ -310,12 +190,11 @@ function toggleActu(id) {
   const open = body.classList.toggle('open');
   btn.classList.toggle('open', open);
   btn.setAttribute('aria-expanded', open);
-  btn.querySelector('span') && (btn.querySelector('span').textContent = open ? 'Réduire' : 'Lire la suite');
-  // Update text node (first text node inside btn)
   for (const node of btn.childNodes) {
     if (node.nodeType === 3) { node.textContent = open ? 'Réduire ' : 'Lire la suite '; break; }
   }
 }
+window.toggleActu = toggleActu;
 
 /* ============================================================
    ANNUAIRE
@@ -323,6 +202,7 @@ function toggleActu(id) {
 const CATEGORIES_ANNUAIRE = ['Tous', 'Alimentation', 'Beauté', 'Mode & Maison', 'Restauration', 'Santé', 'Services'];
 let annuaireFilter = 'Tous';
 let annuaireSearch = '';
+let annuaireData = [];
 
 function renderAnnuaireCats() {
   const container = document.getElementById('annuaire-cats');
@@ -336,13 +216,14 @@ function setAnnuaireCat(cat) {
   renderAnnuaireCats();
   renderAnnuaireList();
 }
+window.setAnnuaireCat = setAnnuaireCat;
 
 function renderAnnuaireList() {
   const container = document.getElementById('annuaire-list');
   const q = annuaireSearch.toLowerCase().trim();
-  const filtered = DATA.annuaire.filter(m => {
+  const filtered = annuaireData.filter(m => {
     const matchCat = annuaireFilter === 'Tous' || m.categorie === annuaireFilter;
-    const matchQ   = !q || m.nom.toLowerCase().includes(q) || m.description.toLowerCase().includes(q);
+    const matchQ   = !q || m.nom.toLowerCase().includes(q) || (m.description || '').toLowerCase().includes(q);
     return matchCat && matchQ;
   });
 
@@ -355,24 +236,39 @@ function renderAnnuaireList() {
     <div class="merchant-card">
       <span class="badge badge-muted">${escHtml(m.categorie)}</span>
       <div class="merchant-name">${escHtml(m.nom)}</div>
-      <div class="merchant-desc">${escHtml(m.description)}</div>
+      <div class="merchant-desc">${escHtml(m.description || '')}</div>
       <div class="merchant-info">
         <span>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          ${escHtml(m.adresse)}
+          ${escHtml(m.adresse || '')}
         </span>
-        <a href="tel:${escHtml(m.telephone.replace(/\s/g,''))}">
+        <a href="tel:${escHtml((m.telephone || '').replace(/\s/g,''))}">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          ${escHtml(m.telephone)}
+          ${escHtml(m.telephone || '')}
         </a>
       </div>
     </div>
   `).join('');
 }
 
+async function loadAnnuaire() {
+  const container = document.getElementById('annuaire-list');
+  container.innerHTML = '<div class="loading">Chargement…</div>';
+
+  const { data, error } = await sb.from('annuaire').select('*').order('nom');
+
+  if (error) {
+    container.innerHTML = '<div class="empty-state">Impossible de charger l\'annuaire.</div>';
+    return;
+  }
+
+  annuaireData = data || [];
+  renderAnnuaireList();
+}
+
 function initAnnuaire() {
   renderAnnuaireCats();
-  renderAnnuaireList();
+  loadAnnuaire();
   document.getElementById('annuaire-search').addEventListener('input', e => {
     annuaireSearch = e.target.value;
     renderAnnuaireList();
@@ -382,20 +278,34 @@ function initAnnuaire() {
 /* ============================================================
    OFFRES
    ============================================================ */
-function renderOffres() {
+async function renderOffres() {
   const container = document.getElementById('offres-list');
-  container.innerHTML = DATA.offres.map(o => `
+  container.innerHTML = '<div class="loading">Chargement…</div>';
+
+  const { data, error } = await sb.from('offres').select('*').order('expiration');
+
+  if (error) {
+    container.innerHTML = '<div class="empty-state">Impossible de charger les offres.</div>';
+    return;
+  }
+
+  if (!data || !data.length) {
+    container.innerHTML = '<div class="empty-state">Aucune offre pour le moment.</div>';
+    return;
+  }
+
+  container.innerHTML = data.map(o => `
     <div class="offer-card">
       <div class="offer-inner">
         <div class="offer-merchant">${escHtml(o.commercant)}</div>
         <div class="offer-title">${escHtml(o.titre)}</div>
-        <div class="offer-desc">${escHtml(o.description)}</div>
+        <div class="offer-desc">${escHtml(o.description || '')}</div>
         <div class="offer-footer">
           <div class="offer-expiry">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             Valable jusqu'au ${formatDate(o.expiration)}
           </div>
-          <span class="offer-tag">${escHtml(o.tag)}</span>
+          <span class="offer-tag">${escHtml(o.tag || '')}</span>
         </div>
       </div>
     </div>
@@ -405,65 +315,226 @@ function renderOffres() {
 /* ============================================================
    BOÎTE À IDÉES
    ============================================================ */
-const LS_KEY = 'paf-idees';
-
-function loadIdees() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
-  catch { return []; }
-}
-
-function saveIdees(idees) {
-  localStorage.setItem(LS_KEY, JSON.stringify(idees));
-}
-
-function renderIdeesList() {
-  const idees = loadIdees();
-  const header = document.getElementById('ideas-list-header');
+async function renderIdeesList() {
+  const header    = document.getElementById('ideas-list-header');
   const container = document.getElementById('ideas-list');
+  container.innerHTML = '<div class="loading">Chargement…</div>';
 
-  if (!idees.length) {
+  const { data, error } = await sb
+    .from('idees')
+    .select('*, idees_likes(count), idees_commentaires(id, prenom, texte, created_at)')
+    .eq('visible', true)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    container.innerHTML = '<div class="empty-state">Impossible de charger les idées.</div>';
+    return;
+  }
+
+  if (!data || !data.length) {
     header.classList.add('hidden');
     container.innerHTML = '';
     return;
   }
 
   header.classList.remove('hidden');
-  container.innerHTML = idees.slice().reverse().map(idea => `
-    <div class="idea-card">
-      <div class="idea-card-meta">
-        <span class="idea-card-author">${escHtml(idea.prenom || 'Anonyme')}</span>
-        <span class="badge badge-muted">${escHtml(idea.categorie)}</span>
-        <span class="idea-card-date">${idea.date}</span>
+
+  container.innerHTML = data.map(idea => {
+    const likeCount    = idea.idees_likes && idea.idees_likes[0] ? (idea.idees_likes[0].count || 0) : 0;
+    const comments     = idea.idees_commentaires || [];
+    const commentCount = comments.length;
+    const dateLabel    = idea.created_at
+      ? new Date(idea.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+      : '';
+
+    const commentsHtml = comments.map(c => `
+      <div class="comment">
+        <span class="comment-author">${escHtml(c.prenom || 'Anonyme')}</span>
+        <span class="comment-text">${escHtml(c.texte)}</span>
       </div>
-      <div class="idea-card-text">${escHtml(idea.texte)}</div>
-    </div>
-  `).join('');
+    `).join('');
+
+    return `
+      <div class="idea-card" id="idea-card-${idea.id}">
+        <div class="idea-card-meta">
+          <span class="idea-card-author">${escHtml(idea.prenom || 'Anonyme')}</span>
+          <span class="badge badge-muted">${escHtml(idea.categorie)}</span>
+          <span class="idea-card-date">${dateLabel}</span>
+        </div>
+        <div class="idea-card-text">${escHtml(idea.texte)}</div>
+        <div class="idea-actions">
+          <button class="idea-like-btn" id="like-btn-${idea.id}" onclick="toggleLike(${idea.id})" aria-label="J'aime">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            <span id="like-count-${idea.id}">${likeCount}</span>
+          </button>
+          <button class="idea-comment-toggle" onclick="toggleComments(${idea.id})" aria-label="Commentaires">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>${commentCount}</span>
+          </button>
+        </div>
+        <div class="idea-comments hidden" id="comments-${idea.id}">
+          <div id="comments-list-${idea.id}">${commentsHtml}</div>
+          <form class="comment-form" onsubmit="addComment(event, ${idea.id})">
+            <input type="text" class="comment-input" id="comment-input-${idea.id}" placeholder="Ajouter un commentaire…" autocomplete="off" />
+            <button type="submit" class="comment-submit" aria-label="Envoyer">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </form>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Check own likes
+  const ideeIds = data.map(i => i.id);
+  checkOwnLikes(ideeIds);
 }
+
+async function checkOwnLikes(ideeIds) {
+  if (!currentUser || !ideeIds.length) return;
+  const { data, error } = await sb
+    .from('idees_likes')
+    .select('idee_id')
+    .eq('user_id', currentUser.id)
+    .in('idee_id', ideeIds);
+
+  if (error || !data) return;
+
+  data.forEach(row => {
+    const btn = document.getElementById('like-btn-' + row.idee_id);
+    if (btn) btn.classList.add('liked');
+  });
+}
+
+async function toggleLike(ideeId) {
+  if (!currentUser) return;
+
+  const btn = document.getElementById('like-btn-' + ideeId);
+  const countEl = document.getElementById('like-count-' + ideeId);
+  const isLiked = btn && btn.classList.contains('liked');
+
+  // Optimistic UI
+  if (btn) btn.classList.toggle('liked', !isLiked);
+  if (countEl) {
+    const current = parseInt(countEl.textContent, 10) || 0;
+    countEl.textContent = isLiked ? Math.max(0, current - 1) : current + 1;
+  }
+
+  if (isLiked) {
+    const { error } = await sb
+      .from('idees_likes')
+      .delete()
+      .eq('idee_id', ideeId)
+      .eq('user_id', currentUser.id);
+    if (error) {
+      // Revert
+      if (btn) btn.classList.toggle('liked', true);
+      if (countEl) countEl.textContent = parseInt(countEl.textContent, 10) + 1;
+    }
+  } else {
+    const { error } = await sb
+      .from('idees_likes')
+      .insert({ idee_id: ideeId, user_id: currentUser.id });
+    if (error) {
+      // Revert
+      if (btn) btn.classList.toggle('liked', false);
+      if (countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent, 10) - 1);
+    }
+  }
+}
+window.toggleLike = toggleLike;
+
+function toggleComments(ideeId) {
+  const div = document.getElementById('comments-' + ideeId);
+  if (div) div.classList.toggle('hidden');
+}
+window.toggleComments = toggleComments;
+
+async function addComment(e, ideeId) {
+  e.preventDefault();
+  if (!currentUser) return;
+
+  const input = document.getElementById('comment-input-' + ideeId);
+  const texte = input ? input.value.trim() : '';
+  if (!texte) return;
+
+  const prenom = currentUser.user_metadata && currentUser.user_metadata.prenom
+    ? currentUser.user_metadata.prenom
+    : (currentUser.email ? currentUser.email.split('@')[0] : 'Anonyme');
+
+  const { error } = await sb.from('idees_commentaires').insert({
+    idee_id: ideeId,
+    user_id: currentUser.id,
+    prenom,
+    texte
+  });
+
+  if (error) {
+    showToast('Erreur lors de l\'envoi du commentaire.', 'error');
+    return;
+  }
+
+  if (input) input.value = '';
+
+  // Add comment to DOM without full re-render
+  const listEl = document.getElementById('comments-list-' + ideeId);
+  if (listEl) {
+    const div = document.createElement('div');
+    div.className = 'comment';
+    div.innerHTML = `<span class="comment-author">${escHtml(prenom)}</span><span class="comment-text">${escHtml(texte)}</span>`;
+    listEl.appendChild(div);
+  }
+
+  // Update comment count
+  const toggleBtn = document.querySelector(`#idea-card-${ideeId} .idea-comment-toggle span`);
+  if (toggleBtn) {
+    toggleBtn.textContent = parseInt(toggleBtn.textContent, 10) + 1;
+  }
+}
+window.addComment = addComment;
 
 function initIdees() {
   renderIdeesList();
 
-  document.getElementById('idea-form').addEventListener('submit', e => {
+  // Real-time subscription
+  sb.channel('paf-idees')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'idees' }, () => {
+      renderIdeesList();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'idees_likes' }, () => {
+      renderIdeesList();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'idees_commentaires' }, () => {
+      renderIdeesList();
+    })
+    .subscribe();
+
+  document.getElementById('idea-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!currentUser) return;
+
     const texte = document.getElementById('idea-text').value.trim();
     if (!texte) {
       document.getElementById('idea-text').focus();
       return;
     }
-    const idea = {
-      prenom:    document.getElementById('idea-prenom').value.trim(),
-      categorie: document.getElementById('idea-cat').value,
-      texte,
-      date:      new Date().toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' })
-    };
-    const idees = loadIdees();
-    idees.push(idea);
-    saveIdees(idees);
 
-    // Reset form
+    const prenom    = document.getElementById('idea-prenom').value.trim();
+    const categorie = document.getElementById('idea-cat').value;
+
+    const { error } = await sb.from('idees').insert({
+      user_id: currentUser.id,
+      prenom:  prenom || null,
+      categorie,
+      texte
+    });
+
+    if (error) {
+      showToast('Erreur lors de l\'enregistrement de l\'idée.', 'error');
+      return;
+    }
+
     document.getElementById('idea-form').reset();
-
-    // Show success message
     const successEl = document.getElementById('idea-success');
     successEl.classList.remove('hidden');
     setTimeout(() => successEl.classList.add('hidden'), 3000);
@@ -475,15 +546,16 @@ function initIdees() {
 /* ============================================================
    CALENDRIER
    ============================================================ */
-let calYear  = 2026;
-let calMonth = 3; // April (0-indexed)
+let calYear        = 2026;
+let calMonth       = 3; // April (0-indexed)
 let calSelectedDay = null;
+let calEventsData  = [];
 
 const today = new Date();
 
 function getEventsForDate(y, m, d) {
-  const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-  return DATA.evenements.filter(e => e.date === dateStr);
+  const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  return calEventsData.filter(e => e.date === dateStr);
 }
 
 function renderCalendar() {
@@ -492,7 +564,6 @@ function renderCalendar() {
 
   const grid = document.getElementById('cal-grid');
   const firstDay = new Date(calYear, calMonth, 1);
-  // JS getDay: 0=Sun … 6=Sat → convert to Mon-first: Mon=0 … Sun=6
   let startDow = firstDay.getDay() - 1;
   if (startDow < 0) startDow = 6;
 
@@ -501,15 +572,12 @@ function renderCalendar() {
 
   const cells = [];
 
-  // Leading days from previous month
   for (let i = startDow - 1; i >= 0; i--) {
     cells.push({ day: daysInPrev - i, month: calMonth - 1, year: calYear, otherMonth: true });
   }
-  // Current month days
   for (let d = 1; d <= daysInMonth; d++) {
     cells.push({ day: d, month: calMonth, year: calYear, otherMonth: false });
   }
-  // Trailing days to complete the grid (always complete last row)
   const remaining = cells.length % 7 === 0 ? 0 : 7 - (cells.length % 7);
   for (let d = 1; d <= remaining; d++) {
     cells.push({ day: d, month: calMonth + 1, year: calYear, otherMonth: true });
@@ -520,16 +588,15 @@ function renderCalendar() {
       && cell.day === today.getDate()
       && cell.month === today.getMonth()
       && cell.year === today.getFullYear();
-    const isSelected = !cell.otherMonth
-      && calSelectedDay === cell.day;
-    const hasEvent = !cell.otherMonth && getEventsForDate(cell.year, cell.month, cell.day).length > 0;
+    const isSelected = !cell.otherMonth && calSelectedDay === cell.day;
+    const hasEvent   = !cell.otherMonth && getEventsForDate(cell.year, cell.month, cell.day).length > 0;
 
     const cls = [
       'cal-day',
       cell.otherMonth ? 'other-month' : '',
-      isToday        ? 'today'        : '',
-      isSelected     ? 'selected'     : '',
-      hasEvent       ? 'has-event'    : ''
+      isToday         ? 'today'        : '',
+      isSelected      ? 'selected'     : '',
+      hasEvent        ? 'has-event'    : ''
     ].filter(Boolean).join(' ');
 
     const onclick = cell.otherMonth ? '' : `onclick="selectCalDay(${cell.day})"`;
@@ -544,6 +611,7 @@ function selectCalDay(day) {
   calSelectedDay = calSelectedDay === day ? null : day;
   renderCalendar();
 }
+window.selectCalDay = selectCalDay;
 
 function renderCalEventsPanel() {
   const panel = document.getElementById('cal-events-panel');
@@ -551,7 +619,7 @@ function renderCalEventsPanel() {
     panel.classList.add('hidden');
     return;
   }
-  const events = getEventsForDate(calYear, calMonth, calSelectedDay);
+  const events    = getEventsForDate(calYear, calMonth, calSelectedDay);
   const dateLabel = `${calSelectedDay} ${MONTHS_FR[calMonth]} ${calYear}`;
   panel.classList.remove('hidden');
   panel.innerHTML = `
@@ -562,7 +630,7 @@ function renderCalEventsPanel() {
             <div class="cal-event-dot"></div>
             <div class="cal-event-info">
               <div class="cal-event-name">${escHtml(ev.titre)}</div>
-              <div class="cal-event-meta">${escHtml(ev.heure)} · ${escHtml(ev.lieu)}</div>
+              <div class="cal-event-meta">${escHtml(ev.heure || '')} · ${escHtml(ev.lieu || '')}</div>
             </div>
           </div>
         `).join('')
@@ -573,13 +641,17 @@ function renderCalEventsPanel() {
 
 function renderUpcomingEvents() {
   const container = document.getElementById('cal-upcoming');
-  const now = new Date(calYear, calMonth, 1);
-  const upcoming = DATA.evenements
+  const upcoming  = calEventsData
     .filter(ev => {
       const [y, m, d] = ev.date.split('-').map(Number);
       return new Date(y, m - 1, d) >= new Date(today.getFullYear(), today.getMonth(), today.getDate());
     })
     .slice(0, 5);
+
+  if (!upcoming.length) {
+    container.innerHTML = '<div class="empty-state">Aucun événement à venir.</div>';
+    return;
+  }
 
   container.innerHTML = upcoming.map(ev => {
     const { day, month } = formatDateShort(ev.date);
@@ -594,11 +666,11 @@ function renderUpcomingEvents() {
           <div class="event-meta">
             <span>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              ${escHtml(ev.heure)}
+              ${escHtml(ev.heure || '')}
             </span>
             <span>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              ${escHtml(ev.lieu)}
+              ${escHtml(ev.lieu || '')}
             </span>
           </div>
         </div>
@@ -607,8 +679,15 @@ function renderUpcomingEvents() {
   }).join('');
 }
 
+async function loadCalendarEvents() {
+  const { data, error } = await sb.from('evenements').select('*').order('date');
+  if (!error && data) {
+    calEventsData = data;
+  }
+  renderCalendar();
+}
+
 function initCalendar() {
-  // Start on current month if 2026, otherwise default April 2026
   calYear  = today.getFullYear() === 2026 ? today.getFullYear() : 2026;
   calMonth = today.getFullYear() === 2026 ? today.getMonth()    : 3;
 
@@ -622,17 +701,73 @@ function initCalendar() {
     calSelectedDay = null;
     renderCalendar();
   });
-  renderCalendar();
+
+  loadCalendarEvents();
+}
+
+/* ============================================================
+   PUSH NOTIFICATIONS
+   ============================================================ */
+async function requestPushPermission() {
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+    showToast('Notifications non supportées sur cet appareil.', 'error');
+    return;
+  }
+
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') {
+    showToast('Notifications refusées.', 'error');
+    return;
+  }
+
+  await subscribeToPush();
+  showToast('Notifications activées !', 'success');
+}
+window.requestPushPermission = requestPushPermission;
+
+async function subscribeToPush() {
+  if (!currentUser) return;
+  if (!('serviceWorker' in navigator) || Notification.permission !== 'granted') return;
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const existing = await reg.pushManager.getSubscription();
+    const sub = existing || await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: null
+    });
+
+    if (!sub) return;
+
+    const subJson = sub.toJSON();
+    await sb.from('push_subscriptions').upsert({
+      user_id:  currentUser.id,
+      endpoint: subJson.endpoint,
+      p256dh:   subJson.keys ? subJson.keys.p256dh : null,
+      auth:     subJson.keys ? subJson.keys.auth    : null
+    }, { onConflict: 'user_id,endpoint' });
+  } catch (err) {
+    console.warn('[PWA] Push subscribe error:', err);
+  }
 }
 
 /* ============================================================
    INIT
    ============================================================ */
-(function init() {
+function initApp() {
+  if (appInitialized) return;
+  appInitialized = true;
   renderActus();
   initAnnuaire();
   renderOffres();
   initIdees();
   initCalendar();
   showSection('actus');
-})();
+
+  // Subscribe to push silently if already granted
+  if ('Notification' in window && Notification.permission === 'granted') {
+    subscribeToPush();
+  }
+}
+
+initAuth();
