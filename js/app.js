@@ -173,23 +173,27 @@ function actuBadgeClass(cat) {
   return ACTU_CAT_CLASS[cat] || 'badge-cat-default';
 }
 
-async function renderActus() {
+const ACTU_CATS = ['Tous', 'Actu Asso', 'Infos pratiques', 'Événement', 'Partenaire'];
+let actuFilter = 'Tous';
+let actuData   = [];
+
+function renderActusCats() {
+  document.getElementById('actus-cats').innerHTML = ACTU_CATS.map(cat => `
+    <button class="chip ${cat === actuFilter ? 'active' : ''}" onclick="setActuCat('${escHtml(cat)}')">${escHtml(cat)}</button>
+  `).join('');
+}
+window.setActuCat = function(cat) { actuFilter = cat; renderActusCats(); renderActusList(); };
+
+function renderActusList() {
   const container = document.getElementById('actus-list');
-  container.innerHTML = '<div class="loading">Chargement…</div>';
+  const filtered = actuFilter === 'Tous' ? actuData : actuData.filter(a => a.categorie === actuFilter);
 
-  const { data, error } = await sb.from('actus').select('*').order('date', { ascending: false });
-
-  if (error) {
-    container.innerHTML = '<div class="empty-state">Impossible de charger les actualités.</div>';
-    return;
-  }
-
-  if (!data || !data.length) {
+  if (!filtered.length) {
     container.innerHTML = '<div class="empty-state">Aucune actualité pour le moment.</div>';
     return;
   }
 
-  container.innerHTML = data.map(a => `
+  container.innerHTML = filtered.map(a => `
     <div class="actu-card">
       <div class="actu-header" onclick="toggleActu(${a.id})">
         <div class="actu-meta">
@@ -205,6 +209,15 @@ async function renderActus() {
       <div class="actu-body" id="body-actu-${a.id}">${escHtml(a.contenu || '')}</div>
     </div>
   `).join('');
+}
+
+async function renderActus() {
+  document.getElementById('actus-list').innerHTML = '<div class="loading">Chargement…</div>';
+  const { data, error } = await sb.from('actus').select('*').order('date', { ascending: false });
+  if (error) { document.getElementById('actus-list').innerHTML = '<div class="empty-state">Impossible de charger les actualités.</div>'; return; }
+  actuData = data || [];
+  renderActusCats();
+  renderActusList();
 }
 
 function toggleActu(id) {
