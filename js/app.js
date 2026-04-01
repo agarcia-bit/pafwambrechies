@@ -248,7 +248,7 @@ function renderAnnuaireList() {
   }
 
   container.innerHTML = filtered.map(m => `
-    <div class="merchant-card" onclick="toggleMerchantDetail(${m.id})">
+    <div class="merchant-card" onclick="openMerchantModal(${m.id})">
       ${m.photo_url
         ? `<img src="${escHtml(m.photo_url)}" class="merchant-photo" alt="${escHtml(m.nom)}" loading="lazy" />`
         : `<div class="merchant-photo-placeholder">${escHtml(m.nom.charAt(0).toUpperCase())}</div>`
@@ -257,24 +257,38 @@ function renderAnnuaireList() {
         <span class="badge badge-muted">${escHtml(m.categorie)}</span>
         <div class="merchant-name">${escHtml(m.nom)}</div>
       </div>
-      <div class="merchant-detail" id="merchant-detail-${m.id}">
-        ${m.description ? `<div class="merchant-desc">${escHtml(m.description)}</div>` : ''}
-        <div class="merchant-info">
-          ${m.adresse ? `<span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escHtml(m.adresse)}</span>` : ''}
-          ${m.telephone ? `<a href="tel:${escHtml(m.telephone.replace(/\s/g,''))}" onclick="event.stopPropagation()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${escHtml(m.telephone)}</a>` : ''}
-        </div>
-      </div>
     </div>
   `).join('');
 }
 
-function toggleMerchantDetail(id) {
-  document.querySelectorAll('.merchant-detail').forEach(d => {
-    if (d.id === 'merchant-detail-' + id) d.classList.toggle('open');
-    else d.classList.remove('open');
-  });
+function openMerchantModal(id) {
+  const m = annuaireData.find(x => x.id === id);
+  if (!m) return;
+  const content = document.getElementById('merchant-modal-content');
+  content.innerHTML = `
+    ${m.photo_url
+      ? `<img src="${escHtml(m.photo_url)}" class="modal-photo" alt="${escHtml(m.nom)}" />`
+      : `<div class="modal-photo-placeholder">${escHtml(m.nom.charAt(0).toUpperCase())}</div>`}
+    <div class="modal-body">
+      <span class="badge badge-muted">${escHtml(m.categorie)}</span>
+      <h2 class="modal-name">${escHtml(m.nom)}</h2>
+      ${m.description ? `<p class="modal-desc">${escHtml(m.description)}</p>` : ''}
+      <div class="modal-contacts">
+        ${m.adresse   ? `<div class="modal-contact"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escHtml(m.adresse)}</div>` : ''}
+        ${m.telephone ? `<a class="modal-contact modal-contact-link" href="tel:${escHtml(m.telephone.replace(/\s/g,''))}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${escHtml(m.telephone)}</a>` : ''}
+        ${m.email     ? `<a class="modal-contact modal-contact-link" href="mailto:${escHtml(m.email)}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${escHtml(m.email)}</a>` : ''}
+        ${m.linkedin  ? `<a class="modal-contact modal-contact-link" href="${escHtml(m.linkedin)}" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>LinkedIn</a>` : ''}
+        ${m.instagram ? `<a class="modal-contact modal-contact-link" href="https://instagram.com/${escHtml(m.instagram.replace('@',''))}" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>${escHtml(m.instagram)}</a>` : ''}
+      </div>
+    </div>`;
+  document.getElementById('merchant-modal').classList.remove('hidden');
 }
-window.toggleMerchantDetail = toggleMerchantDetail;
+window.openMerchantModal = openMerchantModal;
+
+function closeMerchantModal() {
+  document.getElementById('merchant-modal').classList.add('hidden');
+}
+window.closeMerchantModal = closeMerchantModal;
 
 async function initAnnuaire() {
   const { data, error } = await sb.from('annuaire').select('*').order('nom');
@@ -1054,6 +1068,9 @@ async function renderAdminAnnuaire(el) {
         </div>
         <div class="form-group"><label>Adresse</label><input type="text" id="ann-adresse" /></div>
         <div class="form-group"><label>Téléphone</label><input type="tel" id="ann-telephone" /></div>
+        <div class="form-group"><label>Email</label><input type="email" id="ann-email" /></div>
+        <div class="form-group"><label>LinkedIn</label><input type="url" id="ann-linkedin" placeholder="https://linkedin.com/in/…" /></div>
+        <div class="form-group"><label>Instagram</label><input type="text" id="ann-instagram" placeholder="@nomducompte" /></div>
         <div class="form-group"><label>Description</label><textarea id="ann-description" rows="3"></textarea></div>
         <div class="form-group">
           <label>Photo</label>
@@ -1095,6 +1112,9 @@ async function renderAdminAnnuaire(el) {
       categorie:   document.getElementById('ann-categorie').value,
       adresse:     document.getElementById('ann-adresse').value.trim() || null,
       telephone:   document.getElementById('ann-telephone').value.trim() || null,
+      email:       document.getElementById('ann-email').value.trim() || null,
+      linkedin:    document.getElementById('ann-linkedin').value.trim() || null,
+      instagram:   document.getElementById('ann-instagram').value.trim() || null,
       description: document.getElementById('ann-description').value.trim() || null,
       photo_url,
     });

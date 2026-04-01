@@ -2,8 +2,11 @@
 -- Photos annuaire – À exécuter dans l'éditeur SQL Supabase
 -- ============================================================
 
--- 1. Ajouter la colonne photo_url à la table annuaire
+-- 1. Ajouter les colonnes à la table annuaire
 ALTER TABLE public.annuaire ADD COLUMN IF NOT EXISTS photo_url text;
+ALTER TABLE public.annuaire ADD COLUMN IF NOT EXISTS email text;
+ALTER TABLE public.annuaire ADD COLUMN IF NOT EXISTS linkedin text;
+ALTER TABLE public.annuaire ADD COLUMN IF NOT EXISTS instagram text;
 
 -- 2. Politique de lecture publique sur le bucket (à créer d'abord via Dashboard)
 -- Storage → New bucket → nom : "annuaire-photos" → cocher "Public bucket"
