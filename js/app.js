@@ -378,6 +378,7 @@ async function renderIdeesList() {
           <span class="badge badge-muted">${escHtml(idea.categorie)}</span>
           <span class="idea-card-date">${dateLabel}</span>
         </div>
+        ${idea.titre ? `<div class="idea-card-title">${escHtml(idea.titre)}</div>` : ''}
         <div class="idea-card-text">${escHtml(idea.texte)}</div>
         <div class="idea-actions">
           <button class="idea-like-btn" id="like-btn-${idea.id}" onclick="toggleLike(${idea.id})" aria-label="J'aime">
@@ -570,6 +571,8 @@ function initIdees() {
     e.preventDefault();
     if (!currentUser) return;
 
+    const titre = document.getElementById('idea-titre').value.trim();
+    if (!titre) { document.getElementById('idea-titre').focus(); return; }
     const texte = document.getElementById('idea-text').value.trim();
     if (!texte) { document.getElementById('idea-text').focus(); return; }
 
@@ -581,6 +584,7 @@ function initIdees() {
       user_id: currentUser.id,
       prenom,
       categorie,
+      titre,
       texte
     });
 
