@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Générateur d'icônes PAF</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f0f4f8; }
+    h1 { color: #1A56DB; }
+    .canvases { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+    .icon-wrap { text-align: center; }
+    canvas { display: block; border: 1px solid #ccc; border-radius: 8px; }
+    .btn { margin-top: 8px; display: inline-block; padding: 8px 16px; background: #1A56DB; color: white;
+           text-decoration: none; border-radius: 6px; font-size: 14px; cursor: pointer; border: none; }
+    .btn:hover { background: #1240A8; }
+  </style>
+</head>
+<body>
+  <h1>Générateur d'icônes PAF Wambrechies</h1>
+  <p>Cliquez sur "Télécharger" sous chaque icône pour sauvegarder le fichier PNG dans le dossier <code>icons/</code>.</p>
+  <div class="canvases">
+    <div class="icon-wrap">
+      <h3>192×192</h3>
+      <canvas id="canvas192" width="192" height="192"></canvas>
+      <br>
+      <button class="btn" onclick="download('canvas192', 'icon-192.png')">Télécharger icon-192.png</button>
+    </div>
+    <div class="icon-wrap">
+      <h3>512×512</h3>
+      <canvas id="canvas512" width="512" height="512"></canvas>
+      <br>
+      <button class="btn" onclick="download('canvas512', 'icon-512.png')">Télécharger icon-512.png</button>
+    </div>
+  </div>
+
+  <script>
+    function drawIcon(canvas) {
+      const ctx = canvas.getContext('2d');
+      const size = canvas.width;
+      const scale = size / 512;
+
+      // Rounded rect background
+      const radius = 96 * scale;
+      ctx.beginPath();
+      ctx.moveTo(radius, 0);
+      ctx.lineTo(size - radius, 0);
+      ctx.quadraticCurveTo(size, 0, size, radius);
+      ctx.lineTo(size, size - radius);
+      ctx.quadraticCurveTo(size, size, size - radius, size);
+      ctx.lineTo(radius, size);
+      ctx.quadraticCurveTo(0, size, 0, size - radius);
+      ctx.lineTo(0, radius);
+      ctx.quadraticCurveTo(0, 0, radius, 0);
+      ctx.closePath();
+
+      // Gradient fill
+      const grad = ctx.createLinearGradient(0, 0, size, size);
+      grad.addColorStop(0, '#1A56DB');
+      grad.addColorStop(1, '#1240A8');
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Accent bar
+      ctx.fillStyle = '#F59E0B';
+      ctx.beginPath();
+      ctx.roundRect(64 * scale, 340 * scale, 384 * scale, 8 * scale, 4 * scale);
+      ctx.fill();
+
+      // PAF text
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `900 ${180 * scale}px "Arial Black", Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('PAF', size / 2, 265 * scale);
+
+      // Wambrechies subtitle
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.font = `${42 * scale}px Arial, sans-serif`;
+      ctx.letterSpacing = `${6 * scale}px`;
+      ctx.fillText('WAMBRECHIES', size / 2, 390 * scale);
+    }
+
+    function download(canvasId, filename) {
+      const canvas = document.getElementById(canvasId);
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    drawIcon(document.getElementById('canvas192'));
+    drawIcon(document.getElementById('canvas512'));
+  </script>
+</body>
+</html>

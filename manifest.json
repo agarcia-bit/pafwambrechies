@@ -1,0 +1,15 @@
+{
+  "name": "PAF Wambrechies",
+  "short_name": "PAF",
+  "description": "L'application officielle des adhérents de la PAF Wambrechies",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1A56DB",
+  "orientation": "portrait",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+  ]
+}

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="L'application officielle des adhérents de la PAF Wambrechies" />
+  <meta name="theme-color" content="#1A56DB" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PAF" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/style.css" />
+  <title>PAF Wambrechies</title>
+</head>
+<body>
+  <div id="app">
+
+    <!-- ── Header ─────────────────────────────────────────────────────────── -->
+    <header class="header">
+      <div class="header-inner">
+        <div class="header-logo">
+          <svg width="32" height="32" viewBox="0 0 512 512" aria-hidden="true">
+            <rect width="512" height="512" rx="96" fill="#fff" opacity=".2"/>
+            <text x="256" y="295" font-family="Arial Black,Arial,sans-serif" font-size="240" font-weight="900"
+              text-anchor="middle" dominant-baseline="middle" fill="#fff">PAF</text>
+          </svg>
+        </div>
+        <div class="header-titles">
+          <span class="header-title">PAF Wambrechies</span>
+          <span class="header-sub">Espace adhérents</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Main content ───────────────────────────────────────────────────── -->
+    <main id="main">
+
+      <!-- Actus -->
+      <section id="section-actus" class="section active" aria-label="Actualités">
+        <div class="section-header">
+          <h1 class="section-title">Actualités</h1>
+          <p class="section-desc">Les dernières nouvelles de la PAF</p>
+        </div>
+        <div id="actus-list" class="card-list"></div>
+      </section>
+
+      <!-- Annuaire -->
+      <section id="section-annuaire" class="section" aria-label="Annuaire">
+        <div class="section-header">
+          <h1 class="section-title">Annuaire PAF</h1>
+          <p class="section-desc">Les commerçants de Wambrechies</p>
+        </div>
+        <div class="search-bar">
+          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="search" id="annuaire-search" placeholder="Rechercher un commerçant…" autocomplete="off" />
+        </div>
+        <div id="annuaire-cats" class="chips"></div>
+        <div id="annuaire-list" class="card-list"></div>
+      </section>
+
+      <!-- Offres -->
+      <section id="section-offres" class="section" aria-label="Offres exclusives">
+        <div class="section-header">
+          <h1 class="section-title">Offres exclusives</h1>
+          <p class="section-desc">Bons plans réservés aux adhérents PAF</p>
+        </div>
+        <div id="offres-list" class="card-list"></div>
+      </section>
+
+      <!-- Boîte à idées -->
+      <section id="section-idees" class="section" aria-label="Boîte à idées">
+        <div class="section-header">
+          <h1 class="section-title">Boîte à idées</h1>
+          <p class="section-desc">Proposez vos idées pour améliorer la vie commerciale à Wambrechies</p>
+        </div>
+        <div class="card idea-form-card">
+          <form id="idea-form" novalidate>
+            <div class="form-group">
+              <label for="idea-prenom">Votre prénom (facultatif)</label>
+              <input type="text" id="idea-prenom" placeholder="Ex : Marie" autocomplete="given-name" />
+            </div>
+            <div class="form-group">
+              <label for="idea-cat">Thématique</label>
+              <select id="idea-cat">
+                <option value="Animation">Animation &amp; événements</option>
+                <option value="Commerce">Commerce &amp; services</option>
+                <option value="Propreté">Propreté &amp; cadre de vie</option>
+                <option value="Stationnement">Stationnement &amp; mobilité</option>
+                <option value="Communication">Communication &amp; numérique</option>
+                <option value="Autre">Autre</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="idea-text">Votre idée <span class="required">*</span></label>
+              <textarea id="idea-text" rows="4" placeholder="Décrivez votre idée…" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Soumettre mon idée</button>
+          </form>
+          <div id="idea-success" class="idea-success hidden">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Merci ! Votre idée a été enregistrée.
+          </div>
+        </div>
+        <div id="ideas-list-header" class="ideas-list-header hidden">
+          <span>Idées soumises par la communauté</span>
+        </div>
+        <div id="ideas-list" class="card-list"></div>
+      </section>
+
+      <!-- Calendrier -->
+      <section id="section-calendrier" class="section" aria-label="Calendrier">
+        <div class="section-header">
+          <h1 class="section-title">Calendrier</h1>
+          <p class="section-desc">Tous les événements de la PAF</p>
+        </div>
+        <div class="card calendar-card">
+          <div class="cal-nav">
+            <button id="cal-prev" class="cal-nav-btn" aria-label="Mois précédent">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span id="cal-month-label" class="cal-month-label"></span>
+            <button id="cal-next" class="cal-nav-btn" aria-label="Mois suivant">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+          <div class="cal-days-header">
+            <span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span>
+            <span>Ven</span><span class="weekend">Sam</span><span class="weekend">Dim</span>
+          </div>
+          <div id="cal-grid" class="cal-grid"></div>
+        </div>
+        <div id="cal-events-panel" class="cal-events-panel hidden"></div>
+        <div class="upcoming-title">Prochains événements</div>
+        <div id="cal-upcoming" class="card-list"></div>
+      </section>
+
+    </main>
+
+    <!-- ── Bottom navigation ──────────────────────────────────────────────── -->
+    <nav class="bottom-nav" role="navigation" aria-label="Navigation principale">
+      <button class="nav-item active" data-section="actus" aria-label="Actualités">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+          <path d="M18 14h-8M15 18h-5M10 6h8v4h-8z"/>
+        </svg>
+        <span>Actus</span>
+      </button>
+      <button class="nav-item" data-section="annuaire" aria-label="Annuaire">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span>Annuaire</span>
+      </button>
+      <button class="nav-item" data-section="offres" aria-label="Offres exclusives">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+          <line x1="7" y1="7" x2="7.01" y2="7"/>
+        </svg>
+        <span>Offres</span>
+      </button>
+      <button class="nav-item" data-section="idees" aria-label="Boîte à idées">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="9" y1="18" x2="15" y2="18"/>
+          <line x1="10" y1="22" x2="14" y2="22"/>
+          <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/>
+        </svg>
+        <span>Idées</span>
+      </button>
+      <button class="nav-item" data-section="calendrier" aria-label="Calendrier">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <span>Agenda</span>
+      </button>
+    </nav>
+
+  </div><!-- /#app -->
+
+  <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('[PWA] Service worker registered', reg.scope))
+          .catch(err => console.warn('[PWA] Service worker registration failed', err));
+      });
+    }
+  </script>
+</body>
+</html>
