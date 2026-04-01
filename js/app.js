@@ -1026,7 +1026,10 @@ async function renderAdminEvents(el) {
       <form id="form-event">
         <div class="form-group"><label>Titre *</label><input type="text" id="event-titre" required /></div>
         <div class="form-group"><label>Date *</label><input type="date" id="event-date" required /></div>
-        <div class="form-group"><label>Heure</label><input type="text" id="event-heure" placeholder="Ex : 18:00 – 20:00" /></div>
+        <div class="form-row-2">
+          <div class="form-group"><label>Heure de début</label><input type="time" id="event-heure-debut" /></div>
+          <div class="form-group"><label>Heure de fin</label><input type="time" id="event-heure-fin" /></div>
+        </div>
         <div class="form-group"><label>Lieu</label><input type="text" id="event-lieu" placeholder="Ex : Salle des fêtes" /></div>
         <div class="form-group"><label>Description</label><textarea id="event-description" rows="3"></textarea></div>
         <button type="submit" class="btn btn-primary">Enregistrer</button>
@@ -1047,7 +1050,7 @@ async function renderAdminEvents(el) {
     const { error } = await sb.from('evenements').insert({
       titre:       document.getElementById('event-titre').value.trim(),
       date:        document.getElementById('event-date').value,
-      heure:       document.getElementById('event-heure').value.trim() || null,
+      heure:       (() => { const d = document.getElementById('event-heure-debut').value; const f = document.getElementById('event-heure-fin').value; return d && f ? `${d} – ${f}` : d || f || null; })(),
       lieu:        document.getElementById('event-lieu').value.trim() || null,
       description: document.getElementById('event-description').value.trim() || null,
     });
