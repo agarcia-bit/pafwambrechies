@@ -48,7 +48,6 @@ function showToast(msg, type) {
   }
   toast.textContent = msg;
   toast.className = 'toast' + (type ? ' toast-' + type : '');
-  // Force reflow then show
   void toast.offsetWidth;
   toast.classList.add('show');
   if (toastTimer) clearTimeout(toastTimer);
@@ -221,6 +220,7 @@ window.setAnnuaireCat = setAnnuaireCat;
 function renderAnnuaireList() {
   const container = document.getElementById('annuaire-list');
   const q = annuaireSearch.toLowerCase().trim();
+
   const filtered = annuaireData.filter(m => {
     const matchCat = annuaireFilter === 'Tous' || m.categorie === annuaireFilter;
     const matchQ   = !q || m.nom.toLowerCase().includes(q) || (m.description || '').toLowerCase().includes(q);
@@ -228,7 +228,7 @@ function renderAnnuaireList() {
   });
 
   if (!filtered.length) {
-    container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:24px 0;font-size:.9rem;">Aucun résultat trouvé.</p>';
+    container.innerHTML = '<p class="empty-state">Aucun résultat trouvé.</p>';
     return;
   }
 
@@ -242,7 +242,7 @@ function renderAnnuaireList() {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
           ${escHtml(m.adresse || '')}
         </span>
-        <a href="tel:${escHtml((m.telephone || '').replace(/\s/g,''))}">
+        <a href="tel:${escHtml((m.telephone || '').replace(/\s/g, ''))}">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
           ${escHtml(m.telephone || '')}
         </a>
@@ -251,24 +251,12 @@ function renderAnnuaireList() {
   `).join('');
 }
 
-async function loadAnnuaire() {
-  const container = document.getElementById('annuaire-list');
-  container.innerHTML = '<div class="loading">Chargement…</div>';
-
+async function initAnnuaire() {
   const { data, error } = await sb.from('annuaire').select('*').order('nom');
-
-  if (error) {
-    container.innerHTML = '<div class="empty-state">Impossible de charger l\'annuaire.</div>';
-    return;
-  }
-
-  annuaireData = data || [];
-  renderAnnuaireList();
-}
-
-function initAnnuaire() {
+  if (!error && data) annuaireData = data;
   renderAnnuaireCats();
-  loadAnnuaire();
+  renderAnnuaireList();
+
   document.getElementById('annuaire-search').addEventListener('input', e => {
     annuaireSearch = e.target.value;
     renderAnnuaireList();
@@ -316,9 +304,8 @@ async function renderOffres() {
    BOÎTE À IDÉES
    ============================================================ */
 async function renderIdeesList() {
-  const header    = document.getElementById('ideas-list-header');
   const container = document.getElementById('ideas-list');
-  container.innerHTML = '<div class="loading">Chargement…</div>';
+  const header    = document.getElementById('ideas-list-header');
 
   const { data, error } = await sb
     .from('idees')
@@ -427,7 +414,6 @@ async function toggleLike(ideeId) {
       .eq('idee_id', ideeId)
       .eq('user_id', currentUser.id);
     if (error) {
-      // Revert
       if (btn) btn.classList.toggle('liked', true);
       if (countEl) countEl.textContent = parseInt(countEl.textContent, 10) + 1;
     }
@@ -436,7 +422,6 @@ async function toggleLike(ideeId) {
       .from('idees_likes')
       .insert({ idee_id: ideeId, user_id: currentUser.id });
     if (error) {
-      // Revert
       if (btn) btn.classList.toggle('liked', false);
       if (countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent, 10) - 1);
     }
@@ -476,7 +461,7 @@ async function addComment(e, ideeId) {
 
   if (input) input.value = '';
 
-  // Add comment to DOM without full re-render
+  // Append dans le DOM sans re-render
   const listEl = document.getElementById('comments-list-' + ideeId);
   if (listEl) {
     const div = document.createElement('div');
@@ -485,27 +470,63 @@ async function addComment(e, ideeId) {
     listEl.appendChild(div);
   }
 
-  // Update comment count
-  const toggleBtn = document.querySelector(`#idea-card-${ideeId} .idea-comment-toggle span`);
-  if (toggleBtn) {
-    toggleBtn.textContent = parseInt(toggleBtn.textContent, 10) + 1;
+  // Incrémenter le compteur
+  const card = document.getElementById('idea-card-' + ideeId);
+  if (card) {
+    const countSpan = card.querySelector('.idea-comment-toggle span');
+    if (countSpan) countSpan.textContent = parseInt(countSpan.textContent, 10) + 1;
   }
 }
 window.addComment = addComment;
 
+// Mise à jour ciblée du compteur de likes (sans re-render)
+function handleLikeChange(payload) {
+  const ideeId = payload.new?.idee_id || payload.old?.idee_id;
+  if (!ideeId) return;
+  const countEl = document.getElementById('like-count-' + ideeId);
+  if (!countEl) return;
+  // Ignorer les événements de l'utilisateur courant (déjà géré par l'UI optimiste)
+  const eventUserId = payload.new?.user_id || payload.old?.user_id;
+  if (eventUserId === currentUser?.id) return;
+  const current = parseInt(countEl.textContent, 10) || 0;
+  if (payload.eventType === 'INSERT') countEl.textContent = current + 1;
+  else if (payload.eventType === 'DELETE') countEl.textContent = Math.max(0, current - 1);
+}
+
+// Append ciblé d'un commentaire (sans re-render)
+function handleCommentChange(payload) {
+  const ideeId = payload.new?.idee_id;
+  if (!ideeId) return;
+  // Ignorer ses propres commentaires (déjà ajoutés dans addComment)
+  if (payload.new?.user_id === currentUser?.id) return;
+  const listEl = document.getElementById('comments-list-' + ideeId);
+  if (listEl) {
+    const div = document.createElement('div');
+    div.className = 'comment';
+    div.innerHTML = `<span class="comment-author">${escHtml(payload.new.prenom || 'Anonyme')}</span><span class="comment-text">${escHtml(payload.new.texte)}</span>`;
+    listEl.appendChild(div);
+  }
+  // Incrémenter le compteur de commentaires
+  const card = document.getElementById('idea-card-' + ideeId);
+  if (card) {
+    const countSpan = card.querySelector('.idea-comment-toggle span');
+    if (countSpan) countSpan.textContent = parseInt(countSpan.textContent, 10) + 1;
+  }
+}
+
 function initIdees() {
   renderIdeesList();
 
-  // Real-time subscription
+  // Real-time subscription – mises à jour ciblées pour éviter le re-render complet
   sb.channel('paf-idees')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'idees' }, () => {
-      renderIdeesList();
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'idees' }, () => {
+      renderIdeesList(); // nouvelle idée → nouveau card, re-render nécessaire
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'idees_likes' }, () => {
-      renderIdeesList();
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'idees_likes' }, (payload) => {
+      handleLikeChange(payload); // mise à jour ciblée du compteur uniquement
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'idees_commentaires' }, () => {
-      renderIdeesList();
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'idees_commentaires' }, (payload) => {
+      handleCommentChange(payload); // append du commentaire sans toucher au reste
     })
     .subscribe();
 
@@ -538,8 +559,6 @@ function initIdees() {
     const successEl = document.getElementById('idea-success');
     successEl.classList.remove('hidden');
     setTimeout(() => successEl.classList.add('hidden'), 3000);
-
-    renderIdeesList();
   });
 }
 
@@ -547,7 +566,7 @@ function initIdees() {
    CALENDRIER
    ============================================================ */
 let calYear        = 2026;
-let calMonth       = 3; // April (0-indexed)
+let calMonth       = 3;
 let calSelectedDay = null;
 let calEventsData  = [];
 
@@ -688,8 +707,8 @@ async function loadCalendarEvents() {
 }
 
 function initCalendar() {
-  calYear  = today.getFullYear() === 2026 ? today.getFullYear() : 2026;
-  calMonth = today.getFullYear() === 2026 ? today.getMonth()    : 3;
+  calYear  = today.getFullYear();
+  calMonth = today.getMonth();
 
   document.getElementById('cal-prev').addEventListener('click', () => {
     if (calMonth === 0) { calMonth = 11; calYear--; } else { calMonth--; }
@@ -710,25 +729,21 @@ function initCalendar() {
    ============================================================ */
 async function requestPushPermission() {
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-    showToast('Notifications non supportées sur cet appareil.', 'error');
+    showToast('Les notifications ne sont pas supportées sur cet appareil.', 'error');
     return;
   }
 
   const permission = await Notification.requestPermission();
-  if (permission !== 'granted') {
+  if (permission === 'granted') {
+    showToast('Notifications activées !', 'success');
+    await subscribeToPush();
+  } else {
     showToast('Notifications refusées.', 'error');
-    return;
   }
-
-  await subscribeToPush();
-  showToast('Notifications activées !', 'success');
 }
 window.requestPushPermission = requestPushPermission;
 
 async function subscribeToPush() {
-  if (!currentUser) return;
-  if (!('serviceWorker' in navigator) || Notification.permission !== 'granted') return;
-
   try {
     const reg = await navigator.serviceWorker.ready;
     const existing = await reg.pushManager.getSubscription();
@@ -736,19 +751,15 @@ async function subscribeToPush() {
       userVisibleOnly: true,
       applicationServerKey: null
     });
-
-    if (!sub) return;
-
-    const subJson = sub.toJSON();
+    if (!sub || !currentUser) return;
+    const json = sub.toJSON();
     await sb.from('push_subscriptions').upsert({
       user_id:  currentUser.id,
-      endpoint: subJson.endpoint,
-      p256dh:   subJson.keys ? subJson.keys.p256dh : null,
-      auth:     subJson.keys ? subJson.keys.auth    : null
+      endpoint: json.endpoint,
+      p256dh:   json.keys?.p256dh  || null,
+      auth:     json.keys?.auth    || null
     }, { onConflict: 'user_id,endpoint' });
-  } catch (err) {
-    console.warn('[PWA] Push subscribe error:', err);
-  }
+  } catch (_) { /* push not supported or VAPID not configured */ }
 }
 
 /* ============================================================
@@ -763,11 +774,6 @@ function initApp() {
   initIdees();
   initCalendar();
   showSection('actus');
-
-  // Subscribe to push silently if already granted
-  if ('Notification' in window && Notification.permission === 'granted') {
-    subscribeToPush();
-  }
 }
 
 initAuth();
