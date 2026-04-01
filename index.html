@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="css/style.css?v=7" />
+  <link rel="stylesheet" href="css/style.css?v=8" />
   <title>PAF Wambrechies</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -181,6 +181,22 @@
         <div id="cal-upcoming" class="card-list"></div>
       </section>
 
+      <!-- Admin -->
+      <section id="section-admin" class="section" aria-label="Administration">
+        <div class="section-header">
+          <h1 class="section-title">Administration</h1>
+          <p class="section-desc">Gestion du contenu PAF</p>
+        </div>
+        <div class="admin-tabs">
+          <button class="admin-tab active" data-sub="actus"    onclick="showAdminSub('actus')">Actus</button>
+          <button class="admin-tab"        data-sub="offres"   onclick="showAdminSub('offres')">Offres</button>
+          <button class="admin-tab"        data-sub="events"   onclick="showAdminSub('events')">Agenda</button>
+          <button class="admin-tab"        data-sub="annuaire" onclick="showAdminSub('annuaire')">Annuaire</button>
+          <button class="admin-tab"        data-sub="idees"    onclick="showAdminSub('idees')">Idées</button>
+        </div>
+        <div id="admin-content"></div>
+      </section>
+
     </main>
 
     <!-- ── Bottom navigation ──────────────────────────────────────────────── -->
@@ -224,6 +240,13 @@
         </svg>
         <span>Agenda</span>
       </button>
+      <button id="nav-admin" class="nav-item hidden" data-section="admin" aria-label="Administration">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>Admin</span>
+      </button>
     </nav>
 
   </div><!-- /#app -->
@@ -234,7 +257,7 @@
     document.addEventListener('gesturechange', function(e){ e.preventDefault(); }, { passive: false });
     document.addEventListener('touchmove', function(e){ if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
   </script>
-  <script src="js/app.js?v=5"></script>
+  <script src="js/app.js?v=6"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
