@@ -193,32 +193,112 @@ function renderActusList() {
     return;
   }
 
-  container.innerHTML = filtered.map(a => `
-    <div class="actu-card">
+  container.innerHTML = filtered.map(a => {
+    const likeCount    = a.actus_likes?.[0]?.count || 0;
+    const comments     = a.actus_commentaires || [];
+    const commentCount = comments.length;
+    const commentsHtml = comments.map(c => `
+      <div class="comment">
+        <span class="comment-author">${escHtml(c.prenom || 'Anonyme')}</span>
+        <span class="comment-text">${escHtml(c.texte)}</span>
+      </div>`).join('');
+    return `
+    <div class="actu-card" id="actu-card-${a.id}">
       <div class="actu-header" onclick="toggleActu(${a.id})">
         <div class="actu-meta">
           <span class="badge ${actuBadgeClass(a.categorie)}">${escHtml(a.categorie)}</span>
           <span class="actu-date">${formatDate(a.date)}</span>
         </div>
         <div class="actu-title">${escHtml(a.titre)}</div>
-        <button class="actu-expand-btn" id="btn-actu-${a.id}" aria-expanded="false">
+      </div>
+      <div class="actu-footer">
+        <button class="idea-like-btn" id="actu-like-btn-${a.id}" onclick="toggleActuLike(${a.id})" aria-label="J'aime">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <span id="actu-like-count-${a.id}">${likeCount}</span>
+        </button>
+        <button class="idea-comment-toggle" onclick="toggleActu(${a.id})" aria-label="Commentaires">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span id="actu-comment-count-${a.id}">${commentCount}</span>
+        </button>
+        <button class="actu-expand-btn" id="btn-actu-${a.id}" onclick="toggleActu(${a.id})" aria-expanded="false">
           Lire la suite
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
       </div>
-      <div class="actu-body" id="body-actu-${a.id}">${escHtml(a.contenu || '')}</div>
-    </div>
-  `).join('');
+      <div class="actu-body" id="body-actu-${a.id}">
+        <div class="actu-contenu">${escHtml(a.contenu || '')}</div>
+        <div class="actu-comments-section">
+          <div id="actu-comments-list-${a.id}">${commentsHtml}</div>
+          <form class="comment-form" onsubmit="addActuComment(event, ${a.id})">
+            <input type="text" class="comment-input" id="actu-comment-input-${a.id}" placeholder="Ajouter un commentaire…" autocomplete="off" />
+            <button type="submit" class="comment-submit" aria-label="Envoyer">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  checkOwnActuLikes(filtered.map(a => a.id));
 }
 
 async function renderActus() {
   document.getElementById('actus-list').innerHTML = '<div class="loading">Chargement…</div>';
-  const { data, error } = await sb.from('actus').select('*').order('date', { ascending: false });
+  const { data, error } = await sb.from('actus')
+    .select('*, actus_likes(count), actus_commentaires(id, prenom, texte, created_at)')
+    .order('date', { ascending: false });
   if (error) { document.getElementById('actus-list').innerHTML = '<div class="empty-state">Impossible de charger les actualités.</div>'; return; }
   actuData = data || [];
   renderActusCats();
   renderActusList();
 }
+
+async function checkOwnActuLikes(actuIds) {
+  if (!currentUser || !actuIds.length) return;
+  const { data } = await sb.from('actus_likes').select('actu_id').eq('user_id', currentUser.id).in('actu_id', actuIds);
+  if (data) data.forEach(row => {
+    const btn = document.getElementById('actu-like-btn-' + row.actu_id);
+    if (btn) btn.classList.add('liked');
+  });
+}
+
+async function toggleActuLike(actuId) {
+  if (!currentUser) return;
+  const btn = document.getElementById('actu-like-btn-' + actuId);
+  const countEl = document.getElementById('actu-like-count-' + actuId);
+  const isLiked = btn?.classList.contains('liked');
+  btn?.classList.toggle('liked', !isLiked);
+  if (countEl) countEl.textContent = parseInt(countEl.textContent, 10) + (isLiked ? -1 : 1);
+  if (isLiked) {
+    await sb.from('actus_likes').delete().eq('actu_id', actuId).eq('user_id', currentUser.id);
+  } else {
+    await sb.from('actus_likes').insert({ actu_id: actuId, user_id: currentUser.id });
+  }
+}
+window.toggleActuLike = toggleActuLike;
+
+async function addActuComment(e, actuId) {
+  e.preventDefault();
+  if (!currentUser) return;
+  const input = document.getElementById('actu-comment-input-' + actuId);
+  const texte = input?.value.trim();
+  if (!texte) return;
+  const prenom = [currentProfile?.prenom, currentProfile?.nom].filter(Boolean).join(' ') || currentUser.email?.split('@')[0] || 'Anonyme';
+  const { error } = await sb.from('actus_commentaires').insert({ actu_id: actuId, user_id: currentUser.id, prenom, texte });
+  if (error) return;
+  input.value = '';
+  const listEl = document.getElementById('actu-comments-list-' + actuId);
+  if (listEl) {
+    const div = document.createElement('div');
+    div.className = 'comment';
+    div.innerHTML = `<span class="comment-author">${escHtml(prenom)}</span><span class="comment-text">${escHtml(texte)}</span>`;
+    listEl.appendChild(div);
+    const countEl = document.getElementById('actu-comment-count-' + actuId);
+    if (countEl) countEl.textContent = parseInt(countEl.textContent, 10) + 1;
+  }
+}
+window.addActuComment = addActuComment;
 
 function toggleActu(id) {
   const body = document.getElementById('body-actu-' + id);
