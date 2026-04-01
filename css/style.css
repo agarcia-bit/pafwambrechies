@@ -1,10 +1,12 @@
 /* ── CSS Custom Properties ──────────────────────────────────────────────── */
 :root {
-  --primary:        #1A56DB;
-  --primary-dark:   #1240A8;
-  --primary-light:  #EBF2FF;
-  --accent:         #F59E0B;
-  --accent-light:   #FEF3C7;
+  --primary:        #2E3192;  /* PAF navy */
+  --primary-dark:   #1E2070;
+  --primary-light:  #EAEBF8;
+  --accent:         #E84528;  /* PAF orange-red */
+  --accent-light:   #FDEEE9;
+  --paf-blue:       #4ABDE8;  /* PAF sky blue */
+  --paf-gold:       #F5A020;  /* PAF gold */
   --success:        #16A34A;
   --danger:         #DC2626;
   --bg:             #F0F4F8;
@@ -50,7 +52,11 @@ body {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
   padding-top: env(safe-area-inset-top, 0px);
-  box-shadow: 0 2px 12px rgba(26,86,219,.35);
+  box-shadow: 0 2px 12px rgba(46,49,146,.45);
+  border-bottom: 3px solid transparent;
+  background-clip: padding-box, border-box;
+  background-origin: padding-box, border-box;
+  background-image: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%), linear-gradient(90deg, #2E3192, #E84528, #4ABDE8, #F5A020);
   overflow: hidden;
   -webkit-transform: translateZ(0);
 }
@@ -155,7 +161,7 @@ body {
   align-items: center;
   gap: 4px;
   font-size: .8rem;
-  color: var(--primary);
+  color: var(--accent);
   font-weight: 600;
   margin-top: 8px;
   background: none;
@@ -312,7 +318,7 @@ body {
 }
 .idea-card {
   background: var(--card); border-radius: var(--radius);
-  box-shadow: var(--shadow-sm)); padding: 14px 16px; margin-bottom: 10px;
+  box-shadow: var(--shadow-sm); padding: 14px 16px; margin-bottom: 10px;
   border: 1px solid var(--border);
 }
 .idea-card-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
@@ -400,7 +406,7 @@ body {
   padding: 6px 2px; transition: color .15s, transform .1s;
   -webkit-tap-highlight-color: transparent; font-family: inherit;
 }
-.nav-item.active { color: var(--primary); }
+.nav-item.active { color: var(--accent); }
 .nav-item:active { transform: scale(.92); }
 .nav-icon { width: 22px; height: 22px; transition: stroke-width .15s; }
 .nav-item.active .nav-icon { stroke-width: 2.2; }
