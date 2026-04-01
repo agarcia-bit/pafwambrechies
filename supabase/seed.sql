@@ -1,0 +1,2 @@
+-- PAF Wambrechies – Seed data
+-- Run AFTER schema.sql
