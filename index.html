@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="css/style.css?v=5" />
+  <link rel="stylesheet" href="css/style.css?v=6" />
   <title>PAF Wambrechies</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -112,23 +112,25 @@
       <!-- Boîte à idées -->
       <section id="section-idees" class="section" aria-label="Boîte à idées">
         <div class="section-header">
-          <h1 class="section-title">Boîte à idées</h1>
-          <p class="section-desc">Proposez vos idées pour améliorer la vie commerciale à Wambrechies</p>
-        </div>
-        <div class="card idea-form-card">
-          <form id="idea-form" novalidate>
-            <div class="form-group">
-              <label for="idea-prenom">Votre prénom (facultatif)</label>
-              <input type="text" id="idea-prenom" placeholder="Ex : Marie" autocomplete="given-name" />
+          <div class="section-header-row">
+            <div>
+              <h1 class="section-title">Boîte à idées</h1>
+              <p class="section-desc">Les idées de la communauté PAF</p>
             </div>
+            <button class="btn-new-idea" onclick="toggleIdeaForm()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Proposer
+            </button>
+          </div>
+        </div>
+        <div class="card idea-form-card hidden" id="idea-form-card">
+          <form id="idea-form" novalidate>
             <div class="form-group">
               <label for="idea-cat">Thématique</label>
               <select id="idea-cat">
-                <option value="Animation">Animation &amp; événements</option>
-                <option value="Commerce">Commerce &amp; services</option>
-                <option value="Propreté">Propreté &amp; cadre de vie</option>
-                <option value="Stationnement">Stationnement &amp; mobilité</option>
-                <option value="Communication">Communication &amp; numérique</option>
+                <option value="Réseautage">Réseautage</option>
+                <option value="Animations &amp; Événements">Animations &amp; Événements</option>
+                <option value="Fonctionnement de l'asso">Fonctionnement de l'asso</option>
                 <option value="Autre">Autre</option>
               </select>
             </div>
@@ -144,9 +146,6 @@
             </svg>
             Merci ! Votre idée a été enregistrée.
           </div>
-        </div>
-        <div id="ideas-list-header" class="ideas-list-header hidden">
-          <span>Idées soumises par la communauté</span>
         </div>
         <div id="ideas-list" class="card-list"></div>
       </section>

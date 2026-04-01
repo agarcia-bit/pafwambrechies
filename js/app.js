@@ -339,7 +339,6 @@ async function renderOffres() {
    ============================================================ */
 async function renderIdeesList() {
   const container = document.getElementById('ideas-list');
-  const header    = document.getElementById('ideas-list-header');
 
   const { data, error } = await sb
     .from('idees')
@@ -353,12 +352,9 @@ async function renderIdeesList() {
   }
 
   if (!data || !data.length) {
-    header.classList.add('hidden');
-    container.innerHTML = '';
+    container.innerHTML = '<div class="empty-state">Aucune idée pour le moment. Soyez le premier !</div>';
     return;
   }
-
-  header.classList.remove('hidden');
 
   container.innerHTML = data.map(idea => {
     const likeCount    = idea.idees_likes && idea.idees_likes[0] ? (idea.idees_likes[0].count || 0) : 0;
@@ -546,19 +542,27 @@ function handleCommentChange(payload) {
   }
 }
 
+function toggleIdeaForm() {
+  const card = document.getElementById('idea-form-card');
+  card.classList.toggle('hidden');
+  if (!card.classList.contains('hidden')) {
+    document.getElementById('idea-text').focus();
+  }
+}
+window.toggleIdeaForm = toggleIdeaForm;
+
 function initIdees() {
   renderIdeesList();
 
-  // Real-time subscription – mises à jour ciblées pour éviter le re-render complet
   sb.channel('paf-idees')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'idees' }, () => {
-      renderIdeesList(); // nouvelle idée → nouveau card, re-render nécessaire
+      renderIdeesList();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'idees_likes' }, (payload) => {
-      handleLikeChange(payload); // mise à jour ciblée du compteur uniquement
+      handleLikeChange(payload);
     })
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'idees_commentaires' }, (payload) => {
-      handleCommentChange(payload); // append du commentaire sans toucher au reste
+      handleCommentChange(payload);
     })
     .subscribe();
 
@@ -567,30 +571,27 @@ function initIdees() {
     if (!currentUser) return;
 
     const texte = document.getElementById('idea-text').value.trim();
-    if (!texte) {
-      document.getElementById('idea-text').focus();
-      return;
-    }
+    if (!texte) { document.getElementById('idea-text').focus(); return; }
 
-    const prenom    = document.getElementById('idea-prenom').value.trim();
     const categorie = document.getElementById('idea-cat').value;
+    const prenom = [currentProfile?.prenom, currentProfile?.nom].filter(Boolean).join(' - ')
+                   || currentUser.email?.split('@')[0] || 'Anonyme';
 
     const { error } = await sb.from('idees').insert({
       user_id: currentUser.id,
-      prenom:  prenom || null,
+      prenom,
       categorie,
       texte
     });
 
-    if (error) {
-      showToast('Erreur lors de l\'enregistrement de l\'idée.', 'error');
-      return;
-    }
+    if (error) { showToast('Erreur lors de l\'enregistrement de l\'idée.', 'error'); return; }
 
     document.getElementById('idea-form').reset();
+    document.getElementById('idea-form-card').classList.add('hidden');
     const successEl = document.getElementById('idea-success');
     successEl.classList.remove('hidden');
     setTimeout(() => successEl.classList.add('hidden'), 3000);
+    renderIdeesList();
   });
 }
 
