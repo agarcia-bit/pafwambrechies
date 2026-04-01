@@ -12,6 +12,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
 let currentProfile = null; // { prenom, nom } depuis la table profiles
+let isAdmin = false;
 let appInitialized = false;
 
 /* ============================================================
@@ -65,14 +66,19 @@ function showAuthScreen() {
 
 async function loadProfile() {
   if (!currentUser) return;
-  const { data } = await sb.from('profiles').select('prenom, nom').eq('id', currentUser.id).single();
+  const { data } = await sb.from('profiles').select('prenom, nom, role').eq('id', currentUser.id).single();
   currentProfile = data || null;
+  isAdmin = data?.role === 'admin';
 }
 
-function showApp() {
+async function showApp() {
   document.getElementById('auth-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  loadProfile();
+  await loadProfile();
+  if (isAdmin) {
+    document.getElementById('nav-admin').classList.remove('hidden');
+    document.querySelector('.bottom-nav').classList.add('admin-mode');
+  }
   initApp();
 }
 
@@ -147,6 +153,7 @@ function showSection(id) {
   if (btn) btn.classList.add('active');
 
   document.getElementById('main').scrollTop = 0;
+  if (id === 'admin' && isAdmin) loadAdminSub();
 }
 
 document.querySelectorAll('.nav-item').forEach(btn => {
@@ -850,6 +857,241 @@ function initApp() {
   initIdees();
   initCalendar();
   showSection('actus');
+}
+
+/* ============================================================
+   ADMIN
+   ============================================================ */
+let adminSub = 'actus';
+
+window.showAdminSub = function(sub) {
+  adminSub = sub;
+  document.querySelectorAll('.admin-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.sub === sub)
+  );
+  loadAdminSub();
+};
+
+window.toggleAdminForm = function(formId) {
+  const el = document.getElementById(formId);
+  if (el) el.classList.toggle('hidden');
+};
+
+window.adminDeleteItem = async function(table, id) {
+  if (!confirm('Supprimer cet élément définitivement ?')) return;
+  const { error } = await sb.from(table).delete().eq('id', id);
+  if (error) { showToast('Erreur lors de la suppression.', 'error'); return; }
+  showToast('Supprimé.', 'success');
+  loadAdminSub();
+};
+
+window.adminToggleVisible = async function(id, current) {
+  const { error } = await sb.from('idees').update({ visible: !current }).eq('id', id);
+  if (error) { showToast('Erreur.', 'error'); return; }
+  loadAdminSub();
+};
+
+async function loadAdminSub() {
+  const el = document.getElementById('admin-content');
+  if (!el) return;
+  el.innerHTML = '<div class="loading">Chargement…</div>';
+  switch (adminSub) {
+    case 'actus':    await renderAdminActus(el);    break;
+    case 'offres':   await renderAdminOffres(el);   break;
+    case 'events':   await renderAdminEvents(el);   break;
+    case 'annuaire': await renderAdminAnnuaire(el); break;
+    case 'idees':    await renderAdminIdees(el);    break;
+  }
+}
+
+async function renderAdminActus(el) {
+  const { data = [] } = await sb.from('actus').select('id, titre, date, categorie').order('date', { ascending: false });
+  el.innerHTML = `
+    <button class="btn-new-idea" style="margin-bottom:12px" onclick="toggleAdminForm('admin-actu-form')">+ Ajouter une actu</button>
+    <div id="admin-actu-form" class="card hidden" style="margin-bottom:12px">
+      <form id="form-actu">
+        <div class="form-group"><label>Titre *</label><input type="text" id="actu-titre" required /></div>
+        <div class="form-group"><label>Date *</label><input type="date" id="actu-date" required /></div>
+        <div class="form-group"><label>Catégorie *</label><input type="text" id="actu-categorie" placeholder="Ex : Événement, Info…" required /></div>
+        <div class="form-group"><label>Extrait</label><textarea id="actu-excerpt" rows="2"></textarea></div>
+        <div class="form-group"><label>Contenu complet</label><textarea id="actu-contenu" rows="4"></textarea></div>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </form>
+    </div>
+    <div class="admin-list">
+      ${data.length ? data.map(a => `
+        <div class="admin-item">
+          <div class="admin-item-info">
+            <span class="admin-item-title">${escHtml(a.titre)}</span>
+            <span class="admin-item-meta">${formatDate(a.date)} · ${escHtml(a.categorie)}</span>
+          </div>
+          <button class="admin-delete-btn" onclick="adminDeleteItem('actus', ${a.id})">Supprimer</button>
+        </div>`).join('') : '<div class="empty-state">Aucune actualité.</div>'}
+    </div>`;
+  el.querySelector('#form-actu').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const { error } = await sb.from('actus').insert({
+      titre:     document.getElementById('actu-titre').value.trim(),
+      date:      document.getElementById('actu-date').value,
+      categorie: document.getElementById('actu-categorie').value.trim(),
+      excerpt:   document.getElementById('actu-excerpt').value.trim() || null,
+      contenu:   document.getElementById('actu-contenu').value.trim() || null,
+    });
+    if (error) { showToast('Erreur.', 'error'); return; }
+    showToast('Actu ajoutée !', 'success');
+    loadAdminSub();
+  });
+}
+
+async function renderAdminOffres(el) {
+  const { data = [] } = await sb.from('offres').select('id, titre, commercant, expiration').order('expiration');
+  el.innerHTML = `
+    <button class="btn-new-idea" style="margin-bottom:12px" onclick="toggleAdminForm('admin-offre-form')">+ Ajouter une offre</button>
+    <div id="admin-offre-form" class="card hidden" style="margin-bottom:12px">
+      <form id="form-offre">
+        <div class="form-group"><label>Commerçant *</label><input type="text" id="offre-commercant" required /></div>
+        <div class="form-group"><label>Titre de l'offre *</label><input type="text" id="offre-titre" required /></div>
+        <div class="form-group"><label>Description</label><textarea id="offre-description" rows="3"></textarea></div>
+        <div class="form-group"><label>Date d'expiration</label><input type="date" id="offre-expiration" /></div>
+        <div class="form-group"><label>Tag</label><input type="text" id="offre-tag" placeholder="Ex : -10%, Offert…" /></div>
+        <div class="form-group"><label>Catégorie</label>
+          <select id="offre-categorie"><option value="Particulier">Particulier</option><option value="Professionnel">Professionnel</option></select>
+        </div>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </form>
+    </div>
+    <div class="admin-list">
+      ${data.length ? data.map(o => `
+        <div class="admin-item">
+          <div class="admin-item-info">
+            <span class="admin-item-title">${escHtml(o.titre)}</span>
+            <span class="admin-item-meta">${escHtml(o.commercant)}${o.expiration ? ' · ' + formatDate(o.expiration) : ''}</span>
+          </div>
+          <button class="admin-delete-btn" onclick="adminDeleteItem('offres', ${o.id})">Supprimer</button>
+        </div>`).join('') : '<div class="empty-state">Aucune offre.</div>'}
+    </div>`;
+  el.querySelector('#form-offre').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const { error } = await sb.from('offres').insert({
+      commercant:  document.getElementById('offre-commercant').value.trim(),
+      titre:       document.getElementById('offre-titre').value.trim(),
+      description: document.getElementById('offre-description').value.trim() || null,
+      expiration:  document.getElementById('offre-expiration').value || null,
+      tag:         document.getElementById('offre-tag').value.trim() || null,
+      categorie:   document.getElementById('offre-categorie').value,
+    });
+    if (error) { showToast('Erreur.', 'error'); return; }
+    showToast('Offre ajoutée !', 'success');
+    loadAdminSub();
+  });
+}
+
+async function renderAdminEvents(el) {
+  const { data = [] } = await sb.from('evenements').select('id, titre, date, heure, lieu').order('date');
+  el.innerHTML = `
+    <button class="btn-new-idea" style="margin-bottom:12px" onclick="toggleAdminForm('admin-event-form')">+ Ajouter un événement</button>
+    <div id="admin-event-form" class="card hidden" style="margin-bottom:12px">
+      <form id="form-event">
+        <div class="form-group"><label>Titre *</label><input type="text" id="event-titre" required /></div>
+        <div class="form-group"><label>Date *</label><input type="date" id="event-date" required /></div>
+        <div class="form-group"><label>Heure</label><input type="text" id="event-heure" placeholder="Ex : 18:00 – 20:00" /></div>
+        <div class="form-group"><label>Lieu</label><input type="text" id="event-lieu" placeholder="Ex : Salle des fêtes" /></div>
+        <div class="form-group"><label>Description</label><textarea id="event-description" rows="3"></textarea></div>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </form>
+    </div>
+    <div class="admin-list">
+      ${data.length ? data.map(ev => `
+        <div class="admin-item">
+          <div class="admin-item-info">
+            <span class="admin-item-title">${escHtml(ev.titre)}</span>
+            <span class="admin-item-meta">${formatDate(ev.date)}${ev.heure ? ' · ' + escHtml(ev.heure) : ''}${ev.lieu ? ' · ' + escHtml(ev.lieu) : ''}</span>
+          </div>
+          <button class="admin-delete-btn" onclick="adminDeleteItem('evenements', ${ev.id})">Supprimer</button>
+        </div>`).join('') : '<div class="empty-state">Aucun événement.</div>'}
+    </div>`;
+  el.querySelector('#form-event').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const { error } = await sb.from('evenements').insert({
+      titre:       document.getElementById('event-titre').value.trim(),
+      date:        document.getElementById('event-date').value,
+      heure:       document.getElementById('event-heure').value.trim() || null,
+      lieu:        document.getElementById('event-lieu').value.trim() || null,
+      description: document.getElementById('event-description').value.trim() || null,
+    });
+    if (error) { showToast('Erreur.', 'error'); return; }
+    showToast('Événement ajouté !', 'success');
+    loadAdminSub();
+  });
+}
+
+async function renderAdminAnnuaire(el) {
+  const { data = [] } = await sb.from('annuaire').select('id, nom, categorie').order('nom');
+  el.innerHTML = `
+    <button class="btn-new-idea" style="margin-bottom:12px" onclick="toggleAdminForm('admin-ann-form')">+ Ajouter un commerçant</button>
+    <div id="admin-ann-form" class="card hidden" style="margin-bottom:12px">
+      <form id="form-ann">
+        <div class="form-group"><label>Nom *</label><input type="text" id="ann-nom" required /></div>
+        <div class="form-group"><label>Catégorie *</label>
+          <select id="ann-categorie">
+            <option value="Alimentation">Alimentation</option>
+            <option value="Beauté">Beauté</option>
+            <option value="Mode &amp; Maison">Mode &amp; Maison</option>
+            <option value="Restauration">Restauration</option>
+            <option value="Santé">Santé</option>
+            <option value="Services">Services</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Adresse</label><input type="text" id="ann-adresse" /></div>
+        <div class="form-group"><label>Téléphone</label><input type="tel" id="ann-telephone" /></div>
+        <div class="form-group"><label>Description</label><textarea id="ann-description" rows="3"></textarea></div>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </form>
+    </div>
+    <div class="admin-list">
+      ${data.length ? data.map(m => `
+        <div class="admin-item">
+          <div class="admin-item-info">
+            <span class="admin-item-title">${escHtml(m.nom)}</span>
+            <span class="admin-item-meta">${escHtml(m.categorie)}</span>
+          </div>
+          <button class="admin-delete-btn" onclick="adminDeleteItem('annuaire', ${m.id})">Supprimer</button>
+        </div>`).join('') : '<div class="empty-state">Aucun commerçant.</div>'}
+    </div>`;
+  el.querySelector('#form-ann').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const { error } = await sb.from('annuaire').insert({
+      nom:         document.getElementById('ann-nom').value.trim(),
+      categorie:   document.getElementById('ann-categorie').value,
+      adresse:     document.getElementById('ann-adresse').value.trim() || null,
+      telephone:   document.getElementById('ann-telephone').value.trim() || null,
+      description: document.getElementById('ann-description').value.trim() || null,
+    });
+    if (error) { showToast('Erreur.', 'error'); return; }
+    showToast('Commerçant ajouté !', 'success');
+    loadAdminSub();
+  });
+}
+
+async function renderAdminIdees(el) {
+  const { data = [] } = await sb.from('idees')
+    .select('id, titre, texte, prenom, visible, created_at')
+    .order('created_at', { ascending: false });
+  el.innerHTML = `
+    <div class="admin-list">
+      ${data.length ? data.map(i => `
+        <div class="admin-item">
+          <div class="admin-item-info">
+            <span class="admin-item-title">${escHtml(i.titre || i.texte.substring(0, 40) + (i.texte.length > 40 ? '…' : ''))}</span>
+            <span class="admin-item-meta">${escHtml(i.prenom || 'Anonyme')} · <em>${i.visible ? 'Visible' : 'Masquée'}</em></span>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="admin-toggle-btn${i.visible ? '' : ' admin-toggle-hidden'}"
+              onclick="adminToggleVisible(${i.id}, ${i.visible})">${i.visible ? 'Masquer' : 'Afficher'}</button>
+            <button class="admin-delete-btn" onclick="adminDeleteItem('idees', ${i.id})">Supprimer</button>
+          </div>
+        </div>`).join('') : '<div class="empty-state">Aucune idée.</div>'}
+    </div>`;
 }
 
 initAuth();
