@@ -1027,8 +1027,8 @@ async function renderAdminEvents(el) {
         <div class="form-group"><label>Titre *</label><input type="text" id="event-titre" required /></div>
         <div class="form-group"><label>Date *</label><input type="date" id="event-date" required /></div>
         <div class="form-row-2">
-          <div class="form-group"><label>Heure de début</label><input type="time" id="event-heure-debut" /></div>
-          <div class="form-group"><label>Heure de fin</label><input type="time" id="event-heure-fin" /></div>
+          <div class="form-group"><label>Heure de début</label><input type="time" id="event-heure-debut" value="09:00" /></div>
+          <div class="form-group"><label>Heure de fin</label><input type="time" id="event-heure-fin" value="10:00" /></div>
         </div>
         <div class="form-group"><label>Lieu</label><input type="text" id="event-lieu" placeholder="Ex : Salle des fêtes" /></div>
         <div class="form-group"><label>Description</label><textarea id="event-description" rows="3"></textarea></div>
@@ -1045,6 +1045,14 @@ async function renderAdminEvents(el) {
           <button class="admin-delete-btn" onclick="adminDeleteItem('evenements', ${ev.id})">Supprimer</button>
         </div>`).join('') : '<div class="empty-state">Aucun événement.</div>'}
     </div>`;
+  el.querySelector('#event-heure-debut').addEventListener('change', (e) => {
+    const [h, m] = e.target.value.split(':').map(Number);
+    if (isNaN(h)) return;
+    const finH = String((h + 1) % 24).padStart(2, '0');
+    const finM = String(m).padStart(2, '0');
+    el.querySelector('#event-heure-fin').value = `${finH}:${finM}`;
+  });
+
   el.querySelector('#form-event').addEventListener('submit', async (e) => {
     e.preventDefault();
     const { error } = await sb.from('evenements').insert({
