@@ -173,7 +173,7 @@ function actuBadgeClass(cat) {
   return ACTU_CAT_CLASS[cat] || 'badge-cat-default';
 }
 
-const ACTU_CATS = ['Tous', 'Actu Asso', 'Infos pratiques', 'Événement', 'Partenaire'];
+const ACTU_CATS = ['Tous', 'Actu Asso', 'Infos pratiques', 'Événement'];
 let actuFilter = 'Tous';
 let actuData   = [];
 
@@ -971,7 +971,6 @@ async function renderAdminActus(el) {
             <option value="Actu Asso">Actu Asso</option>
             <option value="Infos pratiques">Infos pratiques</option>
             <option value="Événement">Événement</option>
-            <option value="Partenaire">Partenaire</option>
           </select>
         </div>
         <div class="form-group"><label>Extrait</label><textarea id="actu-excerpt" rows="2"></textarea></div>
