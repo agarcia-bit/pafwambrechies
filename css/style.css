@@ -159,6 +159,12 @@ body {
 .badge-accent  { background: var(--accent-light); color: #92400E; }
 .badge-success { background: #DCFCE7; color: #166534; }
 .badge-muted   { background: #F3F4F6; color: var(--text-muted); }
+/* Badges catégories actus */
+.badge-cat-asso     { background: #EEF2FF; color: #3730A3; }
+.badge-cat-infos    { background: #ECFDF5; color: #065F46; }
+.badge-cat-event    { background: #FFF7ED; color: #9A3412; }
+.badge-cat-partenaire { background: #FDF4FF; color: #7E22CE; }
+.badge-cat-default  { background: #F3F4F6; color: var(--text-muted); }
 
 /* ── Actus ──────────────────────────────────────────────────────────────── */
 .actu-card {

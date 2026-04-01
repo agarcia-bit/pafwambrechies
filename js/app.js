@@ -163,6 +163,16 @@ document.querySelectorAll('.nav-item').forEach(btn => {
 /* ============================================================
    ACTUS
    ============================================================ */
+const ACTU_CAT_CLASS = {
+  'Actu Asso':    'badge-cat-asso',
+  'Infos pratiques': 'badge-cat-infos',
+  'Événement':    'badge-cat-event',
+  'Partenaire':   'badge-cat-partenaire',
+};
+function actuBadgeClass(cat) {
+  return ACTU_CAT_CLASS[cat] || 'badge-cat-default';
+}
+
 async function renderActus() {
   const container = document.getElementById('actus-list');
   container.innerHTML = '<div class="loading">Chargement…</div>';
@@ -183,7 +193,7 @@ async function renderActus() {
     <div class="actu-card">
       <div class="actu-header" onclick="toggleActu(${a.id})">
         <div class="actu-meta">
-          <span class="badge">${escHtml(a.categorie)}</span>
+          <span class="badge ${actuBadgeClass(a.categorie)}">${escHtml(a.categorie)}</span>
           <span class="actu-date">${formatDate(a.date)}</span>
         </div>
         <div class="actu-title">${escHtml(a.titre)}</div>
@@ -943,7 +953,14 @@ async function renderAdminActus(el) {
       <form id="form-actu">
         <div class="form-group"><label>Titre *</label><input type="text" id="actu-titre" required /></div>
         <div class="form-group"><label>Date *</label><input type="date" id="actu-date" required /></div>
-        <div class="form-group"><label>Catégorie *</label><input type="text" id="actu-categorie" placeholder="Ex : Événement, Info…" required /></div>
+        <div class="form-group"><label>Catégorie *</label>
+          <select id="actu-categorie" required>
+            <option value="Actu Asso">Actu Asso</option>
+            <option value="Infos pratiques">Infos pratiques</option>
+            <option value="Événement">Événement</option>
+            <option value="Partenaire">Partenaire</option>
+          </select>
+        </div>
         <div class="form-group"><label>Extrait</label><textarea id="actu-excerpt" rows="2"></textarea></div>
         <div class="form-group"><label>Contenu complet</label><textarea id="actu-contenu" rows="4"></textarea></div>
         <button type="submit" class="btn btn-primary">Enregistrer</button>
