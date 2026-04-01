@@ -266,23 +266,35 @@ async function initAnnuaire() {
 /* ============================================================
    OFFRES
    ============================================================ */
-async function renderOffres() {
+const CATEGORIES_OFFRES = ['Tous', 'Commerce', 'Service BtoB', 'Restauration', 'Beauté', 'Santé', 'Alimentation'];
+let offresFilter = 'Tous';
+let offresData   = [];
+
+function renderOffresCats() {
+  const el = document.getElementById('offres-cats');
+  if (!el) return;
+  el.innerHTML = CATEGORIES_OFFRES.map(cat => `
+    <button class="chip ${cat === offresFilter ? 'active' : ''}" onclick="setOffresCat('${escHtml(cat)}')">${escHtml(cat)}</button>
+  `).join('');
+}
+
+function setOffresCat(cat) {
+  offresFilter = cat;
+  renderOffresCats();
+  renderOffresList();
+}
+window.setOffresCat = setOffresCat;
+
+function renderOffresList() {
   const container = document.getElementById('offres-list');
-  container.innerHTML = '<div class="loading">Chargement…</div>';
+  const filtered  = offresFilter === 'Tous' ? offresData : offresData.filter(o => o.categorie === offresFilter);
 
-  const { data, error } = await sb.from('offres').select('*').order('expiration');
-
-  if (error) {
-    container.innerHTML = '<div class="empty-state">Impossible de charger les offres.</div>';
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty-state">Aucune offre dans cette catégorie.</div>';
     return;
   }
 
-  if (!data || !data.length) {
-    container.innerHTML = '<div class="empty-state">Aucune offre pour le moment.</div>';
-    return;
-  }
-
-  container.innerHTML = data.map(o => `
+  container.innerHTML = filtered.map(o => `
     <div class="offer-card">
       <div class="offer-inner">
         <div class="offer-merchant">${escHtml(o.commercant)}</div>
@@ -298,6 +310,20 @@ async function renderOffres() {
       </div>
     </div>
   `).join('');
+}
+
+async function renderOffres() {
+  const container = document.getElementById('offres-list');
+  container.innerHTML = '<div class="loading">Chargement…</div>';
+
+  const { data, error } = await sb.from('offres').select('*').order('expiration');
+
+  if (error) { container.innerHTML = '<div class="empty-state">Impossible de charger les offres.</div>'; return; }
+  if (!data?.length) { container.innerHTML = '<div class="empty-state">Aucune offre pour le moment.</div>'; return; }
+
+  offresData = data;
+  renderOffresCats();
+  renderOffresList();
 }
 
 /* ============================================================
@@ -443,9 +469,8 @@ async function addComment(e, ideeId) {
   const texte = input ? input.value.trim() : '';
   if (!texte) return;
 
-  const prenom = currentUser.user_metadata && currentUser.user_metadata.prenom
-    ? currentUser.user_metadata.prenom
-    : (currentUser.email ? currentUser.email.split('@')[0] : 'Anonyme');
+  const meta = currentUser.user_metadata || {};
+  const prenom = [meta.prenom, meta.nom_entreprise].filter(Boolean).join(' - ') || currentUser.email?.split('@')[0] || 'Anonyme';
 
   const { error } = await sb.from('idees_commentaires').insert({
     idee_id: ideeId,
@@ -674,6 +699,7 @@ function renderUpcomingEvents() {
 
   container.innerHTML = upcoming.map(ev => {
     const { day, month } = formatDateShort(ev.date);
+    const evJson = escHtml(JSON.stringify(ev));
     return `
       <div class="event-card">
         <div class="event-date-block">
@@ -692,11 +718,49 @@ function renderUpcomingEvents() {
               ${escHtml(ev.lieu || '')}
             </span>
           </div>
+          <button class="add-to-cal-btn" onclick="addToCalendar(${ev.id})" aria-label="Ajouter à mon agenda">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+            Ajouter à mon agenda
+          </button>
         </div>
       </div>
     `;
   }).join('');
 }
+
+function addToCalendar(evId) {
+  const ev = calEventsData.find(e => e.id === evId);
+  if (!ev) return;
+  const dateStr = ev.date.replace(/-/g, '');
+  // Parse start/end time from "HH:MM – HH:MM"
+  let dtStart = dateStr, dtEnd = dateStr;
+  const timeMatch = (ev.heure || '').match(/(\d{2}):(\d{2})/g);
+  if (timeMatch?.length >= 1) dtStart = `${dateStr}T${timeMatch[0].replace(':','')}00`;
+  if (timeMatch?.length >= 2) dtEnd   = `${dateStr}T${timeMatch[1].replace(':','')}00`;
+  else if (timeMatch?.length === 1) dtEnd = dtStart;
+
+  const ics = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//PAF Wambrechies//FR',
+    'BEGIN:VEVENT',
+    `UID:paf-${ev.id}@paf-wambrechies`,
+    `DTSTART:${dtStart}`,
+    `DTEND:${dtEnd}`,
+    `SUMMARY:${ev.titre}`,
+    `DESCRIPTION:${(ev.description || '').replace(/\n/g, '\\n')}`,
+    `LOCATION:${ev.lieu || ''}`,
+    'END:VEVENT', 'END:VCALENDAR'
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `${ev.titre.replace(/\s+/g, '_')}.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Événement téléchargé — ouvrez le fichier pour l\'ajouter à votre agenda.', 'success');
+}
+window.addToCalendar = addToCalendar;
 
 async function loadCalendarEvents() {
   const { data, error } = await sb.from('evenements').select('*').order('date');
