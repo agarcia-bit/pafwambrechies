@@ -44,6 +44,20 @@ window.addEventListener('online', () => {
 });
 if (!navigator.onLine) showOfflineBanner();
 
+// Recharge toutes les sections quand l'app repasse au premier plan
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    loadActusPage(true);
+    loadOffresPage(true);
+    loadIdeesPage(true);
+    loadCalendarEvents();
+    // Recharge l'annuaire depuis le serveur
+    sb.from('annuaire').select('*').order('nom_entreprise').then(({ data, error }) => {
+      if (!error && data) { annuaireData = data; renderAnnuaireList(); }
+    });
+  }
+});
+
 function showUpdateBanner() {
   let banner = document.getElementById('update-banner');
   if (banner) return;
