@@ -113,8 +113,10 @@ alter table public.idees_commentaires enable row level security;
 alter table public.push_subscriptions enable row level security;
 
 -- profiles
-create policy "Authenticated users can read profiles"
-  on public.profiles for select to authenticated using (true);
+create policy "Users can read own profile"
+  on public.profiles for select to authenticated using (auth.uid() = id);
+create policy "Admins can read all profiles"
+  on public.profiles for select to authenticated using (public.is_admin());
 
 create policy "Users can update own profile"
   on public.profiles for update to authenticated using (auth.uid() = id);
