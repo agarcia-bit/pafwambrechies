@@ -301,19 +301,10 @@ function actuBadgeClass(cat) {
   return ACTU_CAT_CLASS[cat] || 'badge-cat-default';
 }
 
-const ACTU_CATS = ['Tous', 'Actu Asso', 'Infos pratiques', 'Événement'];
 const ACTUS_PAGE_SIZE = 10;
-let actuFilter  = 'Tous';
 let actuData    = [];
 let actuPage    = 0;
 let actuHasMore = false;
-
-function renderActusCats() {
-  document.getElementById('actus-cats').innerHTML = ACTU_CATS.map(cat => `
-    <button class="chip ${cat === actuFilter ? 'active' : ''}" onclick="setActuCat('${escHtml(cat)}')">${escHtml(cat)}</button>
-  `).join('');
-}
-window.setActuCat = function(cat) { actuFilter = cat; renderActusCats(); loadActusPage(true); };
 
 function renderActusList() {
   const container = document.getElementById('actus-list');
@@ -398,18 +389,15 @@ async function loadActusPage(reset = false) {
     .select('*, actus_likes(count), actus_commentaires(id, prenom, texte, created_at)')
     .order('date', { ascending: false })
     .range(from, to);
-  if (actuFilter !== 'Tous') query = query.eq('categorie', actuFilter);
   let { data, error } = await query;
   if (error) {
     let q2 = sb.from('actus').select('*').order('date', { ascending: false }).range(from, to);
-    if (actuFilter !== 'Tous') q2 = q2.eq('categorie', actuFilter);
     ({ data, error } = await q2);
   }
   if (error) { container.innerHTML = '<div class="empty-state">Impossible de charger les actualités.</div>'; return; }
   actuHasMore = (data || []).length === ACTUS_PAGE_SIZE;
   actuData = reset ? (data || []) : [...actuData, ...(data || [])];
   actuPage++;
-  if (reset) renderActusCats();
   renderActusList();
 }
 
@@ -1278,8 +1266,8 @@ async function renderAdminActus(el) {
     <div id="admin-actu-form" class="card hidden" style="margin-bottom:12px">
       <form id="form-actu">
         <input type="hidden" id="actu-edit-id" value="" />
+        <input type="hidden" id="actu-date" />
         <div class="form-group"><label>Titre *</label><input type="text" id="actu-titre" required /></div>
-        <div class="form-group"><label>Date *</label><input type="date" id="actu-date" required /></div>
         <div class="form-group"><label>Catégorie *</label>
           <select id="actu-categorie" required>
             <option value="Actu Asso">Actu Asso</option>
@@ -1287,8 +1275,7 @@ async function renderAdminActus(el) {
             <option value="Événement">Événement</option>
           </select>
         </div>
-        <div class="form-group"><label>Extrait</label><textarea id="actu-excerpt" rows="2"></textarea></div>
-        <div class="form-group"><label>Contenu complet</label><textarea id="actu-contenu" rows="4"></textarea></div>
+        <div class="form-group"><label>Contenu</label><textarea id="actu-contenu" rows="4"></textarea></div>
         <button type="submit" class="btn btn-primary" id="actu-submit-btn">Enregistrer</button>
       </form>
     </div>
@@ -1308,11 +1295,11 @@ async function renderAdminActus(el) {
   el.querySelector('#form-actu').addEventListener('submit', async (e) => {
     e.preventDefault();
     const editId = document.getElementById('actu-edit-id').value;
+    const today = new Date().toISOString().split('T')[0];
     const payload = {
       titre:     document.getElementById('actu-titre').value.trim(),
-      date:      document.getElementById('actu-date').value,
+      date:      editId ? document.getElementById('actu-date').value : today,
       categorie: document.getElementById('actu-categorie').value,
-      excerpt:   document.getElementById('actu-excerpt').value.trim() || null,
       contenu:   document.getElementById('actu-contenu').value.trim() || null,
     };
     const { error } = editId
@@ -1331,7 +1318,6 @@ window.adminEditActu = async function(id) {
   document.getElementById('actu-titre').value = data.titre || '';
   document.getElementById('actu-date').value = data.date || '';
   document.getElementById('actu-categorie').value = data.categorie || 'Actu Asso';
-  document.getElementById('actu-excerpt').value = data.excerpt || '';
   document.getElementById('actu-contenu').value = data.contenu || '';
   document.getElementById('actu-submit-btn').textContent = 'Mettre à jour';
   document.getElementById('admin-actu-form').classList.remove('hidden');
