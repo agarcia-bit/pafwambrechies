@@ -1201,7 +1201,7 @@ window.adminDeleteItem = async function(table, id) {
   const { error } = await sb.from(table).delete().eq('id', id);
   if (error) { showToast('Erreur lors de la suppression.', 'error'); return; }
   showToast('Supprimé.', 'success');
-  loadAdminSub();
+  await loadAdminSub();
 };
 
 window.adminToggleVisible = null;
