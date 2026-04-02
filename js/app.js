@@ -663,11 +663,10 @@ function renderOffresList() {
   }
 
   container.innerHTML = offresData.map(o => `
-    <div class="offer-card">
+    <div class="offer-card" onclick="openOffreModal(${o.id})" style="cursor:pointer">
       <div class="offer-inner">
         <div class="offer-merchant">${escHtml(o.commercant)}</div>
         <div class="offer-title">${escHtml(o.titre)}</div>
-        <div class="offer-desc">${escHtml(o.description || '')}</div>
         <div class="offer-footer">
           <div class="offer-expiry">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -690,6 +689,29 @@ function renderOffresList() {
     container.after(btn);
   }
 }
+
+window.openOffreModal = function(id) {
+  const o = offresData.find(x => x.id === id);
+  if (!o) return;
+  document.getElementById('offre-modal-content').innerHTML = `
+    <div class="modal-body">
+      <span class="badge badge-muted">${escHtml(o.tag || '')}</span>
+      <h2 class="modal-name">${escHtml(o.titre)}</h2>
+      <p class="modal-contact-name">${escHtml(o.commercant)}</p>
+      ${o.description ? `<p class="modal-desc">${escHtml(o.description)}</p>` : ''}
+      <div class="modal-contacts">
+        <div class="modal-contact">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Valable jusqu'au ${formatDate(o.expiration)}
+        </div>
+        ${o.conditions ? `<div class="modal-contact">${escHtml(o.conditions)}</div>` : ''}
+      </div>
+    </div>`;
+  document.getElementById('offre-modal').classList.remove('hidden');
+};
+window.closeOffreModal = function() {
+  document.getElementById('offre-modal').classList.add('hidden');
+};
 
 async function loadOffresPage(reset = false) {
   const container = document.getElementById('offres-list');
