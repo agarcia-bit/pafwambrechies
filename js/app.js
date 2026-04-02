@@ -58,6 +58,16 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') reloadAllSections();
 });
 
+// Rechargement automatique des données toutes les 5 minutes
+setInterval(() => reloadAllSections(), 5 * 60 * 1000);
+
+// Vérification de mise à jour du Service Worker toutes les heures
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.ready.then(reg => {
+    setInterval(() => reg.update(), 60 * 60 * 1000);
+  });
+}
+
 // Pull-to-refresh
 (function() {
   const main = document.getElementById('main');
