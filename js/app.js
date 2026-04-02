@@ -69,20 +69,19 @@ document.addEventListener('visibilitychange', () => {
     if (!indicator) {
       indicator = document.createElement('div');
       indicator.className = 'pull-indicator';
-      indicator.textContent = '↓ Tirer pour actualiser';
       document.body.appendChild(indicator);
     }
     return indicator;
   }
 
-  main.addEventListener('touchstart', (e) => {
-    if (main.scrollTop === 0) {
+  document.addEventListener('touchstart', (e) => {
+    if (main.scrollTop <= 0) {
       startY = e.touches[0].clientY;
       pulling = true;
     }
   }, { passive: true });
 
-  main.addEventListener('touchmove', (e) => {
+  document.addEventListener('touchmove', (e) => {
     if (!pulling) return;
     const dist = e.touches[0].clientY - startY;
     if (dist > 10) {
@@ -94,7 +93,7 @@ document.addEventListener('visibilitychange', () => {
     }
   }, { passive: true });
 
-  main.addEventListener('touchend', (e) => {
+  document.addEventListener('touchend', (e) => {
     if (!pulling) return;
     pulling = false;
     const dist = e.changedTouches[0].clientY - startY;
