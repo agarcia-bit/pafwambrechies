@@ -1023,11 +1023,8 @@ window.adminDeleteItem = async function(table, id) {
   loadAdminSub();
 };
 
-window.adminToggleVisible = async function(id, current) {
-  const { error } = await sb.from('idees').update({ visible: !current }).eq('id', id);
-  if (error) { showToast('Erreur : ' + error.message, 'error'); return; }
-  loadAdminSub();
-};
+window.adminToggleVisible = null;
+
 
 async function loadAdminSub() {
   const el = document.getElementById('admin-content');
@@ -1356,7 +1353,7 @@ window.adminEditAnnuaire = async function(id) {
 
 async function renderAdminIdees(el) {
   const { data = [] } = await sb.from('idees')
-    .select('id, titre, texte, prenom, visible, created_at')
+    .select('id, titre, texte, prenom, created_at')
     .order('created_at', { ascending: false });
   el.innerHTML = `
     <div class="admin-list">
@@ -1364,13 +1361,9 @@ async function renderAdminIdees(el) {
         <div class="admin-item">
           <div class="admin-item-info">
             <span class="admin-item-title">${escHtml(i.titre || i.texte.substring(0, 40) + (i.texte.length > 40 ? '…' : ''))}</span>
-            <span class="admin-item-meta">${escHtml(i.prenom || 'Anonyme')} · <em>${i.visible ? 'Visible' : 'Masquée'}</em></span>
+            <span class="admin-item-meta">${escHtml(i.prenom || 'Anonyme')}</span>
           </div>
-          <div style="display:flex;gap:6px;flex-shrink:0">
-            <button class="admin-toggle-btn${i.visible ? '' : ' admin-toggle-hidden'}"
-              onclick="adminToggleVisible(${i.id}, ${i.visible})">${i.visible ? 'Masquer' : 'Afficher'}</button>
-            <button class="admin-delete-btn" onclick="adminDeleteItem('idees', ${i.id})">Supprimer</button>
-          </div>
+          <button class="admin-delete-btn" onclick="adminDeleteItem('idees', ${i.id})">Supprimer</button>
         </div>`).join('') : '<div class="empty-state">Aucune idée.</div>'}
     </div>`;
 }
