@@ -653,7 +653,7 @@ body {
 }
 .merchant-modal-sheet {
   position: relative; background: var(--card);
-  border-radius: 20px 20px 0 0; max-height: 88vh; overflow-y: auto;
+  border-radius: 20px 20px 0 0; max-height: 96vh; overflow-y: auto;
   animation: slideUp .25s ease; padding-bottom: env(safe-area-inset-bottom, 16px);
 }
 @keyframes slideUp {
