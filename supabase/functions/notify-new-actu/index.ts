@@ -27,8 +27,8 @@ serve(async (req) => {
     if (!subs?.length) return new Response("No subscribers", { status: 200 });
 
     const notification = JSON.stringify({
-      title: "PAF Wambrechies",
-      body: actu.titre || "Nouvelle actualité",
+      title: actu.titre || "Nouvelle actualité",
+      body: "Nouvelle publication sur PAF Wambrechies",
       url: "/",
     });
 
