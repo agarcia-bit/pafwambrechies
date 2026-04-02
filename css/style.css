@@ -525,6 +525,14 @@ body {
 .toast-error { background: #DC2626; }
 .toast-success { background: #16A34A; }
 
+/* ── Pull-to-refresh indicator ─────────────────────────────────────────────── */
+.pull-indicator {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 400;
+  text-align: center; padding: 8px; font-size: .82rem; font-weight: 600;
+  color: var(--primary); background: var(--card-bg);
+  opacity: 0; pointer-events: none;
+}
+
 /* ── Bannière hors ligne ───────────────────────────────────────────────────── */
 .offline-banner {
   position: fixed; top: 0; left: 0; right: 0; z-index: 500;
