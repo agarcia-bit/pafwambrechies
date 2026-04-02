@@ -44,6 +44,13 @@ window.addEventListener('online', () => {
 });
 if (!navigator.onLine) showOfflineBanner();
 
+// Recharge les actus quand l'app repasse au premier plan
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    loadActusPage(true);
+  }
+});
+
 function showUpdateBanner() {
   let banner = document.getElementById('update-banner');
   if (banner) return;
