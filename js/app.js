@@ -1048,6 +1048,7 @@ async function renderAdminActus(el) {
     <button class="btn-new-idea" style="margin-bottom:12px" onclick="toggleAdminForm('admin-actu-form')">+ Ajouter une actu</button>
     <div id="admin-actu-form" class="card hidden" style="margin-bottom:12px">
       <form id="form-actu">
+        <input type="hidden" id="actu-edit-id" value="" />
         <div class="form-group"><label>Titre *</label><input type="text" id="actu-titre" required /></div>
         <div class="form-group"><label>Date *</label><input type="date" id="actu-date" required /></div>
         <div class="form-group"><label>Catégorie *</label>
@@ -1059,7 +1060,7 @@ async function renderAdminActus(el) {
         </div>
         <div class="form-group"><label>Extrait</label><textarea id="actu-excerpt" rows="2"></textarea></div>
         <div class="form-group"><label>Contenu complet</label><textarea id="actu-contenu" rows="4"></textarea></div>
-        <button type="submit" class="btn btn-primary">Enregistrer</button>
+        <button type="submit" class="btn btn-primary" id="actu-submit-btn">Enregistrer</button>
       </form>
     </div>
     <div class="admin-list">
@@ -1069,23 +1070,44 @@ async function renderAdminActus(el) {
             <span class="admin-item-title">${escHtml(a.titre)}</span>
             <span class="admin-item-meta">${formatDate(a.date)} · ${escHtml(a.categorie)}</span>
           </div>
-          <button class="admin-delete-btn" onclick="adminDeleteItem('actus', ${a.id})">Supprimer</button>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="admin-toggle-btn" onclick="adminEditActu(${a.id})">Modifier</button>
+            <button class="admin-delete-btn" onclick="adminDeleteItem('actus', ${a.id})">Supprimer</button>
+          </div>
         </div>`).join('') : '<div class="empty-state">Aucune actualité.</div>'}
     </div>`;
   el.querySelector('#form-actu').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const { error } = await sb.from('actus').insert({
+    const editId = document.getElementById('actu-edit-id').value;
+    const payload = {
       titre:     document.getElementById('actu-titre').value.trim(),
       date:      document.getElementById('actu-date').value,
-      categorie: document.getElementById('actu-categorie').value.trim(),
+      categorie: document.getElementById('actu-categorie').value,
       excerpt:   document.getElementById('actu-excerpt').value.trim() || null,
       contenu:   document.getElementById('actu-contenu').value.trim() || null,
-    });
+    };
+    const { error } = editId
+      ? await sb.from('actus').update(payload).eq('id', editId)
+      : await sb.from('actus').insert(payload);
     if (error) { showToast('Erreur.', 'error'); return; }
-    showToast('Actu ajoutée !', 'success');
+    showToast(editId ? 'Actu mise à jour !' : 'Actu ajoutée !', 'success');
     loadAdminSub();
   });
 }
+
+window.adminEditActu = async function(id) {
+  const { data } = await sb.from('actus').select('*').eq('id', id).single();
+  if (!data) return;
+  document.getElementById('actu-edit-id').value = id;
+  document.getElementById('actu-titre').value = data.titre || '';
+  document.getElementById('actu-date').value = data.date || '';
+  document.getElementById('actu-categorie').value = data.categorie || 'Actu Asso';
+  document.getElementById('actu-excerpt').value = data.excerpt || '';
+  document.getElementById('actu-contenu').value = data.contenu || '';
+  document.getElementById('actu-submit-btn').textContent = 'Mettre à jour';
+  document.getElementById('admin-actu-form').classList.remove('hidden');
+  document.getElementById('admin-actu-form').scrollIntoView({ behavior: 'smooth' });
+};
 
 async function renderAdminOffres(el) {
   const { data = [] } = await sb.from('offres').select('id, titre, commercant, expiration').order('expiration');
@@ -1093,6 +1115,7 @@ async function renderAdminOffres(el) {
     <button class="btn-new-idea" style="margin-bottom:12px" onclick="toggleAdminForm('admin-offre-form')">+ Ajouter une offre</button>
     <div id="admin-offre-form" class="card hidden" style="margin-bottom:12px">
       <form id="form-offre">
+        <input type="hidden" id="offre-edit-id" value="" />
         <div class="form-group"><label>Commerçant *</label><input type="text" id="offre-commercant" required /></div>
         <div class="form-group"><label>Titre de l'offre *</label><input type="text" id="offre-titre" required /></div>
         <div class="form-group"><label>Description</label><textarea id="offre-description" rows="3"></textarea></div>
@@ -1101,7 +1124,7 @@ async function renderAdminOffres(el) {
         <div class="form-group"><label>Catégorie</label>
           <select id="offre-categorie"><option value="Particulier">Particulier</option><option value="Professionnel">Professionnel</option></select>
         </div>
-        <button type="submit" class="btn btn-primary">Enregistrer</button>
+        <button type="submit" class="btn btn-primary" id="offre-submit-btn">Enregistrer</button>
       </form>
     </div>
     <div class="admin-list">
@@ -1111,24 +1134,46 @@ async function renderAdminOffres(el) {
             <span class="admin-item-title">${escHtml(o.titre)}</span>
             <span class="admin-item-meta">${escHtml(o.commercant)}${o.expiration ? ' · ' + formatDate(o.expiration) : ''}</span>
           </div>
-          <button class="admin-delete-btn" onclick="adminDeleteItem('offres', ${o.id})">Supprimer</button>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="admin-toggle-btn" onclick="adminEditOffre(${o.id})">Modifier</button>
+            <button class="admin-delete-btn" onclick="adminDeleteItem('offres', ${o.id})">Supprimer</button>
+          </div>
         </div>`).join('') : '<div class="empty-state">Aucune offre.</div>'}
     </div>`;
   el.querySelector('#form-offre').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const { error } = await sb.from('offres').insert({
+    const editId = document.getElementById('offre-edit-id').value;
+    const payload = {
       commercant:  document.getElementById('offre-commercant').value.trim(),
       titre:       document.getElementById('offre-titre').value.trim(),
       description: document.getElementById('offre-description').value.trim() || null,
       expiration:  document.getElementById('offre-expiration').value || null,
       tag:         document.getElementById('offre-tag').value.trim() || null,
       categorie:   document.getElementById('offre-categorie').value,
-    });
+    };
+    const { error } = editId
+      ? await sb.from('offres').update(payload).eq('id', editId)
+      : await sb.from('offres').insert(payload);
     if (error) { showToast('Erreur.', 'error'); return; }
-    showToast('Offre ajoutée !', 'success');
+    showToast(editId ? 'Offre mise à jour !' : 'Offre ajoutée !', 'success');
     loadAdminSub();
   });
 }
+
+window.adminEditOffre = async function(id) {
+  const { data } = await sb.from('offres').select('*').eq('id', id).single();
+  if (!data) return;
+  document.getElementById('offre-edit-id').value = id;
+  document.getElementById('offre-commercant').value = data.commercant || '';
+  document.getElementById('offre-titre').value = data.titre || '';
+  document.getElementById('offre-description').value = data.description || '';
+  document.getElementById('offre-expiration').value = data.expiration || '';
+  document.getElementById('offre-tag').value = data.tag || '';
+  document.getElementById('offre-categorie').value = data.categorie || 'Particulier';
+  document.getElementById('offre-submit-btn').textContent = 'Mettre à jour';
+  document.getElementById('admin-offre-form').classList.remove('hidden');
+  document.getElementById('admin-offre-form').scrollIntoView({ behavior: 'smooth' });
+};
 
 async function renderAdminEvents(el) {
   const { data = [] } = await sb.from('evenements').select('id, titre, date, heure, lieu').order('date');
@@ -1136,6 +1181,7 @@ async function renderAdminEvents(el) {
     <button class="btn-new-idea" style="margin-bottom:12px" onclick="toggleAdminForm('admin-event-form')">+ Ajouter un événement</button>
     <div id="admin-event-form" class="card hidden" style="margin-bottom:12px">
       <form id="form-event">
+        <input type="hidden" id="event-edit-id" value="" />
         <div class="form-group"><label>Titre *</label><input type="text" id="event-titre" required /></div>
         <div class="form-group"><label>Date *</label><input type="date" id="event-date" required /></div>
         <div class="form-row-2">
@@ -1144,7 +1190,7 @@ async function renderAdminEvents(el) {
         </div>
         <div class="form-group"><label>Lieu</label><input type="text" id="event-lieu" placeholder="Ex : Salle des fêtes" /></div>
         <div class="form-group"><label>Description</label><textarea id="event-description" rows="3"></textarea></div>
-        <button type="submit" class="btn btn-primary">Enregistrer</button>
+        <button type="submit" class="btn btn-primary" id="event-submit-btn">Enregistrer</button>
       </form>
     </div>
     <div class="admin-list">
@@ -1154,31 +1200,54 @@ async function renderAdminEvents(el) {
             <span class="admin-item-title">${escHtml(ev.titre)}</span>
             <span class="admin-item-meta">${formatDate(ev.date)}${ev.heure ? ' · ' + escHtml(ev.heure) : ''}${ev.lieu ? ' · ' + escHtml(ev.lieu) : ''}</span>
           </div>
-          <button class="admin-delete-btn" onclick="adminDeleteItem('evenements', ${ev.id})">Supprimer</button>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="admin-toggle-btn" onclick="adminEditEvent(${ev.id})">Modifier</button>
+            <button class="admin-delete-btn" onclick="adminDeleteItem('evenements', ${ev.id})">Supprimer</button>
+          </div>
         </div>`).join('') : '<div class="empty-state">Aucun événement.</div>'}
     </div>`;
   el.querySelector('#event-heure-debut').addEventListener('change', (e) => {
     const [h, m] = e.target.value.split(':').map(Number);
     if (isNaN(h)) return;
-    const finH = String((h + 1) % 24).padStart(2, '0');
-    const finM = String(m).padStart(2, '0');
-    el.querySelector('#event-heure-fin').value = `${finH}:${finM}`;
+    el.querySelector('#event-heure-fin').value = `${String((h + 1) % 24).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
   });
-
   el.querySelector('#form-event').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const { error } = await sb.from('evenements').insert({
+    const editId = document.getElementById('event-edit-id').value;
+    const heureDebut = document.getElementById('event-heure-debut').value;
+    const heureFin   = document.getElementById('event-heure-fin').value;
+    const payload = {
       titre:       document.getElementById('event-titre').value.trim(),
       date:        document.getElementById('event-date').value,
-      heure:       (() => { const d = document.getElementById('event-heure-debut').value; const f = document.getElementById('event-heure-fin').value; return d && f ? `${d} – ${f}` : d || f || null; })(),
+      heure:       heureDebut && heureFin ? `${heureDebut} – ${heureFin}` : heureDebut || heureFin || null,
       lieu:        document.getElementById('event-lieu').value.trim() || null,
       description: document.getElementById('event-description').value.trim() || null,
-    });
+    };
+    const { error } = editId
+      ? await sb.from('evenements').update(payload).eq('id', editId)
+      : await sb.from('evenements').insert(payload);
     if (error) { showToast('Erreur.', 'error'); return; }
-    showToast('Événement ajouté !', 'success');
+    showToast(editId ? 'Événement mis à jour !' : 'Événement ajouté !', 'success');
     loadAdminSub();
   });
 }
+
+window.adminEditEvent = async function(id) {
+  const { data } = await sb.from('evenements').select('*').eq('id', id).single();
+  if (!data) return;
+  document.getElementById('event-edit-id').value = id;
+  document.getElementById('event-titre').value = data.titre || '';
+  document.getElementById('event-date').value = data.date || '';
+  document.getElementById('event-lieu').value = data.lieu || '';
+  document.getElementById('event-description').value = data.description || '';
+  // Décomposer heure "HH:MM – HH:MM"
+  const times = (data.heure || '').match(/(\d{2}:\d{2})/g) || [];
+  document.getElementById('event-heure-debut').value = times[0] || '09:00';
+  document.getElementById('event-heure-fin').value   = times[1] || '10:00';
+  document.getElementById('event-submit-btn').textContent = 'Mettre à jour';
+  document.getElementById('admin-event-form').classList.remove('hidden');
+  document.getElementById('admin-event-form').scrollIntoView({ behavior: 'smooth' });
+};
 
 async function renderAdminAnnuaire(el) {
   const { data = [] } = await sb.from('annuaire').select('id, nom_entreprise, prenom_contact, nom_contact, categorie, photo_url').order('nom_entreprise');
@@ -1186,6 +1255,7 @@ async function renderAdminAnnuaire(el) {
     <button class="btn-new-idea" style="margin-bottom:12px" onclick="toggleAdminForm('admin-ann-form')">+ Ajouter un commerçant</button>
     <div id="admin-ann-form" class="card hidden" style="margin-bottom:12px">
       <form id="form-ann">
+        <input type="hidden" id="ann-edit-id" value="" />
         <div class="form-group"><label>Nom de l'entreprise *</label><input type="text" id="ann-nom-entreprise" required /></div>
         <div class="form-group"><label>Prénom du contact</label><input type="text" id="ann-prenom-contact" /></div>
         <div class="form-group"><label>Nom du contact</label><input type="text" id="ann-nom-contact" /></div>
@@ -1218,12 +1288,16 @@ async function renderAdminAnnuaire(el) {
             <span class="admin-item-title">${escHtml(m.nom_entreprise || [m.prenom_contact, m.nom_contact].filter(Boolean).join(' '))}</span>
             <span class="admin-item-meta">${[m.prenom_contact, m.nom_contact].filter(Boolean).join(' ')}${m.prenom_contact || m.nom_contact ? ' · ' : ''}${escHtml(m.categorie)}</span>
           </div>
-          <button class="admin-delete-btn" onclick="adminDeleteItem('annuaire', ${m.id})">Supprimer</button>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="admin-toggle-btn" onclick="adminEditAnnuaire(${m.id})">Modifier</button>
+            <button class="admin-delete-btn" onclick="adminDeleteItem('annuaire', ${m.id})">Supprimer</button>
+          </div>
         </div>`).join('') : '<div class="empty-state">Aucun commerçant.</div>'}
     </div>`;
   el.querySelector('#form-ann').addEventListener('submit', async (e) => {
     e.preventDefault();
     const submitBtn = el.querySelector('#form-ann .btn-primary');
+    const editId = document.getElementById('ann-edit-id').value;
     submitBtn.disabled = true; submitBtn.textContent = 'Enregistrement…';
 
     let photo_url = null;
@@ -1237,25 +1311,48 @@ async function renderAdminAnnuaire(el) {
       photo_url = urlData.publicUrl;
     }
 
-    const { error } = await sb.from('annuaire').insert({
+    const payload = {
       nom_entreprise:  document.getElementById('ann-nom-entreprise').value.trim(),
       prenom_contact:  document.getElementById('ann-prenom-contact').value.trim() || null,
       nom_contact:     document.getElementById('ann-nom-contact').value.trim() || null,
       categorie:       document.getElementById('ann-categorie').value,
-      adresse:     document.getElementById('ann-adresse').value.trim() || null,
-      telephone:   document.getElementById('ann-telephone').value.trim() || null,
-      email:       document.getElementById('ann-email').value.trim() || null,
-      linkedin:    document.getElementById('ann-linkedin').value.trim() || null,
-      instagram:   document.getElementById('ann-instagram').value.trim() || null,
-      description: document.getElementById('ann-description').value.trim() || null,
-      photo_url,
-    });
+      adresse:         document.getElementById('ann-adresse').value.trim() || null,
+      telephone:       document.getElementById('ann-telephone').value.trim() || null,
+      email:           document.getElementById('ann-email').value.trim() || null,
+      linkedin:        document.getElementById('ann-linkedin').value.trim() || null,
+      instagram:       document.getElementById('ann-instagram').value.trim() || null,
+      description:     document.getElementById('ann-description').value.trim() || null,
+    };
+    if (photo_url) payload.photo_url = photo_url;
+
+    const { error } = editId
+      ? await sb.from('annuaire').update(payload).eq('id', editId)
+      : await sb.from('annuaire').insert({ ...payload, photo_url });
     submitBtn.disabled = false; submitBtn.textContent = 'Enregistrer';
     if (error) { showToast('Erreur.', 'error'); return; }
-    showToast('Commerçant ajouté !', 'success');
+    showToast(editId ? 'Commerçant mis à jour !' : 'Commerçant ajouté !', 'success');
     loadAdminSub();
   });
 }
+
+window.adminEditAnnuaire = async function(id) {
+  const { data } = await sb.from('annuaire').select('*').eq('id', id).single();
+  if (!data) return;
+  document.getElementById('ann-edit-id').value = id;
+  document.getElementById('ann-nom-entreprise').value = data.nom_entreprise || '';
+  document.getElementById('ann-prenom-contact').value = data.prenom_contact || '';
+  document.getElementById('ann-nom-contact').value    = data.nom_contact || '';
+  document.getElementById('ann-categorie').value      = data.categorie || 'Commerçant';
+  document.getElementById('ann-adresse').value        = data.adresse || '';
+  document.getElementById('ann-telephone').value      = data.telephone || '';
+  document.getElementById('ann-email').value          = data.email || '';
+  document.getElementById('ann-linkedin').value       = data.linkedin || '';
+  document.getElementById('ann-instagram').value      = data.instagram || '';
+  document.getElementById('ann-description').value    = data.description || '';
+  document.querySelector('#form-ann .btn-primary').textContent = 'Mettre à jour';
+  document.getElementById('admin-ann-form').classList.remove('hidden');
+  document.getElementById('admin-ann-form').scrollIntoView({ behavior: 'smooth' });
+};
 
 async function renderAdminIdees(el) {
   const { data = [] } = await sb.from('idees')
