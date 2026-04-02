@@ -532,11 +532,9 @@ window.toggleActu = toggleActu;
    ANNUAIRE
    ============================================================ */
 const CATEGORIES_ANNUAIRE = ['Tous', 'Commerçant', 'Restauration', 'Services'];
-const ANNUAIRE_PAGE_SIZE = 12;
-let annuaireFilter      = 'Tous';
-let annuaireSearch      = '';
-let annuaireData        = [];
-let annuaireDisplayCount = ANNUAIRE_PAGE_SIZE;
+let annuaireFilter = 'Tous';
+let annuaireSearch = '';
+let annuaireData   = [];
 
 function renderAnnuaireCats() {
   const container = document.getElementById('annuaire-cats');
@@ -547,7 +545,6 @@ function renderAnnuaireCats() {
 
 function setAnnuaireCat(cat) {
   annuaireFilter = cat;
-  annuaireDisplayCount = ANNUAIRE_PAGE_SIZE;
   renderAnnuaireCats();
   renderAnnuaireList();
 }
@@ -569,8 +566,7 @@ function renderAnnuaireList() {
     return;
   }
 
-  const visible = filtered.slice(0, annuaireDisplayCount);
-  container.innerHTML = visible.map(m => {
+  container.innerHTML = filtered.map(m => {
     const initial = (m.nom_entreprise || m.prenom_contact || '?').charAt(0).toUpperCase();
     const contact = [m.prenom_contact, m.nom_contact].filter(Boolean).join(' ');
     return `
@@ -587,16 +583,6 @@ function renderAnnuaireList() {
     </div>`;
   }).join('');
 
-  const existingBtn = document.getElementById('annuaire-load-more');
-  if (existingBtn) existingBtn.remove();
-  if (filtered.length > annuaireDisplayCount) {
-    const btn = document.createElement('button');
-    btn.id = 'annuaire-load-more';
-    btn.className = 'btn-load-more';
-    btn.textContent = 'Charger plus';
-    btn.onclick = () => { annuaireDisplayCount += ANNUAIRE_PAGE_SIZE; renderAnnuaireList(); };
-    container.after(btn);
-  }
 }
 
 function openMerchantModal(id) {
@@ -639,7 +625,6 @@ async function initAnnuaire() {
 
   document.getElementById('annuaire-search').addEventListener('input', e => {
     annuaireSearch = e.target.value;
-    annuaireDisplayCount = ANNUAIRE_PAGE_SIZE;
     renderAnnuaireList();
   });
 }
