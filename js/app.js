@@ -1120,7 +1120,7 @@ async function subscribeToPush() {
     const reg = await navigator.serviceWorker.ready;
     const existing = await reg.pushManager.getSubscription();
     // Remplacer VAPID_PUBLIC_KEY_HERE par ta clé publique VAPID
-    const VAPID_PUBLIC_KEY = 'VAPID_PUBLIC_KEY_HERE';
+    const VAPID_PUBLIC_KEY = 'BH_QuRx_UWG5EC6v0D9U8MyyCX5NeRtMv-6fJT6WkhQAaVRZgs21vHMdbTJtkD6kh7Wv7LaWNQ_AVOloQGj0jH0';
     const sub = existing || await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
