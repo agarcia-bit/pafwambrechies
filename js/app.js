@@ -112,8 +112,7 @@ if ('serviceWorker' in navigator) {
       indicator.style.transform = '';
     }
     if (dist > 80) {
-      reloadAllSections();
-      showToast('Actualisation…', 'success');
+      window.location.reload();
     }
     startY = 0;
   }, { passive: true });
