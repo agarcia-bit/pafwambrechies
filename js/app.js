@@ -16,6 +16,50 @@ let isAdmin = false;
 let appInitialized = false;
 
 /* ============================================================
+   PHOTO CROPPER
+   ============================================================ */
+let cropperInstance = null;
+let cropResolve = null;
+
+function openCropper(file) {
+  return new Promise((resolve) => {
+    cropResolve = resolve;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = document.getElementById('crop-image');
+      img.src = e.target.result;
+      document.getElementById('crop-modal').classList.remove('hidden');
+      if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
+      cropperInstance = new Cropper(img, {
+        aspectRatio: 4 / 3,
+        viewMode: 1,
+        autoCropArea: 1,
+        movable: true,
+        zoomable: true,
+        rotatable: false,
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+window.confirmCrop = function() {
+  if (!cropperInstance || !cropResolve) return;
+  cropperInstance.getCroppedCanvas({ width: 800, height: 600 }).toBlob((blob) => {
+    document.getElementById('crop-modal').classList.add('hidden');
+    cropperInstance.destroy(); cropperInstance = null;
+    cropResolve(blob);
+    cropResolve = null;
+  }, 'image/jpeg', 0.85);
+};
+
+window.cancelCrop = function() {
+  document.getElementById('crop-modal').classList.add('hidden');
+  if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
+  if (cropResolve) { cropResolve(null); cropResolve = null; }
+};
+
+/* ============================================================
    OFFLINE / MISE À JOUR
    ============================================================ */
 function showOfflineBanner() {
@@ -1541,9 +1585,10 @@ async function renderAdminAnnuaire(el) {
     let photo_url = null;
     const photoFile = document.getElementById('ann-photo').files[0];
     if (photoFile) {
-      const ext  = photoFile.name.split('.').pop().toLowerCase();
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: upErr } = await sb.storage.from('annuaire-photos').upload(path, photoFile);
+      const blob = await openCropper(photoFile);
+      if (!blob) { submitBtn.disabled = false; submitBtn.textContent = 'Enregistrer'; return; }
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+      const { error: upErr } = await sb.storage.from('annuaire-photos').upload(path, blob, { contentType: 'image/jpeg' });
       if (upErr) { showToast('Erreur upload photo : ' + upErr.message, 'error'); submitBtn.disabled = false; submitBtn.textContent = 'Enregistrer'; return; }
       const { data: urlData } = sb.storage.from('annuaire-photos').getPublicUrl(path);
       photo_url = urlData.publicUrl;
