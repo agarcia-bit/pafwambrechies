@@ -57,6 +57,58 @@ function reloadAllSections() {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') reloadAllSections();
 });
+
+// Pull-to-refresh
+(function() {
+  const main = document.getElementById('main');
+  let startY = 0;
+  let pulling = false;
+  let indicator = null;
+
+  function getIndicator() {
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.className = 'pull-indicator';
+      indicator.textContent = '↓ Tirer pour actualiser';
+      document.body.appendChild(indicator);
+    }
+    return indicator;
+  }
+
+  main.addEventListener('touchstart', (e) => {
+    if (main.scrollTop === 0) {
+      startY = e.touches[0].clientY;
+      pulling = true;
+    }
+  }, { passive: true });
+
+  main.addEventListener('touchmove', (e) => {
+    if (!pulling) return;
+    const dist = e.touches[0].clientY - startY;
+    if (dist > 10) {
+      const ind = getIndicator();
+      const progress = Math.min(dist / 80, 1);
+      ind.style.opacity = progress;
+      ind.style.transform = `translateY(${Math.min(dist * 0.4, 32)}px)`;
+      ind.textContent = dist > 80 ? '↑ Relâcher pour actualiser' : '↓ Tirer pour actualiser';
+    }
+  }, { passive: true });
+
+  main.addEventListener('touchend', (e) => {
+    if (!pulling) return;
+    pulling = false;
+    const dist = e.changedTouches[0].clientY - startY;
+    if (indicator) {
+      indicator.style.opacity = '0';
+      indicator.style.transform = '';
+    }
+    if (dist > 80) {
+      reloadAllSections();
+      showToast('Actualisation…', 'success');
+    }
+    startY = 0;
+  }, { passive: true });
+})();
 window.addEventListener('pageshow', (e) => {
   if (e.persisted) reloadAllSections();
 });
