@@ -46,6 +46,10 @@ self.addEventListener('activate', event => {
           })
       )
     ).then(() => self.clients.claim())
+      .then(async () => {
+        const clients = await self.clients.matchAll({ type: 'window' });
+        clients.forEach(client => client.postMessage({ type: 'SW_UPDATED' }));
+      })
   );
 });
 

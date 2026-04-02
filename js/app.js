@@ -16,6 +16,55 @@ let isAdmin = false;
 let appInitialized = false;
 
 /* ============================================================
+   OFFLINE / MISE À JOUR
+   ============================================================ */
+function showOfflineBanner() {
+  let banner = document.getElementById('offline-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'offline-banner';
+    banner.className = 'offline-banner';
+    banner.textContent = 'Vous êtes hors ligne — les données peuvent ne pas être à jour';
+    document.body.appendChild(banner);
+  }
+  banner.classList.add('show');
+}
+
+function hideOfflineBanner() {
+  const banner = document.getElementById('offline-banner');
+  if (banner) banner.classList.remove('show');
+}
+
+window.addEventListener('offline', () => {
+  showOfflineBanner();
+});
+window.addEventListener('online', () => {
+  hideOfflineBanner();
+  showToast('Connexion rétablie', 'success');
+});
+if (!navigator.onLine) showOfflineBanner();
+
+function showUpdateBanner() {
+  let banner = document.getElementById('update-banner');
+  if (banner) return;
+  banner = document.createElement('div');
+  banner.id = 'update-banner';
+  banner.className = 'update-banner';
+  banner.innerHTML = `
+    <span>Nouvelle version disponible</span>
+    <button onclick="window.location.reload()">Recharger</button>
+  `;
+  document.body.appendChild(banner);
+  requestAnimationFrame(() => banner.classList.add('show'));
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    showUpdateBanner();
+  });
+}
+
+/* ============================================================
    HELPERS
    ============================================================ */
 const MONTHS_FR = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
