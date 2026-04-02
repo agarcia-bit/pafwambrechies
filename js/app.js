@@ -44,18 +44,21 @@ window.addEventListener('online', () => {
 });
 if (!navigator.onLine) showOfflineBanner();
 
-// Recharge toutes les sections quand l'app repasse au premier plan
+// Recharge toutes les sections quand l'app repasse au premier plan (iOS + autres)
+function reloadAllSections() {
+  loadActusPage(true);
+  loadOffresPage(true);
+  loadIdeesPage(true);
+  loadCalendarEvents();
+  sb.from('annuaire').select('*').order('nom_entreprise').then(({ data, error }) => {
+    if (!error && data) { annuaireData = data; renderAnnuaireList(); }
+  });
+}
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    loadActusPage(true);
-    loadOffresPage(true);
-    loadIdeesPage(true);
-    loadCalendarEvents();
-    // Recharge l'annuaire depuis le serveur
-    sb.from('annuaire').select('*').order('nom_entreprise').then(({ data, error }) => {
-      if (!error && data) { annuaireData = data; renderAnnuaireList(); }
-    });
-  }
+  if (document.visibilityState === 'visible') reloadAllSections();
+});
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) reloadAllSections();
 });
 
 function showUpdateBanner() {
@@ -216,7 +219,18 @@ function showSection(id) {
   if (btn) btn.classList.add('active');
 
   document.getElementById('main').scrollTop = 0;
-  if (id === 'admin' && isAdmin) loadAdminSub();
+
+  // Recharge les données de l'onglet affiché
+  if (id === 'actus') loadActusPage(true);
+  else if (id === 'offres') loadOffresPage(true);
+  else if (id === 'idees') loadIdeesPage(true);
+  else if (id === 'calendrier') loadCalendarEvents();
+  else if (id === 'annuaire') {
+    sb.from('annuaire').select('*').order('nom_entreprise').then(({ data, error }) => {
+      if (!error && data) { annuaireData = data; renderAnnuaireList(); }
+    });
+  }
+  else if (id === 'admin' && isAdmin) loadAdminSub();
 }
 
 document.querySelectorAll('.nav-item').forEach(btn => {
