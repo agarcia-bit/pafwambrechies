@@ -1,6 +1,6 @@
 {
   "name": "PAF Wambrechies",
-  "short_name": "PAF",
+  "short_name": "PAF Wambrechies",
   "description": "L'application officielle des adhérents de la PAF Wambrechies",
   "start_url": "/",
   "display": "standalone",
