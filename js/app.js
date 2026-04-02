@@ -1092,6 +1092,13 @@ function initCalendar() {
 /* ============================================================
    PUSH NOTIFICATIONS
    ============================================================ */
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
 async function requestPushPermission() {
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
     showToast('Les notifications ne sont pas supportées sur cet appareil.', 'error');
@@ -1112,9 +1119,11 @@ async function subscribeToPush() {
   try {
     const reg = await navigator.serviceWorker.ready;
     const existing = await reg.pushManager.getSubscription();
+    // Remplacer VAPID_PUBLIC_KEY_HERE par ta clé publique VAPID
+    const VAPID_PUBLIC_KEY = 'VAPID_PUBLIC_KEY_HERE';
     const sub = existing || await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: null
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
     });
     if (!sub || !currentUser) return;
     const json = sub.toJSON();
