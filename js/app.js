@@ -301,10 +301,21 @@ function actuBadgeClass(cat) {
   return ACTU_CAT_CLASS[cat] || 'badge-cat-default';
 }
 
+const ACTU_CATS = ['Tous', 'Actu Asso', 'Infos pratiques', 'Événement'];
 const ACTUS_PAGE_SIZE = 10;
+let actuFilter  = 'Tous';
 let actuData    = [];
 let actuPage    = 0;
 let actuHasMore = false;
+
+function renderActusCats() {
+  const el = document.getElementById('actus-cats');
+  if (!el) return;
+  el.innerHTML = ACTU_CATS.map(cat => `
+    <button class="chip ${cat === actuFilter ? 'active' : ''}" onclick="setActuCat('${escHtml(cat)}')">${escHtml(cat)}</button>
+  `).join('');
+}
+window.setActuCat = function(cat) { actuFilter = cat; renderActusCats(); loadActusPage(true); };
 
 function renderActusList() {
   const container = document.getElementById('actus-list');
@@ -389,15 +400,18 @@ async function loadActusPage(reset = false) {
     .select('*, actus_likes(count), actus_commentaires(id, prenom, texte, created_at)')
     .order('date', { ascending: false })
     .range(from, to);
+  if (actuFilter !== 'Tous') query = query.eq('categorie', actuFilter);
   let { data, error } = await query;
   if (error) {
     let q2 = sb.from('actus').select('*').order('date', { ascending: false }).range(from, to);
+    if (actuFilter !== 'Tous') q2 = q2.eq('categorie', actuFilter);
     ({ data, error } = await q2);
   }
   if (error) { container.innerHTML = '<div class="empty-state">Impossible de charger les actualités.</div>'; return; }
   actuHasMore = (data || []).length === ACTUS_PAGE_SIZE;
   actuData = reset ? (data || []) : [...actuData, ...(data || [])];
   actuPage++;
+  if (reset) renderActusCats();
   renderActusList();
 }
 
