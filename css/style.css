@@ -681,6 +681,30 @@ body {
 .modal-name { font-size: 1.4rem; font-weight: 800; color: var(--text); margin: 8px 0 2px; line-height: 1.2; }
 .modal-contact-name { font-size: .95rem; color: var(--text-muted); margin: 0 0 8px; }
 .modal-desc { font-size: .9rem; color: var(--text-muted); line-height: 1.6; margin: 12px 0; }
+
+/* ── Crop modal ─────────────────────────────────────────────────────────────── */
+.crop-modal {
+  position: fixed; inset: 0; z-index: 600;
+  background: rgba(0,0,0,.85);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.crop-modal.hidden { display: none; }
+.crop-modal-inner {
+  background: var(--card); border-radius: 16px;
+  width: 100%; max-width: 480px; overflow: hidden;
+}
+.crop-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; font-weight: 700; font-size: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.crop-container { width: 100%; max-height: 60vh; overflow: hidden; background: #000; }
+.crop-container img { display: block; max-width: 100%; }
+.crop-modal-actions {
+  display: flex; gap: 10px; padding: 14px 16px;
+  border-top: 1px solid var(--border);
+}
 .modal-contacts { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
 .modal-contact {
   display: flex; align-items: center; gap: 10px;
