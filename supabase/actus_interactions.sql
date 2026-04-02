@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.actus_likes (
   UNIQUE (actu_id, user_id)
 );
 ALTER TABLE public.actus_likes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Lecture publique likes actus"  ON public.actus_likes FOR SELECT TO public USING (true);
+CREATE POLICY "Lecture likes actus"  ON public.actus_likes FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Like actu authentifié"         ON public.actus_likes FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
 CREATE POLICY "Unlike actu authentifié"       ON public.actus_likes FOR DELETE TO authenticated USING (user_id = auth.uid());
 
@@ -26,6 +26,6 @@ CREATE TABLE IF NOT EXISTS public.actus_commentaires (
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE public.actus_commentaires ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Lecture publique commentaires actus"  ON public.actus_commentaires FOR SELECT TO public USING (true);
+CREATE POLICY "Lecture commentaires actus"  ON public.actus_commentaires FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Commenter actu authentifié"           ON public.actus_commentaires FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
 CREATE POLICY "Supprimer son commentaire actu"       ON public.actus_commentaires FOR DELETE TO authenticated USING (user_id = auth.uid());
