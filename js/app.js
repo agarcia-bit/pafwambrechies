@@ -1205,7 +1205,8 @@ function addToCalendar(evId) {
 window.addToCalendar = addToCalendar;
 
 async function loadCalendarEvents() {
-  const { data, error } = await sb.from('evenements').select('*').order('date');
+  const today = new Date().toISOString().split('T')[0];
+  const { data, error } = await sb.from('evenements').select('*').gte('date', today).order('date');
   if (!error && data) {
     calEventsData = data;
   }
