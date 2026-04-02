@@ -174,26 +174,28 @@ function actuBadgeClass(cat) {
 }
 
 const ACTU_CATS = ['Tous', 'Actu Asso', 'Infos pratiques', 'Événement'];
-let actuFilter = 'Tous';
-let actuData   = [];
+const ACTUS_PAGE_SIZE = 10;
+let actuFilter  = 'Tous';
+let actuData    = [];
+let actuPage    = 0;
+let actuHasMore = false;
 
 function renderActusCats() {
   document.getElementById('actus-cats').innerHTML = ACTU_CATS.map(cat => `
     <button class="chip ${cat === actuFilter ? 'active' : ''}" onclick="setActuCat('${escHtml(cat)}')">${escHtml(cat)}</button>
   `).join('');
 }
-window.setActuCat = function(cat) { actuFilter = cat; renderActusCats(); renderActusList(); };
+window.setActuCat = function(cat) { actuFilter = cat; renderActusCats(); loadActusPage(true); };
 
 function renderActusList() {
   const container = document.getElementById('actus-list');
-  const filtered = actuFilter === 'Tous' ? actuData : actuData.filter(a => a.categorie === actuFilter);
 
-  if (!filtered.length) {
+  if (!actuData.length) {
     container.innerHTML = '<div class="empty-state">Aucune actualité pour le moment.</div>';
     return;
   }
 
-  container.innerHTML = filtered.map(a => {
+  container.innerHTML = actuData.map(a => {
     const likeCount    = a.actus_likes?.[0]?.count || 0;
     const comments     = a.actus_commentaires || [];
     const commentCount = comments.length;
@@ -240,23 +242,50 @@ function renderActusList() {
     </div>`;
   }).join('');
 
-  checkOwnActuLikes(filtered.map(a => a.id));
+  checkOwnActuLikes(actuData.map(a => a.id));
+  // Bouton "Charger plus"
+  const existingBtn = document.getElementById('actus-load-more');
+  if (existingBtn) existingBtn.remove();
+  if (actuHasMore) {
+    const btn = document.createElement('button');
+    btn.id = 'actus-load-more';
+    btn.className = 'btn-load-more';
+    btn.textContent = 'Charger plus';
+    btn.onclick = () => loadActusPage(false);
+    container.after(btn);
+  }
 }
 
-async function renderActus() {
-  document.getElementById('actus-list').innerHTML = '<div class="loading">Chargement…</div>';
-  let { data, error } = await sb.from('actus')
-    .select('*, actus_likes(count), actus_commentaires(id, prenom, texte, created_at)')
-    .order('date', { ascending: false });
-  if (error) {
-    // Fallback sans likes/commentaires si les tables n'existent pas encore
-    ({ data, error } = await sb.from('actus').select('*').order('date', { ascending: false }));
+async function loadActusPage(reset = false) {
+  const container = document.getElementById('actus-list');
+  if (reset) {
+    actuPage = 0; actuData = [];
+    container.innerHTML = '<div class="loading">Chargement…</div>';
+    const old = document.getElementById('actus-load-more');
+    if (old) old.remove();
   }
-  if (error) { document.getElementById('actus-list').innerHTML = '<div class="empty-state">Impossible de charger les actualités.</div>'; return; }
-  actuData = data || [];
-  renderActusCats();
+  const from = actuPage * ACTUS_PAGE_SIZE;
+  const to   = from + ACTUS_PAGE_SIZE - 1;
+  let query = sb.from('actus')
+    .select('*, actus_likes(count), actus_commentaires(id, prenom, texte, created_at)')
+    .order('date', { ascending: false })
+    .range(from, to);
+  if (actuFilter !== 'Tous') query = query.eq('categorie', actuFilter);
+  let { data, error } = await query;
+  if (error) {
+    let q2 = sb.from('actus').select('*').order('date', { ascending: false }).range(from, to);
+    if (actuFilter !== 'Tous') q2 = q2.eq('categorie', actuFilter);
+    ({ data, error } = await q2);
+  }
+  if (error) { container.innerHTML = '<div class="empty-state">Impossible de charger les actualités.</div>'; return; }
+  actuHasMore = (data || []).length === ACTUS_PAGE_SIZE;
+  actuData = reset ? (data || []) : [...actuData, ...(data || [])];
+  actuPage++;
+  if (reset) renderActusCats();
   renderActusList();
 }
+
+async function renderActus() { await loadActusPage(true); }
 
 async function checkOwnActuLikes(actuIds) {
   if (!currentUser || !actuIds.length) return;
@@ -320,9 +349,11 @@ window.toggleActu = toggleActu;
    ANNUAIRE
    ============================================================ */
 const CATEGORIES_ANNUAIRE = ['Tous', 'Commerçant', 'Restauration', 'Services'];
-let annuaireFilter = 'Tous';
-let annuaireSearch = '';
-let annuaireData = [];
+const ANNUAIRE_PAGE_SIZE = 12;
+let annuaireFilter      = 'Tous';
+let annuaireSearch      = '';
+let annuaireData        = [];
+let annuaireDisplayCount = ANNUAIRE_PAGE_SIZE;
 
 function renderAnnuaireCats() {
   const container = document.getElementById('annuaire-cats');
@@ -333,6 +364,7 @@ function renderAnnuaireCats() {
 
 function setAnnuaireCat(cat) {
   annuaireFilter = cat;
+  annuaireDisplayCount = ANNUAIRE_PAGE_SIZE;
   renderAnnuaireCats();
   renderAnnuaireList();
 }
@@ -354,7 +386,8 @@ function renderAnnuaireList() {
     return;
   }
 
-  container.innerHTML = filtered.map(m => {
+  const visible = filtered.slice(0, annuaireDisplayCount);
+  container.innerHTML = visible.map(m => {
     const initial = (m.nom_entreprise || m.prenom_contact || '?').charAt(0).toUpperCase();
     const contact = [m.prenom_contact, m.nom_contact].filter(Boolean).join(' ');
     return `
@@ -370,6 +403,17 @@ function renderAnnuaireList() {
       </div>
     </div>`;
   }).join('');
+
+  const existingBtn = document.getElementById('annuaire-load-more');
+  if (existingBtn) existingBtn.remove();
+  if (filtered.length > annuaireDisplayCount) {
+    const btn = document.createElement('button');
+    btn.id = 'annuaire-load-more';
+    btn.className = 'btn-load-more';
+    btn.textContent = 'Charger plus';
+    btn.onclick = () => { annuaireDisplayCount += ANNUAIRE_PAGE_SIZE; renderAnnuaireList(); };
+    container.after(btn);
+  }
 }
 
 function openMerchantModal(id) {
@@ -412,6 +456,7 @@ async function initAnnuaire() {
 
   document.getElementById('annuaire-search').addEventListener('input', e => {
     annuaireSearch = e.target.value;
+    annuaireDisplayCount = ANNUAIRE_PAGE_SIZE;
     renderAnnuaireList();
   });
 }
@@ -420,8 +465,11 @@ async function initAnnuaire() {
    OFFRES
    ============================================================ */
 const CATEGORIES_OFFRES = ['Tous', 'Particulier', 'Professionnel'];
-let offresFilter = 'Tous';
-let offresData   = [];
+const OFFRES_PAGE_SIZE = 10;
+let offresFilter  = 'Tous';
+let offresData    = [];
+let offresPage    = 0;
+let offresHasMore = false;
 
 function renderOffresCats() {
   const el = document.getElementById('offres-cats');
@@ -434,20 +482,19 @@ function renderOffresCats() {
 function setOffresCat(cat) {
   offresFilter = cat;
   renderOffresCats();
-  renderOffresList();
+  loadOffresPage(true);
 }
 window.setOffresCat = setOffresCat;
 
 function renderOffresList() {
   const container = document.getElementById('offres-list');
-  const filtered  = offresFilter === 'Tous' ? offresData : offresData.filter(o => o.categorie === offresFilter);
 
-  if (!filtered.length) {
+  if (!offresData.length) {
     container.innerHTML = '<div class="empty-state">Aucune offre dans cette catégorie.</div>';
     return;
   }
 
-  container.innerHTML = filtered.map(o => `
+  container.innerHTML = offresData.map(o => `
     <div class="offer-card">
       <div class="offer-inner">
         <div class="offer-merchant">${escHtml(o.commercant)}</div>
@@ -463,45 +510,59 @@ function renderOffresList() {
       </div>
     </div>
   `).join('');
+
+  const existingBtn = document.getElementById('offres-load-more');
+  if (existingBtn) existingBtn.remove();
+  if (offresHasMore) {
+    const btn = document.createElement('button');
+    btn.id = 'offres-load-more';
+    btn.className = 'btn-load-more';
+    btn.textContent = 'Charger plus';
+    btn.onclick = () => loadOffresPage(false);
+    container.after(btn);
+  }
 }
 
-async function renderOffres() {
+async function loadOffresPage(reset = false) {
   const container = document.getElementById('offres-list');
-  container.innerHTML = '<div class="loading">Chargement…</div>';
-
-  const { data, error } = await sb.from('offres').select('*').order('expiration');
-
+  if (reset) {
+    offresPage = 0; offresData = [];
+    container.innerHTML = '<div class="loading">Chargement…</div>';
+    const old = document.getElementById('offres-load-more');
+    if (old) old.remove();
+  }
+  const from = offresPage * OFFRES_PAGE_SIZE;
+  const to   = from + OFFRES_PAGE_SIZE - 1;
+  let query = sb.from('offres').select('*').order('expiration').range(from, to);
+  if (offresFilter !== 'Tous') query = query.eq('categorie', offresFilter);
+  const { data, error } = await query;
   if (error) { container.innerHTML = '<div class="empty-state">Impossible de charger les offres.</div>'; return; }
-  if (!data?.length) { container.innerHTML = '<div class="empty-state">Aucune offre pour le moment.</div>'; return; }
-
-  offresData = data;
-  renderOffresCats();
+  offresHasMore = (data || []).length === OFFRES_PAGE_SIZE;
+  offresData = reset ? (data || []) : [...offresData, ...(data || [])];
+  offresPage++;
+  if (reset) renderOffresCats();
   renderOffresList();
 }
+
+async function renderOffres() { await loadOffresPage(true); }
 
 /* ============================================================
    BOÎTE À IDÉES
    ============================================================ */
-async function renderIdeesList() {
+const IDEES_PAGE_SIZE = 10;
+let ideesData    = [];
+let ideesPage    = 0;
+let ideesHasMore = false;
+
+function renderIdeesList() {
   const container = document.getElementById('ideas-list');
 
-  const { data, error } = await sb
-    .from('idees')
-    .select('*, idees_likes(count), idees_commentaires(id, prenom, texte, created_at)')
-    .eq('visible', true)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    container.innerHTML = '<div class="empty-state">Impossible de charger les idées.</div>';
-    return;
-  }
-
-  if (!data || !data.length) {
+  if (!ideesData.length) {
     container.innerHTML = '<div class="empty-state">Aucune idée pour le moment. Soyez le premier !</div>';
     return;
   }
 
-  container.innerHTML = data.map(idea => {
+  container.innerHTML = ideesData.map(idea => {
     const likeCount    = idea.idees_likes && idea.idees_likes[0] ? (idea.idees_likes[0].count || 0) : 0;
     const comments     = idea.idees_commentaires || [];
     const commentCount = comments.length;
@@ -548,10 +609,44 @@ async function renderIdeesList() {
     `;
   }).join('');
 
-  // Check own likes
-  const ideeIds = data.map(i => i.id);
-  checkOwnLikes(ideeIds);
+  checkOwnLikes(ideesData.map(i => i.id));
+
+  const existingBtn = document.getElementById('idees-load-more');
+  if (existingBtn) existingBtn.remove();
+  if (ideesHasMore) {
+    const btn = document.createElement('button');
+    btn.id = 'idees-load-more';
+    btn.className = 'btn-load-more';
+    btn.textContent = 'Charger plus';
+    btn.onclick = () => loadIdeesPage(false);
+    container.after(btn);
+  }
 }
+
+async function loadIdeesPage(reset = false) {
+  const container = document.getElementById('ideas-list');
+  if (reset) {
+    ideesPage = 0; ideesData = [];
+    container.innerHTML = '<div class="loading">Chargement…</div>';
+    const old = document.getElementById('idees-load-more');
+    if (old) old.remove();
+  }
+  const from = ideesPage * IDEES_PAGE_SIZE;
+  const to   = from + IDEES_PAGE_SIZE - 1;
+  const { data, error } = await sb
+    .from('idees')
+    .select('*, idees_likes(count), idees_commentaires(id, prenom, texte, created_at)')
+    .eq('visible', true)
+    .order('created_at', { ascending: false })
+    .range(from, to);
+  if (error) { container.innerHTML = '<div class="empty-state">Impossible de charger les idées.</div>'; return; }
+  ideesHasMore = (data || []).length === IDEES_PAGE_SIZE;
+  ideesData = reset ? (data || []) : [...ideesData, ...(data || [])];
+  ideesPage++;
+  renderIdeesList();
+}
+
+async function legacyRenderIdeesList() { await loadIdeesPage(true); }
 
 async function checkOwnLikes(ideeIds) {
   if (!currentUser || !ideeIds.length) return;
@@ -698,11 +793,11 @@ function toggleIdeaForm() {
 window.toggleIdeaForm = toggleIdeaForm;
 
 function initIdees() {
-  renderIdeesList();
+  loadIdeesPage(true);
 
   sb.channel('paf-idees')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'idees' }, () => {
-      renderIdeesList();
+      loadIdeesPage(true);
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'idees_likes' }, (payload) => {
       handleLikeChange(payload);

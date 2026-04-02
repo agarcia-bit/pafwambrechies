@@ -130,6 +130,16 @@ body {
   transition: opacity .15s;
 }
 .btn-new-idea:active { opacity: .85; }
+.btn-load-more {
+  display: block; width: 100%; margin: 8px 0 16px;
+  padding: 12px; border-radius: var(--radius);
+  background: var(--card); color: var(--primary);
+  font-size: .9rem; font-weight: 600; font-family: inherit;
+  border: 1.5px solid var(--border); cursor: pointer;
+  transition: background .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-load-more:active { background: var(--primary-light); }
 .section-title { font-size: 1.4rem; font-weight: 700; color: var(--text); line-height: 1.2; }
 .section-desc { font-size: .85rem; color: var(--text-muted); margin-top: 2px; }
 
