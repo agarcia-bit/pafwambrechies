@@ -1025,7 +1025,7 @@ window.adminDeleteItem = async function(table, id) {
 
 window.adminToggleVisible = async function(id, current) {
   const { error } = await sb.from('idees').update({ visible: !current }).eq('id', id);
-  if (error) { showToast('Erreur.', 'error'); return; }
+  if (error) { showToast('Erreur : ' + error.message, 'error'); return; }
   loadAdminSub();
 };
 
