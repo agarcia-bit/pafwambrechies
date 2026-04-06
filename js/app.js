@@ -36,7 +36,8 @@ function openCropper(file) {
         autoCropArea: 1,
         movable: true,
         zoomable: true,
-        rotatable: false,
+        rotatable: true,
+        checkOrientation: false,
       });
     };
     reader.readAsDataURL(file);
