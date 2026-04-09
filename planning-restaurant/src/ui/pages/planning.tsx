@@ -128,9 +128,25 @@ export function PlanningPage() {
     for (const emp of activeEmployees) {
       const empName = `${emp.firstName} ${emp.lastName}`.trim()
 
-      // Fixed unavailabilities
+      // Collect manager OFF days to avoid duplicates with unavailabilities
+      const managerOffDays = new Set<number>()
+      if (emp.isManager) {
+        for (const ms of managerSchedules.filter((s) => s.employeeId === emp.id)) {
+          if (!ms.shiftTemplateId) {
+            managerOffDays.add(ms.dayOfWeek)
+            items.push({
+              employeeName: empName,
+              type: 'manager',
+              dayLabel: DAY_NAMES[ms.dayOfWeek],
+              detail: 'OFF (repos)',
+            })
+          }
+        }
+      }
+
+      // Fixed unavailabilities (skip if already shown as manager OFF)
       for (const ua of unavailabilities.filter((u) => u.employeeId === emp.id && u.type === 'fixed')) {
-        if (ua.dayOfWeek != null) {
+        if (ua.dayOfWeek != null && !managerOffDays.has(ua.dayOfWeek)) {
           items.push({
             employeeName: empName,
             type: 'fixed',
@@ -150,20 +166,6 @@ export function PlanningPage() {
             dayLabel: `${DAY_NAMES[dayIndex]} ${new Date(ua.specificDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}`,
             detail: ua.label || 'Indisponible (ponctuel)',
           })
-        }
-      }
-
-      // Manager OFF days only (not their working hours)
-      if (emp.isManager) {
-        for (const ms of managerSchedules.filter((s) => s.employeeId === emp.id)) {
-          if (!ms.shiftTemplateId) {
-            items.push({
-              employeeName: empName,
-              type: 'manager',
-              dayLabel: DAY_NAMES[ms.dayOfWeek],
-              detail: 'OFF (repos)',
-            })
-          }
         }
       }
     }
