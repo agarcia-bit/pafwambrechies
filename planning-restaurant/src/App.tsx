@@ -3,6 +3,10 @@ import { useAuthStore } from '@/store/auth-store'
 import { LoginPage } from '@/ui/pages/login'
 import { DashboardPage } from '@/ui/pages/dashboard'
 import { EmployeesPage } from '@/ui/pages/employees'
+import { RolesPage } from '@/ui/pages/roles'
+import { ShiftTemplatesPage } from '@/ui/pages/shift-templates'
+import { ConstraintsPage } from '@/ui/pages/constraints'
+import { ForecastsPage } from '@/ui/pages/forecasts'
 import { PlanningPage } from '@/ui/pages/planning'
 import { SettingsPage } from '@/ui/pages/settings'
 import { MainLayout } from '@/ui/layouts/main-layout'
@@ -30,6 +34,10 @@ export default function App() {
   const pages: Record<string, React.ReactNode> = {
     dashboard: <DashboardPage />,
     employees: <EmployeesPage />,
+    roles: <RolesPage />,
+    'shift-templates': <ShiftTemplatesPage />,
+    constraints: <ConstraintsPage />,
+    forecasts: <ForecastsPage />,
     planning: <PlanningPage />,
     settings: <SettingsPage />,
   }

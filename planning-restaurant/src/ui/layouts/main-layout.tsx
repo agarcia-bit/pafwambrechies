@@ -4,6 +4,10 @@ import { Button } from '@/ui/components'
 import {
   LayoutDashboard,
   Users,
+  Tags,
+  Clock,
+  ShieldAlert,
+  TrendingUp,
   Calendar,
   Settings,
   LogOut,
@@ -15,11 +19,35 @@ interface MainLayoutProps {
   onNavigate: (page: string) => void
 }
 
-const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
-  { id: 'employees', label: 'Salariés', icon: Users },
-  { id: 'planning', label: 'Planning', icon: Calendar },
-  { id: 'settings', label: 'Paramètres', icon: Settings },
+const NAV_SECTIONS = [
+  {
+    label: '',
+    items: [
+      { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: 'Configuration',
+    items: [
+      { id: 'employees', label: 'Salariés', icon: Users },
+      { id: 'roles', label: 'Rôles', icon: Tags },
+      { id: 'shift-templates', label: 'Créneaux horaires', icon: Clock },
+      { id: 'constraints', label: 'Contraintes', icon: ShieldAlert },
+      { id: 'forecasts', label: 'CA Prévisionnel', icon: TrendingUp },
+    ],
+  },
+  {
+    label: 'Planning',
+    items: [
+      { id: 'planning', label: 'Générer un planning', icon: Calendar },
+    ],
+  },
+  {
+    label: '',
+    items: [
+      { id: 'settings', label: 'Paramètres', icon: Settings },
+    ],
+  },
 ]
 
 export function MainLayout({ children, currentPage, onNavigate }: MainLayoutProps) {
@@ -35,24 +63,33 @@ export function MainLayout({ children, currentPage, onNavigate }: MainLayoutProp
           </h1>
         </div>
 
-        <nav className="flex-1 p-4">
-          <ul className="flex flex-col gap-1">
-            {NAV_ITEMS.map((item) => (
-              <li key={item.id}>
-                <button
-                  onClick={() => onNavigate(item.id)}
-                  className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    currentPage === item.id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-foreground hover:bg-muted'
-                  }`}
-                >
-                  <item.icon size={18} />
-                  {item.label}
-                </button>
-              </li>
-            ))}
-          </ul>
+        <nav className="flex-1 overflow-auto p-4">
+          {NAV_SECTIONS.map((section, si) => (
+            <div key={si} className="mb-4">
+              {section.label && (
+                <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {section.label}
+                </p>
+              )}
+              <ul className="flex flex-col gap-0.5">
+                {section.items.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      onClick={() => onNavigate(item.id)}
+                      className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                        currentPage === item.id
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-foreground hover:bg-muted'
+                      }`}
+                    >
+                      <item.icon size={18} />
+                      {item.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </nav>
 
         <div className="border-t border-border p-4">

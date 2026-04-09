@@ -5,7 +5,7 @@ export interface Tenant {
   openingTime: number // decimal, e.g. 9.5 = 9h30
   closingTimeWeek: number // e.g. 24.0 = minuit
   closingTimeSunday: number // e.g. 21.0
-  closedDays: number[] // 0=lundi, 1=mardi... (default: [0] = lundi)
+  closedDays: readonly number[] // 0=lundi, 1=mardi... (default: [0] = lundi)
   productivityMin: number // default 80
   productivityMax: number // default 100
   productivityTarget: number // default 95
