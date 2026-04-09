@@ -27,12 +27,15 @@ export function EmployeesPage() {
   const { tenantId } = useAuthStore()
   const [showForm, setShowForm] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>()
+  const [showInactive, setShowInactive] = useState(false)
 
   useEffect(() => {
     load()
   }, [load])
 
   const activeEmployees = employees.filter((e) => e.active)
+  const inactiveEmployees = employees.filter((e) => !e.active)
+  const displayedEmployees = showInactive ? employees : activeEmployees
 
   function handleAdd(data: Omit<Employee, 'id' | 'createdAt'>) {
     add(data)
@@ -47,8 +50,12 @@ export function EmployeesPage() {
     setShowForm(false)
   }
 
+  function handleToggleActive(emp: Employee) {
+    update(emp.id, { active: !emp.active })
+  }
+
   function handleDelete(emp: Employee) {
-    if (confirm(`Supprimer ${emp.firstName} ${emp.lastName} ?`)) {
+    if (confirm(`Supprimer définitivement ${emp.firstName} ${emp.lastName} ?`)) {
       remove(emp.id)
     }
   }
@@ -56,7 +63,21 @@ export function EmployeesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Salariés ({activeEmployees.length})</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold">
+            Salariés ({activeEmployees.length} actif{activeEmployees.length > 1 ? 's' : ''})
+          </h1>
+          {inactiveEmployees.length > 0 && (
+            <button
+              onClick={() => setShowInactive(!showInactive)}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              {showInactive
+                ? 'Masquer inactifs'
+                : `+ ${inactiveEmployees.length} inactif${inactiveEmployees.length > 1 ? 's' : ''}`}
+            </button>
+          )}
+        </div>
         <Button onClick={() => { setEditingEmployee(undefined); setShowForm(true) }}>
           <Plus size={16} className="mr-2" /> Ajouter
         </Button>
@@ -64,7 +85,7 @@ export function EmployeesPage() {
 
       {loading && <p className="text-muted-foreground">Chargement...</p>}
 
-      {activeEmployees.length > 0 && (
+      {displayedEmployees.length > 0 && (
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full border-collapse text-sm">
             <thead>
@@ -75,14 +96,18 @@ export function EmployeesPage() {
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Bornes</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Niveau</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Statut</th>
+                <th className="px-4 py-3 text-center font-medium text-muted-foreground">Actif</th>
                 <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {activeEmployees.map((emp) => {
+              {displayedEmployees.map((emp) => {
                 const bounds = getWeeklyBounds(emp)
                 return (
-                  <tr key={emp.id} className="border-b border-border hover:bg-muted/30">
+                  <tr
+                    key={emp.id}
+                    className={`border-b border-border ${emp.active ? 'hover:bg-muted/30' : 'bg-muted/20 opacity-60'}`}
+                  >
                     <td className="px-4 py-3 font-medium">
                       {emp.firstName} {emp.lastName}
                     </td>
@@ -94,6 +119,17 @@ export function EmployeesPage() {
                       <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${emp.isManager ? 'bg-primary/10 text-primary' : 'bg-success/10 text-success'}`}>
                         {emp.isManager ? 'Manager' : 'Salarié'}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => handleToggleActive(emp)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${emp.active ? 'bg-success' : 'bg-border'}`}
+                        title={emp.active ? 'Désactiver (ne sera pas inclus dans les plannings)' : 'Réactiver'}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${emp.active ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
+                      </button>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -107,7 +143,7 @@ export function EmployeesPage() {
                         <button
                           onClick={() => handleDelete(emp)}
                           className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          title="Supprimer"
+                          title="Supprimer définitivement"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -121,7 +157,7 @@ export function EmployeesPage() {
         </div>
       )}
 
-      {!loading && activeEmployees.length === 0 && (
+      {!loading && employees.length === 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Aucun salarié</CardTitle>
