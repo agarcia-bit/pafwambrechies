@@ -77,6 +77,17 @@ export function PlanningGrid({ report }: PlanningGridProps) {
                 })}
                 <td className={`px-2 py-1.5 text-center font-bold ${summary.status !== 'ok' ? 'text-destructive' : ''}`}>
                   {summary.plannedHours}h
+                  {(() => {
+                    const delta = summary.plannedHours - summary.contractHours
+                    if (delta === 0) return null
+                    const sign = delta > 0 ? '+' : ''
+                    const color = delta > 0 ? 'text-warning' : 'text-blue-600'
+                    return (
+                      <span className={`ml-1 text-[10px] font-medium ${color}`}>
+                        ({sign}{delta}h)
+                      </span>
+                    )
+                  })()}
                 </td>
                 <td className="px-2 py-1.5 text-center">{summary.totalMeals}</td>
                 <td className="px-2 py-1.5 text-center">{summary.totalBaskets}</td>
