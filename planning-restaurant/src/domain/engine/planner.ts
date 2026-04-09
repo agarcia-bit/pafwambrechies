@@ -223,6 +223,47 @@ function getAllocationDayOrder(): number[] {
   return [5, 6, 4, 1, 2, 3] // sam, dim, ven, mar, mer, jeu
 }
 
+function assignShift(
+  input: PlannerInput,
+  state: SolverState,
+  emp: Employee,
+  shift: ShiftTemplate,
+  ctx: DayAllocationContext,
+  planningId: string,
+): PlanningEntry {
+  const currentHours = state.employeeHours.get(emp.id) ?? 0
+  const roleId = pickRole(input, emp)
+
+  const entry: PlanningEntry = {
+    id: crypto.randomUUID(),
+    planningId,
+    employeeId: emp.id,
+    roleId,
+    date: ctx.date,
+    dayOfWeek: ctx.dayOfWeek,
+    shiftTemplateId: shift.id,
+    startTime: shift.startTime,
+    endTime: shift.endTime,
+    effectiveHours: shift.effectiveHours,
+    meals: shift.meals,
+    baskets: shift.baskets,
+  }
+
+  state.entries.push(entry)
+  state.employeeHours.set(emp.id, currentHours + shift.effectiveHours)
+  state.employeeWorkDays.get(emp.id)?.add(ctx.dayOfWeek)
+  state.dailyHours.set(
+    ctx.dayOfWeek,
+    (state.dailyHours.get(ctx.dayOfWeek) ?? 0) + shift.effectiveHours,
+  )
+  state.employeeLastEndTime.set(emp.id, {
+    day: ctx.dayOfWeek,
+    endTime: shift.endTime,
+  })
+
+  return entry
+}
+
 function allocateDay(
   input: PlannerInput,
   state: SolverState,
@@ -234,13 +275,6 @@ function allocateDay(
     (e) => !e.isManager && e.active,
   )
 
-  // Trier : contraints d'abord (moins de créneaux dispo), puis flexibles
-  const sorted = [...nonManagers].sort((a, b) => {
-    const aSlots = getAvailableShifts(input, state, a, ctx).length
-    const bSlots = getAvailableShifts(input, state, b, ctx).length
-    return aSlots - bSlots // moins de choix = plus contraint = en premier
-  })
-
   let remainingHours = ctx.allocatableHours
 
   // Vérifier si ce jour est en délestage
@@ -249,55 +283,167 @@ function allocateDay(
     DELESTAGE_ORDER.some((d) => d.dayOfWeek === ctx.dayOfWeek) &&
     !NEVER_UNDERSTAFF.includes(ctx.dayOfWeek)
 
+  // --- Phase 1 : Assurer l'ouverture (≥1 personne à 9h30) ---
+  // Vérifier si un manager couvre déjà l'ouverture
+  const dayEntries = state.entries.filter((e) => e.dayOfWeek === ctx.dayOfWeek)
+  const hasOpening = dayEntries.some((e) => e.startTime <= 9.5)
+
+  if (!hasOpening) {
+    // Trouver le salarié le plus adapté pour l'ouverture (niveau le plus bas possible)
+    const openingShifts = input.shiftTemplates.filter((s) => {
+      if (ctx.dayOfWeek === 6) return s.applicability === 'sunday' && s.startTime <= 9.5
+      if (ctx.dayOfWeek === 5) return (s.applicability === 'tue_sat' || s.applicability === 'sat_only') && s.startTime <= 9.5
+      return s.applicability === 'tue_sat' && s.startTime <= 9.5
+    })
+
+    if (openingShifts.length > 0) {
+      // Trier les employés : niveau le plus bas d'abord (règle: plus petit niveau pour l'ouverture)
+      const candidates = [...nonManagers]
+        .filter((emp) => canWorkDay(input, state, emp, ctx))
+        .filter((emp) => {
+          const shifts = getAvailableShifts(input, state, emp, ctx)
+          return shifts.some((s) => s.startTime <= 9.5)
+        })
+        .sort((a, b) => a.level - b.level)
+
+      if (candidates.length > 0) {
+        const emp = candidates[0]
+        const availableOpening = getAvailableShifts(input, state, emp, ctx)
+          .filter((s) => s.startTime <= 9.5)
+        const shift = availableOpening[0]
+        if (shift) {
+          const bounds = getWeeklyBounds(emp)
+          const currentHours = state.employeeHours.get(emp.id) ?? 0
+          if (currentHours + shift.effectiveHours <= bounds.max) {
+            assignShift(input, state, emp, shift, ctx, planningId)
+            remainingHours -= shift.effectiveHours
+          }
+        }
+      }
+    }
+
+    // Sam-Dim : besoin d'un 2e renfort à 10h
+    if (ctx.dayOfWeek >= 5) {
+      const has10h = state.entries
+        .filter((e) => e.dayOfWeek === ctx.dayOfWeek)
+        .some((e) => e.startTime <= 10 && e.employeeId !== (dayEntries[0]?.employeeId))
+
+      if (!has10h) {
+        const renfortShifts = input.shiftTemplates.filter((s) => {
+          if (ctx.dayOfWeek === 6) return s.applicability === 'sunday' && s.startTime <= 10
+          return (s.applicability === 'tue_sat' || s.applicability === 'sat_only') && s.startTime <= 10
+        })
+
+        if (renfortShifts.length > 0) {
+          const alreadyAssigned = new Set(
+            state.entries.filter((e) => e.dayOfWeek === ctx.dayOfWeek).map((e) => e.employeeId),
+          )
+          const candidates = [...nonManagers]
+            .filter((emp) => !alreadyAssigned.has(emp.id))
+            .filter((emp) => canWorkDay(input, state, emp, ctx))
+            .filter((emp) => {
+              const shifts = getAvailableShifts(input, state, emp, ctx)
+              return shifts.some((s) => s.startTime <= 10)
+            })
+            .sort((a, b) => a.level - b.level)
+
+          if (candidates.length > 0) {
+            const emp = candidates[0]
+            const shifts = getAvailableShifts(input, state, emp, ctx).filter((s) => s.startTime <= 10)
+            const shift = shifts[0]
+            if (shift) {
+              const bounds = getWeeklyBounds(emp)
+              const currentHours = state.employeeHours.get(emp.id) ?? 0
+              if (currentHours + shift.effectiveHours <= bounds.max) {
+                assignShift(input, state, emp, shift, ctx, planningId)
+                remainingHours -= shift.effectiveHours
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // --- Phase 1.5 : Assurer couverture métier (barman + serveur midi & soir) ---
+  // Identifier les rôles barman et serveur
+  const barmanRole = input.roles.find((r) => r.name.toLowerCase().includes('barman'))
+  // serveur roles tracked but barman coverage is the priority check
+
+  // Midi (12-15h) : besoin barman + serveur
+  // Soir (18h-fermeture) : besoin barman + serveur
+  for (const period of [
+    { name: 'midi', minStart: 0, maxStart: 12, minEnd: 15 },
+    { name: 'soir', minStart: 17, maxStart: 18, minEnd: ctx.closingTime },
+  ]) {
+    const currentDayEntries = state.entries.filter((e) => e.dayOfWeek === ctx.dayOfWeek)
+    const coversPeriod = (e: PlanningEntry) => e.startTime <= period.maxStart && e.endTime >= period.minEnd
+
+    // Check barman coverage
+    if (barmanRole) {
+      const hasBarman = currentDayEntries.some((e) => {
+        const empRoles = input.employeeRoles.filter((er) => er.employeeId === e.employeeId)
+        return coversPeriod(e) && empRoles.some((er) => er.roleId === barmanRole.id)
+      })
+
+      if (!hasBarman) {
+        // Find a barman employee to assign
+        const barmanEmps = nonManagers.filter((emp) => {
+          const empRoles = input.employeeRoles.filter((er) => er.employeeId === emp.id)
+          return empRoles.some((er) => er.roleId === barmanRole.id)
+        })
+
+        for (const emp of barmanEmps) {
+          if (state.employeeWorkDays.get(emp.id)?.has(ctx.dayOfWeek)) continue
+          if (!canWorkDay(input, state, emp, ctx)) continue
+          const shifts = getAvailableShifts(input, state, emp, ctx)
+            .filter((s) => s.startTime <= period.maxStart && s.endTime >= period.minEnd)
+          if (shifts.length === 0) continue
+          const shift = shifts[0]
+          const bounds = getWeeklyBounds(emp)
+          const currentHours = state.employeeHours.get(emp.id) ?? 0
+          if (currentHours + shift.effectiveHours <= bounds.max) {
+            assignShift(input, state, emp, shift, ctx, planningId)
+            remainingHours -= shift.effectiveHours
+            break
+          }
+        }
+      }
+    }
+  }
+
+  // --- Phase 2 : Allocation générale (budget restant) ---
+  const alreadyAssigned = new Set(
+    state.entries.filter((e) => e.dayOfWeek === ctx.dayOfWeek).map((e) => e.employeeId),
+  )
+
+  // Trier : contraints d'abord, puis flexibles, avec shuffle aléatoire parmi les égaux
+  // Le shuffle évite que l'algo produise toujours le même planning
+  const sorted = [...nonManagers]
+    .filter((emp) => !alreadyAssigned.has(emp.id))
+    .sort((a, b) => {
+      const aSlots = getAvailableShifts(input, state, a, ctx).length
+      const bSlots = getAvailableShifts(input, state, b, ctx).length
+      if (aSlots !== bSlots) return aSlots - bSlots
+      return Math.random() - 0.5 // shuffle parmi les employés avec même nombre de slots
+    })
+
   for (const emp of sorted) {
     if (remainingHours <= 0) break
 
-    // Vérifier si l'employé peut travailler ce jour
     if (!canWorkDay(input, state, emp, ctx)) continue
 
-    // Obtenir les créneaux disponibles
     const availableShifts = getAvailableShifts(input, state, emp, ctx)
     if (availableShifts.length === 0) continue
 
-    // Choisir le meilleur créneau (celui qui se rapproche le plus du budget restant)
     const bestShift = chooseBestShift(availableShifts, remainingHours, emp, state)
     if (!bestShift) continue
 
-    // Vérifier que l'ajout ne casse pas les bornes contractuelles
     const currentHours = state.employeeHours.get(emp.id) ?? 0
     const bounds = getWeeklyBounds(emp)
     if (currentHours + bestShift.effectiveHours > bounds.max) continue
 
-    // Trouver le rôle à assigner
-    const roleId = pickRole(input, emp)
-
-    const entry: PlanningEntry = {
-      id: crypto.randomUUID(),
-      planningId,
-      employeeId: emp.id,
-      roleId,
-      date: ctx.date,
-      dayOfWeek: ctx.dayOfWeek,
-      shiftTemplateId: bestShift.id,
-      startTime: bestShift.startTime,
-      endTime: bestShift.endTime,
-      effectiveHours: bestShift.effectiveHours,
-      meals: bestShift.meals,
-      baskets: bestShift.baskets,
-    }
-
-    state.entries.push(entry)
-    state.employeeHours.set(emp.id, currentHours + bestShift.effectiveHours)
-    state.employeeWorkDays.get(emp.id)?.add(ctx.dayOfWeek)
-    state.dailyHours.set(
-      ctx.dayOfWeek,
-      (state.dailyHours.get(ctx.dayOfWeek) ?? 0) + bestShift.effectiveHours,
-    )
-    state.employeeLastEndTime.set(emp.id, {
-      day: ctx.dayOfWeek,
-      endTime: bestShift.endTime,
-    })
-
+    assignShift(input, state, emp, bestShift, ctx, planningId)
     remainingHours -= bestShift.effectiveHours
   }
 
@@ -414,8 +560,8 @@ function chooseBestShift(
   // Priorité 2 : Créneaux qui ne dépassent pas trop le budget jour
   // Priorité 3 : Créneaux les plus courts si le budget est serré
 
-  let best: ShiftTemplate | null = null
-  let bestScore = -Infinity
+  // Score each shift
+  const scored: { shift: ShiftTemplate; score: number }[] = []
 
   for (const shift of available) {
     let score = 0
@@ -438,11 +584,16 @@ function chooseBestShift(
       score -= 2
     }
 
-    if (score > bestScore) {
-      bestScore = score
-      best = shift
-    }
+    // Petite variation aléatoire pour varier les plannings d'une semaine à l'autre
+    score += (Math.random() - 0.5) * 2
+
+    scored.push({ shift, score })
   }
+
+  // Trier par score décroissant et prendre le meilleur
+  scored.sort((a, b) => b.score - a.score)
+  const best = scored[0]?.shift ?? null
+  void scored // use the array
 
   return best
 }
@@ -519,7 +670,7 @@ function buildDailySummaries(
         18,
         ctx.isSunday ? 21 : 24,
       ),
-      openingStaff: countCoverage(dayEntries, 9.5, 10),
+      openingStaff: dayEntries.filter((e) => e.startTime <= 9.5).length,
       closingStaff: dayEntries.filter((e) => e.endTime >= ctx.closingTime)
         .length,
       isDelestage: false,

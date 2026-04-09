@@ -18,7 +18,8 @@ import {
   fetchConditionalAvailabilities,
 } from '@/infrastructure/supabase/repositories/constraint-repo'
 import { exportPlanningToExcel } from '@/infrastructure/export/excel-export'
-import { Calendar, Download, Play, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react'
+import type { EventOverride } from '@/domain/engine'
+import { Calendar, Download, Play, ChevronLeft, ChevronRight, AlertTriangle, Sun } from 'lucide-react'
 
 const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 
@@ -71,6 +72,9 @@ export function PlanningPage() {
   const [managerSchedules, setManagerSchedules] = useState<ManagerFixedSchedule[]>([])
   const [conditionalAvailabilities, setConditionalAvailabilities] = useState<ConditionalAvailability[]>([])
   const [constraintsLoaded, setConstraintsLoaded] = useState(false)
+
+  // Beau temps (weather boost) — jours cochés = CA +30%
+  const [beauTempsJours, setBeauTempsJours] = useState<number[]>([])
 
   function reloadConstraints() {
     setConstraintsLoaded(false)
@@ -211,6 +215,10 @@ export function PlanningPage() {
         managerSchedules,
         dailyForecasts: forecasts,
         dailyRequirements: [],
+        eventOverrides: beauTempsJours.map((day): EventOverride => ({
+          date: addDays(weekStartISO, day),
+          revenueMultiplierPercent: 30,
+        })),
       }
 
       const result = generatePlanning(input)
@@ -339,6 +347,39 @@ export function PlanningPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Beau temps — boost CA +30% */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex items-center gap-3 mb-3">
+            <Sun size={18} className="text-warning" />
+            <span className="text-sm font-semibold">Beau temps prévu (CA +30%)</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {DAY_NAMES.slice(1).map((name, i) => {
+              const day = i + 1 // 1=mardi..6=dimanche
+              const active = beauTempsJours.includes(day)
+              return (
+                <button
+                  key={day}
+                  onClick={() =>
+                    setBeauTempsJours(
+                      active ? beauTempsJours.filter((d) => d !== day) : [...beauTempsJours, day],
+                    )
+                  }
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    active
+                      ? 'bg-warning text-white'
+                      : 'bg-background border border-border text-foreground hover:bg-muted'
+                  }`}
+                >
+                  {active ? `${name} (+30%)` : name}
+                </button>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Bouton générer */}
       <Button

@@ -106,6 +106,7 @@ export function PlanningGrid({ report }: PlanningGridProps) {
               <th className="px-3 py-2 text-center font-medium">CA cible</th>
               <th className="px-3 py-2 text-center font-medium">Heures</th>
               <th className="px-3 py-2 text-center font-medium">Productivité</th>
+              <th className="px-3 py-2 text-center font-medium">Ouverture</th>
               <th className="px-3 py-2 text-center font-medium">Midi</th>
               <th className="px-3 py-2 text-center font-medium">A-midi</th>
               <th className="px-3 py-2 text-center font-medium">Soir</th>
@@ -123,6 +124,7 @@ export function PlanningGrid({ report }: PlanningGridProps) {
                   <td className={`px-3 py-2 text-center font-bold ${prodOk ? 'text-success' : 'text-destructive'}`}>
                     {ds.productivity > 0 ? Math.round(ds.productivity) : '—'}
                   </td>
+                  <td className={`px-3 py-2 text-center ${ds.openingStaff === 0 ? 'text-destructive font-bold' : ''}`}>{ds.openingStaff}</td>
                   <td className="px-3 py-2 text-center">{ds.coverageMidi}</td>
                   <td className="px-3 py-2 text-center">{ds.coverageApresMidi}</td>
                   <td className="px-3 py-2 text-center">{ds.coverageSoir}</td>
