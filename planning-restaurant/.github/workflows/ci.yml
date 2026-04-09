@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'planning-restaurant/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'planning-restaurant/**'
+
+defaults:
+  run:
+    working-directory: planning-restaurant
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: planning-restaurant/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc -b
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm test -- --run
+
+      - name: Build
+        run: npm run build
