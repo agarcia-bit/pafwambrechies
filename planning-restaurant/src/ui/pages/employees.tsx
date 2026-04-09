@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useEmployeeStore } from '@/store/employee-store'
+import { useRoleStore } from '@/store/role-store'
 import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardHeader, CardTitle, Button } from '@/ui/components'
 import { EmployeeForm } from '@/ui/components/employee-form'
@@ -24,6 +25,7 @@ const LEVEL_LABELS: Record<number, string> = {
 
 export function EmployeesPage() {
   const { employees, loading, load, add, update, remove } = useEmployeeStore()
+  const { roles, employeeRoles, load: loadRoles } = useRoleStore()
   const { tenantId } = useAuthStore()
   const [showForm, setShowForm] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>()
@@ -31,11 +33,18 @@ export function EmployeesPage() {
 
   useEffect(() => {
     load()
-  }, [load])
+    loadRoles()
+  }, [load, loadRoles])
 
   const activeEmployees = employees.filter((e) => e.active)
   const inactiveEmployees = employees.filter((e) => !e.active)
   const displayedEmployees = showInactive ? employees : activeEmployees
+
+  function getRoleForEmployee(employeeId: string) {
+    const er = employeeRoles.find((er) => er.employeeId === employeeId)
+    if (!er) return null
+    return roles.find((r) => r.id === er.roleId) ?? null
+  }
 
   function handleAdd(data: Omit<Employee, 'id' | 'createdAt'>) {
     add(data)
@@ -95,7 +104,7 @@ export function EmployeesPage() {
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Heures</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Bornes</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Niveau</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Statut</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Rôle</th>
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Actif</th>
                 <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
               </tr>
@@ -103,6 +112,7 @@ export function EmployeesPage() {
             <tbody>
               {displayedEmployees.map((emp) => {
                 const bounds = getWeeklyBounds(emp)
+                const role = getRoleForEmployee(emp.id)
                 return (
                   <tr
                     key={emp.id}
@@ -116,9 +126,16 @@ export function EmployeesPage() {
                     <td className="px-4 py-3">{bounds.min}h — {bounds.max}h</td>
                     <td className="px-4 py-3">{LEVEL_LABELS[emp.level] ?? `Niv. ${emp.level}`}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${emp.isManager ? 'bg-primary/10 text-primary' : 'bg-success/10 text-success'}`}>
-                        {emp.isManager ? 'Manager' : 'Salarié'}
-                      </span>
+                      {role ? (
+                        <span
+                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-white"
+                          style={{ backgroundColor: role.color }}
+                        >
+                          {role.name}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <button
