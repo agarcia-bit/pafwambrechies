@@ -289,7 +289,7 @@ export function PlanningPage() {
         </CardContent>
       </Card>
 
-      {/* Rappel des contraintes */}
+      {/* Rappel des contraintes — trié par jour en colonnes */}
       {constraintsLoaded && constraintsSummary.length > 0 && (
         <Card>
           <CardHeader>
@@ -298,49 +298,56 @@ export function PlanningPage() {
               Contraintes de la semaine
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            {/* Contraintes fixes (repos managers, indispos récurrentes) */}
-            {fixedConstraints.length > 0 && (
-              <div>
-                <h4 className="mb-2 text-sm font-semibold text-muted-foreground">
-                  Contraintes fixes (chaque semaine)
-                </h4>
-                <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
-                  {fixedConstraints.map((c, i) => (
-                    <div key={`fixed-${i}`} className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-1.5 text-sm">
-                      <span className="font-medium">{c.employeeName}</span>
-                      <span className="text-muted-foreground">—</span>
-                      <span className="text-muted-foreground">{c.dayLabel}</span>
-                      <span className={c.detail === 'OFF (repos)' || c.detail === 'Indisponible' ? 'font-medium text-warning' : ''}>
-                        {c.detail}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Contraintes ponctuelles (cette semaine uniquement) */}
-            {punctualConstraints.length > 0 && (
-              <div>
-                <h4 className="mb-2 text-sm font-semibold text-destructive">
-                  Contraintes ponctuelles (cette semaine)
-                </h4>
-                <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
-                  {punctualConstraints.map((c, i) => (
-                    <div key={`punct-${i}`} className="flex items-center gap-2 rounded-md bg-destructive/5 border border-destructive/20 px-3 py-1.5 text-sm">
-                      <span className="font-medium">{c.employeeName}</span>
-                      <span className="text-muted-foreground">—</span>
-                      <span className="font-medium text-destructive">{c.dayLabel}</span>
-                      <span className="text-destructive">{c.detail}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    {DAY_NAMES.map((name, i) => (
+                      <th key={i} className={`px-2 py-2 text-center font-medium ${i === 0 ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
+                        {name}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {DAY_NAMES.map((_, dayIndex) => {
+                      const dayFixed = fixedConstraints.filter((c) => c.dayLabel === DAY_NAMES[dayIndex])
+                      const dayPunctual = punctualConstraints.filter((c) => c.dayLabel.startsWith(DAY_NAMES[dayIndex]))
+                      const items = [...dayFixed, ...dayPunctual]
+                      return (
+                        <td key={dayIndex} className={`px-2 py-2 align-top ${dayIndex === 0 ? 'bg-muted/30' : ''}`}>
+                          {items.length > 0 ? (
+                            <div className="flex flex-col gap-1">
+                              {items.map((c, i) => (
+                                <div
+                                  key={i}
+                                  className={`rounded px-2 py-1 text-xs ${
+                                    c.type === 'punctual'
+                                      ? 'bg-destructive/10 border border-destructive/20 text-destructive'
+                                      : 'bg-warning/10 text-warning'
+                                  }`}
+                                >
+                                  <span className="font-medium">{c.employeeName}</span>
+                                  <br />
+                                  <span className="opacity-80">{c.detail}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : dayIndex === 0 ? (
+                            <span className="text-xs text-muted-foreground/50">Fermé</span>
+                          ) : null}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             {punctualConstraints.length === 0 && (
-              <p className="text-sm text-muted-foreground">
+              <p className="mt-3 text-sm text-muted-foreground">
                 Aucune contrainte ponctuelle pour cette semaine.
               </p>
             )}
