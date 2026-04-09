@@ -207,9 +207,9 @@ CREATE INDEX idx_entries_employee ON planning_entries(employee_id);
 -- ============================================================
 
 -- Fonction helper : tenant_id de l'utilisateur courant
-CREATE OR REPLACE FUNCTION auth.tenant_id()
+CREATE OR REPLACE FUNCTION public.get_tenant_id()
 RETURNS UUID AS $$
-  SELECT tenant_id FROM profiles WHERE id = auth.uid()
+  SELECT tenant_id FROM public.profiles WHERE id = auth.uid()
 $$ LANGUAGE SQL SECURITY DEFINER STABLE;
 
 -- Activer RLS sur toutes les tables
@@ -230,50 +230,50 @@ ALTER TABLE planning_entries ENABLE ROW LEVEL SECURITY;
 -- Policies : chaque utilisateur ne voit que son tenant
 
 CREATE POLICY tenant_isolation ON tenants
-  FOR ALL USING (id = auth.tenant_id());
+  FOR ALL USING (id = public.get_tenant_id());
 
 CREATE POLICY profile_isolation ON profiles
-  FOR ALL USING (tenant_id = auth.tenant_id());
+  FOR ALL USING (tenant_id = public.get_tenant_id());
 
 CREATE POLICY employee_isolation ON employees
-  FOR ALL USING (tenant_id = auth.tenant_id());
+  FOR ALL USING (tenant_id = public.get_tenant_id());
 
 CREATE POLICY role_isolation ON roles
-  FOR ALL USING (tenant_id = auth.tenant_id());
+  FOR ALL USING (tenant_id = public.get_tenant_id());
 
 CREATE POLICY employee_role_isolation ON employee_roles
   FOR ALL USING (
-    employee_id IN (SELECT id FROM employees WHERE tenant_id = auth.tenant_id())
+    employee_id IN (SELECT id FROM employees WHERE tenant_id = public.get_tenant_id())
   );
 
 CREATE POLICY shift_template_isolation ON shift_templates
-  FOR ALL USING (tenant_id = auth.tenant_id());
+  FOR ALL USING (tenant_id = public.get_tenant_id());
 
 CREATE POLICY unavailability_isolation ON unavailabilities
   FOR ALL USING (
-    employee_id IN (SELECT id FROM employees WHERE tenant_id = auth.tenant_id())
+    employee_id IN (SELECT id FROM employees WHERE tenant_id = public.get_tenant_id())
   );
 
 CREATE POLICY cond_avail_isolation ON conditional_availabilities
   FOR ALL USING (
-    employee_id IN (SELECT id FROM employees WHERE tenant_id = auth.tenant_id())
+    employee_id IN (SELECT id FROM employees WHERE tenant_id = public.get_tenant_id())
   );
 
 CREATE POLICY manager_schedule_isolation ON manager_fixed_schedules
   FOR ALL USING (
-    employee_id IN (SELECT id FROM employees WHERE tenant_id = auth.tenant_id())
+    employee_id IN (SELECT id FROM employees WHERE tenant_id = public.get_tenant_id())
   );
 
 CREATE POLICY forecast_isolation ON daily_forecasts
-  FOR ALL USING (tenant_id = auth.tenant_id());
+  FOR ALL USING (tenant_id = public.get_tenant_id());
 
 CREATE POLICY requirement_isolation ON daily_requirements
-  FOR ALL USING (tenant_id = auth.tenant_id());
+  FOR ALL USING (tenant_id = public.get_tenant_id());
 
 CREATE POLICY planning_isolation ON plannings
-  FOR ALL USING (tenant_id = auth.tenant_id());
+  FOR ALL USING (tenant_id = public.get_tenant_id());
 
 CREATE POLICY entry_isolation ON planning_entries
   FOR ALL USING (
-    planning_id IN (SELECT id FROM plannings WHERE tenant_id = auth.tenant_id())
+    planning_id IN (SELECT id FROM plannings WHERE tenant_id = public.get_tenant_id())
   );
