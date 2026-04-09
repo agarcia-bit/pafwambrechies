@@ -18,7 +18,7 @@ import {
   fetchConditionalAvailabilities,
 } from '@/infrastructure/supabase/repositories/constraint-repo'
 import { exportPlanningToExcel } from '@/infrastructure/export/excel-export'
-import { Calendar, Download, Play, ChevronLeft, ChevronRight, AlertTriangle, Clock } from 'lucide-react'
+import { Calendar, Download, Play, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react'
 
 const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 
@@ -153,19 +153,7 @@ export function PlanningPage() {
         }
       }
 
-      // Conditional availabilities
-      for (const ca of conditionalAvailabilities.filter((c) => c.employeeId === emp.id)) {
-        const codes = ca.allowedShiftCodes.join(', ')
-        const maxH = ca.maxHours ? ` (max ${ca.maxHours}h)` : ''
-        items.push({
-          employeeName: empName,
-          type: 'conditional',
-          dayLabel: DAY_NAMES[ca.dayOfWeek],
-          detail: `Uniquement : ${codes}${maxH}`,
-        })
-      }
-
-      // Manager fixed schedules
+      // Manager OFF days only (not their working hours)
       if (emp.isManager) {
         for (const ms of managerSchedules.filter((s) => s.employeeId === emp.id)) {
           if (!ms.shiftTemplateId) {
@@ -175,26 +163,16 @@ export function PlanningPage() {
               dayLabel: DAY_NAMES[ms.dayOfWeek],
               detail: 'OFF (repos)',
             })
-          } else {
-            const start = ms.startTime ?? '?'
-            const end = ms.endTime ?? '?'
-            items.push({
-              employeeName: empName,
-              type: 'manager',
-              dayLabel: DAY_NAMES[ms.dayOfWeek],
-              detail: `${start} → ${end}`,
-            })
           }
         }
       }
     }
 
     return items
-  }, [activeEmployees, unavailabilities, conditionalAvailabilities, managerSchedules, weekDates])
+  }, [activeEmployees, unavailabilities, managerSchedules, weekDates])
 
   const fixedConstraints = constraintsSummary.filter((c) => c.type === 'fixed' || c.type === 'manager')
   const punctualConstraints = constraintsSummary.filter((c) => c.type === 'punctual')
-  const conditionalConstraints = constraintsSummary.filter((c) => c.type === 'conditional')
 
   // Readiness checks
   const checks = {
@@ -326,26 +304,6 @@ export function PlanningPage() {
                       <span className={c.detail === 'OFF (repos)' || c.detail === 'Indisponible' ? 'font-medium text-warning' : ''}>
                         {c.detail}
                       </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Contraintes conditionnelles (soir uniquement, etc.) */}
-            {conditionalConstraints.length > 0 && (
-              <div>
-                <h4 className="mb-2 text-sm font-semibold text-muted-foreground">
-                  <Clock size={14} className="mr-1 inline" />
-                  Disponibilités restreintes
-                </h4>
-                <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
-                  {conditionalConstraints.map((c, i) => (
-                    <div key={`cond-${i}`} className="flex items-center gap-2 rounded-md bg-blue-50 px-3 py-1.5 text-sm">
-                      <span className="font-medium">{c.employeeName}</span>
-                      <span className="text-muted-foreground">—</span>
-                      <span className="text-muted-foreground">{c.dayLabel}</span>
-                      <span className="text-blue-700">{c.detail}</span>
                     </div>
                   ))}
                 </div>
