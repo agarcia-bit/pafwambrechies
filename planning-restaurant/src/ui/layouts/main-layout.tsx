@@ -32,7 +32,7 @@ const NAV_SECTIONS = [
       { id: 'employees', label: 'Salariés', icon: Users },
       { id: 'roles', label: 'Rôles', icon: Tags },
       { id: 'shift-templates', label: 'Créneaux horaires', icon: Clock },
-      { id: 'constraints', label: 'Contraintes', icon: ShieldAlert },
+      { id: 'constraints', label: 'Disponibilités', icon: ShieldAlert },
       { id: 'forecasts', label: 'CA Prévisionnel', icon: TrendingUp },
     ],
   },
