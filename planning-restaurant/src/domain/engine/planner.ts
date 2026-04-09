@@ -317,9 +317,19 @@ function ensureOpening(
   if (hasOpening) return
 
   // 1 personne à 9h30, niveau le plus bas
+  // Extra check: only candidates whose rest allows 9.5 start
   const assigned = assignFirstAvailable(input, state, ctx, planningId, nonManagers, {
     shiftFilter: (s) => s.startTime <= 9.5,
-    sortEmployees: (a, b) => a.level - b.level,
+    sortEmployees: (a, b) => {
+      // Exclude employees whose previous day ended too late for 9.5 start
+      const aLast = state.employeeLastEndTime.get(a.id)
+      const bLast = state.employeeLastEndTime.get(b.id)
+      const aBlocked = aLast && aLast.day === ctx.dayOfWeek - 1 && (24 - aLast.endTime + 9.5) < 11
+      const bBlocked = bLast && bLast.day === ctx.dayOfWeek - 1 && (24 - bLast.endTime + 9.5) < 11
+      if (aBlocked && !bBlocked) return 1
+      if (!aBlocked && bBlocked) return -1
+      return a.level - b.level
+    },
   })
 
   // Week-end : +1 renfort à 10h
@@ -344,23 +354,35 @@ function ensureClosing(
 ): void {
   const minClosing = 3
 
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 8; attempt++) {
     const dayEntries = state.entries.filter((e) => e.dayOfWeek === ctx.dayOfWeek)
     const closingStaff = dayEntries.filter((e) => e.endTime >= ctx.closingTime)
 
     if (closingStaff.length >= minClosing) return
 
-    // Besoin de plus de gens à la fermeture → assigner un créneau qui couvre la fermeture
+    // Try 1: assign someone new with a closing shift
     const assigned = assignFirstAvailable(input, state, ctx, planningId, nonManagers, {
       shiftFilter: (s) => s.endTime >= ctx.closingTime,
       sortEmployees: (a, b) => {
-        // Préférer les niveaux les plus élevés pour la fermeture
+        // Prefer employees who NEED more hours (further from their minimum)
+        const aHours = state.employeeHours.get(a.id) ?? 0
+        const bHours = state.employeeHours.get(b.id) ?? 0
+        const aNeeds = getWeeklyBounds(a).min - aHours
+        const bNeeds = getWeeklyBounds(b).min - bHours
+        if (bNeeds !== aNeeds) return bNeeds - aNeeds // most hours needed first
         if (b.level !== a.level) return b.level - a.level
         return Math.random() - 0.5
       },
     })
 
-    if (!assigned) break // Personne de disponible
+    if (!assigned) {
+      // Try 2: any shift ending at closing, even if employee is at lower level
+      const assigned2 = assignFirstAvailable(input, state, ctx, planningId, nonManagers, {
+        shiftFilter: (s) => s.endTime >= ctx.closingTime,
+        sortEmployees: () => Math.random() - 0.5, // anyone available
+      })
+      if (!assigned2) break
+    }
   }
 }
 
