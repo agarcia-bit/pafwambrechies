@@ -1,32 +1,42 @@
 import { useEffect, useState } from 'react'
 import { useEmployeeStore } from '@/store/employee-store'
-import { Button, Select, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
-import type { Unavailability, ManagerFixedSchedule } from '@/domain/models/constraint'
+import { Button, Select, Input, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
+import type { Unavailability, ManagerFixedSchedule, ConditionalAvailability } from '@/domain/models/constraint'
 import {
   fetchUnavailabilities,
   createUnavailability,
   deleteUnavailability,
   fetchManagerSchedules,
   upsertManagerSchedule,
+  fetchConditionalAvailabilities,
+  createConditionalAvailability,
+  deleteConditionalAvailability,
 } from '@/infrastructure/supabase/repositories/constraint-repo'
 import { useShiftTemplateStore } from '@/store/shift-template-store'
-import { Plus, Trash2, Save } from 'lucide-react'
+import { Plus, Trash2, Save, Clock } from 'lucide-react'
 
 const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+const DAY_SHORT = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
 export function ConstraintsPage() {
   const { employees, load: loadEmployees } = useEmployeeStore()
   const { templates, load: loadTemplates } = useShiftTemplateStore()
   const [selectedEmployee, setSelectedEmployee] = useState<string>('')
   const [unavailabilities, setUnavailabilities] = useState<Unavailability[]>([])
+  const [conditionals, setConditionals] = useState<ConditionalAvailability[]>([])
   const [managerSchedules, setManagerSchedules] = useState<ManagerFixedSchedule[]>([])
   const [loading, setLoading] = useState(false)
 
-  // Form state for new unavailability
+  // Unavailability form
   const [newType, setNewType] = useState<'fixed' | 'punctual'>('fixed')
-  const [newDay, setNewDay] = useState(1) // mardi par défaut
-  const [newDate, setNewDate] = useState('')
+  const [newDays, setNewDays] = useState<number[]>([])
+  const [newDates, setNewDates] = useState<string[]>([''])
   const [newLabel, setNewLabel] = useState('')
+
+  // Conditional availability form
+  const [condDays, setCondDays] = useState<number[]>([])
+  const [condShiftCodes, setCondShiftCodes] = useState<string[]>([])
+  const [condMaxHours, setCondMaxHours] = useState<string>('')
 
   useEffect(() => {
     loadEmployees()
@@ -39,12 +49,14 @@ export function ConstraintsPage() {
   async function loadConstraints(empId: string) {
     setLoading(true)
     try {
-      const [ua, ms] = await Promise.all([
+      const [ua, ms, ca] = await Promise.all([
         fetchUnavailabilities(empId),
         fetchManagerSchedules(empId),
+        fetchConditionalAvailabilities(empId),
       ])
       setUnavailabilities(ua)
       setManagerSchedules(ms)
+      setConditionals(ca)
     } catch {
       // silently fail if no connection
     }
@@ -56,16 +68,54 @@ export function ConstraintsPage() {
     if (empId) loadConstraints(empId)
   }
 
+  function toggleDay(day: number, list: number[], setList: (v: number[]) => void) {
+    setList(list.includes(day) ? list.filter((d) => d !== day) : [...list, day])
+  }
+
+  function toggleShiftCode(code: string) {
+    setCondShiftCodes(
+      condShiftCodes.includes(code)
+        ? condShiftCodes.filter((c) => c !== code)
+        : [...condShiftCodes, code],
+    )
+  }
+
+  // --- Unavailabilities ---
+
   async function handleAddUnavailability() {
     if (!selectedEmployee) return
-    const u = await createUnavailability({
-      employeeId: selectedEmployee,
-      type: newType,
-      dayOfWeek: newType === 'fixed' ? newDay : null,
-      specificDate: newType === 'punctual' ? newDate : null,
-      label: newLabel || (newType === 'fixed' ? `OFF ${DAY_NAMES[newDay]}` : `OFF ${newDate}`),
-    })
-    setUnavailabilities([...unavailabilities, u])
+    if (newType === 'fixed' && newDays.length === 0) return
+    if (newType === 'punctual' && newDates.filter(Boolean).length === 0) return
+
+    const created: Unavailability[] = []
+
+    if (newType === 'fixed') {
+      for (const day of newDays) {
+        const u = await createUnavailability({
+          employeeId: selectedEmployee,
+          type: 'fixed',
+          dayOfWeek: day,
+          specificDate: null,
+          label: newLabel || `OFF ${DAY_NAMES[day]}`,
+        })
+        created.push(u)
+      }
+    } else {
+      for (const date of newDates.filter(Boolean)) {
+        const u = await createUnavailability({
+          employeeId: selectedEmployee,
+          type: 'punctual',
+          dayOfWeek: null,
+          specificDate: date,
+          label: newLabel || `OFF ${date}`,
+        })
+        created.push(u)
+      }
+    }
+
+    setUnavailabilities([...unavailabilities, ...created])
+    setNewDays([])
+    setNewDates([''])
     setNewLabel('')
   }
 
@@ -73,6 +123,35 @@ export function ConstraintsPage() {
     await deleteUnavailability(id)
     setUnavailabilities(unavailabilities.filter((u) => u.id !== id))
   }
+
+  // --- Conditional Availabilities ---
+
+  async function handleAddConditional() {
+    if (!selectedEmployee || condDays.length === 0 || condShiftCodes.length === 0) return
+
+    const created: ConditionalAvailability[] = []
+    for (const day of condDays) {
+      const ca = await createConditionalAvailability({
+        employeeId: selectedEmployee,
+        dayOfWeek: day,
+        allowedShiftCodes: condShiftCodes,
+        maxHours: condMaxHours ? Number(condMaxHours) : null,
+      })
+      created.push(ca)
+    }
+
+    setConditionals([...conditionals, ...created])
+    setCondDays([])
+    setCondShiftCodes([])
+    setCondMaxHours('')
+  }
+
+  async function handleDeleteConditional(id: string) {
+    await deleteConditionalAvailability(id)
+    setConditionals(conditionals.filter((c) => c.id !== id))
+  }
+
+  // --- Manager schedules ---
 
   async function handleSaveManagerSchedule(dayOfWeek: number, shiftTemplateId: string | null, startTime: number | null, endTime: number | null) {
     if (!selectedEmployee) return
@@ -88,6 +167,9 @@ export function ConstraintsPage() {
       saved,
     ])
   }
+
+  // Unique shift codes from templates
+  const shiftCodes = [...new Set(templates.map((t) => t.code))]
 
   return (
     <div className="flex flex-col gap-6">
@@ -122,7 +204,7 @@ export function ConstraintsPage() {
           </CardHeader>
           <CardContent>
             <p className="mb-4 text-sm text-muted-foreground">
-              Les managers ont des horaires fixes chaque semaine. Sélectionnez OFF ou un créneau pour chaque jour.
+              Les managers ont des horaires fixes chaque semaine.
             </p>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-sm">
@@ -160,7 +242,7 @@ export function ConstraintsPage() {
       {selectedEmployee && !loading && (
         <Card>
           <CardHeader>
-            <CardTitle>Indisponibilités</CardTitle>
+            <CardTitle>Indisponibilités (jours OFF)</CardTitle>
           </CardHeader>
           <CardContent>
             {/* Liste existante */}
@@ -175,7 +257,7 @@ export function ConstraintsPage() {
                       <span className="text-sm">
                         {u.type === 'fixed' && u.dayOfWeek != null
                           ? `Chaque ${DAY_NAMES[u.dayOfWeek]}`
-                          : u.specificDate}
+                          : u.specificDate && new Date(u.specificDate).toLocaleDateString('fr-FR')}
                       </span>
                       {u.label && <span className="ml-2 text-sm text-muted-foreground">— {u.label}</span>}
                     </div>
@@ -191,38 +273,229 @@ export function ConstraintsPage() {
             )}
 
             {/* Formulaire ajout */}
-            <div className="flex items-end gap-3 rounded-lg bg-muted/50 p-4">
-              <Select
-                id="newType"
-                label="Type"
-                value={newType}
-                onChange={(e) => setNewType(e.target.value as 'fixed' | 'punctual')}
-                options={[
-                  { value: 'fixed', label: 'Récurrent (chaque semaine)' },
-                  { value: 'punctual', label: 'Ponctuel (date précise)' },
-                ]}
-              />
-              {newType === 'fixed' ? (
+            <div className="rounded-lg bg-muted/50 p-4">
+              <div className="mb-3 flex gap-3">
                 <Select
-                  id="newDay"
-                  label="Jour"
-                  value={String(newDay)}
-                  onChange={(e) => setNewDay(Number(e.target.value))}
-                  options={DAY_NAMES.map((name, i) => ({ value: String(i), label: name }))}
+                  id="newType"
+                  label="Type"
+                  value={newType}
+                  onChange={(e) => { setNewType(e.target.value as 'fixed' | 'punctual'); setNewDays([]); setNewDates(['']) }}
+                  options={[
+                    { value: 'fixed', label: 'Récurrent (chaque semaine)' },
+                    { value: 'punctual', label: 'Ponctuel (dates précises)' },
+                  ]}
                 />
+                <Input
+                  id="newLabel"
+                  label="Motif (optionnel)"
+                  placeholder="ex: Cours du soir"
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                />
+              </div>
+
+              {newType === 'fixed' ? (
+                <div className="mb-3">
+                  <label className="mb-2 block text-sm font-medium">Jours (cochez plusieurs)</label>
+                  <div className="flex flex-wrap gap-2">
+                    {DAY_NAMES.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => toggleDay(i, newDays, setNewDays)}
+                        className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                          newDays.includes(i)
+                            ? 'bg-warning text-white'
+                            : 'bg-background border border-border text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        {DAY_SHORT[i]}
+                      </button>
+                    ))}
+                  </div>
+                  {newDays.length > 0 && (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {newDays.length} jour{newDays.length > 1 ? 's' : ''} sélectionné{newDays.length > 1 ? 's' : ''} : {newDays.sort((a, b) => a - b).map((d) => DAY_SHORT[d]).join(', ')}
+                    </p>
+                  )}
+                </div>
               ) : (
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium">Date</label>
-                  <input
-                    type="date"
-                    value={newDate}
-                    onChange={(e) => setNewDate(e.target.value)}
-                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                  />
+                <div className="mb-3">
+                  <label className="mb-2 block text-sm font-medium">Dates</label>
+                  <div className="flex flex-col gap-2">
+                    {newDates.map((date, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <input
+                          type="date"
+                          value={date}
+                          onChange={(e) => {
+                            const updated = [...newDates]
+                            updated[i] = e.target.value
+                            setNewDates(updated)
+                          }}
+                          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                        />
+                        {newDates.length > 1 && (
+                          <button
+                            onClick={() => setNewDates(newDates.filter((_, j) => j !== i))}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setNewDates([...newDates, ''])}
+                      className="self-start text-sm text-primary hover:underline"
+                    >
+                      + Ajouter une date
+                    </button>
+                  </div>
                 </div>
               )}
-              <Button onClick={handleAddUnavailability} size="sm">
-                <Plus size={16} className="mr-1" /> Ajouter
+
+              <Button
+                onClick={handleAddUnavailability}
+                size="sm"
+                disabled={newType === 'fixed' ? newDays.length === 0 : newDates.filter(Boolean).length === 0}
+              >
+                <Plus size={16} className="mr-1" /> Ajouter {newType === 'fixed' && newDays.length > 1 ? `(${newDays.length} jours)` : ''}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Disponibilités restreintes (horaires limités) */}
+      {selectedEmployee && !loading && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock size={18} />
+              Disponibilités restreintes (horaires limités)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Pour les salariés disponibles uniquement sur certains créneaux (ex: étudiants disponibles seulement le soir en semaine).
+            </p>
+
+            {/* Liste existante */}
+            {conditionals.length > 0 && (
+              <div className="mb-4 flex flex-col gap-2">
+                {conditionals.map((ca) => (
+                  <div key={ca.id} className="flex items-center justify-between rounded border border-blue-200 bg-blue-50 px-3 py-2">
+                    <div className="text-sm">
+                      <span className="font-medium">{DAY_NAMES[ca.dayOfWeek]}</span>
+                      <span className="mx-2 text-muted-foreground">→</span>
+                      <span className="text-blue-700">
+                        Créneaux autorisés : {ca.allowedShiftCodes.join(', ')}
+                      </span>
+                      {ca.maxHours && (
+                        <span className="ml-2 text-muted-foreground">(max {ca.maxHours}h)</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleDeleteConditional(ca.id)}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Formulaire ajout */}
+            <div className="rounded-lg bg-blue-50/50 p-4">
+              <div className="mb-3">
+                <label className="mb-2 block text-sm font-medium">Jours concernés (cochez plusieurs)</label>
+                <div className="flex flex-wrap gap-2">
+                  {DAY_NAMES.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => toggleDay(i, condDays, setCondDays)}
+                      className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                        condDays.includes(i)
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-background border border-border text-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {DAY_SHORT[i]}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={() => setCondDays([0, 1, 2, 3, 4])}
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    Lun→Ven
+                  </button>
+                  <button
+                    onClick={() => setCondDays([5, 6])}
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    Sam+Dim
+                  </button>
+                  <button
+                    onClick={() => setCondDays([0, 1, 2, 3, 4, 5, 6])}
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    Tous
+                  </button>
+                  <button
+                    onClick={() => setCondDays([])}
+                    className="text-xs text-muted-foreground hover:underline"
+                  >
+                    Aucun
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <label className="mb-2 block text-sm font-medium">Créneaux autorisés uniquement</label>
+                <div className="flex flex-wrap gap-2">
+                  {shiftCodes.map((code) => (
+                    <button
+                      key={code}
+                      onClick={() => toggleShiftCode(code)}
+                      className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                        condShiftCodes.includes(code)
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-background border border-border text-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {code}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  ex: sélectionnez SOIR pour "disponible uniquement à partir de 18h"
+                </p>
+              </div>
+
+              <div className="mb-3 w-48">
+                <Input
+                  id="condMaxHours"
+                  label="Max heures/jour (optionnel)"
+                  type="number"
+                  min={0}
+                  max={12}
+                  step={0.5}
+                  value={condMaxHours}
+                  onChange={(e) => setCondMaxHours(e.target.value)}
+                  placeholder="ex: 6"
+                />
+              </div>
+
+              <Button
+                onClick={handleAddConditional}
+                size="sm"
+                disabled={condDays.length === 0 || condShiftCodes.length === 0}
+              >
+                <Plus size={16} className="mr-1" />
+                Ajouter {condDays.length > 1 ? `(${condDays.length} jours)` : ''}
               </Button>
             </div>
           </CardContent>
@@ -251,7 +524,7 @@ function ManagerDayRow({
   const [endTime, setEndTime] = useState(schedule?.endTime ?? null)
   const [templateId, setTemplateId] = useState(schedule?.shiftTemplateId ?? '')
 
-  const isClosed = day === 0 // Lundi fermé
+  const isClosed = day === 0
 
   return (
     <tr className={`border-b border-border ${isClosed ? 'bg-planning-off/30' : ''}`}>
