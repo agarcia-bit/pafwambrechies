@@ -16,16 +16,19 @@ export function PlanningGrid({ report }: PlanningGridProps) {
             <tr className="bg-primary text-primary-foreground">
               <th className="sticky left-0 z-10 bg-primary px-2 py-2 text-left">Contrat</th>
               <th className="sticky left-16 z-10 bg-primary px-2 py-2 text-left">Salarié</th>
-              {DAY_NAMES.map((day, i) => (
-                <th key={i} colSpan={3} className="px-1 py-2 text-center">
-                  {day}
-                  {report.dailySummaries.find((d) => d.dayOfWeek === i) && (
-                    <div className="text-[10px] font-normal opacity-75">
-                      {formatDateShort(report.dailySummaries.find((d) => d.dayOfWeek === i)?.date ?? '')}
-                    </div>
-                  )}
-                </th>
-              ))}
+              {DAY_NAMES.slice(1).map((day, i) => {
+                const dayIdx = i + 1
+                return (
+                  <th key={dayIdx} colSpan={3} className="px-1 py-2 text-center">
+                    {day}
+                    {report.dailySummaries.find((d) => d.dayOfWeek === dayIdx) && (
+                      <div className="text-[10px] font-normal opacity-75">
+                        {formatDateShort(report.dailySummaries.find((d) => d.dayOfWeek === dayIdx)?.date ?? '')}
+                      </div>
+                    )}
+                  </th>
+                )
+              })}
               <th className="px-2 py-2 text-center">Total</th>
               <th className="px-2 py-2 text-center">Repas</th>
               <th className="px-2 py-2 text-center">Paniers</th>
@@ -33,8 +36,8 @@ export function PlanningGrid({ report }: PlanningGridProps) {
             <tr className="bg-primary/80 text-primary-foreground text-[10px]">
               <th className="sticky left-0 z-10 bg-primary/80"></th>
               <th className="sticky left-16 z-10 bg-primary/80"></th>
-              {DAY_NAMES.map((_, i) => (
-                <th key={`sub-${i}`} colSpan={3} className="px-1 py-1 text-center">
+              {DAY_NAMES.slice(1).map((_, i) => (
+                <th key={`sub-${i + 1}`} colSpan={3} className="px-1 py-1 text-center">
                   <span className="inline-flex gap-2">
                     <span>Déb</span><span>Fin</span><span>H</span>
                   </span>
@@ -54,7 +57,7 @@ export function PlanningGrid({ report }: PlanningGridProps) {
                 <td className="sticky left-16 z-10 bg-background px-2 py-1.5 font-medium whitespace-nowrap">
                   {summary.employeeName}
                 </td>
-                {[0, 1, 2, 3, 4, 5, 6].map((d) => {
+                {[1, 2, 3, 4, 5, 6].map((d) => {
                   const entry = report.planning.entries.find(
                     (e) => e.employeeId === summary.employeeId && e.dayOfWeek === d,
                   )
