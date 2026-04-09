@@ -303,8 +303,8 @@ export function PlanningPage() {
               <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    {DAY_NAMES.map((name, i) => (
-                      <th key={i} className={`px-2 py-2 text-center font-medium ${i === 0 ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
+                    {DAY_NAMES.slice(1).map((name, i) => (
+                      <th key={i + 1} className="px-2 py-2 text-center font-medium text-muted-foreground">
                         {name}
                       </th>
                     ))}
@@ -312,17 +312,18 @@ export function PlanningPage() {
                 </thead>
                 <tbody>
                   <tr>
-                    {DAY_NAMES.map((_, dayIndex) => {
+                    {DAY_NAMES.slice(1).map((_, i) => {
+                      const dayIndex = i + 1
                       const dayFixed = fixedConstraints.filter((c) => c.dayLabel === DAY_NAMES[dayIndex])
                       const dayPunctual = punctualConstraints.filter((c) => c.dayLabel.startsWith(DAY_NAMES[dayIndex]))
                       const items = [...dayFixed, ...dayPunctual]
                       return (
-                        <td key={dayIndex} className={`px-2 py-2 align-top ${dayIndex === 0 ? 'bg-muted/30' : ''}`}>
+                        <td key={dayIndex} className="px-2 py-2 align-top">
                           {items.length > 0 ? (
                             <div className="flex flex-col gap-1">
-                              {items.map((c, i) => (
+                              {items.map((c, ci) => (
                                 <div
-                                  key={i}
+                                  key={ci}
                                   className={`rounded px-2 py-1 text-xs ${
                                     c.type === 'punctual'
                                       ? 'bg-destructive/10 border border-destructive/20 text-destructive'
@@ -335,8 +336,6 @@ export function PlanningPage() {
                                 </div>
                               ))}
                             </div>
-                          ) : dayIndex === 0 ? (
-                            <span className="text-xs text-muted-foreground/50">Fermé</span>
                           ) : null}
                         </td>
                       )
