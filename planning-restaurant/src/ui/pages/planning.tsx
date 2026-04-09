@@ -14,12 +14,14 @@ import type { Tenant } from '@/domain/models/tenant'
 import { DEFAULT_TENANT_CONFIG } from '@/domain/models/tenant'
 import {
   fetchUnavailabilities,
+  createUnavailability,
+  deleteUnavailability,
   fetchManagerSchedules,
   fetchConditionalAvailabilities,
 } from '@/infrastructure/supabase/repositories/constraint-repo'
 import { exportPlanningToExcel } from '@/infrastructure/export/excel-export'
 import type { EventOverride } from '@/domain/engine'
-import { Calendar, Download, Play, ChevronLeft, ChevronRight, AlertTriangle, Sun } from 'lucide-react'
+import { Calendar, Download, Play, ChevronLeft, ChevronRight, AlertTriangle, Sun, Plus, X } from 'lucide-react'
 
 const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 
@@ -76,6 +78,11 @@ export function PlanningPage() {
   // Beau temps (weather boost) — jours cochés = CA +30%
   const [beauTempsJours, setBeauTempsJours] = useState<number[]>([])
 
+  // Ajout contrainte ponctuelle inline
+  const [addingConstraint, setAddingConstraint] = useState(false)
+  const [newConstraintEmpId, setNewConstraintEmpId] = useState('')
+  const [newConstraintDay, setNewConstraintDay] = useState(1)
+
   function reloadConstraints() {
     setConstraintsLoaded(false)
     Promise.all([
@@ -127,7 +134,7 @@ export function PlanningPage() {
 
   // Build constraints summary for display
   const constraintsSummary = useMemo(() => {
-    const items: { employeeName: string; type: 'fixed' | 'punctual' | 'conditional' | 'manager'; dayLabel: string; detail: string }[] = []
+    const items: { employeeName: string; type: 'fixed' | 'punctual' | 'conditional' | 'manager'; dayLabel: string; detail: string; id?: string }[] = []
 
     for (const emp of activeEmployees) {
       const empName = `${emp.firstName} ${emp.lastName}`.trim()
@@ -169,6 +176,7 @@ export function PlanningPage() {
             type: 'punctual',
             dayLabel: `${DAY_NAMES[dayIndex]} ${new Date(ua.specificDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}`,
             detail: ua.label || 'Indisponible (ponctuel)',
+            id: ua.id,
           })
         }
       }
@@ -290,15 +298,86 @@ export function PlanningPage() {
       </Card>
 
       {/* Rappel des contraintes — trié par jour en colonnes */}
-      {constraintsLoaded && constraintsSummary.length > 0 && (
+      {constraintsLoaded && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle size={18} className="text-warning" />
-              Contraintes de la semaine
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle size={18} className="text-warning" />
+                Contraintes de la semaine
+              </CardTitle>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setAddingConstraint(!addingConstraint)}
+              >
+                <Plus size={14} className="mr-1" /> Contrainte ponctuelle
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
+            {/* Formulaire ajout inline */}
+            {addingConstraint && (
+              <div className="mb-4 flex items-end gap-3 rounded-lg bg-destructive/5 border border-destructive/20 p-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium">Salarié</label>
+                  <select
+                    value={newConstraintEmpId}
+                    onChange={(e) => setNewConstraintEmpId(e.target.value)}
+                    className="h-8 rounded border border-input bg-background px-2 text-sm"
+                  >
+                    <option value="">— Choisir —</option>
+                    {activeEmployees.map((e) => (
+                      <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium">Jour</label>
+                  <select
+                    value={newConstraintDay}
+                    onChange={(e) => setNewConstraintDay(Number(e.target.value))}
+                    className="h-8 rounded border border-input bg-background px-2 text-sm"
+                  >
+                    {DAY_NAMES.slice(1).map((name, i) => (
+                      <option key={i + 1} value={i + 1}>{name} {weekDates[i + 1] ? new Date(weekDates[i + 1]).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : ''}</option>
+                    ))}
+                  </select>
+                </div>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={!newConstraintEmpId}
+                  onClick={async () => {
+                    if (!newConstraintEmpId) return
+                    const date = weekDates[newConstraintDay]
+                    if (!date) return
+                    const emp = activeEmployees.find((e) => e.id === newConstraintEmpId)
+                    await createUnavailability({
+                      employeeId: newConstraintEmpId,
+                      type: 'punctual',
+                      dayOfWeek: null,
+                      specificDate: date,
+                      label: `OFF ${emp?.firstName ?? ''} ${DAY_NAMES[newConstraintDay]}`,
+                    })
+                    reloadConstraints()
+                    setAddingConstraint(false)
+                    setNewConstraintEmpId('')
+                  }}
+                >
+                  Ajouter OFF
+                </Button>
+                <button onClick={() => setAddingConstraint(false)} className="text-muted-foreground hover:text-foreground">
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+
+            <div className="mb-2 flex gap-4 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded bg-warning/60"></span> Récurrent (chaque semaine)</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded bg-destructive/60"></span> Ponctuel (cette semaine)</span>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-sm">
                 <thead>
@@ -324,7 +403,7 @@ export function PlanningPage() {
                               {items.map((c, ci) => (
                                 <div
                                   key={ci}
-                                  className={`rounded px-2 py-1 text-xs ${
+                                  className={`group relative rounded px-2 py-1 text-xs ${
                                     c.type === 'punctual'
                                       ? 'bg-destructive/10 border border-destructive/20 text-destructive'
                                       : 'bg-warning/10 text-warning'
@@ -333,6 +412,18 @@ export function PlanningPage() {
                                   <span className="font-medium">{c.employeeName}</span>
                                   <br />
                                   <span className="opacity-80">{c.detail}</span>
+                                  {c.type === 'punctual' && c.id && (
+                                    <button
+                                      onClick={async () => {
+                                        await deleteUnavailability(c.id!)
+                                        reloadConstraints()
+                                      }}
+                                      className="absolute -right-1 -top-1 hidden rounded-full bg-destructive p-0.5 text-white group-hover:block"
+                                      title="Supprimer"
+                                    >
+                                      <X size={10} />
+                                    </button>
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -345,7 +436,7 @@ export function PlanningPage() {
               </table>
             </div>
 
-            {punctualConstraints.length === 0 && (
+            {punctualConstraints.length === 0 && !addingConstraint && (
               <p className="mt-3 text-sm text-muted-foreground">
                 Aucune contrainte ponctuelle pour cette semaine.
               </p>
