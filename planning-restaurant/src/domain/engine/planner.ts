@@ -56,6 +56,11 @@ export function generatePlanning(input: PlannerInput): PlanningReport {
     )
   }
 
+  // Phase 3.5 : Pré-allouer les petits contrats contraints
+  // Les salariés avec peu de créneaux disponibles (ex: étudiants soir uniquement)
+  // doivent être placés en premier sinon ils n'ont plus de place
+  preAllocateConstrainedEmployees(input, state, dayContexts, planningId)
+
   // Phase 4 : En délestage, redistribuer le budget — priorité Ven/Sam/Dim
   if (needsDelestage) {
     redistributeBudget(dayContexts, totalAvailable, state)
@@ -293,6 +298,85 @@ function redistributeBudget(
       const newBudget = remainingForLow * ratio
       ctx.hoursBudget = newBudget
       ctx.allocatableHours = Math.max(0, newBudget - (state.dailyHours.get(ctx.dayOfWeek) ?? 0))
+    }
+  }
+}
+
+// =====================================================
+// Phase 3.5 : PRE-ALLOCATE CONSTRAINED EMPLOYEES
+// =====================================================
+
+/**
+ * Pré-alloue les salariés les plus contraints (peu de créneaux disponibles
+ * dans la semaine) pour s'assurer qu'ils atteignent leur minimum d'heures.
+ *
+ * Cible : salariés avec des disponibilités conditionnelles (soir uniquement, etc.)
+ * qui risquent de ne pas avoir assez de slots si on attend l'allocation générale.
+ */
+function preAllocateConstrainedEmployees(
+  input: PlannerInput,
+  state: SolverState,
+  dayContexts: DayAllocationContext[],
+  planningId: string,
+): void {
+  const nonManagers = input.employees.filter((e) => !e.isManager && e.active)
+
+  // Identifier les salariés les plus contraints :
+  // ceux qui ont des conditional availabilities (soir uniquement, etc.)
+  const constrainedEmps = nonManagers.filter((emp) =>
+    input.conditionalAvailabilities.some((ca) => ca.employeeId === emp.id),
+  )
+
+  if (constrainedEmps.length === 0) return
+
+  // Pour chaque salarié contraint, compter le total de slots disponibles dans la semaine
+  const empSlots = constrainedEmps.map((emp) => {
+    let totalSlots = 0
+    for (const ctx of dayContexts) {
+      if (!canWorkDay(input, state, emp, ctx)) continue
+      totalSlots += getAvailableShifts(input, state, emp, ctx).length
+    }
+    const bounds = getWeeklyBounds(emp)
+    // Nombre de jours nécessaires pour atteindre le minimum (shifts ~5-6h en moyenne)
+    const daysNeeded = Math.ceil(bounds.min / 5)
+    return { emp, totalSlots, daysNeeded, bounds }
+  })
+
+  // Trier : les plus contraints d'abord (moins de slots)
+  empSlots.sort((a, b) => a.totalSlots - b.totalSlots)
+
+  for (const { emp, daysNeeded, bounds } of empSlots) {
+    let hoursPlaced = state.employeeHours.get(emp.id) ?? 0
+    let daysPlaced = 0
+
+    // Allouer sur les jours avec le plus de besoin (week-end d'abord)
+    const dayPriority = [5, 6, 4, 1, 2, 3]
+
+    for (const dayOfWeek of dayPriority) {
+      if (hoursPlaced >= bounds.min) break
+      if (daysPlaced >= daysNeeded + 1) break // un peu de marge
+
+      const ctx = dayContexts.find((d) => d.dayOfWeek === dayOfWeek)
+      if (!ctx) continue
+      if (state.employeeWorkDays.get(emp.id)?.has(dayOfWeek)) continue
+      if (!canWorkDay(input, state, emp, ctx)) continue
+
+      const shifts = getAvailableShifts(input, state, emp, ctx)
+      if (shifts.length === 0) continue
+
+      // Préférer le créneau qui aide le plus à atteindre le minimum
+      const remaining = bounds.min - hoursPlaced
+      const sorted = [...shifts].sort((a, b) => {
+        const aDiff = Math.abs(a.effectiveHours - remaining)
+        const bDiff = Math.abs(b.effectiveHours - remaining)
+        return aDiff - bDiff
+      })
+
+      const shift = sorted[0]
+      if (tryAssign(input, state, emp, shift, ctx, planningId)) {
+        hoursPlaced += shift.effectiveHours
+        daysPlaced++
+      }
     }
   }
 }
