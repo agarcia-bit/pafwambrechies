@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, Button } from '@/ui/component
 import { EmployeeForm } from '@/ui/components/employee-form'
 import { getWeeklyBounds } from '@/domain/models/employee'
 import type { Employee } from '@/domain/models/employee'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react'
 
 const CONTRACT_LABELS: Record<string, string> = {
   cdi: 'CDI',
@@ -94,6 +94,27 @@ export function EmployeesPage() {
 
       {loading && <p className="text-muted-foreground">Chargement...</p>}
 
+      {/* Alerte salariés sans rôle */}
+      {(() => {
+        const withoutRole = activeEmployees.filter(
+          (emp) => !employeeRoles.some((er) => er.employeeId === emp.id),
+        )
+        if (withoutRole.length === 0) return null
+        return (
+          <div className="flex items-start gap-3 rounded-lg border border-warning/50 bg-warning/5 p-4">
+            <AlertTriangle size={18} className="mt-0.5 shrink-0 text-warning" />
+            <div>
+              <p className="text-sm font-medium">
+                {withoutRole.length} salarié{withoutRole.length > 1 ? 's' : ''} sans rôle attribué
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {withoutRole.map((e) => e.firstName).join(', ')} — Allez dans l'onglet <strong>Rôles</strong> pour leur affecter un poste.
+              </p>
+            </div>
+          </div>
+        )
+      })()}
+
       {displayedEmployees.length > 0 && (
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full border-collapse text-sm">
@@ -134,7 +155,9 @@ export function EmployeesPage() {
                           {role.name}
                         </span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive">
+                          <AlertTriangle size={12} /> Non attribué
+                        </span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-center">
