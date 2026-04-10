@@ -675,10 +675,19 @@ function getAvailableShifts(
     }
   }
 
-  // Repos inter-shift
+  // Repos inter-shift — backward (yesterday → today)
   const lastEnd = state.employeeLastEndTime.get(emp.id)
   if (lastEnd && lastEnd.day === ctx.dayOfWeek - 1) {
     shifts = shifts.filter((s) => (24 - lastEnd.endTime + s.startTime) >= 11)
+  }
+
+  // Repos inter-shift — forward (today → tomorrow)
+  // If employee already has a shift tomorrow, ensure this shift's end allows 11h rest
+  const tomorrowEntry = state.entries.find(
+    (e) => e.employeeId === emp.id && e.dayOfWeek === ctx.dayOfWeek + 1,
+  )
+  if (tomorrowEntry) {
+    shifts = shifts.filter((s) => (24 - s.endTime + tomorrowEntry.startTime) >= 11)
   }
 
   // Bornes contractuelles
@@ -715,6 +724,13 @@ function chooseBestShift(
       u.employeeId === emp.id && u.type === 'fixed' && u.dayOfWeek === nextDay,
     )
 
+  // Count how many times this employee already has each shift code this week
+  const empEntries = state.entries.filter((e) => e.employeeId === emp.id)
+  const shiftCodeCount = new Map<string, number>()
+  for (const e of empEntries) {
+    shiftCodeCount.set(e.shiftTemplateId, (shiftCodeCount.get(e.shiftTemplateId) ?? 0) + 1)
+  }
+
   const scored = available.map((shift) => {
     let score = 0
 
@@ -730,14 +746,17 @@ function chooseBestShift(
       score += shift.effectiveHours
     }
 
-    // Pénalité pour les très longs créneaux
+    // Pénalité pour les très longs créneaux (11h)
     if (shift.effectiveHours > 8) score -= 2
 
     // Pénalité pour shift finissant à minuit si l'employé peut travailler demain
-    // (bloque les shifts matinaux du lendemain à cause du repos 11h)
     if (shift.endTime >= 24 && mightWorkTomorrow) {
       score -= 3
     }
+
+    // Pénalité pour répétition du même créneau (varier les horaires)
+    const timesUsed = shiftCodeCount.get(shift.id) ?? 0
+    if (timesUsed > 0) score -= timesUsed * 3
 
     // Variation aléatoire
     score += (Math.random() - 0.5) * 2
