@@ -307,11 +307,11 @@ function redistributeBudget(
 // =====================================================
 
 /**
- * Pré-alloue les salariés les plus contraints (peu de créneaux disponibles
- * dans la semaine) pour s'assurer qu'ils atteignent leur minimum d'heures.
+ * Pré-alloue TOUS les salariés non-managers pour garantir leur minimum d'heures.
+ * Traite les plus contraints en premier (moins de slots disponibles).
  *
- * Cible : salariés avec des disponibilités conditionnelles (soir uniquement, etc.)
- * qui risquent de ne pas avoir assez de slots si on attend l'allocation générale.
+ * Chaque salarié reçoit suffisamment de shifts pour atteindre sa borne min,
+ * AVANT l'allocation par budget. Le budget s'adaptera ensuite.
  */
 function preAllocateConstrainedEmployees(
   input: PlannerInput,
@@ -321,16 +321,8 @@ function preAllocateConstrainedEmployees(
 ): void {
   const nonManagers = input.employees.filter((e) => !e.isManager && e.active)
 
-  // Identifier les salariés les plus contraints :
-  // ceux qui ont des conditional availabilities (soir uniquement, etc.)
-  const constrainedEmps = nonManagers.filter((emp) =>
-    input.conditionalAvailabilities.some((ca) => ca.employeeId === emp.id),
-  )
-
-  if (constrainedEmps.length === 0) return
-
-  // Pour chaque salarié contraint, compter le total de slots disponibles dans la semaine
-  const empSlots = constrainedEmps.map((emp) => {
+  // Pour chaque salarié, compter le total de slots disponibles dans la semaine
+  const empSlots = nonManagers.map((emp) => {
     let totalSlots = 0
     for (const ctx of dayContexts) {
       if (!canWorkDay(input, state, emp, ctx)) continue
