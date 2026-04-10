@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Button, Input, Select } from '@/ui/components'
-import type { Employee, ContractType, EmployeeLevel } from '@/domain/models/employee'
+import type { Employee, ContractType } from '@/domain/models/employee'
 import { X } from 'lucide-react'
 
 interface EmployeeFormProps {
@@ -17,21 +17,12 @@ const CONTRACT_OPTIONS = [
   { value: 'apprenti', label: 'Apprenti' },
 ]
 
-const LEVEL_OPTIONS = [
-  { value: '1', label: 'Niveau 1 — Son rôle uniquement' },
-  { value: '2', label: 'Niveau 2 — Rôle 1' },
-  { value: '2.5', label: 'Niveau 2bis — Rôles 1 et 2' },
-  { value: '3', label: 'Niveau 3 — Rôles 1, 2 et 2bis' },
-  { value: '4', label: 'Niveau 4 — Manager (tous rôles)' },
-]
-
 export function EmployeeForm({ employee, tenantId, onSubmit, onCancel }: EmployeeFormProps) {
   const [firstName, setFirstName] = useState(employee?.firstName ?? '')
   const lastName = employee?.lastName ?? ''
   const [contractType, setContractType] = useState<ContractType>(employee?.contractType ?? 'cdi')
   const [weeklyHours, setWeeklyHours] = useState(employee?.weeklyHours ?? 35)
   const [modulationRange, setModulationRange] = useState(employee?.modulationRange ?? 5)
-  const [level, setLevel] = useState<EmployeeLevel>(employee?.level ?? 1)
   const [isManager, setIsManager] = useState(employee?.isManager ?? false)
 
   function handleSubmit(e: FormEvent) {
@@ -43,7 +34,7 @@ export function EmployeeForm({ employee, tenantId, onSubmit, onCancel }: Employe
       contractType,
       weeklyHours,
       modulationRange,
-      level,
+      level: isManager ? 4 : (employee?.level ?? 1),
       isManager,
       active: employee?.active ?? true,
     })
@@ -62,15 +53,13 @@ export function EmployeeForm({ employee, tenantId, onSubmit, onCancel }: Employe
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <Input
-              id="firstName"
-              label="Prénom"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              required
-            />
-          </div>
+          <Input
+            id="firstName"
+            label="Prénom"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            required
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <Select
@@ -80,20 +69,6 @@ export function EmployeeForm({ employee, tenantId, onSubmit, onCancel }: Employe
               onChange={(e) => setContractType(e.target.value as ContractType)}
               options={CONTRACT_OPTIONS}
             />
-            <Select
-              id="level"
-              label="Niveau"
-              value={String(level)}
-              onChange={(e) => {
-                const val = Number(e.target.value) as EmployeeLevel
-                setLevel(val)
-                setIsManager(val === 4)
-              }}
-              options={LEVEL_OPTIONS}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <Input
               id="weeklyHours"
               label="Heures / semaine (contrat)"
@@ -105,18 +80,19 @@ export function EmployeeForm({ employee, tenantId, onSubmit, onCancel }: Employe
               onChange={(e) => setWeeklyHours(Number(e.target.value))}
               required
             />
-            <Input
-              id="modulationRange"
-              label="Modulation +/- (heures)"
-              type="number"
-              min={0}
-              max={10}
-              step={0.5}
-              value={modulationRange}
-              onChange={(e) => setModulationRange(Number(e.target.value))}
-              required
-            />
           </div>
+
+          <Input
+            id="modulationRange"
+            label="Modulation +/- (heures)"
+            type="number"
+            min={0}
+            max={10}
+            step={0.5}
+            value={modulationRange}
+            onChange={(e) => setModulationRange(Number(e.target.value))}
+            required
+          />
 
           <div className="flex items-center gap-2">
             <input

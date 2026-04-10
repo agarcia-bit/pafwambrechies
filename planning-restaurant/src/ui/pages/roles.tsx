@@ -3,7 +3,7 @@ import { useRoleStore } from '@/store/role-store'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useAuthStore } from '@/store/auth-store'
 import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, AlertTriangle } from 'lucide-react'
 
 const PRESET_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#6b7280']
 
@@ -28,13 +28,23 @@ export function RolesPage() {
     setNewRoleName('')
   }
 
-  function handleToggleRole(employeeId: string, roleId: string) {
+  function handleAssignRole(employeeId: string, roleId: string) {
     const current = employeeRoles.filter((er) => er.employeeId === employeeId).map((er) => er.roleId)
-    const updated = current.includes(roleId)
-      ? current.filter((id) => id !== roleId)
-      : [...current, roleId]
-    assignRoles(employeeId, updated)
+    if (current.includes(roleId)) {
+      // Décocher = retirer le rôle
+      assignRoles(employeeId, [])
+    } else {
+      // Sélectionner = remplacer (1 seul rôle)
+      assignRoles(employeeId, [roleId])
+    }
   }
+
+  function getEmployeeRole(employeeId: string): string | null {
+    const er = employeeRoles.find((er) => er.employeeId === employeeId)
+    return er?.roleId ?? null
+  }
+
+  const unassigned = activeEmployees.filter((emp) => !getEmployeeRole(emp.id))
 
   return (
     <div className="flex flex-col gap-6">
@@ -103,11 +113,27 @@ export function RolesPage() {
         </Card>
       )}
 
-      {/* Matrice employé ↔ rôle */}
+      {/* Alerte salariés sans rôle */}
+      {unassigned.length > 0 && (
+        <div className="flex items-start gap-3 rounded-lg border border-destructive/50 bg-destructive/5 p-4">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-destructive" />
+          <div>
+            <p className="text-sm font-medium text-destructive">
+              {unassigned.length} salarié{unassigned.length > 1 ? 's' : ''} sans rôle
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {unassigned.map((e) => e.firstName).join(', ')} — Cliquez sur un rôle ci-dessous pour l'attribuer.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Matrice employé ↔ rôle (radio: 1 seul rôle par salarié) */}
       {roles.length > 0 && activeEmployees.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Affectation des rôles par salarié</CardTitle>
+            <p className="text-sm text-muted-foreground">Un seul rôle par salarié. Cliquez pour attribuer ou changer.</p>
           </CardHeader>
           <CardContent>
             {loading && <p className="text-muted-foreground">Chargement...</p>}
@@ -127,29 +153,41 @@ export function RolesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {activeEmployees.map((emp) => (
-                    <tr key={emp.id} className="border-b border-border hover:bg-muted/30">
-                      <td className="px-4 py-2 font-medium">
-                        {emp.firstName} {emp.lastName}
-                        {emp.isManager && <span className="ml-2 text-xs text-primary">(Manager)</span>}
-                      </td>
-                      {roles.map((role) => {
-                        const assigned = employeeRoles.some(
-                          (er) => er.employeeId === emp.id && er.roleId === role.id,
-                        )
-                        return (
-                          <td key={role.id} className="px-4 py-2 text-center">
-                            <input
-                              type="checkbox"
-                              checked={assigned}
-                              onChange={() => handleToggleRole(emp.id, role.id)}
-                              className="h-4 w-4 rounded border-border"
-                            />
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  ))}
+                  {activeEmployees.map((emp) => {
+                    const currentRole = getEmployeeRole(emp.id)
+                    const hasNoRole = !currentRole
+                    return (
+                      <tr
+                        key={emp.id}
+                        className={`border-b border-border ${hasNoRole ? 'bg-destructive/5' : 'hover:bg-muted/30'}`}
+                      >
+                        <td className="px-4 py-2 font-medium">
+                          <div className="flex items-center gap-2">
+                            {hasNoRole && <AlertTriangle size={14} className="text-destructive" />}
+                            {emp.firstName} {emp.lastName}
+                            {emp.isManager && <span className="text-xs text-primary">(Manager)</span>}
+                          </div>
+                        </td>
+                        {roles.map((role) => {
+                          const isSelected = currentRole === role.id
+                          return (
+                            <td key={role.id} className="px-4 py-2 text-center">
+                              <button
+                                onClick={() => handleAssignRole(emp.id, role.id)}
+                                className={`h-5 w-5 rounded-full border-2 transition-all ${
+                                  isSelected
+                                    ? 'border-current scale-110'
+                                    : 'border-border hover:border-muted-foreground'
+                                }`}
+                                style={isSelected ? { backgroundColor: role.color, borderColor: role.color } : {}}
+                                title={isSelected ? `Retirer ${role.name}` : `Attribuer ${role.name}`}
+                              />
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
