@@ -237,7 +237,17 @@ function planEmployeeWeek(
       let score = 0
 
       // Prefer shifts close to ideal hours per remaining day
-      score -= Math.abs(s.effectiveHours - idealHours) * 2
+      // But if ideal is high (>7h), prefer longer shifts to reach minimum
+      if (idealHours > 7) {
+        // Need long shifts — penalize short ones more than long ones
+        if (s.effectiveHours < idealHours) {
+          score -= (idealHours - s.effectiveHours) * 3
+        } else {
+          score -= (s.effectiveHours - idealHours) * 0.5
+        }
+      } else {
+        score -= Math.abs(s.effectiveHours - idealHours) * 2
+      }
 
       // Variety: penalize repeating the same shift
       if (usedShiftIds.has(s.id)) score -= 4

@@ -114,7 +114,7 @@ export function validatePlanning(ctx: ValidationContext): RuleViolation[] {
     if (dayEntries.length === 0) continue
 
     const isSunday = day === 6
-    const startHour = day >= 5 ? 10 : 11 // Sam-Dim: 10h, Mar-Ven: 11h
+    const startHour = 11 // Couverture ≥2 à partir de 11h pour tous les jours
     const endHour = isSunday ? ctx.closingTimeSunday : ctx.closingTimeWeek
 
     const gaps = checkContinuousCoverage(dayEntries, startHour, endHour)
