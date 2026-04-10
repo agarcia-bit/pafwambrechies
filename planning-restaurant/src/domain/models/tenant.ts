@@ -17,7 +17,7 @@ export const DEFAULT_TENANT_CONFIG = {
   closingTimeWeek: 24.0,
   closingTimeSunday: 21.0,
   closedDays: [0], // Lundi
-  productivityMin: 85,
-  productivityMax: 110,
+  productivityMin: 80,
+  productivityMax: 150,
   productivityTarget: 95,
 } as const
