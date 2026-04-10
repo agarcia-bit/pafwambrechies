@@ -363,15 +363,30 @@ function preAllocateConstrainedEmployees(
       const shifts = getAvailableShifts(input, state, emp, ctx)
       if (shifts.length === 0) continue
 
-      // Préférer le créneau qui aide le plus à atteindre le minimum
+      // Pick shift intelligently:
+      // - Vary shift types across the week (not all SOIR)
+      // - Prefer shifts that fill the deficit
+      // - Avoid midnight if employee might work tomorrow
       const remaining = bounds.min - hoursPlaced
-      const sorted = [...shifts].sort((a, b) => {
-        const aDiff = Math.abs(a.effectiveHours - remaining)
-        const bDiff = Math.abs(b.effectiveHours - remaining)
-        return aDiff - bDiff
-      })
+      const empEntries = state.entries.filter((e) => e.employeeId === emp.id)
+      const usedCodes = new Set(empEntries.map((e) => e.shiftTemplateId))
+      const tomorrowShift = state.entries.find(
+        (e) => e.employeeId === emp.id && e.dayOfWeek === dayOfWeek + 1,
+      )
 
-      const shift = sorted[0]
+      const scored = shifts.map((s) => {
+        let score = 0
+        score -= Math.abs(s.effectiveHours - remaining / Math.max(1, daysNeeded - daysPlaced))
+        if (usedCodes.has(s.id)) score -= 3 // variety
+        if (s.endTime >= 24 && tomorrowShift && tomorrowShift.startTime < 11) score -= 100
+        if (s.endTime >= 24) score -= 1 // slight preference for non-midnight
+        score += (Math.random() - 0.5) * 2
+        return { s, score }
+      })
+      scored.sort((a, b) => b.score - a.score)
+
+      const shift = scored[0]?.s
+      if (!shift) continue
       if (tryAssign(input, state, emp, shift, ctx, planningId)) {
         hoursPlaced += shift.effectiveHours
         daysPlaced++
@@ -396,14 +411,15 @@ function allocateDay(
   // --- Phase A : Ouverture (1 personne à 9h30, plus petit niveau) ---
   ensureOpening(input, state, ctx, planningId, nonManagers)
 
-  // --- Phase B : Fermeture (≥3 à la fermeture, managers inclus) ---
-  ensureClosing(input, state, ctx, planningId, nonManagers)
-
-  // --- Phase C : Couverture continue ≥2 de 11h à fermeture ---
+  // --- Phase B : Couverture continue ≥2 de 11h à fermeture ---
+  // AVANT la fermeture pour ne pas vider les créneaux après-midi
   ensureContinuousCoverage(input, state, ctx, planningId, nonManagers)
 
-  // --- Phase D : Barman midi & soir ---
+  // --- Phase C : Barman midi & soir ---
   ensureBarmanCoverage(input, state, ctx, planningId, nonManagers)
+
+  // --- Phase D : Fermeture (après couverture, pour combler les derniers slots soir) ---
+  ensureClosing(input, state, ctx, planningId, nonManagers)
 
   // --- Phase E : Budget (remplir les heures restantes) ---
   const currentDayHours = state.dailyHours.get(ctx.dayOfWeek) ?? 0
