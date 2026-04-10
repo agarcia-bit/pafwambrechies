@@ -565,48 +565,85 @@ function rebalanceMinimumHours(
 ): void {
   const nonManagers = input.employees.filter((e) => !e.isManager && e.active)
 
-  // Trier par écart au minimum (les plus en dessous d'abord)
-  const underMin = nonManagers
-    .map((emp) => {
-      const hours = state.employeeHours.get(emp.id) ?? 0
-      const bounds = getWeeklyBounds(emp)
-      return { emp, hours, deficit: bounds.min - hours }
-    })
-    .filter((x) => x.deficit > 0)
-    .sort((a, b) => b.deficit - a.deficit)
-
-  for (const { emp, deficit } of underMin) {
-    let remaining = deficit
-
-    // Essayer chaque jour où l'employé n'est pas encore planifié
-    const dayOrder = [5, 6, 4, 1, 2, 3] // sam, dim, ven d'abord
-    for (const dayOfWeek of dayOrder) {
-      if (remaining <= 0) break
-
-      const ctx = dayContexts.find((d) => d.dayOfWeek === dayOfWeek)
-      if (!ctx) continue
-      if (state.employeeWorkDays.get(emp.id)?.has(dayOfWeek)) continue
-      if (!canWorkDay(input, state, emp, ctx)) continue
-
-      const shifts = getAvailableShifts(input, state, emp, ctx)
-      if (shifts.length === 0) continue
-
-      // Choisir le créneau qui se rapproche le plus du déficit restant
-      const sorted = [...shifts].sort((a, b) => {
-        const aDiff = Math.abs(a.effectiveHours - remaining)
-        const bDiff = Math.abs(b.effectiveHours - remaining)
-        return aDiff - bDiff
+  // Multiple passes — each pass places one shift per under-minimum employee
+  for (let pass = 0; pass < 5; pass++) {
+    const underMin = nonManagers
+      .map((emp) => {
+        const hours = state.employeeHours.get(emp.id) ?? 0
+        const bounds = getWeeklyBounds(emp)
+        return { emp, hours, deficit: bounds.min - hours }
       })
+      .filter((x) => x.deficit > 0)
+      .sort((a, b) => b.deficit - a.deficit)
 
-      const shift = sorted[0]
-      if (tryAssign(input, state, emp, shift, ctx, planningId)) {
-        remaining -= shift.effectiveHours
+    if (underMin.length === 0) break
+
+    let anyPlaced = false
+
+    for (const { emp, deficit } of underMin) {
+      // Sort days by: 1) most understaffed (highest productivity = most need)
+      // 2) priority days (Ven/Sam/Dim first)
+      const dayPriority: Record<number, number> = { 5: 10, 6: 9, 4: 8, 1: 3, 2: 2, 3: 1 }
+      const availableDays = dayContexts
+        .filter((ctx) => {
+          if (state.employeeWorkDays.get(emp.id)?.has(ctx.dayOfWeek)) return false
+          if (!canWorkDay(input, state, emp, ctx)) return false
+          return getAvailableShifts(input, state, emp, ctx).length > 0
+        })
+        .sort((a, b) => {
+          // Prioritize understaffed days (high productivity = not enough people)
+          const aProductivity = a.forecastedRevenue / Math.max(1, state.dailyHours.get(a.dayOfWeek) ?? 1)
+          const bProductivity = b.forecastedRevenue / Math.max(1, state.dailyHours.get(b.dayOfWeek) ?? 1)
+          const aUnder = aProductivity > input.tenant.productivityTarget ? 1 : 0
+          const bUnder = bProductivity > input.tenant.productivityTarget ? 1 : 0
+          if (bUnder !== aUnder) return bUnder - aUnder // understaffed days first
+          // Then by day priority (weekend first)
+          return (dayPriority[b.dayOfWeek] ?? 0) - (dayPriority[a.dayOfWeek] ?? 0)
+        })
+
+      for (const ctx of availableDays) {
+        const shifts = getAvailableShifts(input, state, emp, ctx)
+        if (shifts.length === 0) continue
+
+        // Pick shift that best fills the deficit without being too long
+        const scored = shifts.map((s) => {
+          let score = 0
+          // Closer to deficit = better
+          score -= Math.abs(s.effectiveHours - deficit) * 2
+          // Bonus for shifts that improve coverage on understaffed days
+          const currentProd = ctx.forecastedRevenue / Math.max(1, state.dailyHours.get(ctx.dayOfWeek) ?? 1)
+          if (currentProd > input.tenant.productivityTarget) {
+            score += 5 // this day needs more staff
+          }
+          // Avoid midnight if employee might work tomorrow
+          const tomorrowShift = state.entries.find(
+            (e) => e.employeeId === emp.id && e.dayOfWeek === ctx.dayOfWeek + 1,
+          )
+          if (s.endTime >= 24 && tomorrowShift && tomorrowShift.startTime < 11) {
+            score -= 100 // would violate rest
+          }
+          return { s, score }
+        })
+        scored.sort((a, b) => b.score - a.score)
+
+        const bestShift = scored[0]?.s
+        if (bestShift && tryAssign(input, state, emp, bestShift, ctx, planningId)) {
+          anyPlaced = true
+          break // One shift per employee per pass
+        }
       }
     }
 
-    if (remaining > 0) {
+    if (!anyPlaced) break // No progress, stop
+  }
+
+  // Final warning for still-under employees
+  for (const emp of nonManagers) {
+    const hours = state.employeeHours.get(emp.id) ?? 0
+    const bounds = getWeeklyBounds(emp)
+    if (hours < bounds.min) {
       state.warnings.push(
-        `${emp.firstName} ${emp.lastName} : ${remaining.toFixed(1)}h sous le minimum (impossible à combler)`,
+        `${emp.firstName} : ${(bounds.min - hours).toFixed(1)}h sous le minimum (impossible à combler)`,
       )
     }
   }
