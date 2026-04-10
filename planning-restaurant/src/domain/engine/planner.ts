@@ -697,12 +697,27 @@ function canWorkDay(
     u.employeeId === emp.id && u.type === 'punctual' && u.specificDate === ctx.date,
   )
   if (punctual && !punctual.availableFrom && !punctual.availableUntil) return false
-  // If punctual has time restrictions, employee can still work — shifts filtered in getAvailableShifts
 
-  // Repos inter-shift (11h)
-  const lastEnd = state.employeeLastEndTime.get(emp.id)
-  if (lastEnd && lastEnd.day === ctx.dayOfWeek - 1) {
-    if (checkRestBetweenShifts(lastEnd.endTime, 9.5)) return false
+  // Repos inter-shift (11h) — check ACTUAL entries, not lastEndTime cache
+  // Backward: yesterday's shift → can we start today at earliest 9.5?
+  const yesterdayEntry = state.entries.find(
+    (e) => e.employeeId === emp.id && e.dayOfWeek === ctx.dayOfWeek - 1,
+  )
+  if (yesterdayEntry) {
+    if (checkRestBetweenShifts(yesterdayEntry.endTime, 9.5)) return false
+  }
+  // Forward: if we already have a shift tomorrow, can we work today at all?
+  // (we need at least one shift that ends early enough)
+  const tomorrowEntry = state.entries.find(
+    (e) => e.employeeId === emp.id && e.dayOfWeek === ctx.dayOfWeek + 1,
+  )
+  if (tomorrowEntry && tomorrowEntry.startTime < 11) {
+    // Tomorrow starts early — today can't end at midnight
+    // Check if ANY shift exists that respects rest
+    const anyValid = input.shiftTemplates.some(
+      (s) => (24 - s.endTime + tomorrowEntry.startTime) >= 11,
+    )
+    if (!anyValid) return false
   }
 
   // Max 5 jours travaillés (+ lundi off = 2 jours off minimum)
@@ -759,18 +774,19 @@ function getAvailableShifts(
   }
 
   // Repos inter-shift — backward (yesterday → today)
-  const lastEnd = state.employeeLastEndTime.get(emp.id)
-  if (lastEnd && lastEnd.day === ctx.dayOfWeek - 1) {
-    shifts = shifts.filter((s) => (24 - lastEnd.endTime + s.startTime) >= 11)
+  const yesterdayShift = state.entries.find(
+    (e) => e.employeeId === emp.id && e.dayOfWeek === ctx.dayOfWeek - 1,
+  )
+  if (yesterdayShift) {
+    shifts = shifts.filter((s) => (24 - yesterdayShift.endTime + s.startTime) >= 11)
   }
 
   // Repos inter-shift — forward (today → tomorrow)
-  // If employee already has a shift tomorrow, ensure this shift's end allows 11h rest
-  const tomorrowEntry = state.entries.find(
+  const tomorrowShift = state.entries.find(
     (e) => e.employeeId === emp.id && e.dayOfWeek === ctx.dayOfWeek + 1,
   )
-  if (tomorrowEntry) {
-    shifts = shifts.filter((s) => (24 - s.endTime + tomorrowEntry.startTime) >= 11)
+  if (tomorrowShift) {
+    shifts = shifts.filter((s) => (24 - s.endTime + tomorrowShift.startTime) >= 11)
   }
 
   // Bornes contractuelles
