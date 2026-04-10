@@ -287,7 +287,7 @@ function allocateDay(
     const availableShifts = getAvailableShifts(input, state, emp, ctx)
     if (availableShifts.length === 0) continue
 
-    const bestShift = chooseBestShift(availableShifts, remainingHours, emp, state)
+    const bestShift = chooseBestShift(availableShifts, remainingHours, emp, state, input, ctx)
     if (!bestShift) continue
 
     if (tryAssign(input, state, emp, bestShift, ctx, planningId)) {
@@ -579,8 +579,27 @@ function assignFirstAvailable(
     const shifts = getAvailableShifts(input, state, emp, ctx).filter(opts.shiftFilter)
     if (shifts.length === 0) continue
 
-    // Préférer le créneau le plus long parmi les filtres (meilleure couverture)
-    const shift = shifts.sort((a, b) => b.effectiveHours - a.effectiveHours)[0]
+    // Smart shift selection: don't always pick longest
+    // Penalize shifts ending at midnight if employee might be needed next morning
+    const nextDayOfWeek = ctx.dayOfWeek + 1
+    const mightBeNeededTomorrow = nextDayOfWeek <= 6 &&
+      !state.employeeWorkDays.get(emp.id)?.has(nextDayOfWeek) &&
+      !input.unavailabilities.some((u) =>
+        u.employeeId === emp.id && u.type === 'fixed' && u.dayOfWeek === nextDayOfWeek,
+      )
+
+    const scored = shifts.map((s) => {
+      let score = s.effectiveHours // base: longer = better coverage
+      // Heavy penalty for midnight finish if needed tomorrow (blocks morning shifts)
+      if (s.endTime >= 24 && mightBeNeededTomorrow) {
+        score -= 4
+      }
+      // Small random variation
+      score += (Math.random() - 0.5)
+      return { s, score }
+    })
+    scored.sort((a, b) => b.score - a.score)
+    const shift = scored[0].s
 
     if (tryAssign(input, state, emp, shift, ctx, planningId)) {
       return true
@@ -679,12 +698,22 @@ function chooseBestShift(
   remainingBudget: number,
   emp: Employee,
   state: SolverState,
+  input: PlannerInput,
+  ctx: DayAllocationContext,
 ): ShiftTemplate | null {
   if (available.length === 0) return null
 
   const currentHours = state.employeeHours.get(emp.id) ?? 0
   const bounds = getWeeklyBounds(emp)
   const hoursNeeded = bounds.min - currentHours
+
+  // Check if employee might be needed tomorrow (don't block them with midnight shift)
+  const nextDay = ctx.dayOfWeek + 1
+  const mightWorkTomorrow = nextDay <= 6 &&
+    !state.employeeWorkDays.get(emp.id)?.has(nextDay) &&
+    !input.unavailabilities.some((u) =>
+      u.employeeId === emp.id && u.type === 'fixed' && u.dayOfWeek === nextDay,
+    )
 
   const scored = available.map((shift) => {
     let score = 0
@@ -703,6 +732,12 @@ function chooseBestShift(
 
     // Pénalité pour les très longs créneaux
     if (shift.effectiveHours > 8) score -= 2
+
+    // Pénalité pour shift finissant à minuit si l'employé peut travailler demain
+    // (bloque les shifts matinaux du lendemain à cause du repos 11h)
+    if (shift.endTime >= 24 && mightWorkTomorrow) {
+      score -= 3
+    }
 
     // Variation aléatoire
     score += (Math.random() - 0.5) * 2
