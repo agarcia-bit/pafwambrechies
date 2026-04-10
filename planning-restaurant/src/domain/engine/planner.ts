@@ -2,7 +2,7 @@ import type { PlanningEntry, PlanningReport, WeekPlanning, EmployeeWeekSummary, 
 import { getWeeklyBounds } from '../models/employee'
 import type { Employee } from '../models/employee'
 import type { ShiftTemplate } from '../models/shift'
-import { calculateHoursBudget, isDelestageRequired } from '../rules/productivity'
+import { calculateHoursBudget } from '../rules/productivity'
 import { validatePlanning } from '../rules/validation'
 import type { PlannerInput, SolverState, DayAllocationContext } from './types'
 
@@ -45,8 +45,11 @@ export function generatePlanning(input: PlannerInput): PlanningReport {
   // === Phase 2 : Contextes par jour ===
   const dayContexts = buildDayContexts(input, state)
 
-  // === Phase 3 : Planifier chaque salarié sur la semaine ===
+  // Detect staffing shortage
+  const totalBudget = dayContexts.reduce((s, d) => s + d.hoursBudget, 0)
   const nonManagers = input.employees.filter((e) => !e.isManager && e.active)
+  const totalAvailable = nonManagers.reduce((s, e) => s + getWeeklyBounds(e).max, 0)
+  const isShortage = totalBudget > totalAvailable * 0.8 // shortage if budget > 80% of max capacity
 
   // === Phase 3a : Assurer 1 personne à l'ouverture (9h30) chaque jour ===
   assignOpeningShifts(input, state, dayContexts, planningId, nonManagers)
@@ -61,7 +64,7 @@ export function generatePlanning(input: PlannerInput): PlanningReport {
   })
 
   for (const emp of sortedEmployees) {
-    planEmployeeWeek(input, state, emp, dayContexts, planningId)
+    planEmployeeWeek(input, state, emp, dayContexts, planningId, isShortage)
   }
 
   // === Phase 4 : Patcher les trous de couverture ===
@@ -104,9 +107,7 @@ export function generatePlanning(input: PlannerInput): PlanningReport {
     closingTimeSunday: input.tenant.closingTimeSunday,
   })
 
-  const totalBudget = dayContexts.reduce((s, d) => s + d.hoursBudget, 0)
-  const totalAvailable = nonManagers.reduce((s, e) => s + getWeeklyBounds(e).max, 0)
-  if (isDelestageRequired(totalBudget, totalAvailable)) {
+  if (isShortage) {
     state.warnings.unshift(`Délestage activé : budget total ${totalBudget.toFixed(1)}h > disponible ${totalAvailable.toFixed(1)}h`)
   }
 
@@ -233,11 +234,15 @@ function planEmployeeWeek(
   emp: Employee,
   dayContexts: DayAllocationContext[],
   planningId: string,
+  isShortage: boolean = false,
 ): void {
   const bounds = getWeeklyBounds(emp)
   const isFullTime = emp.weeklyHours >= 35
   const alreadyWorking = state.employeeWorkDays.get(emp.id)?.size ?? 0
   const targetDays = Math.max(0, (isFullTime ? 5 : Math.min(5, Math.ceil(bounds.min / 4))) - alreadyWorking)
+
+  // In shortage mode: aim for MAX hours, not just MIN
+  const targetHours = isShortage ? bounds.max : bounds.min
 
   // Step 1: Determine which days the employee CAN work
   const availableDays = dayContexts
@@ -258,7 +263,7 @@ function planEmployeeWeek(
 
   for (let i = 0; i < chosenDays.length; i++) {
     const { ctx, shifts } = chosenDays[i]
-    const remaining = bounds.min - totalHours
+    const remaining = targetHours - totalHours
     const daysLeft = chosenDays.length - i
 
     // Choose shift: balance between filling hours and respecting rest
