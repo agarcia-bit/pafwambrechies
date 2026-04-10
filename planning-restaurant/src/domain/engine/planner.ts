@@ -335,10 +335,20 @@ function allocateDay(
     state.entries.filter((e) => e.dayOfWeek === ctx.dayOfWeek).map((e) => e.employeeId),
   )
 
-  // Trier : contraints d'abord, shuffle parmi les égaux
+  // Trier : sous-minimum d'abord, puis contraints, puis shuffle
   const sorted = [...nonManagers]
     .filter((emp) => !alreadyAssigned.has(emp.id))
     .sort((a, b) => {
+      // Employees under their minimum get absolute priority
+      const aHours = state.employeeHours.get(a.id) ?? 0
+      const bHours = state.employeeHours.get(b.id) ?? 0
+      const aDeficit = getWeeklyBounds(a).min - aHours
+      const bDeficit = getWeeklyBounds(b).min - bHours
+      const aUnder = aDeficit > 0 ? 1 : 0
+      const bUnder = bDeficit > 0 ? 1 : 0
+      if (bUnder !== aUnder) return bUnder - aUnder // under-min first
+      if (aUnder && bUnder) return bDeficit - aDeficit // biggest deficit first
+
       const aSlots = getAvailableShifts(input, state, a, ctx).length
       const bSlots = getAvailableShifts(input, state, b, ctx).length
       if (aSlots !== bSlots) return aSlots - bSlots
@@ -346,7 +356,13 @@ function allocateDay(
     })
 
   for (const emp of sorted) {
-    if (remainingHours <= 0) break
+    // Don't stop at budget if employee is under their minimum hours
+    const empHours = state.employeeHours.get(emp.id) ?? 0
+    const empBounds = getWeeklyBounds(emp)
+    const empUnderMin = empHours < empBounds.min
+
+    if (remainingHours <= 0 && !empUnderMin) break
+
     if (!canWorkDay(input, state, emp, ctx)) continue
 
     const availableShifts = getAvailableShifts(input, state, emp, ctx)
@@ -417,7 +433,8 @@ function ensureClosing(
   planningId: string,
   nonManagers: Employee[],
 ): void {
-  const minClosing = 3
+  // Dimanche : 4-5 personnes en fermeture, autres jours : 3
+  const minClosing = ctx.isSunday ? 4 : 3
 
   for (let attempt = 0; attempt < 8; attempt++) {
     const dayEntries = state.entries.filter((e) => e.dayOfWeek === ctx.dayOfWeek)

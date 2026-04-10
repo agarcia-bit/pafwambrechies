@@ -118,7 +118,7 @@ export function PlanningGrid({ report }: PlanningGridProps) {
           </thead>
           <tbody>
             {report.dailySummaries.map((ds) => {
-              const prodOk = ds.productivity >= 80 && ds.productivity <= 100
+              const prodOk = ds.productivity >= 80 && ds.productivity <= 120
               return (
                 <tr key={ds.dayOfWeek} className="border-b border-border">
                   <td className="px-3 py-2 font-medium">{DAY_NAMES[ds.dayOfWeek]}</td>
