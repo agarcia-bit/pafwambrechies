@@ -656,23 +656,37 @@ function rebalanceMinimumHours(
         const shifts = getAvailableShifts(input, state, emp, ctx)
         if (shifts.length === 0) continue
 
-        // Pick shift that best fills the deficit without being too long
+        // Pick the LONGEST shift that fits — maximize hours per day to reach minimum
+        const daysLeft = 5 - (state.employeeWorkDays.get(emp.id)?.size ?? 0)
+        const hoursPerDay = daysLeft > 0 ? deficit / daysLeft : deficit
+        const yesterdayShift = state.entries.find(
+          (e) => e.employeeId === emp.id && e.dayOfWeek === ctx.dayOfWeek - 1,
+        )
+        const tomorrowShift = state.entries.find(
+          (e) => e.employeeId === emp.id && e.dayOfWeek === ctx.dayOfWeek + 1,
+        )
+
         const scored = shifts.map((s) => {
           let score = 0
-          // Closer to deficit = better
-          score -= Math.abs(s.effectiveHours - deficit) * 2
+          // Prefer shifts with MORE hours (need to fill deficit fast)
+          score += s.effectiveHours * 3
+          // Bonus if close to ideal hours/day
+          score -= Math.abs(s.effectiveHours - hoursPerDay)
           // Bonus for shifts that improve coverage on understaffed days
           const currentProd = ctx.forecastedRevenue / Math.max(1, state.dailyHours.get(ctx.dayOfWeek) ?? 1)
           if (currentProd > input.tenant.productivityTarget) {
-            score += 5 // this day needs more staff
+            score += 5
           }
-          // Avoid midnight if employee might work tomorrow
-          const tomorrowShift = state.entries.find(
-            (e) => e.employeeId === emp.id && e.dayOfWeek === ctx.dayOfWeek + 1,
-          )
-          if (s.endTime >= 24 && tomorrowShift && tomorrowShift.startTime < 11) {
-            score -= 100 // would violate rest
+          // Hard block: midnight shift with early shift tomorrow
+          if (s.endTime >= 24 && tomorrowShift && (24 - s.endTime + tomorrowShift.startTime) < 11) {
+            score -= 100
           }
+          // Prefer non-midnight if yesterday ended late (avoids cascading blocks)
+          if (s.endTime >= 24 && yesterdayShift && yesterdayShift.endTime >= 24) {
+            score -= 10 // two midnight shifts in a row = bad pattern
+          }
+          // Small random variation
+          score += (Math.random() - 0.5) * 2
           return { s, score }
         })
         scored.sort((a, b) => b.score - a.score)
