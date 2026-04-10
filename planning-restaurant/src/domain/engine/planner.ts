@@ -519,35 +519,50 @@ function ensureClosing(
   // Fermeture : Mar-Mer = 4 personnes, Jeu-Dim = 6 personnes
   const minClosing = ctx.dayOfWeek <= 2 ? 4 : 6
 
-  for (let attempt = 0; attempt < 8; attempt++) {
+  for (let attempt = 0; attempt < 10; attempt++) {
     const dayEntries = state.entries.filter((e) => e.dayOfWeek === ctx.dayOfWeek)
     const closingStaff = dayEntries.filter((e) => e.endTime >= ctx.closingTime)
 
     if (closingStaff.length >= minClosing) return
 
-    // Try 1: assign someone new with a closing shift
-    const assigned = assignFirstAvailable(input, state, ctx, planningId, nonManagers, {
-      shiftFilter: (s) => s.endTime >= ctx.closingTime,
-      sortEmployees: (a, b) => {
-        // Prefer employees who NEED more hours (further from their minimum)
+    // Find employees not yet assigned today
+    const alreadyAssigned = new Set(dayEntries.map((e) => e.employeeId))
+    const candidates = nonManagers
+      .filter((emp) => !alreadyAssigned.has(emp.id))
+      .filter((emp) => canWorkDay(input, state, emp, ctx))
+      .filter((emp) => {
+        const shifts = getAvailableShifts(input, state, emp, ctx)
+        return shifts.some((s) => s.endTime >= ctx.closingTime)
+      })
+      .sort((a, b) => {
+        // Prefer employees who NEED more hours
         const aHours = state.employeeHours.get(a.id) ?? 0
         const bHours = state.employeeHours.get(b.id) ?? 0
         const aNeeds = getWeeklyBounds(a).min - aHours
         const bNeeds = getWeeklyBounds(b).min - bHours
-        if (bNeeds !== aNeeds) return bNeeds - aNeeds // most hours needed first
-        if (b.level !== a.level) return b.level - a.level
+        if (bNeeds !== aNeeds) return bNeeds - aNeeds
         return Math.random() - 0.5
-      },
-    })
-
-    if (!assigned) {
-      // Try 2: any shift ending at closing, even if employee is at lower level
-      const assigned2 = assignFirstAvailable(input, state, ctx, planningId, nonManagers, {
-        shiftFilter: (s) => s.endTime >= ctx.closingTime,
-        sortEmployees: () => Math.random() - 0.5, // anyone available
       })
-      if (!assigned2) break
+
+    let placed = false
+    for (const emp of candidates) {
+      const shifts = getAvailableShifts(input, state, emp, ctx)
+        .filter((s) => s.endTime >= ctx.closingTime)
+
+      if (shifts.length === 0) continue
+
+      // PREFER SHORTEST closing shift (SOIR 6h > FERM_17 7h > FERM_12 11h)
+      // This preserves budget for daytime coverage and avoids blocking next morning
+      const sorted = [...shifts].sort((a, b) => a.effectiveHours - b.effectiveHours)
+      const shift = sorted[0]
+
+      if (tryAssign(input, state, emp, shift, ctx, planningId)) {
+        placed = true
+        break
+      }
     }
+
+    if (!placed) break
   }
 }
 
