@@ -56,7 +56,12 @@ export function generatePlanning(input: PlannerInput): PlanningReport {
     )
   }
 
-  // Phase 4 : Allocation par jour
+  // Phase 4 : En délestage, redistribuer le budget — priorité Ven/Sam/Dim
+  if (needsDelestage) {
+    redistributeBudget(dayContexts, totalAvailable, state)
+  }
+
+  // Phase 4b : Allocation par jour (priorité week-end)
   const dayOrder = [5, 6, 4, 1, 2, 3] // sam, dim, ven, mar, mer, jeu
   for (const dayOfWeek of dayOrder) {
     const ctx = dayContexts.find((d) => d.dayOfWeek === dayOfWeek)
@@ -230,6 +235,66 @@ function tryAssign(
   if (currentHours + shift.effectiveHours > bounds.max) return false
   assignShift(input, state, emp, shift, ctx, planningId)
   return true
+}
+
+// =====================================================
+// BUDGET REDISTRIBUTION (délestage)
+// =====================================================
+
+/**
+ * En délestage, redistribue le budget heures pour prioriser Ven/Sam/Dim.
+ *
+ * Priorités :
+ * - Sam, Dim : productivité cible (budget = CA/95, pas de réduction)
+ * - Ven : légère réduction (-10%)
+ * - Mar, Mer, Jeu : réduction proportionnelle pour tenir dans l'enveloppe
+ *
+ * Principe : on réserve d'abord le budget week-end, puis on répartit le reste.
+ */
+function redistributeBudget(
+  dayContexts: DayAllocationContext[],
+  totalAvailable: number,
+  state: SolverState,
+): void {
+  // Heures managers déjà planifiées par jour
+  const priorityDays = [5, 6] // Sam, Dim — intouchables
+  const mediumDays = [4]      // Ven — légère réduction
+  const lowDays = [1, 2, 3]   // Mar, Mer, Jeu — absorbent la réduction
+
+  // Calculer le budget week-end (intouchable)
+  let reservedHours = 0
+  for (const ctx of dayContexts) {
+    if (priorityDays.includes(ctx.dayOfWeek)) {
+      reservedHours += ctx.hoursBudget
+    }
+  }
+
+  // Budget vendredi (réduction 10%)
+  for (const ctx of dayContexts) {
+    if (mediumDays.includes(ctx.dayOfWeek)) {
+      const reduced = ctx.hoursBudget * 0.9
+      reservedHours += reduced
+      ctx.hoursBudget = reduced
+      ctx.allocatableHours = Math.max(0, reduced - (state.dailyHours.get(ctx.dayOfWeek) ?? 0))
+    }
+  }
+
+  // Heures restantes pour Mar/Mer/Jeu
+  const remainingForLow = Math.max(0, totalAvailable - reservedHours)
+  const totalLowBudget = lowDays.reduce((s, d) => {
+    const ctx = dayContexts.find((c) => c.dayOfWeek === d)
+    return s + (ctx?.hoursBudget ?? 0)
+  }, 0)
+
+  // Répartir proportionnellement
+  for (const ctx of dayContexts) {
+    if (lowDays.includes(ctx.dayOfWeek) && totalLowBudget > 0) {
+      const ratio = ctx.hoursBudget / totalLowBudget
+      const newBudget = remainingForLow * ratio
+      ctx.hoursBudget = newBudget
+      ctx.allocatableHours = Math.max(0, newBudget - (state.dailyHours.get(ctx.dayOfWeek) ?? 0))
+    }
+  }
 }
 
 // =====================================================
