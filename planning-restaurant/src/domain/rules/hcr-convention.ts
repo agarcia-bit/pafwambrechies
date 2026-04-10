@@ -149,9 +149,10 @@ export function checkClosingCoverage(
   entries: PlanningEntry[],
   closingTime: number,
   managerEmployeeIds: string[],
-  isSunday?: boolean,
+  dayOfWeek?: number,
 ): string | null {
-  const minClosing = isSunday ? 4 : 3
+  // Mar(1)-Mer(2) = 4, Jeu(3)-Dim(6) = 6
+  const minClosing = (dayOfWeek ?? 1) <= 2 ? 4 : 6
   const closingStaff = entries.filter((e) => e.endTime >= closingTime)
   if (closingStaff.length < minClosing) {
     return `Seulement ${closingStaff.length} personne(s) à la fermeture (minimum ${minClosing})`

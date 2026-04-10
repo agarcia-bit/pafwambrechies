@@ -516,8 +516,8 @@ function ensureClosing(
   planningId: string,
   nonManagers: Employee[],
 ): void {
-  // Dimanche : 4-5 personnes en fermeture, autres jours : 3
-  const minClosing = ctx.isSunday ? 4 : 3
+  // Fermeture : Mar-Mer = 4 personnes, Jeu-Dim = 6 personnes
+  const minClosing = ctx.dayOfWeek <= 2 ? 4 : 6
 
   for (let attempt = 0; attempt < 8; attempt++) {
     const dayEntries = state.entries.filter((e) => e.dayOfWeek === ctx.dayOfWeek)

@@ -130,7 +130,7 @@ export function validatePlanning(ctx: ValidationContext): RuleViolation[] {
 
     // 7. Couverture fermeture
     const closingTime = isSunday ? ctx.closingTimeSunday : ctx.closingTimeWeek
-    const closingCheck = checkClosingCoverage(dayEntries, closingTime, ctx.managerIds, isSunday)
+    const closingCheck = checkClosingCoverage(dayEntries, closingTime, ctx.managerIds, day)
     if (closingCheck) {
       violations.push({
         rule: 'closing_coverage',
