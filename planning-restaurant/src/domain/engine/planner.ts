@@ -329,24 +329,31 @@ function preAllocateConstrainedEmployees(
       totalSlots += getAvailableShifts(input, state, emp, ctx).length
     }
     const bounds = getWeeklyBounds(emp)
-    // Nombre de jours nécessaires pour atteindre le minimum (shifts ~5-6h en moyenne)
-    const daysNeeded = Math.ceil(bounds.min / 5)
-    return { emp, totalSlots, daysNeeded, bounds }
+    // Temps pleins (≥35h) doivent travailler 5 jours (lundi off + 1 repos = 2 jours off max)
+    // Petits contrats : calculer selon les heures
+    const isFullTime = emp.weeklyHours >= 35
+    const daysNeeded = isFullTime ? 5 : Math.ceil(bounds.min / 5)
+    return { emp, totalSlots, daysNeeded, bounds, isFullTime }
   })
 
   // Trier : les plus contraints d'abord (moins de slots)
   empSlots.sort((a, b) => a.totalSlots - b.totalSlots)
 
-  for (const { emp, daysNeeded, bounds } of empSlots) {
+  for (const { emp, daysNeeded, bounds, isFullTime } of empSlots) {
     let hoursPlaced = state.employeeHours.get(emp.id) ?? 0
-    let daysPlaced = 0
+    let daysPlaced = state.employeeWorkDays.get(emp.id)?.size ?? 0
 
     // Allouer sur les jours avec le plus de besoin (week-end d'abord)
     const dayPriority = [5, 6, 4, 1, 2, 3]
 
     for (const dayOfWeek of dayPriority) {
-      if (hoursPlaced >= bounds.min) break
-      if (daysPlaced >= daysNeeded + 1) break // un peu de marge
+      // Temps plein : continuer jusqu'à 5 jours même si heures atteintes
+      if (isFullTime) {
+        if (daysPlaced >= 5) break
+      } else {
+        if (hoursPlaced >= bounds.min) break
+        if (daysPlaced >= daysNeeded) break
+      }
 
       const ctx = dayContexts.find((d) => d.dayOfWeek === dayOfWeek)
       if (!ctx) continue
