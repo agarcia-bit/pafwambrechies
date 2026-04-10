@@ -48,12 +48,15 @@ export function generatePlanning(input: PlannerInput): PlanningReport {
   // === Phase 3 : Planifier chaque salarié sur la semaine ===
   const nonManagers = input.employees.filter((e) => !e.isManager && e.active)
 
-  // Trier : plus contraints d'abord (moins de slots dispo dans la semaine)
+  // === Phase 3a : Assurer 1 personne à l'ouverture (9h30) chaque jour ===
+  assignOpeningShifts(input, state, dayContexts, planningId, nonManagers)
+
+  // === Phase 3b : Planifier chaque salarié sur la semaine ===
+  // Re-sort after opening assignments
   const sortedEmployees = [...nonManagers].sort((a, b) => {
     const aSlots = countWeekSlots(input, state, a, dayContexts)
     const bSlots = countWeekSlots(input, state, b, dayContexts)
-    if (aSlots !== bSlots) return aSlots - bSlots // most constrained first
-    // Full-time first (they need more days)
+    if (aSlots !== bSlots) return aSlots - bSlots
     return b.weeklyHours - a.weeklyHours
   })
 
@@ -161,6 +164,55 @@ function buildDayContexts(input: PlannerInput, state: SolverState): DayAllocatio
     })
   }
   return contexts
+}
+
+// =====================================================
+// PHASE 3a : OPENING SHIFTS (1 person at 9h30 every day)
+// =====================================================
+
+function assignOpeningShifts(
+  input: PlannerInput,
+  state: SolverState,
+  dayContexts: DayAllocationContext[],
+  planningId: string,
+  nonManagers: Employee[],
+): void {
+  // Sort employees by level (lowest first — rule: smallest level for opening)
+  const byLevel = [...nonManagers].sort((a, b) => a.level - b.level)
+
+  for (const ctx of dayContexts) {
+    // Check if a manager already covers opening
+    const dayEntries = state.entries.filter((e) => e.dayOfWeek === ctx.dayOfWeek)
+    if (dayEntries.some((e) => e.startTime <= 9.5)) continue
+
+    // Find opening shift (OUV or D_OUV)
+    for (const emp of byLevel) {
+      if (state.employeeWorkDays.get(emp.id)?.has(ctx.dayOfWeek)) continue
+      if (!canWorkDay(input, state, emp, ctx)) continue
+
+      const shifts = getAvailableShifts(input, state, emp, ctx)
+        .filter((s) => s.startTime <= 9.5)
+
+      if (shifts.length === 0) continue
+
+      // Prefer the opening shift (shortest one starting at 9.5)
+      const shift = shifts.sort((a, b) => a.effectiveHours - b.effectiveHours)[0]
+      const bounds = getWeeklyBounds(emp)
+      if ((state.employeeHours.get(emp.id) ?? 0) + shift.effectiveHours > bounds.max) continue
+
+      addEntry(state, {
+        id: crypto.randomUUID(), planningId,
+        employeeId: emp.id,
+        roleId: input.employeeRoles.find((er) => er.employeeId === emp.id)?.roleId ?? '',
+        date: ctx.date, dayOfWeek: ctx.dayOfWeek,
+        shiftTemplateId: shift.id,
+        startTime: shift.startTime, endTime: shift.endTime,
+        effectiveHours: shift.effectiveHours,
+        meals: shift.meals, baskets: shift.baskets,
+      })
+      break // 1 person per day is enough
+    }
+  }
 }
 
 // =====================================================
