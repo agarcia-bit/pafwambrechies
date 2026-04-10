@@ -56,11 +56,6 @@ export function generatePlanning(input: PlannerInput): PlanningReport {
     )
   }
 
-  // Phase 3.5 : Pré-allouer les petits contrats contraints
-  // Les salariés avec peu de créneaux disponibles (ex: étudiants soir uniquement)
-  // doivent être placés en premier sinon ils n'ont plus de place
-  preAllocateConstrainedEmployees(input, state, dayContexts, planningId)
-
   // Phase 4 : En délestage, redistribuer le budget — priorité Ven/Sam/Dim
   if (needsDelestage) {
     redistributeBudget(dayContexts, totalAvailable, state)
@@ -75,7 +70,19 @@ export function generatePlanning(input: PlannerInput): PlanningReport {
   }
 
   // Phase 5 : Rééquilibrage — salariés sous leur minimum d'heures
-  rebalanceMinimumHours(input, state, dayContexts, planningId)
+  // Multiple rounds to ensure all employees reach their minimum
+  for (let round = 0; round < 3; round++) {
+    rebalanceMinimumHours(input, state, dayContexts, planningId)
+
+    // Check if anyone is still under — if not, stop early
+    const anyUnder = input.employees
+      .filter((e) => !e.isManager && e.active)
+      .some((emp) => {
+        const hours = state.employeeHours.get(emp.id) ?? 0
+        return hours < getWeeklyBounds(emp).min
+      })
+    if (!anyUnder) break
+  }
 
   // Phase 6 : Construire le planning
   const planning: WeekPlanning = {
@@ -302,98 +309,6 @@ function redistributeBudget(
   }
 }
 
-// =====================================================
-// Phase 3.5 : PRE-ALLOCATE CONSTRAINED EMPLOYEES
-// =====================================================
-
-/**
- * Pré-alloue TOUS les salariés non-managers pour garantir leur minimum d'heures.
- * Traite les plus contraints en premier (moins de slots disponibles).
- *
- * Chaque salarié reçoit suffisamment de shifts pour atteindre sa borne min,
- * AVANT l'allocation par budget. Le budget s'adaptera ensuite.
- */
-function preAllocateConstrainedEmployees(
-  input: PlannerInput,
-  state: SolverState,
-  dayContexts: DayAllocationContext[],
-  planningId: string,
-): void {
-  const nonManagers = input.employees.filter((e) => !e.isManager && e.active)
-
-  // Pour chaque salarié, compter le total de slots disponibles dans la semaine
-  const empSlots = nonManagers.map((emp) => {
-    let totalSlots = 0
-    for (const ctx of dayContexts) {
-      if (!canWorkDay(input, state, emp, ctx)) continue
-      totalSlots += getAvailableShifts(input, state, emp, ctx).length
-    }
-    const bounds = getWeeklyBounds(emp)
-    // Temps pleins (≥35h) doivent travailler 5 jours (lundi off + 1 repos = 2 jours off max)
-    // Petits contrats : calculer selon les heures
-    const isFullTime = emp.weeklyHours >= 35
-    const daysNeeded = isFullTime ? 5 : Math.ceil(bounds.min / 5)
-    return { emp, totalSlots, daysNeeded, bounds, isFullTime }
-  })
-
-  // Trier : les plus contraints d'abord (moins de slots)
-  empSlots.sort((a, b) => a.totalSlots - b.totalSlots)
-
-  for (const { emp, daysNeeded, bounds, isFullTime } of empSlots) {
-    let hoursPlaced = state.employeeHours.get(emp.id) ?? 0
-    let daysPlaced = state.employeeWorkDays.get(emp.id)?.size ?? 0
-
-    // Allouer sur les jours avec le plus de besoin (week-end d'abord)
-    const dayPriority = [5, 6, 4, 1, 2, 3]
-
-    for (const dayOfWeek of dayPriority) {
-      // Temps plein : continuer jusqu'à 5 jours même si heures atteintes
-      if (isFullTime) {
-        if (daysPlaced >= 5) break
-      } else {
-        if (hoursPlaced >= bounds.min) break
-        if (daysPlaced >= daysNeeded) break
-      }
-
-      const ctx = dayContexts.find((d) => d.dayOfWeek === dayOfWeek)
-      if (!ctx) continue
-      if (state.employeeWorkDays.get(emp.id)?.has(dayOfWeek)) continue
-      if (!canWorkDay(input, state, emp, ctx)) continue
-
-      const shifts = getAvailableShifts(input, state, emp, ctx)
-      if (shifts.length === 0) continue
-
-      // Pick shift intelligently:
-      // - Vary shift types across the week (not all SOIR)
-      // - Prefer shifts that fill the deficit
-      // - Avoid midnight if employee might work tomorrow
-      const remaining = bounds.min - hoursPlaced
-      const empEntries = state.entries.filter((e) => e.employeeId === emp.id)
-      const usedCodes = new Set(empEntries.map((e) => e.shiftTemplateId))
-      const tomorrowShift = state.entries.find(
-        (e) => e.employeeId === emp.id && e.dayOfWeek === dayOfWeek + 1,
-      )
-
-      const scored = shifts.map((s) => {
-        let score = 0
-        score -= Math.abs(s.effectiveHours - remaining / Math.max(1, daysNeeded - daysPlaced))
-        if (usedCodes.has(s.id)) score -= 3 // variety
-        if (s.endTime >= 24 && tomorrowShift && tomorrowShift.startTime < 11) score -= 100
-        if (s.endTime >= 24) score -= 1 // slight preference for non-midnight
-        score += (Math.random() - 0.5) * 2
-        return { s, score }
-      })
-      scored.sort((a, b) => b.score - a.score)
-
-      const shift = scored[0]?.s
-      if (!shift) continue
-      if (tryAssign(input, state, emp, shift, ctx, planningId)) {
-        hoursPlaced += shift.effectiveHours
-        daysPlaced++
-      }
-    }
-  }
-}
 
 // =====================================================
 // DAY ALLOCATION — multi-phase
@@ -697,14 +612,19 @@ function rebalanceMinimumHours(
   const nonManagers = input.employees.filter((e) => !e.isManager && e.active)
 
   // Multiple passes — each pass places one shift per under-minimum employee
-  for (let pass = 0; pass < 5; pass++) {
+  for (let pass = 0; pass < 10; pass++) {
+    // Include employees under HOURS min OR full-time under 5 DAYS
     const underMin = nonManagers
       .map((emp) => {
         const hours = state.employeeHours.get(emp.id) ?? 0
         const bounds = getWeeklyBounds(emp)
-        return { emp, hours, deficit: bounds.min - hours }
+        const days = state.employeeWorkDays.get(emp.id)?.size ?? 0
+        const isFullTime = emp.weeklyHours >= 35
+        const needsMoreDays = isFullTime && days < 5
+        const needsMoreHours = hours < bounds.min
+        return { emp, hours, deficit: bounds.min - hours, days, needsMoreDays, needsMoreHours }
       })
-      .filter((x) => x.deficit > 0)
+      .filter((x) => x.needsMoreHours || x.needsMoreDays)
       .sort((a, b) => b.deficit - a.deficit)
 
     if (underMin.length === 0) break
