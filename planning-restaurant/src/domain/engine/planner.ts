@@ -627,10 +627,12 @@ function canWorkDay(
     u.employeeId === emp.id && u.type === 'fixed' && u.dayOfWeek === ctx.dayOfWeek,
   )) return false
 
-  // Indisponibilité ponctuelle
-  if (input.unavailabilities.some((u) =>
+  // Indisponibilité ponctuelle — OFF complet only (no availableFrom/Until)
+  const punctual = input.unavailabilities.find((u) =>
     u.employeeId === emp.id && u.type === 'punctual' && u.specificDate === ctx.date,
-  )) return false
+  )
+  if (punctual && !punctual.availableFrom && !punctual.availableUntil) return false
+  // If punctual has time restrictions, employee can still work — shifts filtered in getAvailableShifts
 
   // Repos inter-shift (11h)
   const lastEnd = state.employeeLastEndTime.get(emp.id)
@@ -664,7 +666,7 @@ function getAvailableShifts(
     return s.applicability === 'tue_sat'
   })
 
-  // Disponibilité conditionnelle
+  // Disponibilité conditionnelle (récurrente)
   const conditional = input.conditionalAvailabilities.find(
     (ca) => ca.employeeId === emp.id && ca.dayOfWeek === ctx.dayOfWeek,
   )
@@ -672,6 +674,22 @@ function getAvailableShifts(
     shifts = shifts.filter((s) => conditional.allowedShiftCodes.includes(s.code))
     if (conditional.maxHours) {
       shifts = shifts.filter((s) => s.effectiveHours <= conditional.maxHours!)
+    }
+  }
+
+  // Contrainte ponctuelle avec restriction horaire (availableFrom / availableUntil)
+  const punctualTime = input.unavailabilities.find((u) =>
+    u.employeeId === emp.id && u.type === 'punctual' && u.specificDate === ctx.date &&
+    (u.availableFrom != null || u.availableUntil != null),
+  )
+  if (punctualTime) {
+    if (punctualTime.availableFrom != null) {
+      // Dispo seulement à partir de X h → shift doit commencer >= availableFrom
+      shifts = shifts.filter((s) => s.startTime >= punctualTime.availableFrom!)
+    }
+    if (punctualTime.availableUntil != null) {
+      // Doit partir avant X h → shift doit finir <= availableUntil
+      shifts = shifts.filter((s) => s.endTime <= punctualTime.availableUntil!)
     }
   }
 

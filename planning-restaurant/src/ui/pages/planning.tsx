@@ -20,8 +20,9 @@ import {
   fetchConditionalAvailabilities,
 } from '@/infrastructure/supabase/repositories/constraint-repo'
 import { exportPlanningToExcel } from '@/infrastructure/export/excel-export'
+import { savePlanning } from '@/infrastructure/supabase/repositories/planning-repo'
 import type { EventOverride } from '@/domain/engine'
-import { Calendar, Download, Play, ChevronLeft, ChevronRight, AlertTriangle, Sun, Plus, X } from 'lucide-react'
+import { Calendar, Download, Play, ChevronLeft, ChevronRight, AlertTriangle, Sun, Plus, X, Save, CheckCircle } from 'lucide-react'
 
 const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 
@@ -67,6 +68,7 @@ export function PlanningPage() {
   const [weekStart, setWeekStart] = useState(getNextMonday())
   const [report, setReport] = useState<PlanningReport | null>(null)
   const [generating, setGenerating] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
 
   // Constraints loaded for display
@@ -82,6 +84,8 @@ export function PlanningPage() {
   const [addingConstraint, setAddingConstraint] = useState(false)
   const [newConstraintEmpId, setNewConstraintEmpId] = useState('')
   const [newConstraintDay, setNewConstraintDay] = useState(1)
+  const [newConstraintType, setNewConstraintType] = useState<'off' | 'from' | 'until'>('off')
+  const [newConstraintHour, setNewConstraintHour] = useState(14)
 
   function reloadConstraints() {
     setConstraintsLoaded(false)
@@ -120,6 +124,7 @@ export function PlanningPage() {
     d.setDate(d.getDate() + delta * 7)
     setWeekStart(d)
     setReport(null)
+    setSaved(false)
     reloadConstraints()
   }
 
@@ -200,6 +205,7 @@ export function PlanningPage() {
   async function handleGenerate() {
     if (!tenantId) return
     setGenerating(true)
+    setSaved(false)
     setError('')
 
     try {
@@ -243,9 +249,34 @@ export function PlanningPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Génération de Planning</h1>
         {report && (
-          <Button variant="secondary" onClick={() => exportPlanningToExcel(report)}>
-            <Download size={16} className="mr-2" /> Exporter Excel
-          </Button>
+          <div className="flex gap-2">
+            {!saved ? (
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  if (!tenantId) return
+                  await savePlanning({
+                    id: report.planning.id,
+                    tenantId,
+                    weekStartDate: report.planning.weekStartDate,
+                    weekNumber: report.planning.weekNumber,
+                    status: 'draft',
+                    createdBy: tenantId,
+                  })
+                  setSaved(true)
+                }}
+              >
+                <Save size={16} className="mr-2" /> Enregistrer
+              </Button>
+            ) : (
+              <span className="flex items-center gap-1 rounded-md bg-success/10 px-3 py-2 text-sm font-medium text-success">
+                <CheckCircle size={16} /> Enregistré
+              </span>
+            )}
+            <Button variant="secondary" onClick={() => exportPlanningToExcel(report)}>
+              <Download size={16} className="mr-2" /> Exporter Excel
+            </Button>
+          </div>
         )}
       </div>
 
@@ -318,58 +349,106 @@ export function PlanningPage() {
           <CardContent>
             {/* Formulaire ajout inline */}
             {addingConstraint && (
-              <div className="mb-4 flex items-end gap-3 rounded-lg bg-destructive/5 border border-destructive/20 p-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium">Salarié</label>
-                  <select
-                    value={newConstraintEmpId}
-                    onChange={(e) => setNewConstraintEmpId(e.target.value)}
-                    className="h-8 rounded border border-input bg-background px-2 text-sm"
+              <div className="mb-4 rounded-lg bg-destructive/5 border border-destructive/20 p-3">
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium">Salarié</label>
+                    <select
+                      value={newConstraintEmpId}
+                      onChange={(e) => setNewConstraintEmpId(e.target.value)}
+                      className="h-8 rounded border border-input bg-background px-2 text-sm"
+                    >
+                      <option value="">— Choisir —</option>
+                      {activeEmployees.map((e) => (
+                        <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium">Jour</label>
+                    <select
+                      value={newConstraintDay}
+                      onChange={(e) => setNewConstraintDay(Number(e.target.value))}
+                      className="h-8 rounded border border-input bg-background px-2 text-sm"
+                    >
+                      {DAY_NAMES.slice(1).map((name, i) => (
+                        <option key={i + 1} value={i + 1}>{name} {weekDates[i + 1] ? new Date(weekDates[i + 1]).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium">Type</label>
+                    <select
+                      value={newConstraintType}
+                      onChange={(e) => setNewConstraintType(e.target.value as 'off' | 'from' | 'until')}
+                      className="h-8 rounded border border-input bg-background px-2 text-sm"
+                    >
+                      <option value="off">OFF complet</option>
+                      <option value="from">Dispo à partir de...</option>
+                      <option value="until">Doit partir avant...</option>
+                    </select>
+                  </div>
+                  {newConstraintType !== 'off' && (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium">
+                        {newConstraintType === 'from' ? 'À partir de' : 'Avant'}
+                      </label>
+                      <select
+                        value={newConstraintHour}
+                        onChange={(e) => setNewConstraintHour(Number(e.target.value))}
+                        className="h-8 rounded border border-input bg-background px-2 text-sm"
+                      >
+                        {[9.5, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23].map((h) => (
+                          <option key={h} value={h}>{h === 9.5 ? '9h30' : `${h}h`}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={!newConstraintEmpId}
+                    onClick={async () => {
+                      if (!newConstraintEmpId) return
+                      const date = weekDates[newConstraintDay]
+                      if (!date) return
+                      const emp = activeEmployees.find((e) => e.id === newConstraintEmpId)
+                      const empName = emp?.firstName ?? ''
+                      const dayName = DAY_NAMES[newConstraintDay]
+
+                      let label = `OFF ${empName} ${dayName}`
+                      let availableFrom: number | null = null
+                      let availableUntil: number | null = null
+
+                      if (newConstraintType === 'from') {
+                        availableFrom = newConstraintHour
+                        label = `${empName} dispo à partir de ${newConstraintHour}h ${dayName}`
+                      } else if (newConstraintType === 'until') {
+                        availableUntil = newConstraintHour
+                        label = `${empName} doit partir avant ${newConstraintHour}h ${dayName}`
+                      }
+
+                      await createUnavailability({
+                        employeeId: newConstraintEmpId,
+                        type: 'punctual',
+                        dayOfWeek: null,
+                        specificDate: date,
+                        availableFrom,
+                        availableUntil,
+                        label,
+                      })
+                      reloadConstraints()
+                      setAddingConstraint(false)
+                      setNewConstraintEmpId('')
+                      setNewConstraintType('off')
+                    }}
                   >
-                    <option value="">— Choisir —</option>
-                    {activeEmployees.map((e) => (
-                      <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>
-                    ))}
-                  </select>
+                    Ajouter
+                  </Button>
+                  <button onClick={() => setAddingConstraint(false)} className="text-muted-foreground hover:text-foreground">
+                    <X size={16} />
+                  </button>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium">Jour</label>
-                  <select
-                    value={newConstraintDay}
-                    onChange={(e) => setNewConstraintDay(Number(e.target.value))}
-                    className="h-8 rounded border border-input bg-background px-2 text-sm"
-                  >
-                    {DAY_NAMES.slice(1).map((name, i) => (
-                      <option key={i + 1} value={i + 1}>{name} {weekDates[i + 1] ? new Date(weekDates[i + 1]).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : ''}</option>
-                    ))}
-                  </select>
-                </div>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  disabled={!newConstraintEmpId}
-                  onClick={async () => {
-                    if (!newConstraintEmpId) return
-                    const date = weekDates[newConstraintDay]
-                    if (!date) return
-                    const emp = activeEmployees.find((e) => e.id === newConstraintEmpId)
-                    await createUnavailability({
-                      employeeId: newConstraintEmpId,
-                      type: 'punctual',
-                      dayOfWeek: null,
-                      specificDate: date,
-                      label: `OFF ${emp?.firstName ?? ''} ${DAY_NAMES[newConstraintDay]}`,
-                    })
-                    reloadConstraints()
-                    setAddingConstraint(false)
-                    setNewConstraintEmpId('')
-                  }}
-                >
-                  Ajouter OFF
-                </Button>
-                <button onClick={() => setAddingConstraint(false)} className="text-muted-foreground hover:text-foreground">
-                  <X size={16} />
-                </button>
               </div>
             )}
 

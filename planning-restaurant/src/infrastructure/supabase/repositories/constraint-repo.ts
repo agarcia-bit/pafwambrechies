@@ -19,6 +19,8 @@ export async function createUnavailability(u: Omit<Unavailability, 'id'>): Promi
       type: u.type,
       day_of_week: u.dayOfWeek,
       specific_date: u.specificDate,
+      available_from: u.availableFrom,
+      available_until: u.availableUntil,
       label: u.label,
     })
     .select()
@@ -101,6 +103,8 @@ function mapUnavailability(row: any): Unavailability {
     type: row.type,
     dayOfWeek: row.day_of_week,
     specificDate: row.specific_date,
+    availableFrom: row.available_from != null ? Number(row.available_from) : null,
+    availableUntil: row.available_until != null ? Number(row.available_until) : null,
     label: row.label,
   }
 }

@@ -4,7 +4,11 @@
  * Types :
  * - "fixed" : indisponibilité récurrente (ex: "jamais le mardi")
  * - "punctual" : indisponibilité ponctuelle (ex: "indispo le 15/04/2026")
- * - "preference" : préférence non-bloquante (phase 2)
+ *
+ * Time restrictions (optional, for punctual):
+ * - availableFrom: employee available only FROM this hour (ex: 14.0 = dispo à partir de 14h)
+ * - availableUntil: employee must leave BY this hour (ex: 18.0 = doit partir à 18h)
+ * - Both null = OFF complet (pas dispo du tout)
  */
 export type UnavailabilityType = 'fixed' | 'punctual'
 
@@ -14,26 +18,25 @@ export interface Unavailability {
   type: UnavailabilityType
   dayOfWeek: number | null // 0=lundi..6=dimanche (pour "fixed")
   specificDate: string | null // ISO date (pour "punctual")
-  label: string // Description libre (ex: "Cours du soir")
+  availableFrom: number | null // ex: 14.0 = dispo à partir de 14h
+  availableUntil: number | null // ex: 18.0 = doit partir à 18h
+  label: string // Description libre
 }
 
 /**
  * Horaires fixes pour les managers.
- * Un manager a un emploi du temps fixe qui ne change pas
- * (sauf contrainte ponctuelle explicite).
  */
 export interface ManagerFixedSchedule {
   id: string
   employeeId: string
   dayOfWeek: number // 0=lundi..6=dimanche
   shiftTemplateId: string | null // null = OFF ce jour
-  startTime: number | null // override si différent du template
-  endTime: number | null // override si différent du template
+  startTime: number | null
+  endTime: number | null
 }
 
 /**
  * Disponibilité conditionnelle (ex: "mer≥18h" = mercredi, uniquement créneau SOIR)
- * Encodée comme : jour + créneau(x) autorisé(s)
  */
 export interface ConditionalAvailability {
   id: string

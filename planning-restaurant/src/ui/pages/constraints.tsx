@@ -96,6 +96,8 @@ export function ConstraintsPage() {
           type: 'fixed',
           dayOfWeek: day,
           specificDate: null,
+          availableFrom: null,
+          availableUntil: null,
           label: newLabel || `OFF ${DAY_NAMES[day]}`,
         })
         created.push(u)
@@ -107,6 +109,8 @@ export function ConstraintsPage() {
           type: 'punctual',
           dayOfWeek: null,
           specificDate: date,
+          availableFrom: null,
+          availableUntil: null,
           label: newLabel || `OFF ${date}`,
         })
         created.push(u)
