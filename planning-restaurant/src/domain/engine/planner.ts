@@ -65,11 +65,16 @@ export function generatePlanning(input: PlannerInput): PlanningReport {
   }
 
   // === Phase 4 : Patcher les trous de couverture ===
-  for (let round = 0; round < 3; round++) {
+  // Ordre : Ouverture → Fermeture → Couverture continue
+  for (let round = 0; round < 5; round++) {
     let patched = false
     for (const ctx of dayContexts) {
       if (patchOpening(input, state, ctx, planningId, nonManagers)) patched = true
+    }
+    for (const ctx of dayContexts) {
       if (patchClosing(input, state, ctx, planningId, nonManagers)) patched = true
+    }
+    for (const ctx of dayContexts) {
       if (patchCoverageGaps(input, state, ctx, planningId, nonManagers)) patched = true
     }
     if (!patched) break
