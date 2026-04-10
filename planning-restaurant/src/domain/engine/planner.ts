@@ -228,7 +228,8 @@ function planEmployeeWeek(
 ): void {
   const bounds = getWeeklyBounds(emp)
   const isFullTime = emp.weeklyHours >= 35
-  const targetDays = isFullTime ? 5 : Math.min(5, Math.ceil(bounds.min / 4))
+  const alreadyWorking = state.employeeWorkDays.get(emp.id)?.size ?? 0
+  const targetDays = Math.max(0, (isFullTime ? 5 : Math.min(5, Math.ceil(bounds.min / 4))) - alreadyWorking)
 
   // Step 1: Determine which days the employee CAN work
   const availableDays = dayContexts
