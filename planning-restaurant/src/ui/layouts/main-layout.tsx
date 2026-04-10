@@ -1,5 +1,7 @@
 import { type ReactNode } from 'react'
 import { useAuthStore } from '@/store/auth-store'
+import { useEmployeeStore } from '@/store/employee-store'
+import { useRoleStore } from '@/store/role-store'
 import { Button } from '@/ui/components'
 import {
   LayoutDashboard,
@@ -52,6 +54,14 @@ const NAV_SECTIONS = [
 
 export function MainLayout({ children, currentPage, onNavigate }: MainLayoutProps) {
   const { signOut } = useAuthStore()
+  const { employees } = useEmployeeStore()
+  const { employeeRoles } = useRoleStore()
+
+  // Count active employees without a role
+  const unassignedCount = employees
+    .filter((e) => e.active)
+    .filter((e) => !employeeRoles.some((er) => er.employeeId === e.id))
+    .length
 
   return (
     <div className="flex min-h-screen">
@@ -84,6 +94,11 @@ export function MainLayout({ children, currentPage, onNavigate }: MainLayoutProp
                     >
                       <item.icon size={18} />
                       {item.label}
+                      {item.id === 'roles' && unassignedCount > 0 && (
+                        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
+                          {unassignedCount}
+                        </span>
+                      )}
                     </button>
                   </li>
                 ))}
