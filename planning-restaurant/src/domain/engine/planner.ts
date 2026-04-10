@@ -80,6 +80,9 @@ export function generatePlanning(input: PlannerInput): PlanningReport {
     if (!patched) break
   }
 
+  // === Phase 4b : Upgrade shifts for under-minimum employees ===
+  upgradeShiftsForMinimum(input, state, dayContexts, planningId, nonManagers)
+
   // === Phase 5 : Construire le planning ===
   const planning: WeekPlanning = {
     id: planningId,
@@ -511,6 +514,116 @@ function assignForCoverage(
     return true
   }
   return false
+}
+
+// =====================================================
+// PHASE 4b : UPGRADE SHIFTS FOR UNDER-MINIMUM EMPLOYEES
+// =====================================================
+
+function upgradeShiftsForMinimum(
+  input: PlannerInput,
+  state: SolverState,
+  dayContexts: DayAllocationContext[],
+  planningId: string,
+  nonManagers: Employee[],
+): void {
+  for (const emp of nonManagers) {
+    let hours = state.employeeHours.get(emp.id) ?? 0
+    const bounds = getWeeklyBounds(emp)
+    if (hours >= bounds.min) continue
+
+    // Strategy 1: Try to ADD a shift on a day not yet worked
+    const workDays = state.employeeWorkDays.get(emp.id) ?? new Set<number>()
+    if (workDays.size < 5) {
+      for (const ctx of dayContexts) {
+        if (hours >= bounds.min) break
+        if (workDays.has(ctx.dayOfWeek)) continue
+        if (!canWorkDay(input, state, emp, ctx)) continue
+
+        const shifts = getAvailableShifts(input, state, emp, ctx)
+        if (shifts.length === 0) continue
+
+        // Pick longest shift that fits
+        const sorted = [...shifts].sort((a, b) => b.effectiveHours - a.effectiveHours)
+        for (const shift of sorted) {
+          if (hours + shift.effectiveHours <= bounds.max) {
+            addEntry(state, {
+              id: crypto.randomUUID(), planningId,
+              employeeId: emp.id,
+              roleId: input.employeeRoles.find((er) => er.employeeId === emp.id)?.roleId ?? '',
+              date: ctx.date, dayOfWeek: ctx.dayOfWeek,
+              shiftTemplateId: shift.id,
+              startTime: shift.startTime, endTime: shift.endTime,
+              effectiveHours: shift.effectiveHours,
+              meals: shift.meals, baskets: shift.baskets,
+            })
+            hours += shift.effectiveHours
+            break
+          }
+        }
+      }
+    }
+
+    // Strategy 2: Replace short shifts with longer ones
+    if (hours < bounds.min) {
+      const empEntries = [...state.entries.filter((e) => e.employeeId === emp.id)]
+        .sort((a, b) => a.effectiveHours - b.effectiveHours) // shortest first
+
+      for (const entry of empEntries) {
+        if (hours >= bounds.min) break
+        const ctx = dayContexts.find((d) => d.dayOfWeek === entry.dayOfWeek)
+        if (!ctx) continue
+
+        // Find longer shifts for this day
+        const isSunday = ctx.dayOfWeek === 6
+        const isSaturday = ctx.dayOfWeek === 5
+        const longerShifts = input.shiftTemplates
+          .filter((s) => {
+            if (isSunday) return s.applicability === 'sunday'
+            if (isSaturday) return s.applicability === 'tue_sat' || s.applicability === 'sat_only'
+            return s.applicability === 'tue_sat'
+          })
+          .filter((s) => s.effectiveHours > entry.effectiveHours)
+          .filter((s) => {
+            // Check rest with yesterday
+            const yesterday = state.entries.find((e) => e.employeeId === emp.id && e.dayOfWeek === entry.dayOfWeek - 1)
+            if (yesterday && (24 - yesterday.endTime + s.startTime) < 11) return false
+            // Check rest with tomorrow
+            const tomorrow = state.entries.find((e) => e.employeeId === emp.id && e.dayOfWeek === entry.dayOfWeek + 1)
+            if (tomorrow && (24 - s.endTime + tomorrow.startTime) < 11) return false
+            return true
+          })
+          .filter((s) => (hours - entry.effectiveHours + s.effectiveHours) <= bounds.max)
+          .sort((a, b) => b.effectiveHours - a.effectiveHours)
+
+        if (longerShifts.length === 0) continue
+
+        const upgrade = longerShifts[0]
+
+        // Remove old entry
+        const idx = state.entries.indexOf(entry)
+        if (idx === -1) continue
+        state.entries.splice(idx, 1)
+        state.employeeHours.set(emp.id, hours - entry.effectiveHours)
+        state.dailyHours.set(entry.dayOfWeek, (state.dailyHours.get(entry.dayOfWeek) ?? 0) - entry.effectiveHours)
+
+        // Add upgraded shift
+        addEntry(state, {
+          ...entry,
+          id: crypto.randomUUID(),
+          shiftTemplateId: upgrade.id,
+          startTime: upgrade.startTime, endTime: upgrade.endTime,
+          effectiveHours: upgrade.effectiveHours,
+          meals: upgrade.meals, baskets: upgrade.baskets,
+        })
+        hours = state.employeeHours.get(emp.id) ?? 0
+      }
+    }
+
+    if (hours < bounds.min) {
+      state.warnings.push(`${emp.firstName} : ${(bounds.min - hours).toFixed(1)}h sous le minimum`)
+    }
+  }
 }
 
 // =====================================================
