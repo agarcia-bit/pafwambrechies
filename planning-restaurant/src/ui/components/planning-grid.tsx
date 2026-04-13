@@ -106,7 +106,7 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
                     (e) => e.employeeId === summary.employeeId && e.dayOfWeek === d,
                   )
                   const isOff = !entry
-                  const bgClass = isOff ? 'bg-red-100' : 'bg-blue-50/60'
+                  const bgClass = isOff ? 'bg-red-100' : 'bg-blue-100'
                   const isEditing = editingCell?.empId === summary.employeeId && editingCell?.day === d
                   const dayShifts = getShiftsForDay(d, summary.employeeId)
 
