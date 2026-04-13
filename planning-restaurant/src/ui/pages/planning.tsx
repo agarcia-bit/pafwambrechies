@@ -733,8 +733,8 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
             const totalBaseHours = activeEmployees.reduce((sum, e) => sum + e.weeklyHours, 0)
             const totalMaxHours = activeEmployees.reduce((sum, e) => sum + e.weeklyHours + e.modulationRange, 0)
             const weekProductivity = totalBaseHours > 0 ? totalCA / totalBaseHours : 0
-            // 3 levels: comfortable (<90), tight (90-100), critical (>100)
-            const level = weekProductivity > 100 ? 'critical' : weekProductivity > 90 ? 'tight' : 'comfortable'
+            // 3 levels: <85 = overstaffed, 85-110 = good, >110 = understaffed
+            const level = weekProductivity < 85 ? 'overstaffed' : weekProductivity > 110 ? 'understaffed' : 'good'
 
             return (
               <>
@@ -867,8 +867,8 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
 
                 {/* Indicateur productivité semaine */}
                 <div className={`mt-4 flex items-center justify-between rounded-lg p-4 ${
-                  level === 'critical' ? 'bg-destructive/10 border border-destructive/30' :
-                  level === 'tight' ? 'bg-warning/10 border border-warning/30' :
+                  level === 'understaffed' ? 'bg-destructive/10 border border-destructive/30' :
+                  level === 'overstaffed' ? 'bg-warning/10 border border-warning/30' :
                   'bg-success/10 border border-success/30'
                 }`}>
                   <div>
@@ -879,17 +879,17 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
                   </div>
                   <div className="text-right">
                     <p className={`text-2xl font-bold ${
-                      level === 'critical' ? 'text-destructive' :
-                      level === 'tight' ? 'text-warning' : 'text-success'
+                      level === 'understaffed' ? 'text-destructive' :
+                      level === 'overstaffed' ? 'text-warning' : 'text-success'
                     }`}>
                       {Math.round(weekProductivity)}
                     </p>
                     <p className={`text-xs font-medium ${
-                      level === 'critical' ? 'text-destructive' :
-                      level === 'tight' ? 'text-warning' : 'text-success'
+                      level === 'understaffed' ? 'text-destructive' :
+                      level === 'overstaffed' ? 'text-warning' : 'text-success'
                     }`}>
-                      {level === 'critical' ? 'Recrutement nécessaire' :
-                       level === 'tight' ? 'Effectif tendu — envisager un renfort' :
+                      {level === 'understaffed' ? 'Envisager un renfort' :
+                       level === 'overstaffed' ? 'Délester des heures' :
                        'Effectif suffisant'}
                     </p>
                   </div>
