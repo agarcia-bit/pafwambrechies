@@ -153,7 +153,14 @@ export function RolesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {activeEmployees.map((emp) => {
+                  {[...activeEmployees].sort((a, b) => {
+                    const roleA = getEmployeeRole(a.id)
+                    const roleB = getEmployeeRole(b.id)
+                    const nameA = roles.find((r) => r.id === roleA)?.name ?? 'zzz'
+                    const nameB = roles.find((r) => r.id === roleB)?.name ?? 'zzz'
+                    if (nameA !== nameB) return nameA.localeCompare(nameB)
+                    return a.firstName.localeCompare(b.firstName)
+                  }).map((emp) => {
                     const currentRole = getEmployeeRole(emp.id)
                     const hasNoRole = !currentRole
                     return (

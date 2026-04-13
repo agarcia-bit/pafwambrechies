@@ -38,13 +38,22 @@ export function EmployeesPage() {
 
   const activeEmployees = employees.filter((e) => e.active)
   const inactiveEmployees = employees.filter((e) => !e.active)
-  const displayedEmployees = showInactive ? employees : activeEmployees
 
   function getRoleForEmployee(employeeId: string) {
     const er = employeeRoles.find((er) => er.employeeId === employeeId)
     if (!er) return null
     return roles.find((r) => r.id === er.roleId) ?? null
   }
+
+  // Sort by role name, then by name
+  const sortByRole = (a: Employee, b: Employee) => {
+    const roleA = getRoleForEmployee(a.id)?.name ?? 'zzz'
+    const roleB = getRoleForEmployee(b.id)?.name ?? 'zzz'
+    if (roleA !== roleB) return roleA.localeCompare(roleB)
+    return a.firstName.localeCompare(b.firstName)
+  }
+
+  const displayedEmployees = (showInactive ? employees : activeEmployees).sort(sortByRole)
 
   function handleAdd(data: Omit<Employee, 'id' | 'createdAt'>) {
     add(data)
