@@ -3,7 +3,7 @@ import { useEmployeeStore } from '@/store/employee-store'
 import { useEffect, useState } from 'react'
 import { fetchPlannings, updatePlanningStatus, deletePlanning } from '@/infrastructure/supabase/repositories/planning-repo'
 import type { SavedPlanning } from '@/infrastructure/supabase/repositories/planning-repo'
-import { CheckCircle, Clock, Trash2, FileSpreadsheet } from 'lucide-react'
+import { CheckCircle, Clock, Trash2, FileSpreadsheet, Users } from 'lucide-react'
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   draft: { label: 'Brouillon', color: 'bg-warning/10 text-warning' },
@@ -52,37 +52,49 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold">Tableau de bord</h1>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Salariés actifs
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{activeEmployees.length}</p>
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+        <Card className="relative overflow-hidden">
+          <div className="absolute right-0 top-0 h-24 w-24 -translate-y-4 translate-x-4 rounded-full bg-indigo-500/10" />
+          <CardContent className="relative">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100">
+                <Users size={18} className="text-indigo-600" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-500">Salariés actifs</p>
+                <p className="text-2xl font-bold text-slate-900">{activeEmployees.length}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Managers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{managers.length}</p>
+        <Card className="relative overflow-hidden">
+          <div className="absolute right-0 top-0 h-24 w-24 -translate-y-4 translate-x-4 rounded-full bg-emerald-500/10" />
+          <CardContent className="relative">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
+                <CheckCircle size={18} className="text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-500">Managers</p>
+                <p className="text-2xl font-bold text-slate-900">{managers.length}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Équipe salle
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{staff.length}</p>
+        <Card className="relative overflow-hidden">
+          <div className="absolute right-0 top-0 h-24 w-24 -translate-y-4 translate-x-4 rounded-full bg-amber-500/10" />
+          <CardContent className="relative">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100">
+                <Users size={18} className="text-amber-600" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-500">Équipe salle</p>
+                <p className="text-2xl font-bold text-slate-900">{staff.length}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -90,8 +102,10 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
       {/* Historique des plannings */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileSpreadsheet size={18} />
+          <CardTitle className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100">
+              <FileSpreadsheet size={15} className="text-slate-600" />
+            </div>
             Historique des plannings
           </CardTitle>
         </CardHeader>
