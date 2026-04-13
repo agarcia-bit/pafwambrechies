@@ -104,7 +104,7 @@ export function PlanningGrid({ report, shiftTemplates, onShiftChange }: Planning
                           <option value="">OFF</option>
                           {dayShifts.map((s) => (
                             <option key={s.id} value={s.id}>
-                              {s.startTime}→{s.endTime} ({s.effectiveHours}h) {s.code}
+                              {s.startTime}→{s.endTime} ({s.effectiveHours}h)
                             </option>
                           ))}
                         </select>

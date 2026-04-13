@@ -9,6 +9,7 @@ import { PlanningGrid } from '@/ui/components/planning-grid'
 import { generatePlanning } from '@/domain/engine'
 import type { PlannerInput } from '@/domain/engine'
 import type { PlanningReport } from '@/domain/models/planning'
+import { validatePlanning } from '@/domain/rules/validation'
 import type { Unavailability, ManagerFixedSchedule, ConditionalAvailability } from '@/domain/models/constraint'
 import type { Tenant } from '@/domain/models/tenant'
 import { DEFAULT_TENANT_CONFIG } from '@/domain/models/tenant'
@@ -699,25 +700,24 @@ export function PlanningPage() {
           report={report}
           shiftTemplates={templates}
           onShiftChange={(employeeId, dayOfWeek, newShiftId) => {
-            if (!report) return
-            const entries = report.planning.entries
+            if (!report || !tenantId) return
+            const entries = [...report.planning.entries]
 
             // Remove existing entry for this employee+day
-            const filtered = entries.filter(
-              (e) => !(e.employeeId === employeeId && e.dayOfWeek === dayOfWeek),
+            const idx = entries.findIndex(
+              (e) => e.employeeId === employeeId && e.dayOfWeek === dayOfWeek,
             )
+            if (idx !== -1) entries.splice(idx, 1)
 
             if (newShiftId) {
-              // Add new entry with the selected shift
               const template = templates.find((t) => t.id === newShiftId)
               if (template) {
-                const weekStartISO2 = formatISO(weekStart)
-                filtered.push({
+                entries.push({
                   id: crypto.randomUUID(),
                   planningId: report.planning.id,
                   employeeId,
                   roleId: employeeRoles.find((er) => er.employeeId === employeeId)?.roleId ?? '',
-                  date: addDays(weekStartISO2, dayOfWeek),
+                  date: addDays(formatISO(weekStart), dayOfWeek),
                   dayOfWeek,
                   shiftTemplateId: template.id,
                   startTime: template.startTime,
@@ -729,13 +729,9 @@ export function PlanningPage() {
               }
             }
 
-            // Update report with new entries — recalculate summaries
-            const newReport = { ...report }
-            newReport.planning = { ...report.planning, entries: filtered }
-
             // Recalculate employee summaries
-            newReport.employeeSummaries = report.employeeSummaries.map((s) => {
-              const empEntries = filtered.filter((e) => e.employeeId === s.employeeId)
+            const empSummaries = report.employeeSummaries.map((s) => {
+              const empEntries = entries.filter((e) => e.employeeId === s.employeeId)
               const plannedHours = empEntries.reduce((sum, e) => sum + e.effectiveHours, 0)
               return {
                 ...s,
@@ -743,10 +739,54 @@ export function PlanningPage() {
                 status: plannedHours < s.boundsMin ? 'under' as const : plannedHours > s.boundsMax ? 'over' as const : 'ok' as const,
                 totalMeals: empEntries.reduce((sum, e) => sum + e.meals, 0),
                 totalBaskets: empEntries.reduce((sum, e) => sum + e.baskets, 0),
+                daysOff: [0, 1, 2, 3, 4, 5, 6].filter((d) => !empEntries.some((e) => e.dayOfWeek === d)),
               }
             })
 
-            setReport(newReport)
+            // Recalculate daily summaries
+            const dailySummaries = report.dailySummaries.map((ds) => {
+              const dayEntries = entries.filter((e) => e.dayOfWeek === ds.dayOfWeek)
+              const plannedHours = dayEntries.reduce((sum, e) => sum + e.effectiveHours, 0)
+              const productivity = plannedHours > 0 ? ds.forecastedRevenue / plannedHours : 0
+              const countCov = (from: number, to: number) => {
+                let min = Infinity
+                for (let h = from; h < to; h += 0.5) {
+                  const c = dayEntries.filter((e) => e.startTime <= h && e.endTime > h).length
+                  if (c < min) min = c
+                }
+                return min === Infinity ? 0 : min
+              }
+              const closingTime = ds.dayOfWeek === 6 ? 21 : 24
+              return {
+                ...ds,
+                plannedHours,
+                productivity,
+                openingStaff: dayEntries.filter((e) => e.startTime <= 9.5).length,
+                coverageMidi: countCov(12, 15),
+                coverageApresMidi: countCov(15, 18),
+                coverageSoir: countCov(18, closingTime),
+                closingStaff: dayEntries.filter((e) => e.endTime >= closingTime).length,
+              }
+            })
+
+            // Revalidate
+            const violations = validatePlanning({
+              entries,
+              employees: activeEmployees,
+              managerIds: activeEmployees.filter((e) => e.isManager).map((e) => e.id),
+              shiftTemplates: templates,
+              closingTimeWeek: 24,
+              closingTimeSunday: 21,
+            })
+
+            setReport({
+              ...report,
+              planning: { ...report.planning, entries },
+              employeeSummaries: empSummaries,
+              dailySummaries,
+              violations,
+              isValid: violations.filter((v) => v.severity === 'blocking').length === 0,
+            })
             setSaved(false)
           }}
         />
