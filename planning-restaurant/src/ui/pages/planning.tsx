@@ -683,7 +683,63 @@ export function PlanningPage() {
       )}
 
       {/* Résultat */}
-      {report && <PlanningGrid report={report} />}
+      {report && (
+        <PlanningGrid
+          report={report}
+          shiftTemplates={templates}
+          onShiftChange={(employeeId, dayOfWeek, newShiftId) => {
+            if (!report) return
+            const entries = report.planning.entries
+
+            // Remove existing entry for this employee+day
+            const filtered = entries.filter(
+              (e) => !(e.employeeId === employeeId && e.dayOfWeek === dayOfWeek),
+            )
+
+            if (newShiftId) {
+              // Add new entry with the selected shift
+              const template = templates.find((t) => t.id === newShiftId)
+              if (template) {
+                const weekStartISO2 = formatISO(weekStart)
+                filtered.push({
+                  id: crypto.randomUUID(),
+                  planningId: report.planning.id,
+                  employeeId,
+                  roleId: employeeRoles.find((er) => er.employeeId === employeeId)?.roleId ?? '',
+                  date: addDays(weekStartISO2, dayOfWeek),
+                  dayOfWeek,
+                  shiftTemplateId: template.id,
+                  startTime: template.startTime,
+                  endTime: template.endTime,
+                  effectiveHours: template.effectiveHours,
+                  meals: template.meals,
+                  baskets: template.baskets,
+                })
+              }
+            }
+
+            // Update report with new entries — recalculate summaries
+            const newReport = { ...report }
+            newReport.planning = { ...report.planning, entries: filtered }
+
+            // Recalculate employee summaries
+            newReport.employeeSummaries = report.employeeSummaries.map((s) => {
+              const empEntries = filtered.filter((e) => e.employeeId === s.employeeId)
+              const plannedHours = empEntries.reduce((sum, e) => sum + e.effectiveHours, 0)
+              return {
+                ...s,
+                plannedHours,
+                status: plannedHours < s.boundsMin ? 'under' as const : plannedHours > s.boundsMax ? 'over' as const : 'ok' as const,
+                totalMeals: empEntries.reduce((sum, e) => sum + e.meals, 0),
+                totalBaskets: empEntries.reduce((sum, e) => sum + e.baskets, 0),
+              }
+            })
+
+            setReport(newReport)
+            setSaved(false)
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -1,12 +1,47 @@
+import { useState } from 'react'
 import type { PlanningReport } from '@/domain/models/planning'
+import type { ShiftTemplate } from '@/domain/models/shift'
 
 const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
 interface PlanningGridProps {
   report: PlanningReport
+  shiftTemplates: ShiftTemplate[]
+  onShiftChange?: (employeeId: string, dayOfWeek: number, newShiftId: string | null) => void
 }
 
-export function PlanningGrid({ report }: PlanningGridProps) {
+export function PlanningGrid({ report, shiftTemplates, onShiftChange }: PlanningGridProps) {
+  const [editingCell, setEditingCell] = useState<{ empId: string; day: number } | null>(null)
+
+  function getShiftsForDay(dayOfWeek: number): ShiftTemplate[] {
+    const isSunday = dayOfWeek === 6
+    const isSaturday = dayOfWeek === 5
+    return shiftTemplates
+      .filter((s) => {
+        if (isSunday) return s.applicability === 'sunday'
+        if (isSaturday) return s.applicability === 'tue_sat' || s.applicability === 'sat_only'
+        return s.applicability === 'tue_sat'
+      })
+      .sort((a, b) => a.startTime - b.startTime || a.endTime - b.endTime)
+  }
+
+  // Recalculate summaries from current entries
+  const summaries = report.employeeSummaries.map((s) => {
+    const entries = report.planning.entries.filter((e) => e.employeeId === s.employeeId)
+    const plannedHours = entries.reduce((sum, e) => sum + e.effectiveHours, 0)
+    const totalMeals = entries.reduce((sum, e) => sum + e.meals, 0)
+    const totalBaskets = entries.reduce((sum, e) => sum + e.baskets, 0)
+    return { ...s, plannedHours, totalMeals, totalBaskets }
+  })
+
+  // Recalculate daily stats
+  const dailyStats = report.dailySummaries.map((ds) => {
+    const dayEntries = report.planning.entries.filter((e) => e.dayOfWeek === ds.dayOfWeek)
+    const plannedHours = dayEntries.reduce((sum, e) => sum + e.effectiveHours, 0)
+    const productivity = plannedHours > 0 ? ds.forecastedRevenue / plannedHours : 0
+    return { ...ds, plannedHours, productivity }
+  })
+
   return (
     <div className="flex flex-col gap-4">
       {/* Grille principale */}
@@ -19,7 +54,7 @@ export function PlanningGrid({ report }: PlanningGridProps) {
               {DAY_NAMES.slice(1).map((day, i) => {
                 const dayIdx = i + 1
                 return (
-                  <th key={dayIdx} colSpan={3} className="px-1 py-2 text-center">
+                  <th key={dayIdx} className="px-1 py-2 text-center min-w-[120px]">
                     {day}
                     {report.dailySummaries.find((d) => d.dayOfWeek === dayIdx) && (
                       <div className="text-[10px] font-normal opacity-75">
@@ -33,23 +68,9 @@ export function PlanningGrid({ report }: PlanningGridProps) {
               <th className="px-2 py-2 text-center">Repas</th>
               <th className="px-2 py-2 text-center">Paniers</th>
             </tr>
-            <tr className="bg-primary/80 text-primary-foreground text-[10px]">
-              <th className="sticky left-0 z-10 bg-primary/80"></th>
-              <th className="sticky left-16 z-10 bg-primary/80"></th>
-              {DAY_NAMES.slice(1).map((_, i) => (
-                <th key={`sub-${i + 1}`} colSpan={3} className="px-1 py-1 text-center">
-                  <span className="inline-flex gap-2">
-                    <span>Déb</span><span>Fin</span><span>H</span>
-                  </span>
-                </th>
-              ))}
-              <th></th>
-              <th></th>
-              <th></th>
-            </tr>
           </thead>
           <tbody>
-            {report.employeeSummaries.map((summary) => (
+            {summaries.map((summary) => (
               <tr key={summary.employeeId} className="border-b border-border hover:bg-muted/20">
                 <td className="sticky left-0 z-10 bg-background px-2 py-1.5 text-center font-mono">
                   {summary.contractHours}
@@ -63,22 +84,52 @@ export function PlanningGrid({ report }: PlanningGridProps) {
                   )
                   const isOff = !entry
                   const bgClass = isOff ? 'bg-planning-off/40' : 'bg-planning-work/40'
+                  const isEditing = editingCell?.empId === summary.employeeId && editingCell?.day === d
+                  const dayShifts = getShiftsForDay(d)
+
                   return (
-                    <td key={d} colSpan={3} className={`px-1 py-1.5 text-center ${bgClass}`}>
-                      {entry ? (
-                        <span className="inline-flex gap-1">
-                          <span>{entry.startTime}</span>
-                          <span className="text-muted-foreground">→</span>
-                          <span>{entry.endTime}</span>
-                          <span className="font-bold">({entry.effectiveHours})</span>
-                        </span>
+                    <td key={d} className={`px-1 py-1 text-center ${bgClass} relative`}>
+                      {isEditing ? (
+                        <select
+                          autoFocus
+                          className="w-full h-7 rounded border border-primary bg-background text-xs"
+                          value={entry?.shiftTemplateId ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            onShiftChange?.(summary.employeeId, d, val || null)
+                            setEditingCell(null)
+                          }}
+                          onBlur={() => setEditingCell(null)}
+                        >
+                          <option value="">OFF</option>
+                          {dayShifts.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.startTime}→{s.endTime} ({s.effectiveHours}h) {s.code}
+                            </option>
+                          ))}
+                        </select>
                       ) : (
-                        <span className="text-muted-foreground">OFF</span>
+                        <button
+                          onClick={() => setEditingCell({ empId: summary.employeeId, day: d })}
+                          className="w-full rounded px-1 py-0.5 hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer"
+                          title="Cliquer pour modifier"
+                        >
+                          {entry ? (
+                            <span className="inline-flex gap-1">
+                              <span>{entry.startTime}</span>
+                              <span className="text-muted-foreground">→</span>
+                              <span>{entry.endTime}</span>
+                              <span className="font-bold">({entry.effectiveHours})</span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">OFF</span>
+                          )}
+                        </button>
                       )}
                     </td>
                   )
                 })}
-                <td className={`px-2 py-1.5 text-center font-bold ${summary.status !== 'ok' ? 'text-destructive' : ''}`}>
+                <td className={`px-2 py-1.5 text-center font-bold ${summary.plannedHours < summary.contractHours ? 'text-destructive' : ''}`}>
                   {summary.plannedHours}h
                   {(() => {
                     const delta = summary.plannedHours - summary.contractHours
@@ -117,7 +168,7 @@ export function PlanningGrid({ report }: PlanningGridProps) {
             </tr>
           </thead>
           <tbody>
-            {report.dailySummaries.map((ds) => {
+            {dailyStats.map((ds) => {
               const prodOk = ds.productivity >= 80 && ds.productivity <= 150
               return (
                 <tr key={ds.dayOfWeek} className="border-b border-border">
