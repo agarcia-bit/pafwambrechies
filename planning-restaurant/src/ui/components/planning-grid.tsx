@@ -194,13 +194,13 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
           </thead>
           <tbody>
             {dailyStats.map((ds) => {
-              const prodOk = ds.productivity >= 80 && ds.productivity <= 150
+              const prodLevel = (ds.productivity >= 85 && ds.productivity <= 110) ? 'good' : 'bad'
               return (
                 <tr key={ds.dayOfWeek} className="border-b border-border">
                   <td className="px-3 py-2 font-medium">{DAY_NAMES[ds.dayOfWeek]}</td>
                   <td className="px-3 py-2 text-center">{ds.forecastedRevenue.toLocaleString('fr-FR')}€</td>
                   <td className="px-3 py-2 text-center">{ds.plannedHours}h</td>
-                  <td className={`px-3 py-2 text-center font-bold ${prodOk ? 'text-success' : 'text-destructive'}`}>
+                  <td className={`px-3 py-2 text-center font-bold ${prodLevel === 'good' ? 'text-success' : 'text-destructive'}`}>
                     {ds.productivity > 0 ? Math.round(ds.productivity) : '—'}
                   </td>
                   <td className={`px-3 py-2 text-center ${ds.openingStaff === 0 ? 'text-destructive font-bold' : ''}`}>{ds.openingStaff}</td>
