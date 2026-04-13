@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useAuthStore } from '@/store/auth-store'
-import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
+import { Button, Input } from '@/ui/components'
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
@@ -19,18 +19,19 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-center text-2xl">
+    <div className="flex min-h-screen items-center justify-center bg-slate-900 p-4">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 text-center">
+          <h1 className="text-2xl font-bold text-white tracking-tight">
             Planning Restaurant
-          </CardTitle>
-          <p className="text-center text-sm text-muted-foreground">
+          </h1>
+          <p className="mt-2 text-sm text-slate-400">
             Connectez-vous pour accéder à votre espace
           </p>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        </div>
+
+        <div className="rounded-2xl bg-white p-8 shadow-xl">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <Input
               id="email"
               label="Email"
@@ -52,14 +53,14 @@ export function LoginPage() {
               autoComplete="current-password"
             />
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
             )}
-            <Button type="submit" disabled={loading} className="mt-2">
+            <Button type="submit" disabled={loading} size="lg" className="mt-1 w-full">
               {loading ? 'Connexion...' : 'Se connecter'}
             </Button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

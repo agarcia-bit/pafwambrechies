@@ -7,17 +7,17 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantStyles: Record<NonNullable<ButtonProps['variant']>, string> = {
-  primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
-  secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-  destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-  ghost: 'hover:bg-accent hover:text-accent-foreground',
-  outline: 'border border-border bg-background hover:bg-accent hover:text-accent-foreground',
+  primary: 'bg-primary text-white hover:bg-primary/90 shadow-sm shadow-primary/25',
+  secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200',
+  destructive: 'bg-red-500 text-white hover:bg-red-600 shadow-sm shadow-red-500/25',
+  ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+  outline: 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm',
 }
 
 const sizeStyles: Record<NonNullable<ButtonProps['size']>, string> = {
-  sm: 'h-8 px-3 text-sm',
-  md: 'h-10 px-4 text-sm',
-  lg: 'h-12 px-6 text-base',
+  sm: 'h-8 px-3 text-xs',
+  md: 'h-9 px-4 text-sm',
+  lg: 'h-11 px-6 text-sm',
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -26,8 +26,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         className={cn(
-          'inline-flex items-center justify-center rounded-md font-medium transition-colors',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          'inline-flex items-center justify-center rounded-lg font-medium transition-all',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2',
           'disabled:pointer-events-none disabled:opacity-50',
           variantStyles[variant],
           sizeStyles[size],

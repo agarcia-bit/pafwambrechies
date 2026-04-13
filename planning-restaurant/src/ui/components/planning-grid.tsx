@@ -52,9 +52,9 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full border-collapse text-xs">
           <thead>
-            <tr className="bg-primary text-primary-foreground">
-              <th className="sticky left-0 z-10 bg-primary px-2 py-2 text-left">Contrat</th>
-              <th className="sticky left-16 z-10 bg-primary px-2 py-2 text-left">Salarié</th>
+            <tr className="bg-slate-800 text-white">
+              <th className="sticky left-0 z-10 bg-slate-800 px-3 py-3 text-left text-xs font-semibold">Contrat</th>
+              <th className="sticky left-16 z-10 bg-slate-800 px-3 py-3 text-left text-xs font-semibold">Salarié</th>
               {DAY_NAMES.slice(1).map((day, i) => {
                 const dayIdx = i + 1
                 return (

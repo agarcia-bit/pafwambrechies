@@ -2,7 +2,6 @@ import { type ReactNode } from 'react'
 import { useAuthStore } from '@/store/auth-store'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useRoleStore } from '@/store/role-store'
-import { Button } from '@/ui/components'
 import {
   LayoutDashboard,
   Users,
@@ -13,6 +12,7 @@ import {
   Calendar,
   Settings,
   LogOut,
+  ChefHat,
 } from 'lucide-react'
 
 interface MainLayoutProps {
@@ -42,7 +42,7 @@ const NAV_SECTIONS = [
     label: 'Planning',
     items: [
       { id: 'planning', label: 'Planning salle', icon: Calendar },
-      { id: 'kitchen-planning', label: 'Planning cuisine', icon: Calendar },
+      { id: 'kitchen-planning', label: 'Planning cuisine', icon: ChefHat },
     ],
   },
   {
@@ -58,27 +58,27 @@ export function MainLayout({ children, currentPage, onNavigate }: MainLayoutProp
   const { employees } = useEmployeeStore()
   const { employeeRoles } = useRoleStore()
 
-  // Count active employees without a role
   const unassignedCount = employees
     .filter((e) => e.active)
     .filter((e) => !employeeRoles.some((er) => er.employeeId === e.id))
     .length
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
-      <aside className="flex w-64 flex-col border-r border-border bg-muted/30">
-        <div className="border-b border-border p-6">
-          <h1 className="text-lg font-bold text-primary">
+      <aside className="flex w-60 flex-col bg-slate-900 text-slate-300">
+        <div className="px-5 py-6">
+          <h1 className="text-base font-bold text-white tracking-tight">
             Planning Restaurant
           </h1>
+          <p className="mt-0.5 text-xs text-slate-500">Gestion des plannings</p>
         </div>
 
-        <nav className="flex-1 overflow-auto p-4">
+        <nav className="flex-1 overflow-auto px-3 pb-4">
           {NAV_SECTIONS.map((section, si) => (
-            <div key={si} className="mb-4">
+            <div key={si} className="mb-5">
               {section.label && (
-                <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
                   {section.label}
                 </p>
               )}
@@ -87,16 +87,16 @@ export function MainLayout({ children, currentPage, onNavigate }: MainLayoutProp
                   <li key={item.id}>
                     <button
                       onClick={() => onNavigate(item.id)}
-                      className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all ${
                         currentPage === item.id
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-foreground hover:bg-muted'
+                          ? 'bg-primary text-white shadow-md shadow-primary/25'
+                          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                       }`}
                     >
-                      <item.icon size={18} />
+                      <item.icon size={16} strokeWidth={1.8} />
                       {item.label}
                       {item.id === 'roles' && unassignedCount > 0 && (
-                        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
+                        <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
                           {unassignedCount}
                         </span>
                       )}
@@ -108,22 +108,22 @@ export function MainLayout({ children, currentPage, onNavigate }: MainLayoutProp
           ))}
         </nav>
 
-        <div className="border-t border-border p-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start gap-3"
+        <div className="border-t border-slate-700/50 px-3 py-3">
+          <button
             onClick={signOut}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-500 transition-all hover:bg-slate-800 hover:text-slate-300"
           >
-            <LogOut size={18} />
+            <LogOut size={16} strokeWidth={1.8} />
             Déconnexion
-          </Button>
+          </button>
         </div>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto p-8">
-        {children}
+      <main className="flex-1 overflow-auto">
+        <div className="mx-auto max-w-[1400px] p-6 lg:p-8">
+          {children}
+        </div>
       </main>
     </div>
   )
