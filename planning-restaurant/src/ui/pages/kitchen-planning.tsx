@@ -4,11 +4,15 @@ import { useShiftTemplateStore } from '@/store/shift-template-store'
 import { useAuthStore } from '@/store/auth-store'
 import { Button, Card, CardContent } from '@/ui/components'
 import { callKitchenSolver } from '@/infrastructure/api/solver-api'
+import {
+  createUnavailability,
+  deleteUnavailability,
+} from '@/infrastructure/supabase/repositories/constraint-repo'
 import type { SolverShiftAssignment } from '@/infrastructure/api/solver-api'
 import { fetchUnavailabilities } from '@/infrastructure/supabase/repositories/constraint-repo'
 import type { Unavailability } from '@/domain/models/constraint'
 import { getWeeklyBounds } from '@/domain/models/employee'
-import { Calendar, Play, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar, Play, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
 
 const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
@@ -32,6 +36,12 @@ function getWeekNumber(d: Date): number {
   return 1 + Math.round(((target.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7)
 }
 
+function addDays(isoDate: string, days: number): string {
+  const d = new Date(isoDate)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split('T')[0]
+}
+
 interface KitchenEntry {
   employeeId: string
   dayOfWeek: number
@@ -52,6 +62,9 @@ export function KitchenPlanningPage() {
   const [error, setError] = useState('')
   const [solverInfo, setSolverInfo] = useState('')
   const [unavailabilities, setUnavailabilities] = useState<Unavailability[]>([])
+  const [addingConstraint, setAddingConstraint] = useState(false)
+  const [newConstraintEmpId, setNewConstraintEmpId] = useState('')
+  const [newConstraintDay, setNewConstraintDay] = useState(1)
 
   useEffect(() => {
     loadEmployees()
@@ -180,6 +193,103 @@ export function KitchenPlanningPage() {
         </CardContent>
       </Card>
 
+      {/* Contraintes cuisine */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold">Contraintes cuisine de la semaine</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setAddingConstraint(!addingConstraint)}
+            >
+              <Plus size={14} className="mr-1" /> Contrainte ponctuelle
+            </Button>
+          </div>
+
+          {addingConstraint && (
+            <div className="mb-3 flex flex-wrap items-end gap-3 rounded-lg bg-destructive/5 border border-destructive/20 p-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium">Cuisinier</label>
+                <select
+                  value={newConstraintEmpId}
+                  onChange={(e) => setNewConstraintEmpId(e.target.value)}
+                  className="h-8 rounded border border-input bg-background px-2 text-sm"
+                >
+                  <option value="">— Choisir —</option>
+                  {kitchenEmployees.map((e) => (
+                    <option key={e.id} value={e.id}>{e.firstName}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium">Jour</label>
+                <select
+                  value={newConstraintDay}
+                  onChange={(e) => setNewConstraintDay(Number(e.target.value))}
+                  className="h-8 rounded border border-input bg-background px-2 text-sm"
+                >
+                  {DAY_NAMES.slice(1).map((name, i) => (
+                    <option key={i + 1} value={i + 1}>{name}</option>
+                  ))}
+                </select>
+              </div>
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={!newConstraintEmpId}
+                onClick={async () => {
+                  if (!newConstraintEmpId) return
+                  const date = addDays(weekStartISO, newConstraintDay)
+                  await createUnavailability({
+                    employeeId: newConstraintEmpId,
+                    type: 'punctual',
+                    dayOfWeek: null,
+                    specificDate: date,
+                    availableFrom: null,
+                    availableUntil: null,
+                    label: 'OFF',
+                  })
+                  fetchUnavailabilities().then(setUnavailabilities).catch(() => {})
+                  setAddingConstraint(false)
+                  setNewConstraintEmpId('')
+                }}
+              >
+                Ajouter OFF
+              </Button>
+              <button onClick={() => setAddingConstraint(false)} className="text-muted-foreground hover:text-foreground">
+                <X size={16} />
+              </button>
+            </div>
+          )}
+
+          {/* Display current constraints */}
+          <div className="flex flex-wrap gap-2">
+            {unavailabilities
+              .filter((u) => kitchenEmployees.some((e) => e.id === u.employeeId))
+              .map((u) => {
+                const emp = kitchenEmployees.find((e) => e.id === u.employeeId)
+                return (
+                  <span key={u.id} className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${u.type === 'fixed' ? 'bg-warning/10 text-warning' : 'bg-destructive/10 text-destructive'}`}>
+                    {emp?.firstName} — {u.type === 'fixed' && u.dayOfWeek != null ? DAY_NAMES[u.dayOfWeek] : u.label}
+                    {u.type === 'punctual' && (
+                      <button
+                        onClick={async () => {
+                          await deleteUnavailability(u.id)
+                          fetchUnavailabilities().then(setUnavailabilities).catch(() => {})
+                        }}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </span>
+                )
+              })}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Bouton générer */}
       <div className="flex items-center justify-center gap-3">
         <Button
@@ -256,21 +366,21 @@ export function KitchenPlanningPage() {
                       const isOff = dayEntries.length === 0
 
                       return (
-                        <td key={d} className={`px-2 py-3 text-center ${isOff ? 'bg-planning-off/40' : 'bg-orange-50'}`}>
+                        <td key={d} className={`px-2 py-4 text-center ${isOff ? 'bg-planning-off/40' : 'bg-orange-50'}`}>
                           {isOff ? (
-                            <span className="text-muted-foreground">OFF</span>
+                            <span className="text-sm text-muted-foreground">OFF</span>
                           ) : (
-                            <div className="flex flex-col gap-1.5">
+                            <div className="flex gap-1.5 justify-center">
                               {midi && (
-                                <span className="block rounded-md bg-orange-200 px-2 py-1.5 text-xs font-semibold">
-                                  {midi.startTime}h → {midi.endTime}h
-                                  <span className="ml-1 opacity-70">({midi.effectiveHours}h)</span>
+                                <span className="inline-block rounded-md bg-orange-200 px-2.5 py-2 text-sm font-semibold">
+                                  {midi.startTime}h→{midi.endTime}h
+                                  <span className="ml-1 text-xs opacity-70">({midi.effectiveHours}h)</span>
                                 </span>
                               )}
                               {soir && (
-                                <span className="block rounded-md bg-orange-500 text-white px-2 py-1.5 text-xs font-semibold">
-                                  {soir.startTime}h → {soir.endTime}h
-                                  <span className="ml-1 opacity-80">({soir.effectiveHours}h)</span>
+                                <span className="inline-block rounded-md bg-orange-500 text-white px-2.5 py-2 text-sm font-semibold">
+                                  {soir.startTime}h→{soir.endTime}h
+                                  <span className="ml-1 text-xs opacity-80">({soir.effectiveHours}h)</span>
                                 </span>
                               )}
                             </div>
