@@ -326,20 +326,6 @@ export function PlanningPage() {
         </CardContent>
       </Card>
 
-      {/* Checks */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Prérequis</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
-            <CheckItem ok={checks.employees} label={`Salariés (${activeEmployees.length})`} />
-            <CheckItem ok={checks.roles} label={`Rôles (${roles.length})`} />
-            <CheckItem ok={checks.templates} label={`Créneaux (${templates.length})`} />
-            <CheckItem ok={checks.forecasts} label={`CA prévu (${forecasts.length})`} />
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Rappel des contraintes — trié par jour en colonnes */}
       {constraintsLoaded && (
@@ -588,13 +574,15 @@ export function PlanningPage() {
                           const adj = getDayAdjustment(day).percent
                           return (
                             <td key={day} className="px-2 py-2 text-center">
-                              <input
-                                type="number"
-                                step={5}
+                              <select
                                 value={adj}
                                 onChange={(e) => setDayField(day, 'percent', Number(e.target.value))}
                                 className={`w-16 h-7 rounded border text-center text-xs ${adj !== 0 ? 'border-warning bg-warning/10 font-bold' : 'border-input bg-background'}`}
-                              />
+                              >
+                                {[-30, -20, -10, 0, 10, 20, 30, 40, 50].map((v) => (
+                                  <option key={v} value={v}>{v > 0 ? `+${v}%` : v === 0 ? '—' : `${v}%`}</option>
+                                ))}
+                              </select>
                             </td>
                           )
                         })}
@@ -606,14 +594,15 @@ export function PlanningPage() {
                           const day = i + 1
                           return (
                             <td key={day} className="px-2 py-2 text-center">
-                              <input
-                                type="number"
-                                min={0}
-                                max={15}
+                              <select
                                 value={getDayAdjustment(day).minMidi}
                                 onChange={(e) => setDayField(day, 'minMidi', Number(e.target.value))}
                                 className="w-12 h-7 rounded border border-input bg-background text-center text-xs"
-                              />
+                              >
+                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => (
+                                  <option key={v} value={v}>{v === 0 ? '—' : v}</option>
+                                ))}
+                              </select>
                             </td>
                           )
                         })}
@@ -625,14 +614,15 @@ export function PlanningPage() {
                           const day = i + 1
                           return (
                             <td key={day} className="px-2 py-2 text-center">
-                              <input
-                                type="number"
-                                min={0}
-                                max={15}
+                              <select
                                 value={getDayAdjustment(day).minSoir}
                                 onChange={(e) => setDayField(day, 'minSoir', Number(e.target.value))}
                                 className="w-12 h-7 rounded border border-input bg-background text-center text-xs"
-                              />
+                              >
+                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => (
+                                  <option key={v} value={v}>{v === 0 ? '—' : v}</option>
+                                ))}
+                              </select>
                             </td>
                           )
                         })}
@@ -740,17 +730,6 @@ export function PlanningPage() {
           }}
         />
       )}
-    </div>
-  )
-}
-
-function CheckItem({ ok, label }: { ok: boolean; label: string }) {
-  return (
-    <div className={`flex items-center gap-2 rounded-md px-3 py-2 ${ok ? 'bg-success/10' : 'bg-muted'}`}>
-      <span className={`text-sm ${ok ? 'text-success' : 'text-muted-foreground'}`}>
-        {ok ? '✓' : '○'}
-      </span>
-      <span className={`text-sm ${ok ? 'font-medium' : 'text-muted-foreground'}`}>{label}</span>
     </div>
   )
 }
