@@ -8,6 +8,7 @@ import { ShiftTemplatesPage } from '@/ui/pages/shift-templates'
 import { ConstraintsPage } from '@/ui/pages/constraints'
 import { ForecastsPage } from '@/ui/pages/forecasts'
 import { PlanningPage } from '@/ui/pages/planning'
+import { KitchenPlanningPage } from '@/ui/pages/kitchen-planning'
 import { SettingsPage } from '@/ui/pages/settings'
 import { MainLayout } from '@/ui/layouts/main-layout'
 
@@ -50,6 +51,7 @@ export default function App() {
     constraints: <ConstraintsPage />,
     forecasts: <ForecastsPage />,
     planning: <PlanningPage loadPlanningId={viewPlanningId} />,
+    'kitchen-planning': <KitchenPlanningPage />,
     settings: <SettingsPage />,
   }
 

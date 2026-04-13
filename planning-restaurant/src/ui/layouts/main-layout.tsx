@@ -41,7 +41,8 @@ const NAV_SECTIONS = [
   {
     label: 'Planning',
     items: [
-      { id: 'planning', label: 'Générer un planning', icon: Calendar },
+      { id: 'planning', label: 'Planning salle', icon: Calendar },
+      { id: 'kitchen-planning', label: 'Planning cuisine', icon: Calendar },
     ],
   },
   {

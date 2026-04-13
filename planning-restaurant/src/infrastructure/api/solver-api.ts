@@ -38,6 +38,21 @@ export async function callSolver(request: unknown): Promise<SolverResponse> {
   return res.json()
 }
 
+export async function callKitchenSolver(request: unknown): Promise<SolverResponse> {
+  const res = await fetch(`${SOLVER_URL}/solve-kitchen`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Kitchen solver error ${res.status}: ${text}`)
+  }
+
+  return res.json()
+}
+
 export async function checkSolverHealth(): Promise<boolean> {
   try {
     const res = await fetch(`${SOLVER_URL}/health`, { signal: AbortSignal.timeout(3000) })
