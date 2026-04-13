@@ -140,7 +140,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
     })
   }, [loadEmployees, loadRoles, loadTemplates, loadForecasts])
 
-  const activeEmployees = employees.filter((e) => e.active)
+  const activeEmployees = employees.filter((e) => e.active && e.department === 'salle')
 
   // Load a saved planning when coming from dashboard
   useEffect(() => {
@@ -244,7 +244,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
   const constraintsSummary = useMemo(() => {
     const items: { employeeName: string; type: 'fixed' | 'punctual' | 'conditional' | 'manager'; dayLabel: string; detail: string; id?: string }[] = []
 
-    for (const emp of activeEmployees.filter((e) => e.department === 'salle')) {
+    for (const emp of activeEmployees) {
       const empName = `${emp.firstName} ${emp.lastName}`.trim()
 
       // Collect manager OFF days to avoid duplicates with unavailabilities
@@ -347,7 +347,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
         // Use CP-SAT backend
         const solverReq = {
           week_start_date: weekStartISO,
-          employees: activeEmployees.filter((e) => e.department === 'salle').map((e) => ({
+          employees: activeEmployees.map((e) => ({
             id: e.id,
             first_name: e.firstName,
             weekly_hours: e.weeklyHours,
