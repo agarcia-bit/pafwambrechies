@@ -812,7 +812,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
                                 onChange={(e) => setDayField(day, 'minMidi', Number(e.target.value))}
                                 className="w-12 h-7 rounded border border-input bg-background text-center text-xs"
                               >
-                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => (
+                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((v) => (
                                   <option key={v} value={v}>{v === 0 ? '—' : v}</option>
                                 ))}
                               </select>
@@ -832,7 +832,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
                                 onChange={(e) => setDayField(day, 'minSoir', Number(e.target.value))}
                                 className="w-12 h-7 rounded border border-input bg-background text-center text-xs"
                               >
-                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => (
+                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((v) => (
                                   <option key={v} value={v}>{v === 0 ? '—' : v}</option>
                                 ))}
                               </select>
@@ -852,7 +852,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
                                 onChange={(e) => setDayField(day, 'minFermeture', Number(e.target.value))}
                                 className="w-12 h-7 rounded border border-input bg-background text-center text-xs"
                               >
-                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => (
+                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((v) => (
                                   <option key={v} value={v}>{v === 0 ? '—' : v}</option>
                                 ))}
                               </select>
