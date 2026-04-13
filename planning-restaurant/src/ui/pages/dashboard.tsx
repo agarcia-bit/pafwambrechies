@@ -153,13 +153,13 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleValidate(p.id)}
+                                onClick={(e) => { e.stopPropagation(); handleValidate(p.id) }}
                               >
                                 <CheckCircle size={14} className="mr-1" /> Valider
                               </Button>
                             )}
                             <button
-                              onClick={() => handleDelete(p)}
+                              onClick={(e) => { e.stopPropagation(); handleDelete(p) }}
                               className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                               title="Supprimer"
                             >
