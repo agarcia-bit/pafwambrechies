@@ -54,7 +54,7 @@ interface KitchenEntry {
   period: 'midi' | 'soir'
 }
 
-export function KitchenPlanningPage() {
+export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: string | null }) {
   const { employees, load: loadEmployees } = useEmployeeStore()
   const { templates, load: loadTemplates } = useShiftTemplateStore()
   const { tenantId, user } = useAuthStore()
@@ -80,6 +80,30 @@ export function KitchenPlanningPage() {
   const kitchenEmployees = employees.filter((e) => e.active && e.department === 'cuisine')
   const weekNumber = getWeekNumber(weekStart)
   const weekStartISO = formatISO(weekStart)
+
+  // Load saved kitchen planning from dashboard
+  useEffect(() => {
+    if (!loadPlanningId || kitchenEmployees.length === 0) return
+    import('@/infrastructure/supabase/repositories/planning-repo').then(({ fetchPlannings, fetchPlanningEntries }) => {
+      Promise.all([fetchPlannings(), fetchPlanningEntries(loadPlanningId)]).then(([plannings, dbEntries]) => {
+        const planning = plannings.find((p) => p.id === loadPlanningId)
+        if (!planning || dbEntries.length === 0) return
+        setWeekStart(new Date(planning.weekStartDate))
+        const mapped: KitchenEntry[] = dbEntries.map((e) => ({
+          employeeId: e.employeeId,
+          dayOfWeek: e.dayOfWeek,
+          shiftTemplateId: e.shiftTemplateId,
+          startTime: e.startTime,
+          endTime: e.endTime,
+          effectiveHours: e.effectiveHours,
+          period: e.startTime < 16 ? 'midi' as const : 'soir' as const,
+        }))
+        setEntries(mapped)
+        setSaved(true)
+        setSolverInfo(`Planning chargé (S${planning.weekNumber} — ${planning.status})`)
+      }).catch(() => {})
+    })
+  }, [loadPlanningId, kitchenEmployees.length])
 
   function shiftWeek(delta: number) {
     const d = new Date(weekStart)
@@ -348,6 +372,7 @@ export function KitchenPlanningPage() {
                 weekNumber,
                 status: 'draft',
                 createdBy: user?.id ?? '',
+                department: 'cuisine',
               }, planningEntries)
               setSaved(true)
             }}

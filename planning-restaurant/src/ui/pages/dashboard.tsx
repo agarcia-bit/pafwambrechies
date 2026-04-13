@@ -10,7 +10,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   validated: { label: 'Validé', color: 'bg-success/10 text-success' },
 }
 
-export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string) => void }) {
+export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string, department?: string) => void }) {
   const { employees, load } = useEmployeeStore()
   const [plannings, setPlannings] = useState<SavedPlanning[]>([])
   const [loadingPlannings, setLoadingPlannings] = useState(false)
@@ -123,9 +123,14 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
                       <tr
                         key={p.id}
                         className="border-b border-border hover:bg-muted/30 cursor-pointer"
-                        onClick={() => onViewPlanning?.(p.id)}
+                        onClick={() => onViewPlanning?.(p.id, p.department)}
                       >
-                        <td className="px-4 py-3 font-bold">S{p.weekNumber}</td>
+                        <td className="px-4 py-3 font-bold">
+                          S{p.weekNumber}
+                          <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${p.department === 'cuisine' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                            {p.department === 'cuisine' ? 'Cuisine' : 'Salle'}
+                          </span>
+                        </td>
                         <td className="px-4 py-3">
                           {new Date(p.weekStartDate).toLocaleDateString('fr-FR', {
                             day: 'numeric',

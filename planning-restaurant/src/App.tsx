@@ -33,14 +33,14 @@ export default function App() {
     return <LoginPage />
   }
 
-  function handleViewPlanning(planningId: string) {
+  function handleViewPlanning(planningId: string, department?: string) {
     setViewPlanningId(planningId)
-    setCurrentPage('planning')
+    setCurrentPage(department === 'cuisine' ? 'kitchen-planning' : 'planning')
   }
 
   function handleNavigate(page: string) {
     setCurrentPage(page)
-    if (page !== 'planning') setViewPlanningId(null)
+    if (page !== 'planning' && page !== 'kitchen-planning') setViewPlanningId(null)
   }
 
   const pages: Record<string, React.ReactNode> = {
@@ -51,7 +51,7 @@ export default function App() {
     constraints: <ConstraintsPage />,
     forecasts: <ForecastsPage />,
     planning: <PlanningPage loadPlanningId={viewPlanningId} />,
-    'kitchen-planning': <KitchenPlanningPage />,
+    'kitchen-planning': <KitchenPlanningPage loadPlanningId={viewPlanningId} />,
     settings: <SettingsPage />,
   }
 

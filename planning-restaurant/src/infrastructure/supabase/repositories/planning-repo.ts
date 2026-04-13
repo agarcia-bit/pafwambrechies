@@ -9,6 +9,7 @@ export interface SavedPlanning {
   status: 'draft' | 'validated'
   generatedAt: string
   createdBy: string | null
+  department: string
 }
 
 export async function fetchPlannings(): Promise<SavedPlanning[]> {
@@ -29,6 +30,7 @@ export async function savePlanningWithEntries(
     weekNumber: number
     status: string
     createdBy: string
+    department?: string
   },
   entries: PlanningEntry[],
 ): Promise<SavedPlanning> {
@@ -42,6 +44,7 @@ export async function savePlanningWithEntries(
       week_number: planning.weekNumber,
       status: planning.status,
       created_by: planning.createdBy || null,
+      department: planning.department ?? 'salle',
     })
     .select()
     .single()
@@ -120,5 +123,6 @@ function mapPlanning(row: any): SavedPlanning {
     status: row.status,
     generatedAt: row.generated_at,
     createdBy: row.created_by,
+    department: row.department ?? 'salle',
   }
 }
