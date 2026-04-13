@@ -331,7 +331,7 @@ export function KitchenPlanningPage() {
                 id: crypto.randomUUID(),
                 planningId,
                 employeeId: e.employeeId,
-                roleId: '',
+                roleId: null as unknown as string,
                 date: addDays(weekStartISO, e.dayOfWeek),
                 dayOfWeek: e.dayOfWeek,
                 shiftTemplateId: e.shiftTemplateId,

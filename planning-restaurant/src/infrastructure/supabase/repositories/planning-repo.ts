@@ -56,7 +56,7 @@ export async function savePlanningWithEntries(
       id: e.id,
       planning_id: planning.id,
       employee_id: e.employeeId,
-      role_id: e.roleId,
+      role_id: e.roleId || null,
       date: e.date,
       day_of_week: e.dayOfWeek,
       shift_template_id: e.shiftTemplateId,
