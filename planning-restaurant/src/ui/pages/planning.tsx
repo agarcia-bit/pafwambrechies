@@ -202,7 +202,7 @@ export function PlanningPage() {
             employeeName: empName,
             type: 'punctual',
             dayLabel: `${DAY_NAMES[dayIndex]} ${new Date(ua.specificDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}`,
-            detail: ua.label || 'Indisponible (ponctuel)',
+            detail: ua.label || 'OFF',
             id: ua.id,
           })
         }
@@ -537,20 +537,16 @@ export function PlanningPage() {
                       if (!newConstraintEmpId) return
                       const date = weekDates[newConstraintDay]
                       if (!date) return
-                      const emp = activeEmployees.find((e) => e.id === newConstraintEmpId)
-                      const empName = emp?.firstName ?? ''
-                      const dayName = DAY_NAMES[newConstraintDay]
-
-                      let label = `OFF ${empName} ${dayName}`
+                      let label = 'OFF'
                       let availableFrom: number | null = null
                       let availableUntil: number | null = null
 
                       if (newConstraintType === 'from') {
                         availableFrom = newConstraintHour
-                        label = `${empName} dispo à partir de ${newConstraintHour}h ${dayName}`
+                        label = `Dispo à partir de ${newConstraintHour}h`
                       } else if (newConstraintType === 'until') {
                         availableUntil = newConstraintHour
-                        label = `${empName} doit partir avant ${newConstraintHour}h ${dayName}`
+                        label = `Doit partir avant ${newConstraintHour}h`
                       }
 
                       await createUnavailability({
