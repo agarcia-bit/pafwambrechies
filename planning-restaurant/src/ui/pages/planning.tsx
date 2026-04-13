@@ -583,11 +583,11 @@ export function PlanningPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
+              <table className="w-full border-collapse text-sm table-fixed">
                 <thead>
                   <tr className="border-b border-border">
                     {DAY_NAMES.slice(1).map((name, i) => (
-                      <th key={i + 1} className="px-2 py-2 text-center font-medium text-muted-foreground">
+                      <th key={i + 1} className="w-1/6 px-2 py-2 text-center font-medium text-muted-foreground">
                         {name}
                       </th>
                     ))}
