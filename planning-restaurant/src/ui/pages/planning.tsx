@@ -8,9 +8,11 @@ import { Button, Card, CardContent, CardHeader, CardTitle } from '@/ui/component
 import { PlanningGrid } from '@/ui/components/planning-grid'
 import { generatePlanning } from '@/domain/engine'
 import type { PlannerInput } from '@/domain/engine'
-import type { PlanningReport } from '@/domain/models/planning'
+import type { PlanningReport, PlanningEntry } from '@/domain/models/planning'
 import { validatePlanning } from '@/domain/rules/validation'
+import { callSolver, checkSolverHealth } from '@/infrastructure/api/solver-api'
 import type { Unavailability, ManagerFixedSchedule, ConditionalAvailability } from '@/domain/models/constraint'
+import type { Employee } from '@/domain/models/employee'
 import type { Tenant } from '@/domain/models/tenant'
 import { DEFAULT_TENANT_CONFIG } from '@/domain/models/tenant'
 import {
@@ -71,6 +73,8 @@ export function PlanningPage() {
   const [generating, setGenerating] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const [solverAvailable, setSolverAvailable] = useState<boolean | null>(null)
+  const [solverMode, setSolverMode] = useState<'cpsat' | 'local'>('cpsat')
 
   // Constraints loaded for display
   const [unavailabilities, setUnavailabilities] = useState<Unavailability[]>([])
@@ -128,6 +132,11 @@ export function PlanningPage() {
       setManagerSchedules(ms)
       setConditionalAvailabilities(ca)
       setConstraintsLoaded(true)
+    })
+    // Check solver availability
+    checkSolverHealth().then((ok) => {
+      setSolverAvailable(ok)
+      if (!ok) setSolverMode('local')
     })
   }, [loadEmployees, loadRoles, loadTemplates, loadForecasts])
 
@@ -249,8 +258,123 @@ export function PlanningPage() {
           })),
       }
 
-      const result = generatePlanning(input)
-      setReport(result)
+      if (solverMode === 'cpsat' && solverAvailable) {
+        // Use CP-SAT backend
+        const solverReq = {
+          week_start_date: weekStartISO,
+          employees: activeEmployees.map((e) => ({
+            id: e.id,
+            first_name: e.firstName,
+            weekly_hours: e.weeklyHours,
+            modulation_range: e.modulationRange,
+            is_manager: e.isManager,
+            role_id: employeeRoles.find((er) => er.employeeId === e.id)?.roleId ?? '',
+          })),
+          shift_templates: templates.map((t) => ({
+            id: t.id,
+            code: t.code,
+            start_time: t.startTime,
+            end_time: t.endTime,
+            effective_hours: t.effectiveHours,
+            meals: t.meals,
+            baskets: t.baskets,
+            applicability: t.applicability,
+          })),
+          manager_schedules: managerSchedules.map((ms) => ({
+            employee_id: ms.employeeId,
+            day_of_week: ms.dayOfWeek,
+            shift_template_id: ms.shiftTemplateId,
+            start_time: ms.startTime,
+            end_time: ms.endTime,
+          })),
+          unavailabilities: unavailabilities.map((u) => ({
+            employee_id: u.employeeId,
+            type: u.type,
+            day_of_week: u.dayOfWeek,
+            specific_date: u.specificDate,
+            available_from: u.availableFrom,
+            available_until: u.availableUntil,
+          })),
+          conditional_availabilities: conditionalAvailabilities.map((ca) => ({
+            employee_id: ca.employeeId,
+            day_of_week: ca.dayOfWeek,
+            allowed_shift_codes: ca.allowedShiftCodes,
+            max_hours: ca.maxHours,
+          })),
+          day_forecasts: forecasts
+            .filter((f) => f.month === new Date(weekStartISO).getMonth() + 1)
+            .map((f) => ({ day_of_week: f.dayOfWeek, forecasted_revenue: f.forecastedRevenue })),
+          event_overrides: Object.entries(dayAdjustments)
+            .filter(([, adj]) => adj.percent !== 0)
+            .map(([day, adj]) => ({ day_of_week: Number(day), revenue_multiplier_percent: adj.percent })),
+          employee_roles: Object.fromEntries(
+            employeeRoles.map((er) => [er.employeeId, er.roleId]),
+          ),
+          closing_time_week: 24.0,
+          closing_time_sunday: 21.0,
+          productivity_target: 95,
+        }
+
+        const solverResult = await callSolver(solverReq)
+
+        if (!solverResult.success) {
+          setError(`Solveur CP-SAT : ${solverResult.warnings.join(', ')}`)
+          setGenerating(false)
+          return
+        }
+
+        // Convert solver response to PlanningReport
+        const planningId = crypto.randomUUID()
+        const weekNumber = getWeekNumber(weekStart)
+        const entries: PlanningEntry[] = solverResult.entries.map((e) => ({
+          id: crypto.randomUUID(),
+          planningId,
+          employeeId: e.employee_id,
+          roleId: employeeRoles.find((er) => er.employeeId === e.employee_id)?.roleId ?? '',
+          date: addDays(weekStartISO, e.day_of_week),
+          dayOfWeek: e.day_of_week,
+          shiftTemplateId: e.shift_template_id,
+          startTime: e.start_time,
+          endTime: e.end_time,
+          effectiveHours: e.effective_hours,
+          meals: e.meals,
+          baskets: e.baskets,
+        }))
+
+        const violations = validatePlanning({
+          entries,
+          employees: activeEmployees,
+          managerIds: activeEmployees.filter((e) => e.isManager).map((e) => e.id),
+          shiftTemplates: templates,
+          closingTimeWeek: 24,
+          closingTimeSunday: 21,
+        })
+
+        const warnings = [...solverResult.warnings]
+        warnings.unshift(`Résolu par CP-SAT en ${solverResult.solve_time_ms}ms (${solverResult.status})`)
+
+        setReport({
+          planning: {
+            id: planningId,
+            tenantId: tenantId ?? '',
+            weekStartDate: weekStartISO,
+            weekNumber,
+            status: 'draft',
+            generatedAt: new Date().toISOString(),
+            createdBy: '',
+            entries,
+          },
+          employeeSummaries: buildSummaries(entries, activeEmployees),
+          dailySummaries: buildDaySummaries(entries, input),
+          violations,
+          warnings,
+          isValid: violations.filter((v) => v.severity === 'blocking').length === 0,
+        })
+      } else {
+        // Fallback: local TS algorithm
+        const result = generatePlanning(input)
+        setReport(result)
+      }
     } catch (e) {
       setError((e as Error).message)
     }
@@ -794,3 +918,65 @@ export function PlanningPage() {
     </div>
   )
 }
+
+// Helper: build employee summaries from entries
+function buildSummaries(entries: PlanningEntry[], employees: Employee[]): import('@/domain/models/planning').EmployeeWeekSummary[] {
+  return employees.filter((e) => e.active).map((emp) => {
+    const empEntries = entries.filter((e) => e.employeeId === emp.id)
+    const hours = empEntries.reduce((s, e) => s + e.effectiveHours, 0)
+    const min = emp.weeklyHours - emp.modulationRange
+    const max = emp.weeklyHours + emp.modulationRange
+    return {
+      employeeId: emp.id,
+      employeeName: `${emp.firstName} ${emp.lastName}`,
+      contractHours: emp.weeklyHours,
+      plannedHours: hours,
+      boundsMin: min,
+      boundsMax: max,
+      status: hours < min ? 'under' as const : hours > max ? 'over' as const : 'ok' as const,
+      daysOff: [0, 1, 2, 3, 4, 5, 6].filter((d) => !empEntries.some((e) => e.dayOfWeek === d)),
+      totalMeals: empEntries.reduce((s, e) => s + e.meals, 0),
+      totalBaskets: empEntries.reduce((s, e) => s + e.baskets, 0),
+    }
+  })
+}
+
+// Helper: build daily summaries from entries
+function buildDaySummaries(entries: PlanningEntry[], input: PlannerInput): import('@/domain/models/planning').DailySummary[] {
+  return [1, 2, 3, 4, 5, 6].map((day) => {
+    const dayEntries = entries.filter((e) => e.dayOfWeek === day)
+    const isSunday = day === 6
+    const closingTime = isSunday ? 21 : 24
+    const plannedHours = dayEntries.reduce((s, e) => s + e.effectiveHours, 0)
+    const month = new Date(input.weekStartDate).getMonth() + 1
+    const forecast = input.dailyForecasts.find((f) => f.month === month && f.dayOfWeek === day)
+    let revenue = forecast?.forecastedRevenue ?? 0
+    const override = input.eventOverrides?.find((e) => e.date === addDays(input.weekStartDate, day))
+    if (override) revenue *= 1 + override.revenueMultiplierPercent / 100
+
+    const countCov = (from: number, to: number) => {
+      let min = Infinity
+      for (let h = from; h < to; h += 0.5) {
+        const c = dayEntries.filter((e) => e.startTime <= h && e.endTime > h).length
+        if (c < min) min = c
+      }
+      return min === Infinity ? 0 : min
+    }
+
+    return {
+      date: addDays(input.weekStartDate, day),
+      dayOfWeek: day,
+      forecastedRevenue: revenue,
+      plannedHours,
+      productivity: plannedHours > 0 ? revenue / plannedHours : 0,
+      coverageMidi: countCov(12, 15),
+      coverageApresMidi: countCov(15, 18),
+      coverageSoir: countCov(18, closingTime),
+      openingStaff: dayEntries.filter((e) => e.startTime <= 9.5).length,
+      closingStaff: dayEntries.filter((e) => e.endTime >= closingTime).length,
+      isDelestage: false,
+      delestageReason: null,
+    }
+  })
+}
+
