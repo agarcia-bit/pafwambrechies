@@ -414,7 +414,7 @@ export function KitchenPlanningPage() {
                       const isOff = dayEntries.length === 0
 
                       return (
-                        <td key={d} className={`px-2 py-4 text-center ${isOff ? 'bg-gray-200' : 'bg-amber-50/60'}`}>
+                        <td key={d} className={`px-2 py-4 text-center ${isOff ? 'bg-red-100' : 'bg-amber-50/60'}`}>
                           {isOff ? (
                             <span className="text-sm text-muted-foreground">OFF</span>
                           ) : (
