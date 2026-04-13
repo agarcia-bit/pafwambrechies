@@ -57,7 +57,7 @@ interface KitchenEntry {
 export function KitchenPlanningPage() {
   const { employees, load: loadEmployees } = useEmployeeStore()
   const { templates, load: loadTemplates } = useShiftTemplateStore()
-  const { tenantId } = useAuthStore()
+  const { tenantId, user } = useAuthStore()
 
   const [weekStart, setWeekStart] = useState(getNextMonday())
   const [entries, setEntries] = useState<KitchenEntry[]>([])
@@ -347,7 +347,7 @@ export function KitchenPlanningPage() {
                 weekStartDate: weekStartISO,
                 weekNumber,
                 status: 'draft',
-                createdBy: '',
+                createdBy: user?.id ?? '',
               }, planningEntries)
               setSaved(true)
             }}

@@ -41,7 +41,7 @@ export async function savePlanningWithEntries(
       week_start_date: planning.weekStartDate,
       week_number: planning.weekNumber,
       status: planning.status,
-      created_by: planning.createdBy,
+      created_by: planning.createdBy || null,
     })
     .select()
     .single()
