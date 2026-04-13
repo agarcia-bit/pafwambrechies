@@ -468,36 +468,6 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Génération de Planning</h1>
-        {report && (
-          <div className="flex gap-2">
-            {!saved ? (
-              <Button
-                variant="primary"
-                onClick={async () => {
-                  if (!tenantId) return
-                  await savePlanningWithEntries({
-                    id: report.planning.id,
-                    tenantId,
-                    weekStartDate: report.planning.weekStartDate,
-                    weekNumber: report.planning.weekNumber,
-                    status: 'draft',
-                    createdBy: user?.id ?? '',
-                  }, report.planning.entries)
-                  setSaved(true)
-                }}
-              >
-                <Save size={16} className="mr-2" /> Enregistrer
-              </Button>
-            ) : (
-              <span className="flex items-center gap-1 rounded-md bg-success/10 px-3 py-2 text-sm font-medium text-success">
-                <CheckCircle size={16} /> Enregistré
-              </span>
-            )}
-            <Button variant="secondary" onClick={() => exportPlanningToExcel(report)}>
-              <Download size={16} className="mr-2" /> Exporter Excel
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Sélecteur de semaine */}
@@ -899,16 +869,49 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
         </CardContent>
       </Card>
 
-      {/* Bouton générer */}
-      <Button
-        size="lg"
-        className="self-center px-12"
-        onClick={handleGenerate}
-        disabled={!allReady || generating}
-      >
-        <Play size={18} className="mr-2" />
-        {generating ? 'Génération en cours...' : 'Générer le planning'}
-      </Button>
+      {/* Bouton générer + enregistrer + exporter */}
+      <div className="flex items-center justify-center gap-3">
+        <Button
+          size="lg"
+          className="px-12"
+          onClick={handleGenerate}
+          disabled={!allReady || generating}
+        >
+          <Play size={18} className="mr-2" />
+          {generating ? 'Génération en cours...' : 'Générer le planning'}
+        </Button>
+
+        {report && !saved && (
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={async () => {
+              if (!tenantId) return
+              await savePlanningWithEntries({
+                id: report.planning.id,
+                tenantId,
+                weekStartDate: report.planning.weekStartDate,
+                weekNumber: report.planning.weekNumber,
+                status: 'draft',
+                createdBy: user?.id ?? '',
+              }, report.planning.entries)
+              setSaved(true)
+            }}
+          >
+            <Save size={16} className="mr-2" /> Enregistrer
+          </Button>
+        )}
+        {report && saved && (
+          <span className="flex items-center gap-1 rounded-md bg-success/10 px-4 py-2.5 text-sm font-medium text-success">
+            <CheckCircle size={16} /> Enregistré
+          </span>
+        )}
+        {report && (
+          <Button size="lg" variant="secondary" onClick={() => exportPlanningToExcel(report)}>
+            <Download size={16} className="mr-2" /> Exporter Excel
+          </Button>
+        )}
+      </div>
 
       {error && (
         <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4 text-sm text-destructive">
