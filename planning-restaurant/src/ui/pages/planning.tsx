@@ -22,7 +22,7 @@ import {
 import { exportPlanningToExcel } from '@/infrastructure/export/excel-export'
 import { savePlanning } from '@/infrastructure/supabase/repositories/planning-repo'
 import type { EventOverride } from '@/domain/engine'
-import { Calendar, Download, Play, ChevronLeft, ChevronRight, AlertTriangle, Sun, Plus, X, Save, CheckCircle } from 'lucide-react'
+import { Calendar, Download, Play, ChevronLeft, ChevronRight, AlertTriangle, TrendingUp, Plus, X, Save, CheckCircle } from 'lucide-react'
 
 const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 
@@ -77,8 +77,19 @@ export function PlanningPage() {
   const [conditionalAvailabilities, setConditionalAvailabilities] = useState<ConditionalAvailability[]>([])
   const [constraintsLoaded, setConstraintsLoaded] = useState(false)
 
-  // Beau temps (weather boost) — jours cochés = CA +30%
-  const [beauTempsJours, setBeauTempsJours] = useState<number[]>([])
+  // CA adjustments per day (% override) and min staff
+  const [dayAdjustments, setDayAdjustments] = useState<Record<number, { percent: number; minMidi: number; minSoir: number }>>({})
+
+  function getDayAdjustment(day: number) {
+    return dayAdjustments[day] ?? { percent: 0, minMidi: 0, minSoir: 0 }
+  }
+
+  function setDayField(day: number, field: 'percent' | 'minMidi' | 'minSoir', value: number) {
+    setDayAdjustments((prev) => ({
+      ...prev,
+      [day]: { ...getDayAdjustment(day), [field]: value },
+    }))
+  }
 
   // Ajout contrainte ponctuelle inline
   const [addingConstraint, setAddingConstraint] = useState(false)
@@ -229,10 +240,12 @@ export function PlanningPage() {
         managerSchedules,
         dailyForecasts: forecasts,
         dailyRequirements: [],
-        eventOverrides: beauTempsJours.map((day): EventOverride => ({
-          date: addDays(weekStartISO, day),
-          revenueMultiplierPercent: 30,
-        })),
+        eventOverrides: Object.entries(dayAdjustments)
+          .filter(([, adj]) => adj.percent !== 0)
+          .map(([day, adj]): EventOverride => ({
+            date: addDays(weekStartISO, Number(day)),
+            revenueMultiplierPercent: adj.percent,
+          })),
       }
 
       const result = generatePlanning(input)
@@ -524,36 +537,131 @@ export function PlanningPage() {
         </Card>
       )}
 
-      {/* Beau temps — boost CA +30% */}
+      {/* CA Prévisionnel + Ajustements + Min staff */}
       <Card>
-        <CardContent className="py-4">
-          <div className="flex items-center gap-3 mb-3">
-            <Sun size={18} className="text-warning" />
-            <span className="text-sm font-semibold">Beau temps prévu (CA +30%)</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {DAY_NAMES.slice(1).map((name, i) => {
-              const day = i + 1 // 1=mardi..6=dimanche
-              const active = beauTempsJours.includes(day)
-              return (
-                <button
-                  key={day}
-                  onClick={() =>
-                    setBeauTempsJours(
-                      active ? beauTempsJours.filter((d) => d !== day) : [...beauTempsJours, day],
-                    )
-                  }
-                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                    active
-                      ? 'bg-warning text-white'
-                      : 'bg-background border border-border text-foreground hover:bg-muted'
-                  }`}
-                >
-                  {active ? `${name} (+30%)` : name}
-                </button>
-              )
-            })}
-          </div>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp size={18} />
+            CA prévisionnel & ajustements
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(() => {
+            const weekMonth = new Date(weekStartISO).getMonth() + 1
+            const totalCA = DAY_NAMES.slice(1).reduce((sum, _, i) => {
+              const day = i + 1
+              const base = forecasts.find((f) => f.month === weekMonth && f.dayOfWeek === day)?.forecastedRevenue ?? 0
+              const adj = getDayAdjustment(day).percent
+              return sum + base * (1 + adj / 100)
+            }, 0)
+            const totalMaxHours = activeEmployees.reduce((sum, e) => sum + e.weeklyHours + e.modulationRange, 0)
+            const weekProductivity = totalMaxHours > 0 ? totalCA / totalMaxHours : 0
+            const needRecruit = weekProductivity > 110
+
+            return (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="px-2 py-2 text-left font-medium text-muted-foreground"></th>
+                        {DAY_NAMES.slice(1).map((name, i) => (
+                          <th key={i + 1} className="px-2 py-2 text-center font-medium text-muted-foreground">{name}</th>
+                        ))}
+                        <th className="px-2 py-2 text-center font-bold">TOTAL</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-border">
+                        <td className="px-2 py-2 text-sm font-medium">CA base</td>
+                        {DAY_NAMES.slice(1).map((_, i) => {
+                          const day = i + 1
+                          const base = forecasts.find((f) => f.month === weekMonth && f.dayOfWeek === day)?.forecastedRevenue ?? 0
+                          return <td key={day} className="px-2 py-2 text-center text-muted-foreground">{base > 0 ? `${Math.round(base)}€` : '—'}</td>
+                        })}
+                        <td className="px-2 py-2 text-center font-bold">{Math.round(totalCA / (1 + 0))}€</td>
+                      </tr>
+                      <tr className="border-b border-border">
+                        <td className="px-2 py-2 text-sm font-medium">Ajustement %</td>
+                        {DAY_NAMES.slice(1).map((_, i) => {
+                          const day = i + 1
+                          const adj = getDayAdjustment(day).percent
+                          return (
+                            <td key={day} className="px-2 py-2 text-center">
+                              <input
+                                type="number"
+                                step={5}
+                                value={adj}
+                                onChange={(e) => setDayField(day, 'percent', Number(e.target.value))}
+                                className={`w-16 h-7 rounded border text-center text-xs ${adj !== 0 ? 'border-warning bg-warning/10 font-bold' : 'border-input bg-background'}`}
+                              />
+                            </td>
+                          )
+                        })}
+                        <td className="px-2 py-2"></td>
+                      </tr>
+                      <tr className="border-b border-border">
+                        <td className="px-2 py-2 text-sm font-medium">Min midi</td>
+                        {DAY_NAMES.slice(1).map((_, i) => {
+                          const day = i + 1
+                          return (
+                            <td key={day} className="px-2 py-2 text-center">
+                              <input
+                                type="number"
+                                min={0}
+                                max={15}
+                                value={getDayAdjustment(day).minMidi}
+                                onChange={(e) => setDayField(day, 'minMidi', Number(e.target.value))}
+                                className="w-12 h-7 rounded border border-input bg-background text-center text-xs"
+                              />
+                            </td>
+                          )
+                        })}
+                        <td className="px-2 py-2"></td>
+                      </tr>
+                      <tr className="border-b border-border">
+                        <td className="px-2 py-2 text-sm font-medium">Min soir</td>
+                        {DAY_NAMES.slice(1).map((_, i) => {
+                          const day = i + 1
+                          return (
+                            <td key={day} className="px-2 py-2 text-center">
+                              <input
+                                type="number"
+                                min={0}
+                                max={15}
+                                value={getDayAdjustment(day).minSoir}
+                                onChange={(e) => setDayField(day, 'minSoir', Number(e.target.value))}
+                                className="w-12 h-7 rounded border border-input bg-background text-center text-xs"
+                              />
+                            </td>
+                          )
+                        })}
+                        <td className="px-2 py-2"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Indicateur productivité semaine */}
+                <div className={`mt-4 flex items-center justify-between rounded-lg p-4 ${needRecruit ? 'bg-destructive/10 border border-destructive/30' : 'bg-success/10 border border-success/30'}`}>
+                  <div>
+                    <p className="text-sm font-bold">Productivité semaine estimée</p>
+                    <p className="text-xs text-muted-foreground">
+                      CA total : {Math.round(totalCA).toLocaleString('fr-FR')}€ / Heures max dispo : {totalMaxHours}h
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-2xl font-bold ${needRecruit ? 'text-destructive' : 'text-success'}`}>
+                      {Math.round(weekProductivity)}
+                    </p>
+                    <p className={`text-xs font-medium ${needRecruit ? 'text-destructive' : 'text-success'}`}>
+                      {needRecruit ? 'Recrutement nécessaire' : 'Effectif suffisant'}
+                    </p>
+                  </div>
+                </div>
+              </>
+            )
+          })()}
         </CardContent>
       </Card>
 

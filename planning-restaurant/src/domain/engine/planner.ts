@@ -241,8 +241,9 @@ function planEmployeeWeek(
   const alreadyWorking = state.employeeWorkDays.get(emp.id)?.size ?? 0
   const targetDays = Math.max(0, (isFullTime ? 5 : Math.min(5, Math.ceil(bounds.min / 4))) - alreadyWorking)
 
-  // In shortage mode: aim for MAX hours, not just MIN
-  const targetHours = isShortage ? bounds.max : bounds.min
+  // Target hours: never below base contract, use max in shortage
+  // Rule: reducing below contract base is forbidden, exceeding is OK
+  const targetHours = isShortage ? bounds.max : Math.max(emp.weeklyHours, bounds.min)
 
   // Step 1: Determine which days the employee CAN work
   const availableDays = dayContexts
@@ -358,8 +359,8 @@ function planEmployeeWeek(
 
   // Warning if under minimum
   const finalHours = state.employeeHours.get(emp.id) ?? 0
-  if (finalHours < bounds.min) {
-    state.warnings.push(`${emp.firstName} : ${(bounds.min - finalHours).toFixed(1)}h sous le minimum`)
+  if (finalHours < emp.weeklyHours) {
+    state.warnings.push(`${emp.firstName} : ${(emp.weeklyHours - finalHours).toFixed(1)}h sous le contrat (${emp.weeklyHours}h)`)
   }
 }
 
@@ -535,13 +536,14 @@ function upgradeShiftsForMinimum(
   for (const emp of nonManagers) {
     let hours = state.employeeHours.get(emp.id) ?? 0
     const bounds = getWeeklyBounds(emp)
-    if (hours >= bounds.min) continue
+    const minTarget = Math.max(emp.weeklyHours, bounds.min)
+    if (hours >= minTarget) continue
 
     // Strategy 1: Try to ADD a shift on a day not yet worked
     const workDays = state.employeeWorkDays.get(emp.id) ?? new Set<number>()
     if (workDays.size < 5) {
       for (const ctx of dayContexts) {
-        if (hours >= bounds.min) break
+        if (hours >= minTarget) break
         if (workDays.has(ctx.dayOfWeek)) continue
         if (!canWorkDay(input, state, emp, ctx)) continue
 
@@ -570,12 +572,12 @@ function upgradeShiftsForMinimum(
     }
 
     // Strategy 2: Replace short shifts with longer ones
-    if (hours < bounds.min) {
+    if (hours < minTarget) {
       const empEntries = [...state.entries.filter((e) => e.employeeId === emp.id)]
         .sort((a, b) => a.effectiveHours - b.effectiveHours) // shortest first
 
       for (const entry of empEntries) {
-        if (hours >= bounds.min) break
+        if (hours >= minTarget) break
         const ctx = dayContexts.find((d) => d.dayOfWeek === entry.dayOfWeek)
         if (!ctx) continue
 
@@ -625,8 +627,8 @@ function upgradeShiftsForMinimum(
       }
     }
 
-    if (hours < bounds.min) {
-      state.warnings.push(`${emp.firstName} : ${(bounds.min - hours).toFixed(1)}h sous le minimum`)
+    if (hours < minTarget) {
+      state.warnings.push(`${emp.firstName} : ${(minTarget - hours).toFixed(1)}h sous le contrat (${emp.weeklyHours}h)`)
     }
   }
 }
