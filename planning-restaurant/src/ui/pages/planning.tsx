@@ -308,8 +308,11 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
   async function handleGenerate() {
     if (!tenantId) return
     setGenerating(true)
+    setReport(null) // Hide previous planning during generation
     setSaved(false)
     setError('')
+
+    let result: PlanningReport | null = null
 
     try {
       const tenant: Tenant = {
@@ -435,7 +438,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
         const warnings = [...solverResult.warnings]
         warnings.unshift(`Résolu par CP-SAT en ${solverResult.solve_time_ms}ms (${solverResult.status})`)
 
-        setReport({
+        result = {
           planning: {
             id: planningId,
             tenantId: tenantId ?? '',
@@ -451,17 +454,18 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           violations,
           warnings,
           isValid: violations.filter((v) => v.severity === 'blocking').length === 0,
-        })
+        }
       } else {
         // Fallback: local TS algorithm
-        const result = generatePlanning(input)
-        setReport(result)
+        result = generatePlanning(input)
       }
     } catch (e) {
       setError((e as Error).message)
     }
-    // Minimum 2s loading for smooth UX
-    await new Promise((r) => setTimeout(r, 2000))
+
+    // Minimum 3s loading for premium UX
+    await new Promise((r) => setTimeout(r, 3000))
+    if (result) setReport(result)
     setGenerating(false)
   }
 
@@ -922,6 +926,29 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           </Button>
         )}
       </div>
+
+      {/* Loading overlay */}
+      {generating && (
+        <div className="flex flex-col items-center justify-center gap-6 rounded-2xl border border-border bg-gradient-to-br from-primary/5 to-primary/10 py-16">
+          <div className="relative">
+            <div className="h-16 w-16 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Calendar size={20} className="text-primary animate-pulse" />
+            </div>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-semibold text-primary">Optimisation en cours</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Analyse des contraintes et calcul du planning optimal...
+            </p>
+          </div>
+          <div className="flex gap-1">
+            <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '0ms' }} />
+            <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '150ms' }} />
+            <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '300ms' }} />
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4 text-sm text-destructive">
