@@ -28,6 +28,7 @@ export async function createEmployee(
       modulation_range: employee.modulationRange,
       level: employee.level,
       is_manager: employee.isManager,
+      department: employee.department,
       active: employee.active,
     })
     .select()
@@ -49,6 +50,7 @@ export async function updateEmployee(
   if (updates.modulationRange !== undefined) dbUpdates.modulation_range = updates.modulationRange
   if (updates.level !== undefined) dbUpdates.level = updates.level
   if (updates.isManager !== undefined) dbUpdates.is_manager = updates.isManager
+  if (updates.department !== undefined) dbUpdates.department = updates.department
   if (updates.active !== undefined) dbUpdates.active = updates.active
 
   const { data, error } = await supabase
@@ -79,6 +81,7 @@ function mapEmployee(row: any): Employee {
     modulationRange: Number(row.modulation_range),
     level: Number(row.level) as Employee['level'],
     isManager: row.is_manager,
+    department: row.department ?? 'salle',
     active: row.active,
     createdAt: row.created_at,
   }

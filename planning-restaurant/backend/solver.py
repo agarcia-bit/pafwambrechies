@@ -36,12 +36,16 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
     # --- Data prep ---
     working_days = [1, 2, 3, 4, 5, 6]  # Tue-Sun (0=Mon=closed)
     non_managers = [e for e in req.employees if not e.is_manager]
+    salle_employees = [e for e in non_managers if e.department == "salle"]
+    kitchen_employees = [e for e in non_managers if e.department == "cuisine"]
     managers = [e for e in req.employees if e.is_manager]
 
-    # Shift templates by day applicability
-    def shifts_for_day(day: int) -> list:
+    # Shift templates by day applicability and department
+    def shifts_for_day(day: int, department: str = "salle") -> list:
         result = []
         for s in req.shift_templates:
+            if s.department != department:
+                continue
             if day == 6 and s.applicability == "sunday":
                 result.append(s)
             elif day == 5 and s.applicability in ("tue_sat", "sat_only"):
@@ -84,7 +88,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
         for day in working_days:
             if day in fixed_unavail.get(emp.id, set()):
                 continue
-            for shift in shifts_for_day(day):
+            for shift in shifts_for_day(day, emp.department):
                 # Check conditional availability
                 if emp.id in cond_avail and day in cond_avail[emp.id]:
                     ca = cond_avail[emp.id][day]
@@ -173,11 +177,14 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
             model.add(total >= min_hours)
             model.add(total <= max_hours)
 
-    # 7. Opening: ≥1 person at 9h30 every day
+    # Salle employee IDs for coverage constraints
+    salle_ids = {e.id for e in salle_employees}
+
+    # 7. Opening: ≥1 person at 9h30 every day (salle only)
     for day in working_days:
         opening_vars = []
         for k in x:
-            if k[1] == day:
+            if k[1] == day and k[0] in salle_ids:
                 s = shift_map[k[2]]
                 if s.start_time <= 9.5:
                     opening_vars.append(x[k])
@@ -202,7 +209,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
 
         closing_vars = []
         for k in x:
-            if k[1] == day:
+            if k[1] == day and k[0] in salle_ids:
                 s = shift_map[k[2]]
                 if s.end_time >= closing_time:
                     closing_vars.append(x[k])
@@ -231,7 +238,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
                 continue
             present = []
             for k in x:
-                if k[1] == day:
+                if k[1] == day and k[0] in salle_ids:
                     s = shift_map[k[2]]
                     if s.start_time <= h and s.end_time > h:
                         present.append(x[k])
@@ -251,6 +258,68 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
                 gap = model.new_int_var(0, needed, f"cov_gap_{day}_{h_idx}")
                 model.add(sum(present) + gap >= needed)
                 penalties.append(gap * 20)
+
+    # 9b. Manual minimum staff midi (12-15h)
+    for day_str, min_count in req.min_staff_midi.items():
+        if min_count <= 0:
+            continue
+        day = int(day_str)
+        midi_vars = []
+        for k in x:
+            if k[1] == day and k[0] in salle_ids:
+                s = shift_map[k[2]]
+                if s.start_time <= 12 and s.end_time >= 15:
+                    midi_vars.append(x[k])
+        mgr_midi = sum(1 for ms in req.manager_schedules
+            if ms.day_of_week == day and ms.shift_template_id and ms.start_time is not None
+            and ms.end_time is not None and ms.start_time <= 12 and ms.end_time >= 15)
+        needed = max(0, min_count - mgr_midi)
+        if midi_vars and needed > 0:
+            shortfall = model.new_int_var(0, needed, f"midi_short_{day}")
+            model.add(sum(midi_vars) + shortfall >= needed)
+            penalties.append(shortfall * 40)
+
+    # 9c. Manual minimum staff soir (18h-closing)
+    for day_str, min_count in req.min_staff_soir.items():
+        if min_count <= 0:
+            continue
+        day = int(day_str)
+        closing_time = req.closing_time_sunday if day == 6 else req.closing_time_week
+        soir_vars = []
+        for k in x:
+            if k[1] == day and k[0] in salle_ids:
+                s = shift_map[k[2]]
+                if s.start_time <= 18 and s.end_time >= closing_time:
+                    soir_vars.append(x[k])
+        mgr_soir = sum(1 for ms in req.manager_schedules
+            if ms.day_of_week == day and ms.shift_template_id and ms.start_time is not None
+            and ms.end_time is not None and ms.start_time <= 18 and ms.end_time >= closing_time)
+        needed = max(0, min_count - mgr_soir)
+        if soir_vars and needed > 0:
+            shortfall = model.new_int_var(0, needed, f"soir_short_{day}")
+            model.add(sum(soir_vars) + shortfall >= needed)
+            penalties.append(shortfall * 40)
+
+    # 9d. Manual minimum staff fermeture
+    for day_str, min_count in req.min_staff_fermeture.items():
+        if min_count <= 0:
+            continue
+        day = int(day_str)
+        closing_time = req.closing_time_sunday if day == 6 else req.closing_time_week
+        ferm_vars = []
+        for k in x:
+            if k[1] == day and k[0] in salle_ids:
+                s = shift_map[k[2]]
+                if s.end_time >= closing_time:
+                    ferm_vars.append(x[k])
+        mgr_ferm = sum(1 for ms in req.manager_schedules
+            if ms.day_of_week == day and ms.shift_template_id and ms.end_time is not None
+            and ms.end_time >= closing_time)
+        needed = max(0, min_count - mgr_ferm)
+        if ferm_vars and needed > 0:
+            shortfall = model.new_int_var(0, needed, f"ferm_short_{day}")
+            model.add(sum(ferm_vars) + shortfall >= needed)
+            penalties.append(shortfall * 50)
 
     # 10. Shift variety: penalize same shift on consecutive days
     for emp in non_managers:

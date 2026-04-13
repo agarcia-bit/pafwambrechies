@@ -353,6 +353,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
             weekly_hours: e.weeklyHours,
             modulation_range: e.modulationRange,
             is_manager: e.isManager,
+            department: e.department,
             role_id: employeeRoles.find((er) => er.employeeId === e.id)?.roleId ?? '',
           })),
           shift_templates: templates.map((t) => ({
@@ -364,6 +365,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
             meals: t.meals,
             baskets: t.baskets,
             applicability: t.applicability,
+            department: t.department,
           })),
           manager_schedules: managerSchedules.map((ms) => ({
             employee_id: ms.employeeId,
@@ -398,6 +400,15 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           closing_time_week: 24.0,
           closing_time_sunday: 21.0,
           productivity_target: 95,
+          min_staff_midi: Object.fromEntries(
+            Object.entries(dayAdjustments).filter(([, a]) => a.minMidi > 0).map(([d, a]) => [d, a.minMidi]),
+          ),
+          min_staff_soir: Object.fromEntries(
+            Object.entries(dayAdjustments).filter(([, a]) => a.minSoir > 0).map(([d, a]) => [d, a.minSoir]),
+          ),
+          min_staff_fermeture: Object.fromEntries(
+            Object.entries(dayAdjustments).filter(([, a]) => a.minFermeture > 0).map(([d, a]) => [d, a.minFermeture]),
+          ),
         }
 
         const solverResult = await callSolver(solverReq)
@@ -961,6 +972,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
         <PlanningGrid
           report={report}
           shiftTemplates={templates}
+          employees={activeEmployees}
           onShiftChange={(employeeId, dayOfWeek, newShiftId) => {
             if (!report || !tenantId) return
             const entries = [...report.planning.entries]

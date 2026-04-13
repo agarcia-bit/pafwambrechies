@@ -2,16 +2,19 @@ export type ContractType = 'cdi' | 'cdd' | 'extra' | 'apprenti'
 
 export type EmployeeLevel = 1 | 2 | 2.5 | 3 | 4
 
+export type Department = 'salle' | 'cuisine'
+
 export interface Employee {
   id: string
   tenantId: string
   firstName: string
   lastName: string
   contractType: ContractType
-  weeklyHours: number // Heures contrat hebdo (ex: 35, 24, 42)
-  modulationRange: number // +/- heures de modulation (ex: 5)
+  weeklyHours: number
+  modulationRange: number
   level: EmployeeLevel
   isManager: boolean
+  department: Department
   active: boolean
   createdAt: string
 }

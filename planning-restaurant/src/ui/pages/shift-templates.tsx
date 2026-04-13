@@ -83,6 +83,7 @@ export function ShiftTemplatesPage() {
       baskets,
       applicability,
       sortOrder: templates.length,
+      department: 'salle' as const,
     })
     setShowAddForm(false)
     resetForm()

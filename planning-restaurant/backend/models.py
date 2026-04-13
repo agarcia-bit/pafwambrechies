@@ -13,6 +13,7 @@ class ShiftTemplate(BaseModel):
     meals: int = 0
     baskets: int = 0
     applicability: str
+    department: str = "salle"
 
 
 class Employee(BaseModel):
@@ -21,6 +22,7 @@ class Employee(BaseModel):
     weekly_hours: float
     modulation_range: float = 5
     is_manager: bool = False
+    department: str = "salle"
     role_id: str = ""
 
 
@@ -71,6 +73,10 @@ class SolverRequest(BaseModel):
     closing_time_week: float = 24.0
     closing_time_sunday: float = 21.0
     productivity_target: float = 95.0
+    # Manual minimum staff overrides per day: {day_of_week: count}
+    min_staff_midi: Dict[str, int] = {}
+    min_staff_soir: Dict[str, int] = {}
+    min_staff_fermeture: Dict[str, int] = {}
 
 
 class ShiftAssignment(BaseModel):

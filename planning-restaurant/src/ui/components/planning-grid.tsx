@@ -1,22 +1,26 @@
 import { useState } from 'react'
 import type { PlanningReport } from '@/domain/models/planning'
 import type { ShiftTemplate } from '@/domain/models/shift'
+import type { Employee } from '@/domain/models/employee'
 
 const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
 interface PlanningGridProps {
   report: PlanningReport
   shiftTemplates: ShiftTemplate[]
+  employees?: Employee[]
   onShiftChange?: (employeeId: string, dayOfWeek: number, newShiftId: string | null) => void
 }
 
-export function PlanningGrid({ report, shiftTemplates, onShiftChange }: PlanningGridProps) {
+export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftChange }: PlanningGridProps) {
   const [editingCell, setEditingCell] = useState<{ empId: string; day: number } | null>(null)
 
-  function getShiftsForDay(dayOfWeek: number): ShiftTemplate[] {
+  function getShiftsForDay(dayOfWeek: number, employeeId?: string): ShiftTemplate[] {
     const isSunday = dayOfWeek === 6
     const isSaturday = dayOfWeek === 5
+    const dept = employees.find((e) => e.id === employeeId)?.department ?? 'salle'
     return shiftTemplates
+      .filter((s) => s.department === dept)
       .filter((s) => {
         if (isSunday) return s.applicability === 'sunday'
         if (isSaturday) return s.applicability === 'tue_sat' || s.applicability === 'sat_only'
@@ -70,7 +74,26 @@ export function PlanningGrid({ report, shiftTemplates, onShiftChange }: Planning
             </tr>
           </thead>
           <tbody>
-            {summaries.map((summary) => (
+            {(() => {
+              const getDept = (empId: string) => employees.find((e) => e.id === empId)?.department ?? 'salle'
+              const salleSummaries = summaries.filter((s) => getDept(s.employeeId) === 'salle')
+              const cuisineSummaries = summaries.filter((s) => getDept(s.employeeId) === 'cuisine')
+              const sections = [
+                ...(salleSummaries.length > 0 ? [{ label: 'Salle', items: salleSummaries }] : []),
+                ...(cuisineSummaries.length > 0 ? [{ label: 'Cuisine', items: cuisineSummaries }] : []),
+              ]
+              // If only one section, don't show headers
+              const showHeaders = sections.length > 1
+
+              return sections.flatMap((section) => [
+                ...(showHeaders ? [
+                  <tr key={`dept-${section.label}`} className="bg-muted/60">
+                    <td colSpan={100} className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      {section.label}
+                    </td>
+                  </tr>,
+                ] : []),
+                ...section.items.map((summary) => (
               <tr key={summary.employeeId} className="border-b border-border hover:bg-muted/20">
                 <td className="sticky left-0 z-10 bg-background px-2 py-1.5 text-center font-mono">
                   {summary.contractHours}
@@ -85,7 +108,7 @@ export function PlanningGrid({ report, shiftTemplates, onShiftChange }: Planning
                   const isOff = !entry
                   const bgClass = isOff ? 'bg-planning-off/40' : 'bg-planning-work/40'
                   const isEditing = editingCell?.empId === summary.employeeId && editingCell?.day === d
-                  const dayShifts = getShiftsForDay(d)
+                  const dayShifts = getShiftsForDay(d, summary.employeeId)
 
                   return (
                     <td key={d} className={`px-1 py-1 text-center ${bgClass} relative`}>
@@ -146,7 +169,9 @@ export function PlanningGrid({ report, shiftTemplates, onShiftChange }: Planning
                 <td className="px-2 py-1.5 text-center">{summary.totalMeals}</td>
                 <td className="px-2 py-1.5 text-center">{summary.totalBaskets}</td>
               </tr>
-            ))}
+                )),
+              ])
+            })()}
           </tbody>
         </table>
       </div>

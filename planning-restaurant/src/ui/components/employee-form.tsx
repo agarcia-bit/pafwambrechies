@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Button, Input, Select } from '@/ui/components'
-import type { Employee, ContractType } from '@/domain/models/employee'
+import type { Employee, ContractType, Department } from '@/domain/models/employee'
 import { X } from 'lucide-react'
 
 interface EmployeeFormProps {
@@ -24,6 +24,7 @@ export function EmployeeForm({ employee, tenantId, onSubmit, onCancel }: Employe
   const [weeklyHours, setWeeklyHours] = useState(employee?.weeklyHours ?? 35)
   const [modulationRange, setModulationRange] = useState(employee?.modulationRange ?? 5)
   const [isManager, setIsManager] = useState(employee?.isManager ?? false)
+  const [department, setDepartment] = useState<Department>(employee?.department ?? 'salle')
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -32,6 +33,7 @@ export function EmployeeForm({ employee, tenantId, onSubmit, onCancel }: Employe
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       contractType,
+      department,
       weeklyHours,
       modulationRange,
       level: isManager ? 4 : (employee?.level ?? 1),
@@ -61,7 +63,17 @@ export function EmployeeForm({ employee, tenantId, onSubmit, onCancel }: Employe
             required
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
+            <Select
+              id="department"
+              label="Département"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value as Department)}
+              options={[
+                { value: 'salle', label: 'Salle' },
+                { value: 'cuisine', label: 'Cuisine' },
+              ]}
+            />
             <Select
               id="contractType"
               label="Type de contrat"

@@ -17,16 +17,17 @@ export type DayApplicability = 'tue_sat' | 'sat_only' | 'sunday'
 export interface ShiftTemplate {
   id: string
   tenantId: string
-  code: string // ex: "OUV", "MIDI", "SOIR", "FERM_12"
-  label: string // ex: "Ouverture", "Midi", "Soir"
+  code: string
+  label: string
   category: ShiftCategory
-  startTime: number // décimal (ex: 9.5)
-  endTime: number // décimal (ex: 15.0, 24.0 = minuit)
-  effectiveHours: number // heures effectives (figées)
-  meals: number // nb de repas inclus
-  baskets: number // nb de paniers inclus
-  applicability: DayApplicability // jours où ce créneau est utilisable
-  sortOrder: number // pour l'ordre d'allocation
+  startTime: number
+  endTime: number
+  effectiveHours: number
+  meals: number
+  baskets: number
+  applicability: DayApplicability
+  sortOrder: number
+  department: 'salle' | 'cuisine'
 }
 
 /** Créneaux par défaut HCR (convention Hôtels-Cafés-Restaurants) */
@@ -42,6 +43,7 @@ export const DEFAULT_SHIFTS_HCR: Omit<ShiftTemplate, 'id' | 'tenantId'>[] = [
     meals: 1,
     baskets: 0,
     applicability: 'tue_sat',
+    department: 'salle',
     sortOrder: 1,
   },
   {
@@ -54,6 +56,7 @@ export const DEFAULT_SHIFTS_HCR: Omit<ShiftTemplate, 'id' | 'tenantId'>[] = [
     meals: 0,
     baskets: 1,
     applicability: 'tue_sat',
+    department: 'salle',
     sortOrder: 2,
   },
   {
@@ -66,6 +69,7 @@ export const DEFAULT_SHIFTS_HCR: Omit<ShiftTemplate, 'id' | 'tenantId'>[] = [
     meals: 1,
     baskets: 0,
     applicability: 'tue_sat',
+    department: 'salle',
     sortOrder: 3,
   },
   {
@@ -78,6 +82,7 @@ export const DEFAULT_SHIFTS_HCR: Omit<ShiftTemplate, 'id' | 'tenantId'>[] = [
     meals: 2,
     baskets: 0,
     applicability: 'tue_sat',
+    department: 'salle',
     sortOrder: 4,
   },
   {
@@ -90,6 +95,7 @@ export const DEFAULT_SHIFTS_HCR: Omit<ShiftTemplate, 'id' | 'tenantId'>[] = [
     meals: 2,
     baskets: 0,
     applicability: 'tue_sat',
+    department: 'salle',
     sortOrder: 5,
   },
   {
@@ -102,6 +108,7 @@ export const DEFAULT_SHIFTS_HCR: Omit<ShiftTemplate, 'id' | 'tenantId'>[] = [
     meals: 1,
     baskets: 0,
     applicability: 'tue_sat',
+    department: 'salle',
     sortOrder: 6,
   },
   {
@@ -114,6 +121,7 @@ export const DEFAULT_SHIFTS_HCR: Omit<ShiftTemplate, 'id' | 'tenantId'>[] = [
     meals: 1,
     baskets: 0,
     applicability: 'tue_sat',
+    department: 'salle',
     sortOrder: 7,
   },
   {
@@ -126,6 +134,7 @@ export const DEFAULT_SHIFTS_HCR: Omit<ShiftTemplate, 'id' | 'tenantId'>[] = [
     meals: 0,
     baskets: 1,
     applicability: 'tue_sat',
+    department: 'salle',
     sortOrder: 8,
   },
   // Samedi uniquement
@@ -139,6 +148,7 @@ export const DEFAULT_SHIFTS_HCR: Omit<ShiftTemplate, 'id' | 'tenantId'>[] = [
     meals: 1,
     baskets: 0,
     applicability: 'sat_only',
+    department: 'salle',
     sortOrder: 9,
   },
   // Dimanche
@@ -152,6 +162,7 @@ export const DEFAULT_SHIFTS_HCR: Omit<ShiftTemplate, 'id' | 'tenantId'>[] = [
     meals: 1,
     baskets: 0,
     applicability: 'sunday',
+    department: 'salle',
     sortOrder: 10,
   },
   {
@@ -164,6 +175,7 @@ export const DEFAULT_SHIFTS_HCR: Omit<ShiftTemplate, 'id' | 'tenantId'>[] = [
     meals: 1,
     baskets: 0,
     applicability: 'sunday',
+    department: 'salle',
     sortOrder: 11,
   },
   {
@@ -176,6 +188,7 @@ export const DEFAULT_SHIFTS_HCR: Omit<ShiftTemplate, 'id' | 'tenantId'>[] = [
     meals: 0,
     baskets: 1,
     applicability: 'sunday',
+    department: 'salle',
     sortOrder: 12,
   },
   {
@@ -188,6 +201,7 @@ export const DEFAULT_SHIFTS_HCR: Omit<ShiftTemplate, 'id' | 'tenantId'>[] = [
     meals: 1,
     baskets: 0,
     applicability: 'sunday',
+    department: 'salle',
     sortOrder: 13,
   },
   {
@@ -200,6 +214,7 @@ export const DEFAULT_SHIFTS_HCR: Omit<ShiftTemplate, 'id' | 'tenantId'>[] = [
     meals: 1,
     baskets: 0,
     applicability: 'sunday',
+    department: 'salle',
     sortOrder: 14,
   },
   {
@@ -212,6 +227,7 @@ export const DEFAULT_SHIFTS_HCR: Omit<ShiftTemplate, 'id' | 'tenantId'>[] = [
     meals: 1,
     baskets: 0,
     applicability: 'sunday',
+    department: 'salle',
     sortOrder: 15,
   },
   {
@@ -224,6 +240,7 @@ export const DEFAULT_SHIFTS_HCR: Omit<ShiftTemplate, 'id' | 'tenantId'>[] = [
     meals: 1,
     baskets: 0,
     applicability: 'sunday',
+    department: 'salle',
     sortOrder: 16,
   },
 ]

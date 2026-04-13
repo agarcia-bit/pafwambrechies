@@ -28,6 +28,7 @@ export async function createShiftTemplate(
       baskets: template.baskets,
       applicability: template.applicability,
       sort_order: template.sortOrder,
+      department: template.department,
     })
     .select()
     .single()
@@ -83,5 +84,6 @@ function mapShiftTemplate(row: any): ShiftTemplate {
     baskets: row.baskets,
     applicability: row.applicability,
     sortOrder: row.sort_order,
+    department: row.department ?? 'salle',
   }
 }
