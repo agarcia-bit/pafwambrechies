@@ -47,6 +47,7 @@ function addDays(isoDate: string, days: number): string {
 interface KitchenEntry {
   employeeId: string
   dayOfWeek: number
+  shiftTemplateId: string
   startTime: number
   endTime: number
   effectiveHours: number
@@ -148,6 +149,7 @@ export function KitchenPlanningPage() {
         const mapped: KitchenEntry[] = result.entries.map((e: SolverShiftAssignment) => ({
           employeeId: e.employee_id,
           dayOfWeek: e.day_of_week,
+          shiftTemplateId: e.shift_template_id,
           startTime: e.start_time,
           endTime: e.end_time,
           effectiveHours: e.effective_hours,
@@ -332,7 +334,7 @@ export function KitchenPlanningPage() {
                 roleId: '',
                 date: addDays(weekStartISO, e.dayOfWeek),
                 dayOfWeek: e.dayOfWeek,
-                shiftTemplateId: '',
+                shiftTemplateId: e.shiftTemplateId,
                 startTime: e.startTime,
                 endTime: e.endTime,
                 effectiveHours: e.effectiveHours,
@@ -412,7 +414,7 @@ export function KitchenPlanningPage() {
                       const isOff = dayEntries.length === 0
 
                       return (
-                        <td key={d} className={`px-2 py-4 text-center ${isOff ? 'bg-slate-50' : 'bg-amber-50/60'}`}>
+                        <td key={d} className={`px-2 py-4 text-center ${isOff ? 'bg-gray-200' : 'bg-amber-50/60'}`}>
                           {isOff ? (
                             <span className="text-sm text-muted-foreground">OFF</span>
                           ) : (
