@@ -154,7 +154,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
       if (!planning || entries.length === 0) return
 
       // Set week to match the planning
-      setWeekStart(new Date(planning.weekStartDate))
+      setWeekStart(new Date(planning.weekStartDate + 'T00:00:00'))
 
       // Build report from saved entries
       const empSummaries = buildSummaries(entries, activeEmployees)

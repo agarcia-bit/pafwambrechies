@@ -88,7 +88,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
       Promise.all([fetchPlannings(), fetchPlanningEntries(loadPlanningId)]).then(([plannings, dbEntries]) => {
         const planning = plannings.find((p) => p.id === loadPlanningId)
         if (!planning || dbEntries.length === 0) return
-        setWeekStart(new Date(planning.weekStartDate))
+        setWeekStart(new Date(planning.weekStartDate + 'T00:00:00'))
         const mapped: KitchenEntry[] = dbEntries.map((e) => ({
           employeeId: e.employeeId,
           dayOfWeek: e.dayOfWeek,
@@ -451,7 +451,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                                 </span>
                               )}
                               {soir && (
-                                <span className="inline-block rounded-md bg-amber-50/600 text-white px-2.5 py-2 text-sm font-semibold">
+                                <span className="inline-block rounded-md bg-amber-600 text-white px-2.5 py-2 text-sm font-semibold">
                                   {soir.startTime}h→{soir.endTime}h
                                   <span className="ml-1 text-xs opacity-80">({soir.effectiveHours}h)</span>
                                 </span>

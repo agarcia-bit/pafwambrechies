@@ -117,14 +117,24 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
                   </tr>
                 </thead>
                 <tbody>
-                  {plannings.map((p) => {
+                  {plannings.map((p, idx) => {
                     const statusInfo = STATUS_LABELS[p.status] ?? STATUS_LABELS.draft
+                    const prevPlanning = idx > 0 ? plannings[idx - 1] : null
+                    const isNewWeek = prevPlanning && prevPlanning.weekNumber !== p.weekNumber
                     return (
-                      <tr
-                        key={p.id}
-                        className="border-b border-border hover:bg-muted/30 cursor-pointer"
-                        onClick={() => onViewPlanning?.(p.id, p.department)}
-                      >
+                      <>
+                        {isNewWeek && (
+                          <tr key={`sep-${p.id}`}>
+                            <td colSpan={5} className="py-1">
+                              <div className="border-t-2 border-primary/20" />
+                            </td>
+                          </tr>
+                        )}
+                        <tr
+                          key={p.id}
+                          className="border-b border-border hover:bg-muted/30 cursor-pointer"
+                          onClick={() => onViewPlanning?.(p.id, p.department)}
+                        >
                         <td className="px-4 py-3 font-bold">
                           S{p.weekNumber}
                           <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${p.department === 'cuisine' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
@@ -173,6 +183,7 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
                           </div>
                         </td>
                       </tr>
+                      </>
                     )
                   })}
                 </tbody>
