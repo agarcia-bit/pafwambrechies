@@ -14,6 +14,7 @@ import { MainLayout } from '@/ui/layouts/main-layout'
 export default function App() {
   const { session, initialized, initialize } = useAuthStore()
   const [currentPage, setCurrentPage] = useState('dashboard')
+  const [viewPlanningId, setViewPlanningId] = useState<string | null>(null)
 
   useEffect(() => {
     initialize()
@@ -31,20 +32,30 @@ export default function App() {
     return <LoginPage />
   }
 
+  function handleViewPlanning(planningId: string) {
+    setViewPlanningId(planningId)
+    setCurrentPage('planning')
+  }
+
+  function handleNavigate(page: string) {
+    setCurrentPage(page)
+    if (page !== 'planning') setViewPlanningId(null)
+  }
+
   const pages: Record<string, React.ReactNode> = {
-    dashboard: <DashboardPage />,
+    dashboard: <DashboardPage onViewPlanning={handleViewPlanning} />,
     employees: <EmployeesPage />,
     roles: <RolesPage />,
     'shift-templates': <ShiftTemplatesPage />,
     constraints: <ConstraintsPage />,
     forecasts: <ForecastsPage />,
-    planning: <PlanningPage />,
+    planning: <PlanningPage loadPlanningId={viewPlanningId} />,
     settings: <SettingsPage />,
   }
 
   return (
-    <MainLayout currentPage={currentPage} onNavigate={setCurrentPage}>
-      {pages[currentPage] ?? <DashboardPage />}
+    <MainLayout currentPage={currentPage} onNavigate={handleNavigate}>
+      {pages[currentPage] ?? <DashboardPage onViewPlanning={handleViewPlanning} />}
     </MainLayout>
   )
 }

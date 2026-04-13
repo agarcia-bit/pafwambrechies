@@ -23,7 +23,7 @@ import {
   fetchConditionalAvailabilities,
 } from '@/infrastructure/supabase/repositories/constraint-repo'
 import { exportPlanningToExcel } from '@/infrastructure/export/excel-export'
-import { savePlanning } from '@/infrastructure/supabase/repositories/planning-repo'
+import { savePlanningWithEntries, fetchPlanningEntries, fetchPlannings } from '@/infrastructure/supabase/repositories/planning-repo'
 import type { EventOverride } from '@/domain/engine'
 import { Calendar, Download, Play, ChevronLeft, ChevronRight, AlertTriangle, TrendingUp, Plus, X, Save, CheckCircle } from 'lucide-react'
 
@@ -61,7 +61,7 @@ function getWeekNumber(d: Date): number {
   )
 }
 
-export function PlanningPage() {
+export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | null }) {
   const { employees, load: loadEmployees } = useEmployeeStore()
   const { roles, employeeRoles, load: loadRoles } = useRoleStore()
   const { templates, load: loadTemplates } = useShiftTemplateStore()
@@ -140,6 +140,88 @@ export function PlanningPage() {
     })
   }, [loadEmployees, loadRoles, loadTemplates, loadForecasts])
 
+  const activeEmployees = employees.filter((e) => e.active)
+
+  // Load a saved planning when coming from dashboard
+  useEffect(() => {
+    if (!loadPlanningId || activeEmployees.length === 0 || templates.length === 0) return
+
+    Promise.all([
+      fetchPlannings(),
+      fetchPlanningEntries(loadPlanningId),
+    ]).then(([plannings, entries]) => {
+      const planning = plannings.find((p) => p.id === loadPlanningId)
+      if (!planning || entries.length === 0) return
+
+      // Set week to match the planning
+      setWeekStart(new Date(planning.weekStartDate))
+
+      // Build report from saved entries
+      const empSummaries = buildSummaries(entries, activeEmployees)
+
+      // Build daily summaries
+      const dailySummaries = [1, 2, 3, 4, 5, 6].map((day) => {
+        const dayEntries = entries.filter((e) => e.dayOfWeek === day)
+        const isSunday = day === 6
+        const closingTime = isSunday ? 21 : 24
+        const plannedHours = dayEntries.reduce((s, e) => s + e.effectiveHours, 0)
+        const month = new Date(planning.weekStartDate).getMonth() + 1
+        const forecast = forecasts.find((f) => f.month === month && f.dayOfWeek === day)
+        const revenue = forecast?.forecastedRevenue ?? 0
+        const countCov = (from: number, to: number) => {
+          let min = Infinity
+          for (let h = from; h < to; h += 0.5) {
+            const c = dayEntries.filter((e) => e.startTime <= h && e.endTime > h).length
+            if (c < min) min = c
+          }
+          return min === Infinity ? 0 : min
+        }
+        return {
+          date: addDays(planning.weekStartDate, day),
+          dayOfWeek: day,
+          forecastedRevenue: revenue,
+          plannedHours,
+          productivity: plannedHours > 0 ? revenue / plannedHours : 0,
+          coverageMidi: countCov(12, 15),
+          coverageApresMidi: countCov(15, 18),
+          coverageSoir: countCov(18, closingTime),
+          openingStaff: dayEntries.filter((e) => e.startTime <= 9.5).length,
+          closingStaff: dayEntries.filter((e) => e.endTime >= closingTime).length,
+          isDelestage: false,
+          delestageReason: null,
+        }
+      })
+
+      const violations = validatePlanning({
+        entries,
+        employees: activeEmployees,
+        managerIds: activeEmployees.filter((e) => e.isManager).map((e) => e.id),
+        shiftTemplates: templates,
+        closingTimeWeek: 24,
+        closingTimeSunday: 21,
+      })
+
+      setReport({
+        planning: {
+          id: planning.id,
+          tenantId: planning.tenantId,
+          weekStartDate: planning.weekStartDate,
+          weekNumber: planning.weekNumber,
+          status: planning.status as 'draft' | 'validated',
+          generatedAt: planning.generatedAt,
+          createdBy: planning.createdBy ?? '',
+          entries,
+        },
+        employeeSummaries: empSummaries,
+        dailySummaries,
+        violations,
+        warnings: [`Planning chargé (S${planning.weekNumber} — ${planning.status})`],
+        isValid: violations.filter((v) => v.severity === 'blocking').length === 0,
+      })
+      setSaved(true)
+    }).catch(() => {})
+  }, [loadPlanningId, activeEmployees.length, templates.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function shiftWeek(delta: number) {
     const d = new Date(weekStart)
     d.setDate(d.getDate() + delta * 7)
@@ -150,7 +232,6 @@ export function PlanningPage() {
     reloadConstraints()
   }
 
-  const activeEmployees = employees.filter((e) => e.active)
   const weekNumber = getWeekNumber(weekStart)
   const weekStartISO = formatISO(weekStart)
 
@@ -394,14 +475,14 @@ export function PlanningPage() {
                 variant="primary"
                 onClick={async () => {
                   if (!tenantId) return
-                  await savePlanning({
+                  await savePlanningWithEntries({
                     id: report.planning.id,
                     tenantId,
                     weekStartDate: report.planning.weekStartDate,
                     weekNumber: report.planning.weekNumber,
                     status: 'draft',
                     createdBy: user?.id ?? '',
-                  })
+                  }, report.planning.entries)
                   setSaved(true)
                 }}
               >

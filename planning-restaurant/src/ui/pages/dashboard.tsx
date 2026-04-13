@@ -10,7 +10,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   validated: { label: 'Validé', color: 'bg-success/10 text-success' },
 }
 
-export function DashboardPage() {
+export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string) => void }) {
   const { employees, load } = useEmployeeStore()
   const [plannings, setPlannings] = useState<SavedPlanning[]>([])
   const [loadingPlannings, setLoadingPlannings] = useState(false)
@@ -120,7 +120,11 @@ export function DashboardPage() {
                   {plannings.map((p) => {
                     const statusInfo = STATUS_LABELS[p.status] ?? STATUS_LABELS.draft
                     return (
-                      <tr key={p.id} className="border-b border-border hover:bg-muted/30">
+                      <tr
+                        key={p.id}
+                        className="border-b border-border hover:bg-muted/30 cursor-pointer"
+                        onClick={() => onViewPlanning?.(p.id)}
+                      >
                         <td className="px-4 py-3 font-bold">S{p.weekNumber}</td>
                         <td className="px-4 py-3">
                           {new Date(p.weekStartDate).toLocaleDateString('fr-FR', {
