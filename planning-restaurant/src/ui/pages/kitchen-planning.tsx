@@ -12,7 +12,9 @@ import type { SolverShiftAssignment } from '@/infrastructure/api/solver-api'
 import { fetchUnavailabilities } from '@/infrastructure/supabase/repositories/constraint-repo'
 import type { Unavailability } from '@/domain/models/constraint'
 import { getWeeklyBounds } from '@/domain/models/employee'
-import { Calendar, Play, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
+import { Calendar, Play, ChevronLeft, ChevronRight, Plus, X, Save, CheckCircle } from 'lucide-react'
+import { savePlanningWithEntries } from '@/infrastructure/supabase/repositories/planning-repo'
+import type { PlanningEntry } from '@/domain/models/planning'
 
 const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
@@ -61,6 +63,8 @@ export function KitchenPlanningPage() {
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
   const [solverInfo, setSolverInfo] = useState('')
+  const [saved, setSaved] = useState(false)
+  const [planningId] = useState(crypto.randomUUID())
   const [unavailabilities, setUnavailabilities] = useState<Unavailability[]>([])
   const [addingConstraint, setAddingConstraint] = useState(false)
   const [newConstraintEmpId, setNewConstraintEmpId] = useState('')
@@ -81,6 +85,7 @@ export function KitchenPlanningPage() {
     d.setDate(d.getDate() + delta * 7)
     setWeekStart(d)
     setEntries([])
+    setSaved(false)
     setSolverInfo('')
   }
 
@@ -88,6 +93,7 @@ export function KitchenPlanningPage() {
     if (!tenantId) return
     setGenerating(true)
     setEntries([])
+    setSaved(false)
     setError('')
     setSolverInfo('')
 
@@ -312,16 +318,56 @@ export function KitchenPlanningPage() {
             </>
           )}
         </Button>
+
+        {entries.length > 0 && !saved && (
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={async () => {
+              if (!tenantId) return
+              const planningEntries: PlanningEntry[] = entries.map((e) => ({
+                id: crypto.randomUUID(),
+                planningId,
+                employeeId: e.employeeId,
+                roleId: '',
+                date: addDays(weekStartISO, e.dayOfWeek),
+                dayOfWeek: e.dayOfWeek,
+                shiftTemplateId: '',
+                startTime: e.startTime,
+                endTime: e.endTime,
+                effectiveHours: e.effectiveHours,
+                meals: 0,
+                baskets: 0,
+              }))
+              await savePlanningWithEntries({
+                id: planningId,
+                tenantId,
+                weekStartDate: weekStartISO,
+                weekNumber,
+                status: 'draft',
+                createdBy: '',
+              }, planningEntries)
+              setSaved(true)
+            }}
+          >
+            <Save size={16} className="mr-2" /> Enregistrer
+          </Button>
+        )}
+        {entries.length > 0 && saved && (
+          <span className="flex items-center gap-1 rounded-md bg-success/10 px-4 py-2.5 text-sm font-medium text-success">
+            <CheckCircle size={16} /> Enregistré
+          </span>
+        )}
       </div>
 
       {/* Loading */}
       {generating && (
-        <div className="flex flex-col items-center justify-center gap-6 rounded-2xl border border-border bg-gradient-to-br from-orange-50 to-orange-100 py-16">
+        <div className="flex flex-col items-center justify-center gap-6 rounded-2xl border border-border bg-gradient-to-br from-amber-50 to-amber-100 py-16">
           <div className="relative">
-            <div className="h-16 w-16 animate-spin rounded-full border-4 border-orange-200 border-t-orange-500" />
+            <div className="h-16 w-16 animate-spin rounded-full border-4 border-amber-200 border-t-amber-600" />
           </div>
           <div className="text-center">
-            <p className="text-lg font-semibold text-orange-700">Planning cuisine en cours</p>
+            <p className="text-lg font-semibold text-amber-700">Planning cuisine en cours</p>
             <p className="mt-1 text-sm text-muted-foreground">Attribution des shifts midi et soir...</p>
           </div>
         </div>
@@ -339,9 +385,9 @@ export function KitchenPlanningPage() {
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="bg-orange-600 text-white">
-                  <th className="sticky left-0 z-10 bg-orange-600 px-3 py-3 text-left">Contrat</th>
-                  <th className="sticky left-16 z-10 bg-orange-600 px-3 py-3 text-left">Cuisinier</th>
+                <tr className="bg-amber-700 text-white">
+                  <th className="sticky left-0 z-10 bg-amber-700 px-3 py-3 text-left">Contrat</th>
+                  <th className="sticky left-16 z-10 bg-amber-700 px-3 py-3 text-left">Cuisinier</th>
                   {DAY_NAMES.slice(1).map((day, i) => (
                     <th key={i + 1} className="px-2 py-3 text-center min-w-[150px]">
                       {day}
@@ -366,19 +412,19 @@ export function KitchenPlanningPage() {
                       const isOff = dayEntries.length === 0
 
                       return (
-                        <td key={d} className={`px-2 py-4 text-center ${isOff ? 'bg-planning-off/40' : 'bg-orange-50'}`}>
+                        <td key={d} className={`px-2 py-4 text-center ${isOff ? 'bg-slate-50' : 'bg-amber-50/60'}`}>
                           {isOff ? (
                             <span className="text-sm text-muted-foreground">OFF</span>
                           ) : (
                             <div className="flex gap-1.5 justify-center">
                               {midi && (
-                                <span className="inline-block rounded-md bg-orange-200 px-2.5 py-2 text-sm font-semibold">
+                                <span className="inline-block rounded-md bg-amber-100 border border-amber-200 px-2.5 py-2 text-sm font-semibold">
                                   {midi.startTime}h→{midi.endTime}h
                                   <span className="ml-1 text-xs opacity-70">({midi.effectiveHours}h)</span>
                                 </span>
                               )}
                               {soir && (
-                                <span className="inline-block rounded-md bg-orange-500 text-white px-2.5 py-2 text-sm font-semibold">
+                                <span className="inline-block rounded-md bg-amber-50/600 text-white px-2.5 py-2 text-sm font-semibold">
                                   {soir.startTime}h→{soir.endTime}h
                                   <span className="ml-1 text-xs opacity-80">({soir.effectiveHours}h)</span>
                                 </span>
