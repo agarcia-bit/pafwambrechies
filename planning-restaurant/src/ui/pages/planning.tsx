@@ -66,7 +66,7 @@ export function PlanningPage() {
   const { roles, employeeRoles, load: loadRoles } = useRoleStore()
   const { templates, load: loadTemplates } = useShiftTemplateStore()
   const { forecasts, load: loadForecasts } = useForecastStore()
-  const { tenantId } = useAuthStore()
+  const { tenantId, user } = useAuthStore()
 
   const [weekStart, setWeekStart] = useState(getNextMonday())
   const [report, setReport] = useState<PlanningReport | null>(null)
@@ -83,13 +83,13 @@ export function PlanningPage() {
   const [constraintsLoaded, setConstraintsLoaded] = useState(false)
 
   // CA adjustments per day (% override) and min staff
-  const [dayAdjustments, setDayAdjustments] = useState<Record<number, { percent: number; minMidi: number; minSoir: number }>>({})
+  const [dayAdjustments, setDayAdjustments] = useState<Record<number, { percent: number; minMidi: number; minSoir: number; minFermeture: number }>>({})
 
   function getDayAdjustment(day: number) {
-    return dayAdjustments[day] ?? { percent: 0, minMidi: 0, minSoir: 0 }
+    return dayAdjustments[day] ?? { percent: 0, minMidi: 0, minSoir: 0, minFermeture: 0 }
   }
 
-  function setDayField(day: number, field: 'percent' | 'minMidi' | 'minSoir', value: number) {
+  function setDayField(day: number, field: 'percent' | 'minMidi' | 'minSoir' | 'minFermeture', value: number) {
     setDayAdjustments((prev) => ({
       ...prev,
       [day]: { ...getDayAdjustment(day), [field]: value },
@@ -146,6 +146,7 @@ export function PlanningPage() {
     setWeekStart(d)
     setReport(null)
     setSaved(false)
+    setDayAdjustments({})
     reloadConstraints()
   }
 
@@ -399,7 +400,7 @@ export function PlanningPage() {
                     weekStartDate: report.planning.weekStartDate,
                     weekNumber: report.planning.weekNumber,
                     status: 'draft',
-                    createdBy: tenantId,
+                    createdBy: user?.id ?? '',
                   })
                   setSaved(true)
                 }}
@@ -735,7 +736,7 @@ export function PlanningPage() {
                         <td className="px-2 py-2 text-center font-bold text-primary">{Math.round(totalCA).toLocaleString('fr-FR')}€</td>
                       </tr>
                       <tr className="border-b border-border">
-                        <td className="px-2 py-2 text-sm font-medium">Min midi</td>
+                        <td className="px-2 py-2 text-sm font-medium">Mini service midi</td>
                         {DAY_NAMES.slice(1).map((_, i) => {
                           const day = i + 1
                           return (
@@ -755,7 +756,7 @@ export function PlanningPage() {
                         <td className="px-2 py-2"></td>
                       </tr>
                       <tr className="border-b border-border">
-                        <td className="px-2 py-2 text-sm font-medium">Min soir</td>
+                        <td className="px-2 py-2 text-sm font-medium">Mini service soir</td>
                         {DAY_NAMES.slice(1).map((_, i) => {
                           const day = i + 1
                           return (
@@ -763,6 +764,26 @@ export function PlanningPage() {
                               <select
                                 value={getDayAdjustment(day).minSoir}
                                 onChange={(e) => setDayField(day, 'minSoir', Number(e.target.value))}
+                                className="w-12 h-7 rounded border border-input bg-background text-center text-xs"
+                              >
+                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => (
+                                  <option key={v} value={v}>{v === 0 ? '—' : v}</option>
+                                ))}
+                              </select>
+                            </td>
+                          )
+                        })}
+                        <td className="px-2 py-2"></td>
+                      </tr>
+                      <tr className="border-b border-border">
+                        <td className="px-2 py-2 text-sm font-medium">Mini fermeture</td>
+                        {DAY_NAMES.slice(1).map((_, i) => {
+                          const day = i + 1
+                          return (
+                            <td key={day} className="px-2 py-2 text-center">
+                              <select
+                                value={getDayAdjustment(day).minFermeture}
+                                onChange={(e) => setDayField(day, 'minFermeture', Number(e.target.value))}
                                 className="w-12 h-7 rounded border border-input bg-background text-center text-xs"
                               >
                                 {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => (
