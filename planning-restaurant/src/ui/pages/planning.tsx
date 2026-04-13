@@ -565,7 +565,13 @@ export function PlanningPage() {
                           const base = forecasts.find((f) => f.month === weekMonth && f.dayOfWeek === day)?.forecastedRevenue ?? 0
                           return <td key={day} className="px-2 py-2 text-center text-muted-foreground">{base > 0 ? `${Math.round(base)}€` : '—'}</td>
                         })}
-                        <td className="px-2 py-2 text-center font-bold">{Math.round(totalCA / (1 + 0))}€</td>
+                        {(() => {
+                          const baseTotal = DAY_NAMES.slice(1).reduce((sum, _, i) => {
+                            const day = i + 1
+                            return sum + (forecasts.find((f) => f.month === weekMonth && f.dayOfWeek === day)?.forecastedRevenue ?? 0)
+                          }, 0)
+                          return <td className="px-2 py-2 text-center font-bold text-muted-foreground">{Math.round(baseTotal).toLocaleString('fr-FR')}€</td>
+                        })()}
                       </tr>
                       <tr className="border-b border-border">
                         <td className="px-2 py-2 text-sm font-medium">Ajustement %</td>
@@ -587,6 +593,21 @@ export function PlanningPage() {
                           )
                         })}
                         <td className="px-2 py-2"></td>
+                      </tr>
+                      <tr className="border-b border-border bg-muted/30">
+                        <td className="px-2 py-2 text-sm font-bold">CA ajusté</td>
+                        {DAY_NAMES.slice(1).map((_, i) => {
+                          const day = i + 1
+                          const base = forecasts.find((f) => f.month === weekMonth && f.dayOfWeek === day)?.forecastedRevenue ?? 0
+                          const adj = getDayAdjustment(day).percent
+                          const adjusted = Math.round(base * (1 + adj / 100))
+                          return (
+                            <td key={day} className={`px-2 py-2 text-center font-bold ${adj !== 0 ? 'text-warning' : ''}`}>
+                              {adjusted > 0 ? `${adjusted}€` : '—'}
+                            </td>
+                          )
+                        })}
+                        <td className="px-2 py-2 text-center font-bold text-primary">{Math.round(totalCA).toLocaleString('fr-FR')}€</td>
                       </tr>
                       <tr className="border-b border-border">
                         <td className="px-2 py-2 text-sm font-medium">Min midi</td>
