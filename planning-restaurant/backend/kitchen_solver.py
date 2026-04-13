@@ -130,9 +130,9 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
             model.add(total >= min_h)
             model.add(total <= max_h)
 
-    # 6. Repos 11h between consecutive days
-    # If employee works SOIR ending at 23h, next day cannot start MIDI at 9h (rest = 10h < 11h)
-    # So: soir(day) + midi(day+1 starting before 10h) <= 1
+    # 6. Repos entre jours consécutifs — SOFT pour la cuisine
+    # En cuisine, le repos 11h est intégré dans les horaires (coupure 15h-18h)
+    # On pénalise légèrement soir(23h) + midi(9h) le lendemain mais on ne bloque pas
     for emp in kitchen_employees:
         for day in working_days:
             next_day = day + 1
@@ -148,7 +148,10 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
                     s_midi = shift_map[k_midi[2]]
                     rest = 24 - s_soir.end_time + s_midi.start_time
                     if rest < 11:
-                        model.add(x_soir[k_soir] + x_midi[k_midi] <= 1)
+                        # Soft penalty instead of hard block
+                        both = model.new_bool_var(f"krest_{emp.id}_{day}")
+                        model.add(x_soir[k_soir] + x_midi[k_midi] - 1 <= both)
+                        penalties.append(both * 3)
 
     # 7. Special: Chaker + Bauer + Ibra all work Tuesday MIDI (preparation)
     chaker = next((e for e in kitchen_employees if e.first_name.lower() == "chaker"), None)
