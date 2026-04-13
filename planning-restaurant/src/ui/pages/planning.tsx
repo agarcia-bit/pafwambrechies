@@ -777,7 +777,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
                                 onChange={(e) => setDayField(day, 'percent', Number(e.target.value))}
                                 className={`w-16 h-7 rounded border text-center text-xs ${adj !== 0 ? 'border-warning bg-warning/10 font-bold' : 'border-input bg-background'}`}
                               >
-                                {[-30, -20, -10, 0, 10, 20, 30, 40, 50].map((v) => (
+                                {[-100, -75, -50, -30, -20, -10, 0, 10, 20, 30, 40, 50, 75, 100].map((v) => (
                                   <option key={v} value={v}>{v > 0 ? `+${v}%` : v === 0 ? '—' : `${v}%`}</option>
                                 ))}
                               </select>
