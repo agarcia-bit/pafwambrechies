@@ -1,16 +1,18 @@
 """Data models for the planning solver API."""
+from __future__ import annotations
+from typing import Optional, List, Dict
 from pydantic import BaseModel
 
 
 class ShiftTemplate(BaseModel):
     id: str
     code: str
-    start_time: float  # decimal hours (9.5 = 9h30)
+    start_time: float
     end_time: float
     effective_hours: float
     meals: int = 0
     baskets: int = 0
-    applicability: str  # 'tue_sat' | 'sat_only' | 'sunday'
+    applicability: str
 
 
 class Employee(BaseModel):
@@ -24,26 +26,26 @@ class Employee(BaseModel):
 
 class ManagerSchedule(BaseModel):
     employee_id: str
-    day_of_week: int  # 0=lundi..6=dimanche
-    shift_template_id: str | None = None  # None = OFF
-    start_time: float | None = None
-    end_time: float | None = None
+    day_of_week: int
+    shift_template_id: Optional[str] = None
+    start_time: Optional[float] = None
+    end_time: Optional[float] = None
 
 
 class Unavailability(BaseModel):
     employee_id: str
-    type: str  # 'fixed' | 'punctual'
-    day_of_week: int | None = None
-    specific_date: str | None = None
-    available_from: float | None = None
-    available_until: float | None = None
+    type: str
+    day_of_week: Optional[int] = None
+    specific_date: Optional[str] = None
+    available_from: Optional[float] = None
+    available_until: Optional[float] = None
 
 
 class ConditionalAvailability(BaseModel):
     employee_id: str
     day_of_week: int
-    allowed_shift_codes: list[str]
-    max_hours: float | None = None
+    allowed_shift_codes: List[str]
+    max_hours: Optional[float] = None
 
 
 class DayForecast(BaseModel):
@@ -58,14 +60,14 @@ class EventOverride(BaseModel):
 
 class SolverRequest(BaseModel):
     week_start_date: str
-    employees: list[Employee]
-    shift_templates: list[ShiftTemplate]
-    manager_schedules: list[ManagerSchedule] = []
-    unavailabilities: list[Unavailability] = []
-    conditional_availabilities: list[ConditionalAvailability] = []
-    day_forecasts: list[DayForecast] = []
-    event_overrides: list[EventOverride] = []
-    employee_roles: dict[str, str] = {}  # employee_id -> role_id
+    employees: List[Employee]
+    shift_templates: List[ShiftTemplate]
+    manager_schedules: List[ManagerSchedule] = []
+    unavailabilities: List[Unavailability] = []
+    conditional_availabilities: List[ConditionalAvailability] = []
+    day_forecasts: List[DayForecast] = []
+    event_overrides: List[EventOverride] = []
+    employee_roles: Dict[str, str] = {}
     closing_time_week: float = 24.0
     closing_time_sunday: float = 21.0
     productivity_target: float = 95.0
@@ -84,7 +86,7 @@ class ShiftAssignment(BaseModel):
 
 class SolverResponse(BaseModel):
     success: bool
-    entries: list[ShiftAssignment] = []
-    status: str = ""  # 'OPTIMAL' | 'FEASIBLE' | 'INFEASIBLE'
+    entries: List[ShiftAssignment] = []
+    status: str = ""
     solve_time_ms: int = 0
-    warnings: list[str] = []
+    warnings: List[str] = []
