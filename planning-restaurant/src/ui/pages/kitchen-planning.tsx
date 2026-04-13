@@ -413,23 +413,23 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="bg-amber-700 text-white">
-                  <th className="sticky left-0 z-10 bg-amber-700 px-3 py-3 text-left">Contrat</th>
-                  <th className="sticky left-16 z-10 bg-amber-700 px-3 py-3 text-left">Cuisinier</th>
+                  <th className="sticky left-0 z-10 bg-amber-700 px-2 py-2 text-left text-xs">Contrat</th>
+                  <th className="sticky left-16 z-10 bg-amber-700 px-2 py-2 text-left text-xs">Cuisinier</th>
                   {DAY_NAMES.slice(1).map((day, i) => (
                     <th key={i + 1} className="px-2 py-3 text-center min-w-[150px]">
                       {day}
                     </th>
                   ))}
-                  <th className="px-3 py-3 text-center">Total</th>
+                  <th className="px-2 py-2 text-center text-xs">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {empTotals.map(({ emp, empEntries, totalHours, bounds }) => (
                   <tr key={emp.id} className="border-b border-border hover:bg-muted/20">
-                    <td className="sticky left-0 z-10 bg-background px-3 py-3 text-center font-mono text-base">
+                    <td className="sticky left-0 z-10 bg-background px-2 py-2 text-center font-mono text-xs">
                       {emp.weeklyHours}
                     </td>
-                    <td className="sticky left-16 z-10 bg-background px-3 py-3 font-semibold whitespace-nowrap">
+                    <td className="sticky left-16 z-10 bg-background px-2 py-2 text-xs font-semibold whitespace-nowrap">
                       {emp.firstName}
                     </td>
                     {[1, 2, 3, 4, 5, 6].map((d) => {
@@ -439,19 +439,19 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                       const isOff = dayEntries.length === 0
 
                       return (
-                        <td key={d} className={`px-2 py-4 text-center ${isOff ? 'bg-red-100' : 'bg-amber-50/60'}`}>
+                        <td key={d} className={`px-1 py-2 text-center ${isOff ? 'bg-red-100' : 'bg-amber-50/60'}`}>
                           {isOff ? (
                             <span className="text-sm text-muted-foreground">OFF</span>
                           ) : (
                             <div className="flex gap-1.5 justify-center">
                               {midi && (
-                                <span className="inline-block rounded-md bg-amber-100 border border-amber-200 px-2.5 py-2 text-sm font-semibold">
+                                <span className="inline-block rounded bg-amber-100 border border-amber-200 px-1.5 py-1 text-[11px] font-semibold">
                                   {midi.startTime}h→{midi.endTime}h
                                   <span className="ml-1 text-xs opacity-70">({midi.effectiveHours}h)</span>
                                 </span>
                               )}
                               {soir && (
-                                <span className="inline-block rounded-md bg-amber-600 text-white px-2.5 py-2 text-sm font-semibold">
+                                <span className="inline-block rounded bg-amber-600 text-white px-1.5 py-1 text-[11px] font-semibold">
                                   {soir.startTime}h→{soir.endTime}h
                                   <span className="ml-1 text-xs opacity-80">({soir.effectiveHours}h)</span>
                                 </span>
@@ -461,7 +461,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                         </td>
                       )
                     })}
-                    <td className={`px-3 py-3 text-center text-base font-bold ${totalHours < bounds.min ? 'text-destructive' : ''}`}>
+                    <td className={`px-2 py-2 text-center text-sm font-bold ${totalHours < bounds.min ? 'text-destructive' : ''}`}>
                       {totalHours}h
                       {(() => {
                         const delta = totalHours - emp.weeklyHours
