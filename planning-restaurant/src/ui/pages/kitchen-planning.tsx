@@ -227,26 +227,26 @@ export function KitchenPlanningPage() {
       {entries.length > 0 && !generating && (
         <>
           <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full border-collapse text-xs">
+            <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="bg-orange-600 text-white">
-                  <th className="sticky left-0 z-10 bg-orange-600 px-2 py-2 text-left">Contrat</th>
-                  <th className="sticky left-16 z-10 bg-orange-600 px-2 py-2 text-left">Cuisinier</th>
+                  <th className="sticky left-0 z-10 bg-orange-600 px-3 py-3 text-left">Contrat</th>
+                  <th className="sticky left-16 z-10 bg-orange-600 px-3 py-3 text-left">Cuisinier</th>
                   {DAY_NAMES.slice(1).map((day, i) => (
-                    <th key={i + 1} className="px-1 py-2 text-center min-w-[140px]">
+                    <th key={i + 1} className="px-2 py-3 text-center min-w-[150px]">
                       {day}
                     </th>
                   ))}
-                  <th className="px-2 py-2 text-center">Total</th>
+                  <th className="px-3 py-3 text-center">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {empTotals.map(({ emp, empEntries, totalHours, bounds }) => (
                   <tr key={emp.id} className="border-b border-border hover:bg-muted/20">
-                    <td className="sticky left-0 z-10 bg-background px-2 py-1.5 text-center font-mono">
+                    <td className="sticky left-0 z-10 bg-background px-3 py-3 text-center font-mono text-base">
                       {emp.weeklyHours}
                     </td>
-                    <td className="sticky left-16 z-10 bg-background px-2 py-1.5 font-medium whitespace-nowrap">
+                    <td className="sticky left-16 z-10 bg-background px-3 py-3 font-semibold whitespace-nowrap">
                       {emp.firstName}
                     </td>
                     {[1, 2, 3, 4, 5, 6].map((d) => {
@@ -256,19 +256,21 @@ export function KitchenPlanningPage() {
                       const isOff = dayEntries.length === 0
 
                       return (
-                        <td key={d} className={`px-1 py-1 text-center ${isOff ? 'bg-planning-off/40' : 'bg-orange-50'}`}>
+                        <td key={d} className={`px-2 py-3 text-center ${isOff ? 'bg-planning-off/40' : 'bg-orange-50'}`}>
                           {isOff ? (
                             <span className="text-muted-foreground">OFF</span>
                           ) : (
-                            <div className="flex flex-col gap-0.5">
+                            <div className="flex flex-col gap-1.5">
                               {midi && (
-                                <span className="rounded bg-orange-200 px-1 py-0.5 text-[10px] font-medium">
-                                  {midi.startTime}→{midi.endTime} ({midi.effectiveHours}h)
+                                <span className="block rounded-md bg-orange-200 px-2 py-1.5 text-xs font-semibold">
+                                  {midi.startTime}h → {midi.endTime}h
+                                  <span className="ml-1 opacity-70">({midi.effectiveHours}h)</span>
                                 </span>
                               )}
                               {soir && (
-                                <span className="rounded bg-orange-400 text-white px-1 py-0.5 text-[10px] font-medium">
-                                  {soir.startTime}→{soir.endTime} ({soir.effectiveHours}h)
+                                <span className="block rounded-md bg-orange-500 text-white px-2 py-1.5 text-xs font-semibold">
+                                  {soir.startTime}h → {soir.endTime}h
+                                  <span className="ml-1 opacity-80">({soir.effectiveHours}h)</span>
                                 </span>
                               )}
                             </div>
@@ -276,7 +278,7 @@ export function KitchenPlanningPage() {
                         </td>
                       )
                     })}
-                    <td className={`px-2 py-1.5 text-center font-bold ${totalHours < bounds.min ? 'text-destructive' : ''}`}>
+                    <td className={`px-3 py-3 text-center text-base font-bold ${totalHours < bounds.min ? 'text-destructive' : ''}`}>
                       {totalHours}h
                       {(() => {
                         const delta = totalHours - emp.weeklyHours
