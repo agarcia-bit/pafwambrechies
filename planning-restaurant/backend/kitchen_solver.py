@@ -130,6 +130,9 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
             model.add(total >= min_h)
             model.add(total <= max_h)
 
+    # --- Soft constraints ---
+    penalties = []
+
     # 6. Repos entre jours consécutifs — SOFT pour la cuisine
     # En cuisine, le repos 11h est intégré dans les horaires (coupure 15h-18h)
     # On pénalise légèrement soir(23h) + midi(9h) le lendemain mais on ne bloque pas
@@ -168,7 +171,6 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
             model.add(sum(tuesday_midi) >= 1)
 
     # --- Objectives ---
-    penalties = []
 
     # 8. Prefer hours close to contract
     for emp in kitchen_employees:
