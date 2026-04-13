@@ -350,6 +350,47 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
             model.add(target - total <= diff)
             penalties.append(diff * 2)
 
+    # 12. Productivity balance: penalize productivity deviation from target per day
+    # This ensures hours are distributed proportionally to CA across the week
+    day_forecasts = {f.day_of_week: f.forecasted_revenue for f in req.day_forecasts}
+    for ov in req.event_overrides:
+        if ov.day_of_week in day_forecasts:
+            day_forecasts[ov.day_of_week] *= (1 + ov.revenue_multiplier_percent / 100)
+
+    for day in working_days:
+        ca = day_forecasts.get(day, 0)
+        if ca <= 0:
+            continue
+
+        # Target hours for this day = CA / productivity_target
+        target_hours_10 = int(ca / req.productivity_target * 10)
+
+        # Actual hours for this day (salle employees + managers)
+        day_hour_terms = []
+        for k in x:
+            if k[1] == day and k[0] in salle_ids:
+                s = shift_map[k[2]]
+                day_hour_terms.append((x[k], int(s.effective_hours * 10)))
+
+        # Manager hours for this day
+        mgr_hours_10 = sum(
+            int(((ms.end_time or 0) - (ms.start_time or 0)) * 10)
+            for ms in req.manager_schedules
+            if ms.day_of_week == day and ms.shift_template_id
+        )
+
+        if day_hour_terms:
+            day_total = sum(v * h for v, h in day_hour_terms) + mgr_hours_10
+            # Penalize deviation from target (both over and under-staffing)
+            over = model.new_int_var(0, 5000, f"prod_over_{day}")
+            under = model.new_int_var(0, 5000, f"prod_under_{day}")
+            model.add(day_total - target_hours_10 <= over)
+            model.add(target_hours_10 - day_total <= under)
+            # Under-staffing on high-CA days costs more
+            ca_weight = max(1, int(ca / 1000))  # Higher CA = higher penalty
+            penalties.append(over * ca_weight)
+            penalties.append(under * ca_weight * 2)  # Under-staffing worse than over
+
     # Minimize total penalties
     if penalties:
         model.minimize(sum(penalties))
