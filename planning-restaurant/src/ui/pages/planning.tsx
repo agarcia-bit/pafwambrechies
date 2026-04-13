@@ -733,7 +733,8 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
             const totalBaseHours = activeEmployees.reduce((sum, e) => sum + e.weeklyHours, 0)
             const totalMaxHours = activeEmployees.reduce((sum, e) => sum + e.weeklyHours + e.modulationRange, 0)
             const weekProductivity = totalBaseHours > 0 ? totalCA / totalBaseHours : 0
-            const needRecruit = weekProductivity > 110
+            // 3 levels: comfortable (<90), tight (90-100), critical (>100)
+            const level = weekProductivity > 100 ? 'critical' : weekProductivity > 90 ? 'tight' : 'comfortable'
 
             return (
               <>
@@ -865,7 +866,11 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
                 </div>
 
                 {/* Indicateur productivité semaine */}
-                <div className={`mt-4 flex items-center justify-between rounded-lg p-4 ${needRecruit ? 'bg-destructive/10 border border-destructive/30' : 'bg-success/10 border border-success/30'}`}>
+                <div className={`mt-4 flex items-center justify-between rounded-lg p-4 ${
+                  level === 'critical' ? 'bg-destructive/10 border border-destructive/30' :
+                  level === 'tight' ? 'bg-warning/10 border border-warning/30' :
+                  'bg-success/10 border border-success/30'
+                }`}>
                   <div>
                     <p className="text-sm font-bold">Productivité semaine estimée</p>
                     <p className="text-xs text-muted-foreground">
@@ -873,11 +878,19 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className={`text-2xl font-bold ${needRecruit ? 'text-destructive' : 'text-success'}`}>
+                    <p className={`text-2xl font-bold ${
+                      level === 'critical' ? 'text-destructive' :
+                      level === 'tight' ? 'text-warning' : 'text-success'
+                    }`}>
                       {Math.round(weekProductivity)}
                     </p>
-                    <p className={`text-xs font-medium ${needRecruit ? 'text-destructive' : 'text-success'}`}>
-                      {needRecruit ? 'Recrutement nécessaire' : 'Effectif suffisant'}
+                    <p className={`text-xs font-medium ${
+                      level === 'critical' ? 'text-destructive' :
+                      level === 'tight' ? 'text-warning' : 'text-success'
+                    }`}>
+                      {level === 'critical' ? 'Recrutement nécessaire' :
+                       level === 'tight' ? 'Effectif tendu — envisager un renfort' :
+                       'Effectif suffisant'}
                     </p>
                   </div>
                 </div>
