@@ -173,7 +173,8 @@ export function ConstraintsPage() {
   }
 
   // Unique shift codes from templates
-  const shiftCodes = [...new Set(templates.map((t) => t.code))]
+  const shiftOptions = templates.map((t) => ({ code: t.code, label: `${t.startTime}h → ${t.endTime}h` }))
+  const uniqueShiftOptions = shiftOptions.filter((s, i, arr) => arr.findIndex((a) => a.code === s.code) === i)
 
   return (
     <div className="flex flex-col gap-6">
@@ -460,17 +461,17 @@ export function ConstraintsPage() {
               <div className="mb-3">
                 <label className="mb-2 block text-sm font-medium">Créneaux autorisés uniquement</label>
                 <div className="flex flex-wrap gap-2">
-                  {shiftCodes.map((code) => (
+                  {uniqueShiftOptions.map((s) => (
                     <button
-                      key={code}
-                      onClick={() => toggleShiftCode(code)}
+                      key={s.code}
+                      onClick={() => toggleShiftCode(s.code)}
                       className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                        condShiftCodes.includes(code)
+                        condShiftCodes.includes(s.code)
                           ? 'bg-blue-600 text-white'
                           : 'bg-background border border-border text-foreground hover:bg-muted'
                       }`}
                     >
-                      {code}
+                      {s.label}
                     </button>
                   ))}
                 </div>
