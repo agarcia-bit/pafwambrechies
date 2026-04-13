@@ -730,8 +730,9 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
               const adj = getDayAdjustment(day).percent
               return sum + base * (1 + adj / 100)
             }, 0)
+            const totalBaseHours = activeEmployees.reduce((sum, e) => sum + e.weeklyHours, 0)
             const totalMaxHours = activeEmployees.reduce((sum, e) => sum + e.weeklyHours + e.modulationRange, 0)
-            const weekProductivity = totalMaxHours > 0 ? totalCA / totalMaxHours : 0
+            const weekProductivity = totalBaseHours > 0 ? totalCA / totalBaseHours : 0
             const needRecruit = weekProductivity > 110
 
             return (
@@ -868,7 +869,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
                   <div>
                     <p className="text-sm font-bold">Productivité semaine estimée</p>
                     <p className="text-xs text-muted-foreground">
-                      CA total : {Math.round(totalCA).toLocaleString('fr-FR')}€ / Heures max dispo : {totalMaxHours}h
+                      CA total : {Math.round(totalCA).toLocaleString('fr-FR')}€ / Heures contrat : {totalBaseHours}h (max {totalMaxHours}h)
                     </p>
                   </div>
                   <div className="text-right">
