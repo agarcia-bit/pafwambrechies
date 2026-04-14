@@ -329,15 +329,15 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                 </select>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium">Périmètre</label>
+                <label className="text-xs font-medium">Type d'indisponibilité</label>
                 <select
                   value={newConstraintScope}
                   onChange={(e) => setNewConstraintScope(e.target.value as 'day' | 'midi' | 'soir')}
                   className="h-8 rounded border border-input bg-background px-2 text-sm"
                 >
-                  <option value="day">Journée entière</option>
-                  <option value="midi">Matin uniquement</option>
-                  <option value="soir">Soir uniquement</option>
+                  <option value="day">OFF toute la journée</option>
+                  <option value="midi">OFF le matin (dispo le soir)</option>
+                  <option value="soir">OFF le soir (dispo le matin)</option>
                 </select>
               </div>
               <Button
