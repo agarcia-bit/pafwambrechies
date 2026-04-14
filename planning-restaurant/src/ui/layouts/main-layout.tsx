@@ -1,7 +1,8 @@
-import { type ReactNode } from 'react'
+import { type ReactNode, useEffect } from 'react'
 import { useAuthStore } from '@/store/auth-store'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useRoleStore } from '@/store/role-store'
+import { useTenantStore } from '@/store/tenant-store'
 import {
   LayoutDashboard,
   Users,
@@ -13,6 +14,7 @@ import {
   Settings,
   LogOut,
   ChefHat,
+  Utensils,
 } from 'lucide-react'
 
 interface MainLayoutProps {
@@ -54,24 +56,51 @@ const NAV_SECTIONS = [
 ]
 
 export function MainLayout({ children, currentPage, onNavigate }: MainLayoutProps) {
-  const { signOut } = useAuthStore()
+  const { signOut, tenantId } = useAuthStore()
   const { employees } = useEmployeeStore()
   const { employeeRoles } = useRoleStore()
+  const { tenant, load: loadTenant } = useTenantStore()
+
+  useEffect(() => {
+    if (tenantId) loadTenant(tenantId)
+  }, [tenantId, loadTenant])
+
+  // Update document title + favicon when tenant branding changes
+  useEffect(() => {
+    if (tenant?.name) {
+      document.title = `${tenant.name} — Planning`
+    }
+    if (tenant?.logoUrl) {
+      const favicon = document.querySelector<HTMLLinkElement>("link[rel='icon']")
+      if (favicon) favicon.href = tenant.logoUrl
+    }
+  }, [tenant?.name, tenant?.logoUrl])
 
   const unassignedCount = employees
     .filter((e) => e.active)
     .filter((e) => !employeeRoles.some((er) => er.employeeId === e.id))
     .length
 
+  const displayName = tenant?.name || 'Planning Restaurant'
+
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
       <aside className="flex w-60 flex-col bg-slate-900 text-slate-300">
-        <div className="px-5 py-6">
-          <h1 className="text-base font-bold text-white tracking-tight">
-            Planning Restaurant
-          </h1>
-          <p className="mt-0.5 text-xs text-slate-500">Gestion des plannings</p>
+        <div className="flex items-center gap-3 px-5 py-6">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-800">
+            {tenant?.logoUrl ? (
+              <img src={tenant.logoUrl} alt={displayName} className="h-full w-full object-contain" />
+            ) : (
+              <Utensils size={18} className="text-slate-400" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-sm font-bold text-white tracking-tight" title={displayName}>
+              {displayName}
+            </h1>
+            <p className="mt-0.5 text-[10px] text-slate-500">Gestion des plannings</p>
+          </div>
         </div>
 
         <nav className="flex-1 overflow-auto px-3 pb-4">

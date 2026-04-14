@@ -21,6 +21,7 @@ export interface Tenant {
   id: string
   name: string
   address: string | null
+  logoUrl: string | null
   openingTime: number // decimal, e.g. 9.5 = 9h30
   closingTimeWeek: number // e.g. 24.0 = minuit
   closingTimeSunday: number // e.g. 21.0

@@ -5,7 +5,8 @@ import { useTenantStore } from '@/store/tenant-store'
 import { useEmployeeStore } from '@/store/employee-store'
 import type { TenantRules } from '@/domain/models/tenant'
 import { DEFAULT_TENANT_RULES } from '@/domain/models/tenant'
-import { Save, CheckCircle, Settings as SettingsIcon, Utensils, Users, ChefHat } from 'lucide-react'
+import { uploadTenantLogo } from '@/infrastructure/supabase/repositories/tenant-repo'
+import { Save, CheckCircle, Settings as SettingsIcon, Utensils, Users, ChefHat, Upload, Image as ImageIcon, X } from 'lucide-react'
 
 const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 
@@ -16,6 +17,9 @@ export function SettingsPage() {
 
   const [rules, setRules] = useState<TenantRules>(DEFAULT_TENANT_RULES)
   const [restaurantName, setRestaurantName] = useState('')
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [logoError, setLogoError] = useState('')
   const [openingTime, setOpeningTime] = useState(9.5)
   const [closingTimeWeek, setClosingTimeWeek] = useState(24.0)
   const [closingTimeSunday, setClosingTimeSunday] = useState(21.0)
@@ -32,6 +36,7 @@ export function SettingsPage() {
     if (tenant) {
       setRules(tenant.rules)
       setRestaurantName(tenant.name)
+      setLogoUrl(tenant.logoUrl)
       setOpeningTime(tenant.openingTime)
       setClosingTimeWeek(tenant.closingTimeWeek)
       setClosingTimeSunday(tenant.closingTimeSunday)
@@ -48,6 +53,7 @@ export function SettingsPage() {
     try {
       await update(tenantId, {
         name: restaurantName,
+        logoUrl,
         openingTime,
         closingTimeWeek,
         closingTimeSunday,
@@ -59,6 +65,38 @@ export function SettingsPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !tenantId) return
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError('Fichier trop volumineux (max 2 Mo)')
+      return
+    }
+    if (!file.type.startsWith('image/')) {
+      setLogoError("Format non supporté (images uniquement)")
+      return
+    }
+    setLogoError('')
+    setUploadingLogo(true)
+    try {
+      const url = await uploadTenantLogo(tenantId, file)
+      setLogoUrl(url)
+      // Persist immédiatement (indépendamment du bouton Enregistrer)
+      await update(tenantId, { logoUrl: url })
+    } catch (err) {
+      setLogoError((err as Error).message)
+    } finally {
+      setUploadingLogo(false)
+      e.target.value = '' // reset input pour permettre re-upload du même fichier
+    }
+  }
+
+  async function handleLogoRemove() {
+    if (!tenantId) return
+    setLogoUrl(null)
+    await update(tenantId, { logoUrl: null })
   }
 
   async function handleSaveRulesOnly() {
@@ -104,6 +142,45 @@ export function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-6 flex items-start gap-6">
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-200 bg-slate-50">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="h-full w-full object-contain" />
+              ) : (
+                <ImageIcon size={28} className="text-slate-300" />
+              )}
+            </div>
+            <div className="flex-1">
+              <label className="mb-1 block text-sm font-medium">Logo du restaurant</label>
+              <p className="mb-2 text-xs text-muted-foreground">
+                PNG, JPG ou SVG. Max 2 Mo. Affiché dans la barre latérale.
+              </p>
+              <div className="flex items-center gap-2">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  <Upload size={14} />
+                  {uploadingLogo ? 'Envoi…' : logoUrl ? 'Changer' : 'Envoyer un logo'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    disabled={uploadingLogo}
+                    className="hidden"
+                  />
+                </label>
+                {logoUrl && (
+                  <button
+                    type="button"
+                    onClick={handleLogoRemove}
+                    className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    <X size={14} /> Retirer
+                  </button>
+                )}
+              </div>
+              {logoError && <p className="mt-1 text-xs text-red-500">{logoError}</p>}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium">Nom</label>

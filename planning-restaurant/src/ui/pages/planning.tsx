@@ -322,6 +322,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
         id: tenantId,
         name: '',
         address: null,
+        logoUrl: null,
         ...DEFAULT_TENANT_CONFIG,
         createdAt: '',
       }
