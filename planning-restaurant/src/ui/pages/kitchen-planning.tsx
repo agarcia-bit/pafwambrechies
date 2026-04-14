@@ -580,6 +580,73 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
             </table>
           </div>
 
+          {/* Récap effectifs par jour */}
+          <div className="rounded-lg border border-border">
+            <table className="w-full table-fixed border-collapse text-xs">
+              <thead>
+                <tr className="bg-muted">
+                  <th className="w-24 px-3 py-2 text-left font-medium">Service</th>
+                  {DAY_NAMES.slice(1).map((day, i) => (
+                    <th key={i + 1} className="px-2 py-2 text-center font-medium">{day}</th>
+                  ))}
+                  <th className="w-16 px-2 py-2 text-center font-medium">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const days = [1, 2, 3, 4, 5, 6]
+                  const midiCount = (d: number) => entries.filter((e) => e.dayOfWeek === d && e.period === 'midi').length
+                  const soirCount = (d: number) => entries.filter((e) => e.dayOfWeek === d && e.period === 'soir').length
+                  const midiTotal = days.reduce((s, d) => s + midiCount(d), 0)
+                  const soirTotal = days.reduce((s, d) => s + soirCount(d), 0)
+                  return (
+                    <>
+                      <tr className="border-b border-border">
+                        <td className="px-3 py-2 font-semibold">
+                          <span className="inline-block rounded bg-amber-100 border border-amber-200 px-1.5 py-0.5 text-[10px] font-semibold">Midi</span>
+                        </td>
+                        {days.map((d) => {
+                          const n = midiCount(d)
+                          const below = tenant && n < tenant.rules.minKitchenMidi
+                          return (
+                            <td key={d} className={`px-2 py-2 text-center font-bold ${below ? 'text-destructive' : n === 0 ? 'text-muted-foreground' : ''}`}>
+                              {n}
+                            </td>
+                          )
+                        })}
+                        <td className="px-2 py-2 text-center font-bold">{midiTotal}</td>
+                      </tr>
+                      <tr className="border-b border-border">
+                        <td className="px-3 py-2 font-semibold">
+                          <span className="inline-block rounded bg-amber-600 text-white px-1.5 py-0.5 text-[10px] font-semibold">Soir</span>
+                        </td>
+                        {days.map((d) => {
+                          const n = soirCount(d)
+                          const closed = tenant?.rules.kitchenClosedSundayEvening && d === 6
+                          return (
+                            <td key={d} className={`px-2 py-2 text-center font-bold ${closed ? 'text-muted-foreground' : n === 0 ? 'text-muted-foreground' : ''}`}>
+                              {closed ? '—' : n}
+                            </td>
+                          )
+                        })}
+                        <td className="px-2 py-2 text-center font-bold">{soirTotal}</td>
+                      </tr>
+                      <tr className="bg-muted/40">
+                        <td className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Total</td>
+                        {days.map((d) => (
+                          <td key={d} className="px-2 py-2 text-center font-bold">
+                            {midiCount(d) + soirCount(d)}
+                          </td>
+                        ))}
+                        <td className="px-2 py-2 text-center font-bold">{midiTotal + soirTotal}</td>
+                      </tr>
+                    </>
+                  )
+                })()}
+              </tbody>
+            </table>
+          </div>
+
           {solverInfo && (
             <div className="rounded-lg border border-success/50 bg-success/5 p-3 text-sm text-success">
               {solverInfo}
