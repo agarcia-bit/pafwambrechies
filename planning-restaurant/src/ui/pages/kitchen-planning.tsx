@@ -75,6 +75,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
   const [addingConstraint, setAddingConstraint] = useState(false)
   const [newConstraintEmpId, setNewConstraintEmpId] = useState('')
   const [newConstraintDay, setNewConstraintDay] = useState(1)
+  const [newConstraintScope, setNewConstraintScope] = useState<'day' | 'midi' | 'soir'>('day')
 
   useEffect(() => {
     loadEmployees()
@@ -327,6 +328,18 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                   ))}
                 </select>
               </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium">Périmètre</label>
+                <select
+                  value={newConstraintScope}
+                  onChange={(e) => setNewConstraintScope(e.target.value as 'day' | 'midi' | 'soir')}
+                  className="h-8 rounded border border-input bg-background px-2 text-sm"
+                >
+                  <option value="day">Journée entière</option>
+                  <option value="midi">Matin uniquement</option>
+                  <option value="soir">Soir uniquement</option>
+                </select>
+              </div>
               <Button
                 size="sm"
                 variant="destructive"
@@ -334,21 +347,32 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                 onClick={async () => {
                   if (!newConstraintEmpId) return
                   const date = addDays(weekStartISO, newConstraintDay)
+                  // Détermine les bornes selon le périmètre :
+                  // - day: disponible ni avant ni après → null/null
+                  // - midi: OFF le matin, dispo à partir de 17h → from=17
+                  // - soir: OFF le soir, dispo jusqu'à 16h → until=16
+                  const availableFrom = newConstraintScope === 'midi' ? 17 : null
+                  const availableUntil = newConstraintScope === 'soir' ? 16 : null
+                  const label =
+                    newConstraintScope === 'day' ? 'OFF'
+                    : newConstraintScope === 'midi' ? 'OFF midi'
+                    : 'OFF soir'
                   await createUnavailability({
                     employeeId: newConstraintEmpId,
                     type: 'punctual',
                     dayOfWeek: null,
                     specificDate: date,
-                    availableFrom: null,
-                    availableUntil: null,
-                    label: 'OFF',
+                    availableFrom,
+                    availableUntil,
+                    label,
                   })
                   fetchUnavailabilities().then(setUnavailabilities).catch(() => {})
                   setAddingConstraint(false)
                   setNewConstraintEmpId('')
+                  setNewConstraintScope('day')
                 }}
               >
-                Ajouter OFF
+                Ajouter
               </Button>
               <button onClick={() => setAddingConstraint(false)} className="text-muted-foreground hover:text-foreground">
                 <X size={16} />
@@ -362,9 +386,20 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
               .filter((u) => kitchenEmployees.some((e) => e.id === u.employeeId))
               .map((u) => {
                 const emp = kitchenEmployees.find((e) => e.id === u.employeeId)
+                // Pour une ponctuelle, retrouve le jour de la semaine depuis specific_date
+                let punctualDayLabel = ''
+                if (u.type === 'punctual' && u.specificDate) {
+                  const d = new Date(u.specificDate)
+                  const jsDay = d.getDay() // 0=dim, 1=lun..6=sam
+                  const appDay = jsDay === 0 ? 6 : jsDay - 1 // 0=lundi..6=dimanche
+                  punctualDayLabel = DAY_NAMES[appDay]
+                }
                 return (
                   <span key={u.id} className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${u.type === 'fixed' ? 'bg-warning/10 text-warning' : 'bg-destructive/10 text-destructive'}`}>
-                    {emp?.firstName} — {u.type === 'fixed' && u.dayOfWeek != null ? DAY_NAMES[u.dayOfWeek] : u.label}
+                    {emp?.firstName} —{' '}
+                    {u.type === 'fixed' && u.dayOfWeek != null
+                      ? DAY_NAMES[u.dayOfWeek]
+                      : `${punctualDayLabel} ${u.label}`.trim()}
                     {u.type === 'punctual' && (
                       <button
                         onClick={async () => {

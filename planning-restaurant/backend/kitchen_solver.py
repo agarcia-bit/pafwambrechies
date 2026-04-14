@@ -9,9 +9,15 @@ Kitchen specifics:
 - Special constraints per employee (e.g. Chaker ends 15h on Sunday)
 """
 import time
+from datetime import date, timedelta
 from typing import List, Dict, Optional
 from ortools.sat.python import cp_model
 from models import SolverRequest, SolverResponse, ShiftAssignment
+
+
+def _add_days(iso_date: str, days: int) -> str:
+    d = date.fromisoformat(iso_date) + timedelta(days=days)
+    return d.isoformat()
 
 
 def solve_kitchen(req: SolverRequest) -> SolverResponse:
@@ -48,10 +54,37 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
         return [s for s in shifts_for_day(day) if s.start_time >= 17]
 
     # Build unavailability sets
+    # fixed_unavail: jours entiers off (fixes + ponctuels sans restriction horaire)
+    # punctual_unavail: ponctuels avec restriction horaire (OFF midi ou OFF soir)
     fixed_unavail: Dict[str, set] = {}
+    punctual_unavail: Dict[str, Dict[int, Dict]] = {}
     for u in req.unavailabilities:
         if u.type == "fixed" and u.day_of_week is not None:
             fixed_unavail.setdefault(u.employee_id, set()).add(u.day_of_week)
+        elif u.type == "punctual" and u.specific_date:
+            # Convertit date ISO → jour de la semaine en cours
+            for d in working_days:
+                if _add_days(req.week_start_date, d) == u.specific_date:
+                    if u.available_from is None and u.available_until is None:
+                        # Journée entière OFF
+                        fixed_unavail.setdefault(u.employee_id, set()).add(d)
+                    else:
+                        # OFF partiel (matin OU soir seulement)
+                        punctual_unavail.setdefault(u.employee_id, {})[d] = {
+                            "from": u.available_from,
+                            "until": u.available_until,
+                        }
+                    break
+
+    def allowed_shift(emp_id: str, day: int, shift) -> bool:
+        """True si le shift est autorisé pour cet emp/jour compte tenu des indisponibilités horaires."""
+        if emp_id in punctual_unavail and day in punctual_unavail[emp_id]:
+            pu = punctual_unavail[emp_id][day]
+            if pu["from"] is not None and shift.start_time < pu["from"]:
+                return False
+            if pu["until"] is not None and shift.end_time > pu["until"]:
+                return False
+        return True
 
     # --- Variables ---
     # For kitchen: each employee can have a MIDI shift AND a SOIR shift on the same day
@@ -66,12 +99,16 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
 
             # Midi shifts
             for shift in midi_shifts_for_day(day):
+                if not allowed_shift(emp.id, day, shift):
+                    continue
                 x_midi[(emp.id, day, shift.id)] = model.new_bool_var(
                     f"km_{emp.id}_{day}_{shift.id}")
 
             # Soir shifts (dimanche soir fermé si configuré)
             if not (req.kitchen_closed_sunday_evening and day == 6):
                 for shift in soir_shifts_for_day(day):
+                    if not allowed_shift(emp.id, day, shift):
+                        continue
                     x_soir[(emp.id, day, shift.id)] = model.new_bool_var(
                         f"ks_{emp.id}_{day}_{shift.id}")
 
