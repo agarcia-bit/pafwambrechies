@@ -12,6 +12,8 @@ import {
   checkClosingCoverage,
 } from './hcr-convention'
 
+const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+
 interface ValidationContext {
   entries: PlanningEntry[]
   employees: Employee[]
@@ -117,6 +119,8 @@ export function validatePlanning(ctx: ValidationContext): RuleViolation[] {
     const startHour = 11 // Couverture ≥2 à partir de 11h pour tous les jours
     const endHour = isSunday ? ctx.closingTimeSunday : ctx.closingTimeWeek
 
+    const dayName = DAY_NAMES[day] ?? `Jour ${day}`
+
     const gaps = checkContinuousCoverage(dayEntries, startHour, endHour)
     for (const gap of gaps) {
       violations.push({
@@ -124,7 +128,7 @@ export function validatePlanning(ctx: ValidationContext): RuleViolation[] {
         severity: 'blocking',
         employeeId: null,
         dayOfWeek: day,
-        message: `Couverture insuffisante à ${gap.hour}h : ${gap.count} personne(s) (minimum 2)`,
+        message: `${dayName} à ${gap.hour}h : seulement ${gap.count} personne(s) (minimum 2)`,
       })
     }
 
@@ -137,7 +141,7 @@ export function validatePlanning(ctx: ValidationContext): RuleViolation[] {
         severity: 'blocking',
         employeeId: null,
         dayOfWeek: day,
-        message: closingCheck,
+        message: `${dayName} : ${closingCheck}`,
       })
     }
   }
