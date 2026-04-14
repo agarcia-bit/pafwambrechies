@@ -24,6 +24,7 @@ class Employee(BaseModel):
     is_manager: bool = False
     department: str = "salle"
     role_id: str = ""
+    level: float = 1  # 1, 2, 2.5, 3, 4 — le plus bas = débutant
 
 
 class ManagerSchedule(BaseModel):

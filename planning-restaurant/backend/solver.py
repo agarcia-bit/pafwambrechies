@@ -181,13 +181,17 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
     salle_ids = {e.id for e in salle_employees}
 
     # 7. Opening: ≥1 person at 9h30 every day (salle only)
+    # Index des levels pour la règle soft de préférence aux bas niveaux
+    emp_level = {e.id: e.level for e in req.employees}
     for day in working_days:
         opening_vars = []
+        opening_keys = []
         for k in x:
             if k[1] == day and k[0] in salle_ids:
                 s = shift_map[k[2]]
                 if s.start_time <= 9.5:
                     opening_vars.append(x[k])
+                    opening_keys.append(k)
         # Also check managers
         manager_covers = any(
             ms.day_of_week == day
@@ -201,6 +205,22 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
 
     # --- Soft Constraints (Objectives) ---
     penalties = []
+
+    # 7b. Préfère les bas niveaux à l'ouverture.
+    # Pour chaque shift d'ouverture (start <= 9.5) assigné à un salarié de niveau L,
+    # on pénalise proportionnellement au niveau (L=1 → 0, L=4 → 9).
+    # Le solveur va donc privilégier les level 1 aux ouvertures.
+    for k, var in x.items():
+        emp_id, day, shift_id = k
+        if emp_id not in salle_ids:
+            continue
+        s = shift_map[shift_id]
+        if s.start_time <= 9.5:
+            level = emp_level.get(emp_id, 1)
+            # Pondération: (level - 1) * 3 — level 1 = 0, level 4 = 9
+            weight = int((level - 1) * 3)
+            if weight > 0:
+                penalties.append(var * weight)
 
     # 8. Closing coverage: weekday vs weekend (configurable via req)
     for day in working_days:

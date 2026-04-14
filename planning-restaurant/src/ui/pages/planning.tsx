@@ -358,6 +358,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
             modulation_range: e.modulationRange,
             is_manager: e.isManager,
             department: e.department,
+            level: e.level,
             role_id: employeeRoles.find((er) => er.employeeId === e.id)?.roleId ?? '',
           })),
           shift_templates: templates.map((t) => ({
