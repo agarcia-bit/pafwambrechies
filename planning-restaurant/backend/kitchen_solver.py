@@ -38,9 +38,10 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
                 result.append(s)
         return result
 
-    # Midi shifts (start < 16h)
+    # Midi shifts (start < 16h) — accepte les shifts qui commencent le matin
+    # même s'ils finissent après 16h (ex: K_DIM_17 9h-17h dimanche)
     def midi_shifts_for_day(day: int) -> list:
-        return [s for s in shifts_for_day(day) if s.end_time <= 16]
+        return [s for s in shifts_for_day(day) if s.start_time < 16]
 
     # Soir shifts (start >= 17h)
     def soir_shifts_for_day(day: int) -> list:

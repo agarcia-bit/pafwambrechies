@@ -224,7 +224,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
         if (isSunday) return t.applicability === 'sunday'
         return t.applicability === 'tue_sat' || t.applicability === 'sat_only'
       })
-      .filter((t) => (period === 'midi' ? t.endTime <= 16 : t.startTime >= 17))
+      .filter((t) => (period === 'midi' ? t.startTime < 16 : t.startTime >= 17))
       .sort((a, b) => a.startTime - b.startTime || a.endTime - b.endTime)
   }
 
@@ -513,9 +513,9 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                                 onChange={(e) => handleShiftChange(emp.id, d, 'midi', e.target.value || null)}
                                 className="w-full rounded border border-amber-400 bg-white text-[10px] py-0.5"
                               >
-                                <option value="">— Midi —</option>
+                                <option value="">OFF midi</option>
                                 {midiShifts.map((s) => (
-                                  <option key={s.id} value={s.id}>{s.startTime}-{s.endTime}h ({s.effectiveHours}h)</option>
+                                  <option key={s.id} value={s.id}>{s.startTime}h-{s.endTime}h ({s.effectiveHours}h)</option>
                                 ))}
                               </select>
                               {showSoir && (
@@ -524,9 +524,9 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                                   onChange={(e) => handleShiftChange(emp.id, d, 'soir', e.target.value || null)}
                                   className="w-full rounded border border-amber-600 bg-white text-[10px] py-0.5"
                                 >
-                                  <option value="">— Soir —</option>
+                                  <option value="">OFF soir</option>
                                   {soirShifts.map((s) => (
-                                    <option key={s.id} value={s.id}>{s.startTime}-{s.endTime}h ({s.effectiveHours}h)</option>
+                                    <option key={s.id} value={s.id}>{s.startTime}h-{s.endTime}h ({s.effectiveHours}h)</option>
                                   ))}
                                 </select>
                               )}
