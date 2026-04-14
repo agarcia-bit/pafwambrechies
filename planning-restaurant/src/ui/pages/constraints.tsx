@@ -540,7 +540,22 @@ function ManagerDayRow({
         ) : (
           <select
             value={templateId}
-            onChange={(e) => setTemplateId(e.target.value)}
+            onChange={(e) => {
+              const newId = e.target.value
+              setTemplateId(newId)
+              // Auto-remplit Début/Fin avec les horaires du template choisi
+              if (newId) {
+                const tpl = templates.find((t) => t.id === newId)
+                if (tpl) {
+                  setStartTime(tpl.startTime)
+                  setEndTime(tpl.endTime)
+                }
+              } else {
+                // OFF sélectionné → on reset les heures
+                setStartTime(null)
+                setEndTime(null)
+              }
+            }}
             className="h-8 rounded border border-input bg-background px-2 text-sm"
           >
             <option value="">OFF</option>
