@@ -10,6 +10,7 @@ import { ForecastsPage } from '@/ui/pages/forecasts'
 import { PlanningPage } from '@/ui/pages/planning'
 import { KitchenPlanningPage } from '@/ui/pages/kitchen-planning'
 import { SettingsPage } from '@/ui/pages/settings'
+import { AdminPage } from '@/ui/pages/admin'
 import { MainLayout } from '@/ui/layouts/main-layout'
 
 export default function App() {
@@ -53,6 +54,7 @@ export default function App() {
     planning: <PlanningPage loadPlanningId={viewPlanningId} />,
     'kitchen-planning': <KitchenPlanningPage loadPlanningId={viewPlanningId} />,
     settings: <SettingsPage />,
+    admin: <AdminPage />,
   }
 
   return (

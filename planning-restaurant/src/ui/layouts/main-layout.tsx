@@ -15,6 +15,7 @@ import {
   LogOut,
   ChefHat,
   Utensils,
+  Shield,
 } from 'lucide-react'
 
 interface MainLayoutProps {
@@ -23,7 +24,7 @@ interface MainLayoutProps {
   onNavigate: (page: string) => void
 }
 
-const NAV_SECTIONS = [
+const NAV_SECTIONS_STANDARD = [
   {
     label: '',
     items: [
@@ -55,11 +56,23 @@ const NAV_SECTIONS = [
   },
 ]
 
+const NAV_SECTION_ADMIN = {
+  label: 'Administration',
+  items: [
+    { id: 'admin', label: 'Tenants & comptes', icon: Shield },
+  ],
+}
+
 export function MainLayout({ children, currentPage, onNavigate }: MainLayoutProps) {
-  const { signOut, tenantId } = useAuthStore()
+  const { signOut, tenantId, role } = useAuthStore()
   const { employees, loaded: employeesLoaded, load: loadEmployees } = useEmployeeStore()
   const { employeeRoles, loaded: rolesLoaded, load: loadRoles } = useRoleStore()
   const { tenant, load: loadTenant } = useTenantStore()
+
+  const isSuperAdmin = role === 'super_admin'
+  const navSections = isSuperAdmin
+    ? [...NAV_SECTIONS_STANDARD, NAV_SECTION_ADMIN]
+    : NAV_SECTIONS_STANDARD
 
   // Charge les données nécessaires au layout (badge rôles non attribués)
   useEffect(() => {
@@ -111,7 +124,7 @@ export function MainLayout({ children, currentPage, onNavigate }: MainLayoutProp
         </div>
 
         <nav className="flex-1 overflow-auto px-3 pb-4">
-          {NAV_SECTIONS.map((section, si) => (
+          {navSections.map((section, si) => (
             <div key={si} className="mb-5">
               {section.label && (
                 <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">

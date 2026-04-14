@@ -6,6 +6,7 @@ interface AuthState {
   session: Session | null
   user: User | null
   tenantId: string | null
+  role: string | null
   loading: boolean
   initialized: boolean
 
@@ -18,6 +19,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   session: null,
   user: null,
   tenantId: null,
+  role: null,
   loading: false,
   initialized: false,
 
@@ -29,7 +31,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (session?.user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('tenant_id')
+        .select('tenant_id, role')
         .eq('id', session.user.id)
         .single()
 
@@ -37,6 +39,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         session,
         user: session.user,
         tenantId: profile?.tenant_id ?? null,
+        role: profile?.role ?? null,
         initialized: true,
       })
     } else {
@@ -47,7 +50,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (session?.user) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('tenant_id')
+          .select('tenant_id, role')
           .eq('id', session.user.id)
           .single()
 
@@ -55,9 +58,10 @@ export const useAuthStore = create<AuthState>((set) => ({
           session,
           user: session.user,
           tenantId: profile?.tenant_id ?? null,
+          role: profile?.role ?? null,
         })
       } else {
-        set({ session: null, user: null, tenantId: null })
+        set({ session: null, user: null, tenantId: null, role: null })
       }
     })
   },
@@ -77,6 +81,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signOut: async () => {
     await supabase.auth.signOut()
-    set({ session: null, user: null, tenantId: null })
+    set({ session: null, user: null, tenantId: null, role: null })
   },
 }))
