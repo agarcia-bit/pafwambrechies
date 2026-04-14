@@ -51,6 +51,14 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
     () => activeEmployees.reduce((sum, e) => sum + (e.weeklyHours ?? 0), 0),
     [activeEmployees],
   )
+  const salleWeeklyHours = useMemo(
+    () => activeEmployees.filter((e) => e.department === 'salle').reduce((s, e) => s + (e.weeklyHours ?? 0), 0),
+    [activeEmployees],
+  )
+  const cuisineWeeklyHours = useMemo(
+    () => activeEmployees.filter((e) => e.department === 'cuisine').reduce((s, e) => s + (e.weeklyHours ?? 0), 0),
+    [activeEmployees],
+  )
 
   // CA prévu cette semaine = somme des forecasts pour chaque jour de la semaine courante
   // (lundi fermé => on itère les jours 1..6 = mardi..dimanche, comme la page planning)
@@ -111,6 +119,9 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
                 <p className="text-2xl font-bold text-slate-900">
                   {totalWeeklyHours}
                   <span className="ml-1 text-sm font-medium text-slate-500">h / sem</span>
+                </p>
+                <p className="mt-0.5 text-[10px] text-slate-400">
+                  Salle {salleWeeklyHours}h · Cuisine {cuisineWeeklyHours}h
                 </p>
               </div>
             </div>
