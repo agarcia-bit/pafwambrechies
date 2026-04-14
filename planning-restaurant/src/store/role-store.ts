@@ -13,6 +13,7 @@ interface RoleState {
   roles: Role[]
   employeeRoles: EmployeeRole[]
   loading: boolean
+  loaded: boolean
   error: string | null
 
   load: () => Promise<void>
@@ -27,6 +28,7 @@ export const useRoleStore = create<RoleState>((set, get) => ({
   roles: [],
   employeeRoles: [],
   loading: false,
+  loaded: false,
   error: null,
 
   load: async () => {
@@ -36,7 +38,7 @@ export const useRoleStore = create<RoleState>((set, get) => ({
         fetchRoles(),
         fetchEmployeeRoles(),
       ])
-      set({ roles, employeeRoles, loading: false })
+      set({ roles, employeeRoles, loading: false, loaded: true })
     } catch (e) {
       set({ error: (e as Error).message, loading: false })
     }

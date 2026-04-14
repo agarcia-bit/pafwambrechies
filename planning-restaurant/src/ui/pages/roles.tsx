@@ -8,19 +8,21 @@ import { Plus, Trash2, AlertTriangle } from 'lucide-react'
 const PRESET_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#6b7280']
 
 export function RolesPage() {
-  const { roles, employeeRoles, loading, load, add, remove, assignRoles } = useRoleStore()
-  const { employees, load: loadEmployees } = useEmployeeStore()
+  const { roles, employeeRoles, loading, loaded: rolesLoaded, load, add, remove, assignRoles } = useRoleStore()
+  const { employees, loaded: employeesLoaded, load: loadEmployees } = useEmployeeStore()
   const { tenantId } = useAuthStore()
 
   const [newRoleName, setNewRoleName] = useState('')
   const [newRoleColor, setNewRoleColor] = useState('#3b82f6')
 
   useEffect(() => {
-    load()
-    loadEmployees()
-  }, [load, loadEmployees])
+    // Charge uniquement si pas encore chargé (évite le flicker au changement de page)
+    if (!rolesLoaded) load()
+    if (!employeesLoaded) loadEmployees()
+  }, [load, loadEmployees, rolesLoaded, employeesLoaded])
 
   const activeEmployees = employees.filter((e) => e.active)
+  const bothLoaded = rolesLoaded && employeesLoaded
 
   function handleAddRole() {
     if (!newRoleName.trim() || !tenantId) return
@@ -44,7 +46,10 @@ export function RolesPage() {
     return er?.roleId ?? null
   }
 
-  const unassigned = activeEmployees.filter((emp) => !getEmployeeRole(emp.id))
+  // N'évalue le "unassigned" qu'une fois les deux stores chargés
+  const unassigned = bothLoaded
+    ? activeEmployees.filter((emp) => !getEmployeeRole(emp.id))
+    : []
 
   return (
     <div className="flex flex-col gap-6">

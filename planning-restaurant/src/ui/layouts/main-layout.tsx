@@ -57,13 +57,16 @@ const NAV_SECTIONS = [
 
 export function MainLayout({ children, currentPage, onNavigate }: MainLayoutProps) {
   const { signOut, tenantId } = useAuthStore()
-  const { employees } = useEmployeeStore()
-  const { employeeRoles } = useRoleStore()
+  const { employees, loaded: employeesLoaded, load: loadEmployees } = useEmployeeStore()
+  const { employeeRoles, loaded: rolesLoaded, load: loadRoles } = useRoleStore()
   const { tenant, load: loadTenant } = useTenantStore()
 
+  // Charge les données nécessaires au layout (badge rôles non attribués)
   useEffect(() => {
     if (tenantId) loadTenant(tenantId)
-  }, [tenantId, loadTenant])
+    loadEmployees()
+    loadRoles()
+  }, [tenantId, loadTenant, loadEmployees, loadRoles])
 
   // Update document title + favicon when tenant branding changes
   useEffect(() => {
@@ -76,10 +79,14 @@ export function MainLayout({ children, currentPage, onNavigate }: MainLayoutProp
     }
   }, [tenant?.name, tenant?.logoUrl])
 
-  const unassignedCount = employees
-    .filter((e) => e.active)
-    .filter((e) => !employeeRoles.some((er) => er.employeeId === e.id))
-    .length
+  // N'affiche le badge que quand les DEUX stores sont chargés
+  // (sinon on a un faux positif pendant la race: employees loaded avant employeeRoles)
+  const unassignedCount = (employeesLoaded && rolesLoaded)
+    ? employees
+        .filter((e) => e.active)
+        .filter((e) => !employeeRoles.some((er) => er.employeeId === e.id))
+        .length
+    : 0
 
   const displayName = tenant?.name || 'Planning Restaurant'
 
