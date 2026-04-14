@@ -1,17 +1,29 @@
 import { Card, CardContent, CardHeader, CardTitle, Button } from '@/ui/components'
 import { useEmployeeStore } from '@/store/employee-store'
-import { useEffect, useState } from 'react'
+import { useForecastStore } from '@/store/forecast-store'
+import { useEffect, useMemo, useState } from 'react'
 import { fetchPlannings, updatePlanningStatus, deletePlanning } from '@/infrastructure/supabase/repositories/planning-repo'
 import type { SavedPlanning } from '@/infrastructure/supabase/repositories/planning-repo'
-import { CheckCircle, Clock, Trash2, FileSpreadsheet, Users } from 'lucide-react'
+import { CheckCircle, Clock, Trash2, FileSpreadsheet, Users, Euro } from 'lucide-react'
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   draft: { label: 'Brouillon', color: 'bg-warning/10 text-warning' },
   validated: { label: 'Validé', color: 'bg-success/10 text-success' },
 }
 
+/** Retourne le lundi de la semaine courante (ou le lundi du jour si on est lundi). */
+function getCurrentMonday(from: Date = new Date()): Date {
+  const d = new Date(from)
+  const day = d.getDay() // 0=dim, 1=lun, ..., 6=sam
+  const diff = day === 0 ? -6 : 1 - day
+  d.setDate(d.getDate() + diff)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
 export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string, department?: string) => void }) {
   const { employees, load } = useEmployeeStore()
+  const { forecasts, load: loadForecasts } = useForecastStore()
   const [plannings, setPlannings] = useState<SavedPlanning[]>([])
   const [loadingPlannings, setLoadingPlannings] = useState(false)
 
@@ -25,16 +37,35 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
 
   useEffect(() => {
     load()
+    loadForecasts()
     // Load plannings inline to satisfy strict lint
     fetchPlannings()
       .then(setPlannings)
       .catch(() => {})
       .finally(() => setLoadingPlannings(false))
-  }, [load])
+  }, [load, loadForecasts])
 
   const activeEmployees = employees.filter((e) => e.active)
-  const managers = activeEmployees.filter((e) => e.isManager)
-  const staff = activeEmployees.filter((e) => !e.isManager)
+
+  const totalWeeklyHours = useMemo(
+    () => activeEmployees.reduce((sum, e) => sum + (e.weeklyHours ?? 0), 0),
+    [activeEmployees],
+  )
+
+  // CA prévu cette semaine = somme des forecasts pour chaque jour de la semaine courante
+  // (lundi fermé => on itère les jours 1..6 = mardi..dimanche, comme la page planning)
+  const weeklyForecastRevenue = useMemo(() => {
+    const monday = getCurrentMonday()
+    let total = 0
+    for (let day = 1; day <= 6; day++) {
+      const date = new Date(monday)
+      date.setDate(monday.getDate() + day)
+      const month = date.getMonth() + 1
+      const f = forecasts.find((fc) => fc.month === month && fc.dayOfWeek === day)
+      total += f?.forecastedRevenue ?? 0
+    }
+    return total
+  }, [forecasts])
 
   async function handleValidate(id: string) {
     await updatePlanningStatus(id, 'validated')
@@ -73,11 +104,14 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
           <CardContent className="relative">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
-                <CheckCircle size={18} className="text-emerald-600" />
+                <Clock size={18} className="text-emerald-600" />
               </div>
               <div>
-                <p className="text-xs font-medium text-slate-500">Managers</p>
-                <p className="text-2xl font-bold text-slate-900">{managers.length}</p>
+                <p className="text-xs font-medium text-slate-500">Volume d'heures disponibles</p>
+                <p className="text-2xl font-bold text-slate-900">
+                  {totalWeeklyHours}
+                  <span className="ml-1 text-sm font-medium text-slate-500">h / sem</span>
+                </p>
               </div>
             </div>
           </CardContent>
@@ -88,11 +122,14 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
           <CardContent className="relative">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100">
-                <Users size={18} className="text-amber-600" />
+                <Euro size={18} className="text-amber-600" />
               </div>
               <div>
-                <p className="text-xs font-medium text-slate-500">Équipe salle</p>
-                <p className="text-2xl font-bold text-slate-900">{staff.length}</p>
+                <p className="text-xs font-medium text-slate-500">CA prévu cette semaine</p>
+                <p className="text-2xl font-bold text-slate-900">
+                  {weeklyForecastRevenue.toLocaleString('fr-FR')}
+                  <span className="ml-1 text-sm font-medium text-slate-500">€</span>
+                </p>
               </div>
             </div>
           </CardContent>
