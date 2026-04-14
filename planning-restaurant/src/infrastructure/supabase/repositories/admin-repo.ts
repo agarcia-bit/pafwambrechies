@@ -13,10 +13,23 @@ export interface AdminUser {
 
 /** Appel l'edge function admin-users avec le JWT de l'utilisateur courant. */
 async function callAdmin(action: string, payload: Record<string, unknown> = {}) {
+  // Récupère le token de session et le passe explicitement (sinon le header
+  // Authorization peut contenir la clé anon au lieu du JWT user).
+  const { data: sessionData } = await supabase.auth.getSession()
+  const token = sessionData.session?.access_token
+  if (!token) throw new Error('Non authentifié')
+
   const { data, error } = await supabase.functions.invoke('admin-users', {
     body: { action, ...payload },
+    headers: { Authorization: `Bearer ${token}` },
   })
-  if (error) throw new Error(error.message)
+  if (error) {
+    // L'erreur Supabase ne contient pas le body JSON, essaie de le récupérer
+    const msg = (data && typeof data === 'object' && 'error' in data)
+      ? (data as { error: string }).error
+      : error.message
+    throw new Error(msg)
+  }
   if (data && typeof data === 'object' && 'error' in data) {
     throw new Error((data as { error: string }).error)
   }
