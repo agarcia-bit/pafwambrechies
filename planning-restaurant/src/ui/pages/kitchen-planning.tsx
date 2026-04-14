@@ -69,6 +69,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
   const [error, setError] = useState('')
   const [solverInfo, setSolverInfo] = useState('')
   const [saved, setSaved] = useState(false)
+  const [editingCell, setEditingCell] = useState<{ empId: string; day: number } | null>(null)
   const [planningId] = useState(crypto.randomUUID())
   const [unavailabilities, setUnavailabilities] = useState<Unavailability[]>([])
   const [addingConstraint, setAddingConstraint] = useState(false)
@@ -213,6 +214,50 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
     const bounds = getWeeklyBounds(emp)
     return { emp, empEntries, totalHours, bounds }
   })
+
+  // Shifts cuisine disponibles pour un jour donné, filtré par période
+  function getKitchenShiftsForDay(day: number, period: 'midi' | 'soir') {
+    const isSunday = day === 6
+    return templates
+      .filter((t) => t.department === 'cuisine')
+      .filter((t) => {
+        if (isSunday) return t.applicability === 'sunday'
+        return t.applicability === 'tue_sat' || t.applicability === 'sat_only'
+      })
+      .filter((t) => (period === 'midi' ? t.endTime <= 16 : t.startTime >= 17))
+      .sort((a, b) => a.startTime - b.startTime || a.endTime - b.endTime)
+  }
+
+  // Change le shift midi ou soir pour (emp, day) — null = supprimer
+  function handleShiftChange(
+    empId: string,
+    day: number,
+    period: 'midi' | 'soir',
+    shiftId: string | null,
+  ) {
+    setEntries((prev) => {
+      // Retire l'entrée existante pour ce couple (emp, day, period)
+      const filtered = prev.filter(
+        (e) => !(e.employeeId === empId && e.dayOfWeek === day && e.period === period),
+      )
+      if (!shiftId) return filtered
+      const shift = templates.find((t) => t.id === shiftId)
+      if (!shift) return filtered
+      return [
+        ...filtered,
+        {
+          employeeId: empId,
+          dayOfWeek: day,
+          shiftTemplateId: shift.id,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          effectiveHours: shift.effectiveHours,
+          period,
+        },
+      ]
+    })
+    setSaved(false)
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -453,24 +498,69 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                       const midi = dayEntries.find((e) => e.period === 'midi')
                       const soir = dayEntries.find((e) => e.period === 'soir')
                       const isOff = dayEntries.length === 0
+                      const isEditing = editingCell?.empId === emp.id && editingCell?.day === d
+                      const midiShifts = getKitchenShiftsForDay(d, 'midi')
+                      const soirShifts = getKitchenShiftsForDay(d, 'soir')
+                      const showSoir = !(tenant?.rules.kitchenClosedSundayEvening && d === 6)
 
                       return (
-                        <td key={d} className={`px-0.5 py-1.5 text-center ${isOff ? 'bg-red-100' : 'bg-amber-50/60'}`}>
-                          {isOff ? (
-                            <span className="text-xs text-muted-foreground">OFF</span>
-                          ) : (
-                            <div className="flex flex-col gap-0.5 items-center">
-                              {midi && (
-                                <span className="inline-block rounded bg-amber-100 border border-amber-200 px-1 py-0.5 text-[10px] font-semibold leading-tight whitespace-nowrap">
-                                  {midi.startTime}-{midi.endTime}h
-                                </span>
+                        <td key={d} className={`px-0.5 py-1 text-center align-top ${isOff && !isEditing ? 'bg-red-100' : 'bg-amber-50/60'}`}>
+                          {isEditing ? (
+                            <div className="flex flex-col gap-0.5">
+                              <select
+                                autoFocus
+                                value={midi?.shiftTemplateId ?? ''}
+                                onChange={(e) => handleShiftChange(emp.id, d, 'midi', e.target.value || null)}
+                                className="w-full rounded border border-amber-400 bg-white text-[10px] py-0.5"
+                              >
+                                <option value="">— Midi —</option>
+                                {midiShifts.map((s) => (
+                                  <option key={s.id} value={s.id}>{s.startTime}-{s.endTime}h ({s.effectiveHours}h)</option>
+                                ))}
+                              </select>
+                              {showSoir && (
+                                <select
+                                  value={soir?.shiftTemplateId ?? ''}
+                                  onChange={(e) => handleShiftChange(emp.id, d, 'soir', e.target.value || null)}
+                                  className="w-full rounded border border-amber-600 bg-white text-[10px] py-0.5"
+                                >
+                                  <option value="">— Soir —</option>
+                                  {soirShifts.map((s) => (
+                                    <option key={s.id} value={s.id}>{s.startTime}-{s.endTime}h ({s.effectiveHours}h)</option>
+                                  ))}
+                                </select>
                               )}
-                              {soir && (
-                                <span className="inline-block rounded bg-amber-600 text-white px-1 py-0.5 text-[10px] font-semibold leading-tight whitespace-nowrap">
-                                  {soir.startTime}-{soir.endTime}h
-                                </span>
-                              )}
+                              <button
+                                onClick={() => setEditingCell(null)}
+                                className="text-[9px] text-slate-500 hover:text-slate-800"
+                              >
+                                ✓ OK
+                              </button>
                             </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setEditingCell({ empId: emp.id, day: d })}
+                              className="flex w-full flex-col gap-0.5 items-center rounded hover:ring-2 hover:ring-amber-400 transition-all cursor-pointer py-0.5"
+                              title="Cliquer pour modifier"
+                            >
+                              {isOff ? (
+                                <span className="text-xs text-muted-foreground">OFF</span>
+                              ) : (
+                                <>
+                                  {midi && (
+                                    <span className="inline-block rounded bg-amber-100 border border-amber-200 px-1 py-0.5 text-[10px] font-semibold leading-tight whitespace-nowrap">
+                                      {midi.startTime}-{midi.endTime}h
+                                    </span>
+                                  )}
+                                  {soir && (
+                                    <span className="inline-block rounded bg-amber-600 text-white px-1 py-0.5 text-[10px] font-semibold leading-tight whitespace-nowrap">
+                                      {soir.startTime}-{soir.endTime}h
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </button>
                           )}
                         </td>
                       )
