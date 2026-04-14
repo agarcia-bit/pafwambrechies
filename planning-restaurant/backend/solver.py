@@ -129,20 +129,20 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
                 model.add(sum(day_vars) == 0).only_enforce_if(wd.negated())
                 works_day[(emp.id, day)] = wd
 
-    # 3. Max 5 working days
+    # 3. Max N working days (configurable)
     for emp in non_managers:
         emp_days = [works_day[k] for k in works_day if k[0] == emp.id]
         if emp_days:
-            model.add(sum(emp_days) <= 5)
+            model.add(sum(emp_days) <= req.max_working_days)
 
-    # 4. Full-time must work exactly 5 days
+    # 4. Full-time must work exactly max_working_days
     for emp in non_managers:
-        if emp.weekly_hours >= 35:
+        if emp.weekly_hours >= req.fulltime_threshold:
             emp_days = [works_day[k] for k in works_day if k[0] == emp.id]
             if emp_days:
-                model.add(sum(emp_days) >= 5)
+                model.add(sum(emp_days) >= req.max_working_days)
 
-    # 5. Repos 11h between consecutive days
+    # 5. Repos min entre jours consécutifs (configurable)
     shift_map = {s.id: s for s in req.shift_templates}
     for emp in non_managers:
         for day in working_days:
@@ -158,7 +158,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
                         continue
                     s2 = shift_map[k2[2]]
                     rest = 24 - s1.end_time + s2.start_time
-                    if rest < 11:
+                    if rest < req.min_rest_hours:
                         # Cannot both be 1
                         model.add(x[k1] + x[k2] <= 1)
 
@@ -202,9 +202,12 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
     # --- Soft Constraints (Objectives) ---
     penalties = []
 
-    # 8. Closing coverage: 4 Tue-Wed, 6 Thu-Sun
+    # 8. Closing coverage: weekday vs weekend (configurable via req)
     for day in working_days:
-        min_closing = 4 if day <= 2 else 6
+        min_closing = (
+            req.min_closing_weekday if day < req.weekend_start_day
+            else req.min_closing_weekend
+        )
         closing_time = req.closing_time_sunday if day == 6 else req.closing_time_week
 
         closing_vars = []

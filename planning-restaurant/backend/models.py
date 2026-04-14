@@ -77,6 +77,17 @@ class SolverRequest(BaseModel):
     min_staff_midi: Dict[str, int] = {}
     min_staff_soir: Dict[str, int] = {}
     min_staff_fermeture: Dict[str, int] = {}
+    # --- Tenant rules (multi-tenant configurable) ---
+    min_rest_hours: float = 11.0
+    max_working_days: int = 5
+    fulltime_threshold: float = 35.0
+    min_closing_weekday: int = 4
+    min_closing_weekend: int = 6
+    weekend_start_day: int = 3  # 0=lundi, 3=jeudi par défaut
+    min_kitchen_midi: int = 2
+    kitchen_prep_day: Optional[int] = None  # 0-6 ou None pour désactiver
+    kitchen_prep_team: List[str] = []  # UUIDs des employés
+    kitchen_closed_sunday_evening: bool = True
 
 
 class ShiftAssignment(BaseModel):

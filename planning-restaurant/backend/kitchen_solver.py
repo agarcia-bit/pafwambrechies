@@ -68,8 +68,8 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
                 x_midi[(emp.id, day, shift.id)] = model.new_bool_var(
                     f"km_{emp.id}_{day}_{shift.id}")
 
-            # Soir shifts (not Sunday — kitchen closed Sunday evening)
-            if day != 6:
+            # Soir shifts (dimanche soir fermé si configuré)
+            if not (req.kitchen_closed_sunday_evening and day == 6):
                 for shift in soir_shifts_for_day(day):
                     x_soir[(emp.id, day, shift.id)] = model.new_bool_var(
                         f"ks_{emp.id}_{day}_{shift.id}")
@@ -103,13 +103,13 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
                 model.add(sum(all_vars) == 0).only_enforce_if(wd.negated())
                 works_day[(emp.id, day)] = wd
 
-    # 4. Max 5 working days, full-time = exactly 5
+    # 4. Max N working days, full-time = exactly N (configurable)
     for emp in kitchen_employees:
         emp_days = [works_day[k] for k in works_day if k[0] == emp.id]
         if emp_days:
-            model.add(sum(emp_days) <= 5)
-            if emp.weekly_hours >= 35:
-                model.add(sum(emp_days) >= 5)
+            model.add(sum(emp_days) <= req.max_working_days)
+            if emp.weekly_hours >= req.fulltime_threshold:
+                model.add(sum(emp_days) >= req.max_working_days)
 
     # 5. Contract hours: total >= weekly_hours, total <= weekly_hours + modulation
     for emp in kitchen_employees:
@@ -156,31 +156,29 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
                         model.add(x_soir[k_soir] + x_midi[k_midi] - 1 <= both)
                         penalties.append(both * 3)
 
-    # 7. Special: Chaker + Bauer + Ibra all work Tuesday MIDI (preparation)
-    chaker = next((e for e in kitchen_employees if e.first_name.lower() == "chaker"), None)
-    bauer = next((e for e in kitchen_employees if e.first_name.lower() == "bauer"), None)
-    ibra = next((e for e in kitchen_employees if e.first_name.lower() == "ibra"), None)
+    # 7. Équipe préparation : si un jour de prep et une équipe sont configurés,
+    # tous les membres de l'équipe doivent être présents au MIDI ce jour-là.
+    # (Remplace l'ancien hardcoding Chaker/Bauer/Ibra mardi)
+    if req.kitchen_prep_day is not None and req.kitchen_prep_team:
+        prep_day = req.kitchen_prep_day
+        for emp_id in req.kitchen_prep_team:
+            # Ne pas forcer si cet employé est indisponible ce jour
+            if prep_day in fixed_unavail.get(emp_id, set()):
+                continue
+            prep_midi = [x_midi[k] for k in x_midi
+                        if k[0] == emp_id and k[1] == prep_day]
+            if prep_midi:
+                model.add(sum(prep_midi) >= 1)
 
-    tuesday = 1  # day_of_week 1 = mardi
-    for emp in [chaker, bauer, ibra]:
-        if emp is None:
-            continue
-        tuesday_midi = [x_midi[k] for k in x_midi
-                       if k[0] == emp.id and k[1] == tuesday]
-        if tuesday_midi:
-            model.add(sum(tuesday_midi) >= 1)
-
-    # 7b. HARD: minimum 2 cuisiniers au midi chaque jour travaillé
-    # (si moins de 2 cuisiniers dispo ce jour on relâche)
-    MIN_MIDI_CUISINE = 2
+    # 7b. HARD: minimum configurable de cuisiniers au midi chaque jour travaillé
+    # (capé par le nb réel de cuisiniers dispos ce jour-là)
     for day in working_days:
         midi_day_vars = [x_midi[k] for k in x_midi if k[1] == day]
-        # Cap par le nb réel de cuisiniers pouvant bosser ce jour
         available_count = sum(
             1 for emp in kitchen_employees
             if day not in fixed_unavail.get(emp.id, set())
         )
-        min_required = min(MIN_MIDI_CUISINE, available_count)
+        min_required = min(req.min_kitchen_midi, available_count)
         if midi_day_vars and min_required > 0:
             model.add(sum(midi_day_vars) >= min_required)
 

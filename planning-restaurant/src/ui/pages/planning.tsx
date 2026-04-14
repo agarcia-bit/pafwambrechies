@@ -3,6 +3,7 @@ import { useEmployeeStore } from '@/store/employee-store'
 import { useRoleStore } from '@/store/role-store'
 import { useShiftTemplateStore } from '@/store/shift-template-store'
 import { useForecastStore } from '@/store/forecast-store'
+import { useTenantStore } from '@/store/tenant-store'
 import { useAuthStore } from '@/store/auth-store'
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/ui/components'
 import { PlanningGrid } from '@/ui/components/planning-grid'
@@ -66,6 +67,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
   const { roles, employeeRoles, load: loadRoles } = useRoleStore()
   const { templates, load: loadTemplates } = useShiftTemplateStore()
   const { forecasts, load: loadForecasts } = useForecastStore()
+  const { tenant, load: loadTenant } = useTenantStore()
   const { tenantId, user } = useAuthStore()
 
   const [weekStart, setWeekStart] = useState(getNextMonday())
@@ -122,6 +124,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
     loadRoles()
     loadTemplates()
     loadForecasts()
+    if (tenantId) loadTenant(tenantId)
     // Constraints: fetch inline to satisfy strict lint (no setState before async)
     Promise.all([
       fetchUnavailabilities().catch(() => [] as Unavailability[]),
@@ -138,7 +141,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
       setSolverAvailable(ok)
       if (!ok) setSolverMode('local')
     })
-  }, [loadEmployees, loadRoles, loadTemplates, loadForecasts])
+  }, [loadEmployees, loadRoles, loadTemplates, loadForecasts, loadTenant, tenantId])
 
   const activeEmployees = employees.filter((e) => e.active && e.department === 'salle')
 
@@ -315,7 +318,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
     let result: PlanningReport | null = null
 
     try {
-      const tenant: Tenant = {
+      const tenantForEngine: Tenant = tenant ?? {
         id: tenantId,
         name: '',
         address: null,
@@ -324,7 +327,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
       }
 
       const input: PlannerInput = {
-        tenant,
+        tenant: tenantForEngine,
         weekStartDate: weekStartISO,
         employees: activeEmployees,
         roles,
@@ -397,9 +400,9 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           employee_roles: Object.fromEntries(
             employeeRoles.map((er) => [er.employeeId, er.roleId]),
           ),
-          closing_time_week: 24.0,
-          closing_time_sunday: 21.0,
-          productivity_target: 95,
+          closing_time_week: tenant?.closingTimeWeek ?? 24.0,
+          closing_time_sunday: tenant?.closingTimeSunday ?? 21.0,
+          productivity_target: tenant?.productivityTarget ?? 95,
           min_staff_midi: Object.fromEntries(
             Object.entries(dayAdjustments).filter(([, a]) => a.minMidi > 0).map(([d, a]) => [d, a.minMidi]),
           ),
@@ -409,6 +412,13 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           min_staff_fermeture: Object.fromEntries(
             Object.entries(dayAdjustments).filter(([, a]) => a.minFermeture > 0).map(([d, a]) => [d, a.minFermeture]),
           ),
+          // --- Règles tenant ---
+          min_rest_hours: tenant?.rules.minRestHours ?? 11,
+          max_working_days: tenant?.rules.maxWorkingDays ?? 5,
+          fulltime_threshold: tenant?.rules.fulltimeThreshold ?? 35,
+          min_closing_weekday: tenant?.rules.minClosingWeekday ?? 4,
+          min_closing_weekend: tenant?.rules.minClosingWeekend ?? 6,
+          weekend_start_day: tenant?.rules.weekendStartDay ?? 3,
         }
 
         const solverResult = await callSolver(solverReq)

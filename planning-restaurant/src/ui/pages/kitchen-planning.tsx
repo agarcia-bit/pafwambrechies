@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useShiftTemplateStore } from '@/store/shift-template-store'
 import { useForecastStore } from '@/store/forecast-store'
+import { useTenantStore } from '@/store/tenant-store'
 import { useAuthStore } from '@/store/auth-store'
 import { Button, Card, CardContent } from '@/ui/components'
 import { callKitchenSolver } from '@/infrastructure/api/solver-api'
@@ -59,6 +60,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
   const { employees, load: loadEmployees } = useEmployeeStore()
   const { templates, load: loadTemplates } = useShiftTemplateStore()
   const { forecasts, load: loadForecasts } = useForecastStore()
+  const { tenant, load: loadTenant } = useTenantStore()
   const { tenantId, user } = useAuthStore()
 
   const [weekStart, setWeekStart] = useState(getNextMonday())
@@ -77,8 +79,9 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
     loadEmployees()
     loadTemplates()
     loadForecasts()
+    if (tenantId) loadTenant(tenantId)
     fetchUnavailabilities().then(setUnavailabilities).catch(() => {})
-  }, [loadEmployees, loadTemplates, loadForecasts])
+  }, [loadEmployees, loadTemplates, loadForecasts, loadTenant, tenantId])
 
   const kitchenEmployees = employees.filter((e) => e.active && e.department === 'cuisine')
   const weekNumber = getWeekNumber(weekStart)
@@ -165,9 +168,17 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
           .map((f) => ({ day_of_week: f.dayOfWeek, forecasted_revenue: f.forecastedRevenue })),
         event_overrides: [],
         employee_roles: {},
-        closing_time_week: 23,
-        closing_time_sunday: 17,
-        productivity_target: 95,
+        closing_time_week: tenant?.closingTimeWeek ?? 24,
+        closing_time_sunday: tenant?.closingTimeSunday ?? 21,
+        productivity_target: tenant?.productivityTarget ?? 95,
+        // --- Règles tenant ---
+        min_rest_hours: tenant?.rules.minRestHours ?? 11,
+        max_working_days: tenant?.rules.maxWorkingDays ?? 5,
+        fulltime_threshold: tenant?.rules.fulltimeThreshold ?? 35,
+        min_kitchen_midi: tenant?.rules.minKitchenMidi ?? 2,
+        kitchen_prep_day: tenant?.rules.kitchenPrepDay ?? null,
+        kitchen_prep_team: tenant?.rules.kitchenPrepTeam ?? [],
+        kitchen_closed_sunday_evening: tenant?.rules.kitchenClosedSundayEvening ?? true,
       }
 
       const result = await callKitchenSolver(solverReq)
