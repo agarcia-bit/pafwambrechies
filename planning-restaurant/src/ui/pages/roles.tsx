@@ -156,8 +156,11 @@ export function RolesPage() {
                   {[...activeEmployees].sort((a, b) => {
                     const roleA = getEmployeeRole(a.id)
                     const roleB = getEmployeeRole(b.id)
-                    const nameA = roles.find((r) => r.id === roleA)?.name ?? 'zzz'
-                    const nameB = roles.find((r) => r.id === roleB)?.name ?? 'zzz'
+                    // Salariés sans rôle: en haut de la liste
+                    if (!roleA && roleB) return -1
+                    if (roleA && !roleB) return 1
+                    const nameA = roles.find((r) => r.id === roleA)?.name ?? ''
+                    const nameB = roles.find((r) => r.id === roleB)?.name ?? ''
                     if (nameA !== nameB) return nameA.localeCompare(nameB)
                     return a.firstName.localeCompare(b.firstName)
                   }).map((emp) => {
