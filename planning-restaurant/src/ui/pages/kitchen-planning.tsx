@@ -425,27 +425,27 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
       {/* Grille planning cuisine */}
       {entries.length > 0 && !generating && (
         <>
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full border-collapse text-sm">
+          <div className="rounded-lg border border-border">
+            <table className="w-full table-fixed border-collapse text-sm">
               <thead>
                 <tr className="bg-amber-700 text-white">
-                  <th className="sticky left-0 z-10 bg-amber-700 px-2 py-2 text-left text-xs">Contrat</th>
-                  <th className="sticky left-16 z-10 bg-amber-700 px-2 py-2 text-left text-xs">Cuisinier</th>
+                  <th className="w-12 bg-amber-700 px-1 py-2 text-center text-[10px]">Contrat</th>
+                  <th className="w-20 bg-amber-700 px-2 py-2 text-left text-xs">Cuisinier</th>
                   {DAY_NAMES.slice(1).map((day, i) => (
-                    <th key={i + 1} className="px-2 py-3 text-center min-w-[150px]">
+                    <th key={i + 1} className="px-1 py-3 text-center text-xs">
                       {day}
                     </th>
                   ))}
-                  <th className="px-2 py-2 text-center text-xs">Total</th>
+                  <th className="w-14 px-1 py-2 text-center text-[10px]">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {empTotals.map(({ emp, empEntries, totalHours, bounds }) => (
                   <tr key={emp.id} className="border-b border-border hover:bg-muted/20">
-                    <td className="sticky left-0 z-10 bg-background px-2 py-2 text-center font-mono text-xs">
+                    <td className="bg-background px-1 py-2 text-center font-mono text-[11px]">
                       {emp.weeklyHours}
                     </td>
-                    <td className="sticky left-16 z-10 bg-background px-2 py-2 text-xs font-semibold whitespace-nowrap">
+                    <td className="bg-background px-2 py-2 text-xs font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
                       {emp.firstName}
                     </td>
                     {[1, 2, 3, 4, 5, 6].map((d) => {
@@ -455,21 +455,19 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                       const isOff = dayEntries.length === 0
 
                       return (
-                        <td key={d} className={`px-1 py-2 text-center ${isOff ? 'bg-red-100' : 'bg-amber-50/60'}`}>
+                        <td key={d} className={`px-0.5 py-1.5 text-center ${isOff ? 'bg-red-100' : 'bg-amber-50/60'}`}>
                           {isOff ? (
-                            <span className="text-sm text-muted-foreground">OFF</span>
+                            <span className="text-xs text-muted-foreground">OFF</span>
                           ) : (
-                            <div className="flex gap-1.5 justify-center">
+                            <div className="flex flex-col gap-0.5 items-center">
                               {midi && (
-                                <span className="inline-block rounded bg-amber-100 border border-amber-200 px-1.5 py-1 text-[11px] font-semibold">
-                                  {midi.startTime}h→{midi.endTime}h
-                                  <span className="ml-1 text-xs opacity-70">({midi.effectiveHours}h)</span>
+                                <span className="inline-block rounded bg-amber-100 border border-amber-200 px-1 py-0.5 text-[10px] font-semibold leading-tight whitespace-nowrap">
+                                  {midi.startTime}-{midi.endTime}h
                                 </span>
                               )}
                               {soir && (
-                                <span className="inline-block rounded bg-amber-600 text-white px-1.5 py-1 text-[11px] font-semibold">
-                                  {soir.startTime}h→{soir.endTime}h
-                                  <span className="ml-1 text-xs opacity-80">({soir.effectiveHours}h)</span>
+                                <span className="inline-block rounded bg-amber-600 text-white px-1 py-0.5 text-[10px] font-semibold leading-tight whitespace-nowrap">
+                                  {soir.startTime}-{soir.endTime}h
                                 </span>
                               )}
                             </div>
@@ -477,13 +475,13 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                         </td>
                       )
                     })}
-                    <td className={`px-2 py-2 text-center text-sm font-bold ${totalHours < bounds.min ? 'text-destructive' : ''}`}>
+                    <td className={`px-1 py-2 text-center text-xs font-bold ${totalHours < bounds.min ? 'text-destructive' : ''}`}>
                       {totalHours}h
                       {(() => {
                         const delta = totalHours - emp.weeklyHours
                         if (delta === 0) return null
                         const sign = delta > 0 ? '+' : ''
-                        return <span className={`ml-1 text-[10px] ${delta > 0 ? 'text-warning' : 'text-blue-600'}`}>({sign}{delta}h)</span>
+                        return <span className={`ml-0.5 text-[9px] ${delta > 0 ? 'text-warning' : 'text-blue-600'}`}>({sign}{delta})</span>
                       })()}
                     </td>
                   </tr>
