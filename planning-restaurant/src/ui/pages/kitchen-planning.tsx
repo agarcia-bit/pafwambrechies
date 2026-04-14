@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useShiftTemplateStore } from '@/store/shift-template-store'
+import { useForecastStore } from '@/store/forecast-store'
 import { useAuthStore } from '@/store/auth-store'
 import { Button, Card, CardContent } from '@/ui/components'
 import { callKitchenSolver } from '@/infrastructure/api/solver-api'
@@ -57,6 +58,7 @@ interface KitchenEntry {
 export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: string | null }) {
   const { employees, load: loadEmployees } = useEmployeeStore()
   const { templates, load: loadTemplates } = useShiftTemplateStore()
+  const { forecasts, load: loadForecasts } = useForecastStore()
   const { tenantId, user } = useAuthStore()
 
   const [weekStart, setWeekStart] = useState(getNextMonday())
@@ -74,8 +76,9 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
   useEffect(() => {
     loadEmployees()
     loadTemplates()
+    loadForecasts()
     fetchUnavailabilities().then(setUnavailabilities).catch(() => {})
-  }, [loadEmployees, loadTemplates])
+  }, [loadEmployees, loadTemplates, loadForecasts])
 
   const kitchenEmployees = employees.filter((e) => e.active && e.department === 'cuisine')
   const weekNumber = getWeekNumber(weekStart)
@@ -157,7 +160,9 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
           })),
         manager_schedules: [],
         conditional_availabilities: [],
-        day_forecasts: [],
+        day_forecasts: forecasts
+          .filter((f) => f.month === new Date(weekStartISO).getMonth() + 1)
+          .map((f) => ({ day_of_week: f.dayOfWeek, forecasted_revenue: f.forecastedRevenue })),
         event_overrides: [],
         employee_roles: {},
         closing_time_week: 23,

@@ -170,6 +170,20 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
         if tuesday_midi:
             model.add(sum(tuesday_midi) >= 1)
 
+    # 7b. HARD: minimum 2 cuisiniers au midi chaque jour travaillé
+    # (si moins de 2 cuisiniers dispo ce jour on relâche)
+    MIN_MIDI_CUISINE = 2
+    for day in working_days:
+        midi_day_vars = [x_midi[k] for k in x_midi if k[1] == day]
+        # Cap par le nb réel de cuisiniers pouvant bosser ce jour
+        available_count = sum(
+            1 for emp in kitchen_employees
+            if day not in fixed_unavail.get(emp.id, set())
+        )
+        min_required = min(MIN_MIDI_CUISINE, available_count)
+        if midi_day_vars and min_required > 0:
+            model.add(sum(midi_day_vars) >= min_required)
+
     # --- Objectives ---
 
     # 8. Prefer hours close to contract
@@ -202,6 +216,47 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
                     both = model.new_bool_var(f"ksame_m_{emp.id}_{day}_{shift.id}")
                     model.add(x_midi[k1_m] + x_midi[k2_m] - 1 <= both)
                     penalties.append(both * 3)
+
+    # 10. Équilibrage pondéré par le CA prévisionnel
+    # Plus le CA d'un jour est élevé, plus on met de monde (midi et soir)
+    # Approche pairwise : si jour A a + de CA que jour B, alors count(A) >= count(B)
+    forecast_by_day: Dict[int, float] = {
+        df.day_of_week: df.forecasted_revenue for df in req.day_forecasts
+    }
+
+    if forecast_by_day and any(v > 0 for v in forecast_by_day.values()):
+        days_with_forecast = [d for d in working_days if d in forecast_by_day]
+
+        # Pour chaque paire (d_low, d_high) avec CA(d_low) < CA(d_high),
+        # pénalise si count(d_low) > count(d_high), pondéré par l'écart de CA
+        for d_low in days_with_forecast:
+            for d_high in days_with_forecast:
+                if d_low == d_high:
+                    continue
+                ca_low = forecast_by_day[d_low]
+                ca_high = forecast_by_day[d_high]
+                if ca_low >= ca_high:
+                    continue
+
+                # MIDI
+                midi_low = [x_midi[k] for k in x_midi if k[1] == d_low]
+                midi_high = [x_midi[k] for k in x_midi if k[1] == d_high]
+                if midi_low and midi_high:
+                    viol_m = model.new_int_var(0, len(kitchen_employees),
+                                               f"kbal_m_{d_low}_{d_high}")
+                    model.add(viol_m >= sum(midi_low) - sum(midi_high))
+                    weight_m = max(1, int((ca_high - ca_low) / 200))
+                    penalties.append(viol_m * weight_m)
+
+                # SOIR (d_high peut être dimanche=6 fermé le soir → skip)
+                soir_low = [x_soir[k] for k in x_soir if k[1] == d_low]
+                soir_high = [x_soir[k] for k in x_soir if k[1] == d_high]
+                if soir_low and soir_high:
+                    viol_s = model.new_int_var(0, len(kitchen_employees),
+                                               f"kbal_s_{d_low}_{d_high}")
+                    model.add(viol_s >= sum(soir_low) - sum(soir_high))
+                    weight_s = max(1, int((ca_high - ca_low) / 200))
+                    penalties.append(viol_s * weight_s)
 
     if penalties:
         model.minimize(sum(penalties))
