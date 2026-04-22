@@ -482,23 +482,24 @@ body {
 /* ── Auth screen ──────────────────────────────────────────────────────────── */
 .auth-screen {
   min-height: 100dvh; display: flex; align-items: center; justify-content: center;
-  background: #a8c8dc url('/images/login-bg.png') center center / contain no-repeat;
+  background: url('/images/login-bg.png') center center / cover no-repeat;
   padding: 24px 16px;
   position: relative;
 }
 .auth-screen::before {
   content: '';
   position: absolute; inset: 0;
-  background: linear-gradient(to bottom, rgba(0,0,0,.25) 0%, rgba(0,0,0,.55) 100%);
+  background: rgba(0,0,0,.18);
 }
 .auth-card {
-  background: rgba(255,255,255,.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255,255,255,.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: 20px; padding: 32px 24px;
-  width: 100%; max-width: 380px;
-  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  width: 100%; max-width: 360px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.2);
   position: relative; z-index: 1;
+  border: 1px solid rgba(255,255,255,.6);
 }
 .auth-logo { display: flex; justify-content: center; margin-bottom: 16px; }
 .auth-logo img { border-radius: 12px; }
