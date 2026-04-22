@@ -483,7 +483,7 @@ body {
 .auth-screen {
   min-height: 100dvh;
   display: flex; flex-direction: column; justify-content: flex-end;
-  background: url('/images/login-bg.png') center 75% / cover no-repeat;
+  background: url('/images/login-bg.png') center bottom / cover no-repeat;
   position: relative;
 }
 .auth-screen::before {
@@ -558,6 +558,14 @@ body {
   background: rgba(255,255,255,.95);
   border-color: rgba(46,49,146,.35);
   box-shadow: 0 0 0 3px rgba(46,49,146,.08);
+}
+/* Override iOS autofill yellow */
+.auth-field-group input:-webkit-autofill,
+.auth-field-group input:-webkit-autofill:hover,
+.auth-field-group input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 40px #fff inset !important;
+  -webkit-text-fill-color: #1a1f3c !important;
+  transition: background-color 9999s ease-in-out 0s;
 }
 
 /* Submit button */
