@@ -95,6 +95,7 @@ function reloadAllSections() {
   loadOffresPage(true);
   loadIdeesPage(true);
   loadCalendarEvents();
+  loadLiens();
   sb.from('annuaire').select('*').order('nom_entreprise').then(({ data, error }) => {
     if (!error && data) { annuaireData = data; renderAnnuaireList(); }
   });
@@ -330,6 +331,7 @@ function showSection(id) {
   else if (id === 'offres') loadOffresPage(true);
   else if (id === 'idees') loadIdeesPage(true);
   else if (id === 'calendrier') loadCalendarEvents();
+  else if (id === 'liens') loadLiens();
   else if (id === 'annuaire') {
     sb.from('annuaire').select('*').order('nom_entreprise').then(({ data, error }) => {
       if (!error && data) { annuaireData = data; renderAnnuaireList(); }
@@ -1290,6 +1292,7 @@ function initApp() {
   renderOffres();
   initIdees();
   initCalendar();
+  loadLiens();
   showSection('actus');
 }
 
@@ -1332,6 +1335,7 @@ async function loadAdminSub() {
     case 'events':   await renderAdminEvents(el);   break;
     case 'annuaire': await renderAdminAnnuaire(el); break;
     case 'idees':    await renderAdminIdees(el);    break;
+    case 'liens':    await renderAdminLiens(el);    break;
   }
 }
 
@@ -1662,5 +1666,87 @@ async function renderAdminIdees(el) {
         </div>`).join('') : '<div class="empty-state">Aucune idée.</div>'}
     </div>`;
 }
+
+/* ============================================================
+   LIENS UTILES
+   ============================================================ */
+async function loadLiens() {
+  const container = document.getElementById('liens-list');
+  if (!container) return;
+  container.innerHTML = '<div class="loading">Chargement…</div>';
+  const { data, error } = await sb.from('liens').select('*').order('created_at');
+  if (error || !data?.length) {
+    container.innerHTML = '<div class="empty-state">Aucun lien pour le moment.</div>';
+    return;
+  }
+  container.innerHTML = data.map(l => `
+    <a href="${escHtml(l.url)}" target="_blank" rel="noopener" class="lien-card card">
+      <div class="lien-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      </div>
+      <div class="lien-body">
+        <div class="lien-titre">${escHtml(l.titre)}</div>
+        ${l.description ? `<div class="lien-desc">${escHtml(l.description)}</div>` : ''}
+      </div>
+      <svg class="lien-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+  `).join('');
+}
+
+async function renderAdminLiens(el) {
+  const { data = [] } = await sb.from('liens').select('*').order('created_at');
+  el.innerHTML = `
+    <button class="btn-new-idea" style="margin-bottom:12px" onclick="toggleAdminForm('admin-lien-form')">+ Ajouter un lien</button>
+    <div id="admin-lien-form" class="card hidden" style="margin-bottom:12px">
+      <form id="form-lien">
+        <input type="hidden" id="lien-edit-id" value="" />
+        <div class="form-group"><label>Titre *</label><input type="text" id="lien-titre" required /></div>
+        <div class="form-group"><label>URL *</label><input type="url" id="lien-url" required placeholder="https://…" /></div>
+        <div class="form-group"><label>Description</label><input type="text" id="lien-description" /></div>
+        <button type="submit" class="btn btn-primary" id="lien-submit-btn">Enregistrer</button>
+      </form>
+    </div>
+    <div class="admin-list">
+      ${data.length ? data.map(l => `
+        <div class="admin-item">
+          <div class="admin-item-info">
+            <span class="admin-item-title">${escHtml(l.titre)}</span>
+            <span class="admin-item-meta">${escHtml(l.url)}</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="admin-toggle-btn" onclick="adminEditLien(${l.id})">Modifier</button>
+            <button class="admin-delete-btn" onclick="adminDeleteItem('liens', ${l.id})">Supprimer</button>
+          </div>
+        </div>`).join('') : '<div class="empty-state">Aucun lien.</div>'}
+    </div>`;
+
+  el.querySelector('#form-lien').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const editId = document.getElementById('lien-edit-id').value;
+    const payload = {
+      titre:       document.getElementById('lien-titre').value.trim(),
+      url:         document.getElementById('lien-url').value.trim(),
+      description: document.getElementById('lien-description').value.trim() || null,
+    };
+    const { error } = editId
+      ? await sb.from('liens').update(payload).eq('id', editId)
+      : await sb.from('liens').insert(payload);
+    if (error) { showToast('Erreur.', 'error'); return; }
+    showToast(editId ? 'Lien mis à jour !' : 'Lien ajouté !', 'success');
+    await loadAdminSub();
+  });
+}
+
+window.adminEditLien = async function(id) {
+  const { data } = await sb.from('liens').select('*').eq('id', id).single();
+  if (!data) return;
+  document.getElementById('lien-edit-id').value = id;
+  document.getElementById('lien-titre').value = data.titre || '';
+  document.getElementById('lien-url').value = data.url || '';
+  document.getElementById('lien-description').value = data.description || '';
+  document.getElementById('lien-submit-btn').textContent = 'Mettre à jour';
+  document.getElementById('admin-lien-form').classList.remove('hidden');
+  document.getElementById('admin-lien-form').scrollIntoView({ behavior: 'smooth' });
+};
 
 initAuth();
