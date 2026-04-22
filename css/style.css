@@ -712,3 +712,19 @@ body {
 }
 .modal-contact svg { flex-shrink: 0; color: var(--text-muted); }
 .modal-contact-link { color: var(--primary); font-weight: 600; }
+
+/* ── Liens utiles ────────────────────────────────────────────────────────────── */
+.lien-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; text-decoration: none; color: var(--text);
+  margin-bottom: 8px;
+}
+.lien-icon {
+  width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0;
+  background: var(--primary-light); display: flex; align-items: center; justify-content: center;
+  color: var(--primary);
+}
+.lien-body { flex: 1; min-width: 0; }
+.lien-titre { font-weight: 700; font-size: .95rem; margin-bottom: 2px; }
+.lien-desc { font-size: .82rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lien-arrow { color: var(--text-muted); flex-shrink: 0; }
