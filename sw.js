@@ -12,7 +12,7 @@ const ASSETS_TO_CACHE = [
   '/icons/icon.svg',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
-  '/images/login-bg.jpg'
+  '/images/login-bg.png'
 ];
 
 // ── Install: pre-cache all static assets ────────────────────────────────────

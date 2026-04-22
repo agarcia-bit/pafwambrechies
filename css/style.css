@@ -482,7 +482,7 @@ body {
 /* ── Auth screen ──────────────────────────────────────────────────────────── */
 .auth-screen {
   min-height: 100dvh; display: flex; align-items: center; justify-content: center;
-  background: url('/images/login-bg.jpg') center center / cover no-repeat;
+  background: url('/images/login-bg.png') center center / cover no-repeat;
   padding: 24px 16px;
   position: relative;
 }
