@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="css/style.css?v=32" />
+  <link rel="stylesheet" href="css/style.css?v=33" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
   <title>PAF Wambrechies</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -22,24 +22,21 @@
   <div id="auth-screen" class="auth-screen">
     <div class="auth-card">
       <div class="auth-logo">
-        <img src="icons/icon.png" width="80" height="80" alt="PAF Wambrechies" />
+        <img src="icons/icon.png" width="120" height="120" alt="PAF Wambrechies" />
       </div>
-      <h1 class="auth-title">PAF Wambrechies</h1>
       <p class="auth-sub">Espace réservé aux adhérents</p>
-
       <form id="auth-form" novalidate>
-        <div class="auth-field-group">
-          <label for="auth-email">Adresse email</label>
+        <div class="form-group">
+          <label for="auth-email">Email</label>
           <input type="email" id="auth-email" placeholder="votre@email.fr" autocomplete="email" inputmode="email" />
         </div>
-        <div class="auth-field-group">
+        <div class="form-group">
           <label for="auth-password">Mot de passe</label>
           <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password" />
         </div>
-        <button type="submit" id="auth-submit" class="auth-btn">Se connecter</button>
+        <button type="submit" class="btn btn-primary" id="auth-submit">Se connecter</button>
         <div id="auth-error" class="auth-error hidden"></div>
       </form>
-
       <p class="auth-footer">Application réservée aux adhérents PAF Wambrechies</p>
     </div>
   </div>
