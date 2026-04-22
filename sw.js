@@ -1,7 +1,7 @@
 // Service Worker - PAF Wambrechies
 // Cache-first strategy for all static assets + Push notifications
 
-const CACHE_NAME = 'paf-wambrechies-v6';
+const CACHE_NAME = 'paf-wambrechies-v7';
 
 const ASSETS_TO_CACHE = [
   '/',
@@ -11,7 +11,8 @@ const ASSETS_TO_CACHE = [
   '/js/app.js',
   '/icons/icon.svg',
   '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  '/icons/icon-512.png',
+  '/images/login-bg.jpg'
 ];
 
 // ── Install: pre-cache all static assets ────────────────────────────────────
