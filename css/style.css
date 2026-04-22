@@ -483,7 +483,7 @@ body {
 .auth-screen {
   min-height: 100dvh;
   display: flex; flex-direction: column; justify-content: flex-end;
-  background: url('/images/login-bg.png') center 30% / cover no-repeat;
+  background: url('/images/login-bg.png') center center / cover no-repeat;
   position: relative;
 }
 .auth-screen::before {
