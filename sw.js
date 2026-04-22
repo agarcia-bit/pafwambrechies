@@ -1,7 +1,7 @@
 // Service Worker - PAF Wambrechies
 // Cache-first strategy for all static assets + Push notifications
 
-const CACHE_NAME = 'paf-wambrechies-v5';
+const CACHE_NAME = 'paf-wambrechies-v6';
 
 const ASSETS_TO_CACHE = [
   '/',

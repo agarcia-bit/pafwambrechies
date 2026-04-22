@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="css/style.css?v=22" />
+  <link rel="stylesheet" href="css/style.css?v=23" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
   <title>PAF Wambrechies</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -20,23 +20,49 @@
 
   <!-- ── Auth screen ──────────────────────────────────────────────────────── -->
   <div id="auth-screen" class="auth-screen">
-    <div class="auth-card">
-      <div class="auth-logo">
-        <img src="icons/icon.png" width="120" height="120" alt="PAF Wambrechies" />
+    <!-- Decorative background shapes -->
+    <div class="auth-bg-shape auth-bg-shape--1"></div>
+    <div class="auth-bg-shape auth-bg-shape--2"></div>
+    <div class="auth-bg-shape auth-bg-shape--3"></div>
+
+    <!-- Hero brand area -->
+    <div class="auth-hero">
+      <div class="auth-logo-wrap">
+        <img src="icons/icon.png" width="88" height="88" alt="PAF Wambrechies" />
       </div>
-      <p class="auth-sub">Espace réservé aux adhérents</p>
+      <h1 class="auth-brand">PAF Wambrechies</h1>
+      <p class="auth-tagline">Espace adhérents</p>
+    </div>
+
+    <!-- Form card -->
+    <div class="auth-card">
+      <h2 class="auth-card-title">Connexion</h2>
+      <p class="auth-sub">Connectez-vous pour accéder à l'espace membres</p>
+
       <form id="auth-form" novalidate>
-        <div class="form-group">
-          <label for="auth-email">Email</label>
-          <input type="email" id="auth-email" placeholder="votre@email.fr" autocomplete="email" inputmode="email" />
+        <div class="auth-field">
+          <svg class="auth-field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+          <input type="email" id="auth-email" placeholder="Adresse email" autocomplete="email" inputmode="email" />
         </div>
-        <div class="form-group">
-          <label for="auth-password">Mot de passe</label>
-          <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password" />
+        <div class="auth-field">
+          <svg class="auth-field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <input type="password" id="auth-password" placeholder="Mot de passe" autocomplete="current-password" />
         </div>
-        <button type="submit" class="btn btn-primary" id="auth-submit">Se connecter</button>
+        <button type="submit" class="auth-btn" id="auth-submit">
+          Se connecter
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </button>
         <div id="auth-error" class="auth-error hidden"></div>
       </form>
+
       <p class="auth-footer">Application réservée aux adhérents PAF Wambrechies</p>
     </div>
   </div>
