@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useShiftTemplateStore } from '@/store/shift-template-store'
 import { useForecastStore } from '@/store/forecast-store'
@@ -122,9 +122,12 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
     setSolverInfo('')
   }
 
+  const generateRef = useRef<HTMLDivElement>(null)
+
   async function handleGenerate() {
     if (!tenantId) return
     setGenerating(true)
+    setTimeout(() => generateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100)
     setEntries([])
     setSaved(false)
     setError('')
@@ -419,7 +422,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
       </Card>
 
       {/* Bouton générer */}
-      <div className="flex items-center justify-center gap-3">
+      <div ref={generateRef} className="flex items-center justify-center gap-3">
         <Button
           size="lg"
           className="px-12"

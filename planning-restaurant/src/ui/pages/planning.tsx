@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useRoleStore } from '@/store/role-store'
 import { useShiftTemplateStore } from '@/store/shift-template-store'
@@ -308,9 +308,12 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
   }
   const allReady = Object.values(checks).every(Boolean)
 
+  const generateRef = useRef<HTMLDivElement>(null)
+
   async function handleGenerate() {
     if (!tenantId) return
     setGenerating(true)
+    setTimeout(() => generateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100)
     setReport(null) // Hide previous planning during generation
     setSaved(false)
     setError('')
@@ -913,7 +916,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
       </Card>
 
       {/* Bouton générer + enregistrer + exporter */}
-      <div className="flex items-center justify-center gap-3">
+      <div ref={generateRef} className="flex items-center justify-center gap-3">
         <Button
           size="lg"
           className="px-12"
