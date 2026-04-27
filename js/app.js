@@ -182,8 +182,13 @@ function showUpdateBanner() {
 }
 
 if ('serviceWorker' in navigator) {
+  // controllerchange also fires the very first time a SW takes control of an
+  // uncontrolled page (initial install) — that's not a real "update", so skip
+  // the banner in that case to avoid confusing first-time visitors (e.g. users
+  // arriving via an invitation link).
+  const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    showUpdateBanner();
+    if (hadController) showUpdateBanner();
   });
 }
 
@@ -237,10 +242,16 @@ function showAuthScreen() {
   document.getElementById('app').classList.add('hidden');
 }
 
+const PWD_SETUP_FLAG = 'paf_needs_password_setup';
+let setPasswordFormBound = false;
+
 function showSetPasswordScreen() {
   document.getElementById('set-password-screen').classList.remove('hidden');
   document.getElementById('auth-screen').classList.add('hidden');
   document.getElementById('app').classList.add('hidden');
+
+  if (setPasswordFormBound) return;
+  setPasswordFormBound = true;
 
   const form    = document.getElementById('set-password-form');
   const errorEl = document.getElementById('set-password-error');
@@ -274,7 +285,7 @@ function showSetPasswordScreen() {
       btn.disabled = false;
       btn.textContent = 'Créer mon mot de passe';
     } else {
-      // Clear hash and go to app
+      localStorage.removeItem(PWD_SETUP_FLAG);
       history.replaceState(null, '', window.location.pathname);
       const { data: { session } } = await sb.auth.getSession();
       if (session) {
@@ -305,31 +316,40 @@ async function showApp() {
 }
 
 async function initAuth() {
-  // Detect invite/recovery token in both hash (#type=invite) and query (?type=invite)
+  // Detect invite/recovery token in hash (#type=invite) or query (?type=invite).
   const hashParams   = new URLSearchParams(window.location.hash.slice(1));
   const searchParams = new URLSearchParams(window.location.search);
   const urlType      = hashParams.get('type') || searchParams.get('type');
-  const needsPassword = urlType === 'invite' || urlType === 'recovery';
+  const fromUrl      = urlType === 'invite' || urlType === 'recovery';
+
+  // Persist the flag so it survives any reload (e.g. SW update banner click)
+  // before the user actually sets the password.
+  if (fromUrl) {
+    localStorage.setItem(PWD_SETUP_FLAG, '1');
+  }
+  const needsPassword = fromUrl || localStorage.getItem(PWD_SETUP_FLAG) === '1';
 
   // Set up ongoing auth state listener
   sb.auth.onAuthStateChange((event, session) => {
-    if (needsPassword && event === 'SIGNED_IN') {
-      showSetPasswordScreen();
-      return;
-    }
     if (event === 'PASSWORD_RECOVERY') {
+      localStorage.setItem(PWD_SETUP_FLAG, '1');
       showSetPasswordScreen();
       return;
     }
     if (event === 'SIGNED_OUT') {
       currentUser = null;
       appInitialized = false;
+      localStorage.removeItem(PWD_SETUP_FLAG);
       showAuthScreen();
       return;
     }
-    if (event === 'SIGNED_IN' && session && !needsPassword) {
-      currentUser = session.user;
-      showApp();
+    if (event === 'SIGNED_IN' && session) {
+      if (localStorage.getItem(PWD_SETUP_FLAG) === '1') {
+        showSetPasswordScreen();
+      } else {
+        currentUser = session.user;
+        showApp();
+      }
     }
   });
 
@@ -382,6 +402,7 @@ async function initAuth() {
 }
 
 async function logout() {
+  localStorage.removeItem(PWD_SETUP_FLAG);
   await sb.auth.signOut();
   appInitialized = false;
 }
