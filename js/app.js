@@ -1134,8 +1134,7 @@ function renderUpcomingEvents() {
     .filter(ev => {
       const [y, m, d] = ev.date.split('-').map(Number);
       return new Date(y, m - 1, d) >= new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    })
-    .slice(0, 5);
+    });
 
   if (!upcoming.length) {
     container.innerHTML = '<div class="empty-state">Aucun événement à venir.</div>';
