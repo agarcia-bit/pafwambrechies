@@ -1,7 +1,7 @@
 // Service Worker - PAF Wambrechies
 // Cache-first strategy for all static assets + Push notifications
 
-const CACHE_NAME = 'paf-wambrechies-v7';
+const CACHE_NAME = 'paf-wambrechies-v8';
 
 const ASSETS_TO_CACHE = [
   '/',
@@ -54,10 +54,14 @@ self.addEventListener('activate', event => {
   );
 });
 
-// ── Fetch: cache-first, fallback to network ──────────────────────────────────
+// ── Fetch: cache-first for static assets, network-only for everything else ──
 self.addEventListener('fetch', event => {
-  // Only handle GET requests and same-origin / cdn requests
   if (event.request.method !== 'GET') return;
+
+  // Never cache cross-origin requests (Supabase API/Storage, CDNs, …).
+  // Caching API responses caused stale data to appear after edits.
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
 
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
