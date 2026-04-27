@@ -245,10 +245,25 @@ function showAuthScreen() {
 const PWD_SETUP_FLAG = 'paf_needs_password_setup';
 let setPasswordFormBound = false;
 
-function showSetPasswordScreen() {
+async function showSetPasswordScreen() {
   document.getElementById('set-password-screen').classList.remove('hidden');
   document.getElementById('auth-screen').classList.add('hidden');
   document.getElementById('app').classList.add('hidden');
+
+  // Pre-fill prenom/nom if the invitation already populated them.
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      const { data } = await sb.from('profiles')
+        .select('prenom, nom')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (data) {
+        if (data.prenom) document.getElementById('new-prenom').value = data.prenom;
+        if (data.nom)    document.getElementById('new-nom').value    = data.nom;
+      }
+    }
+  } catch (_) { /* non-blocking */ }
 
   if (setPasswordFormBound) return;
   setPasswordFormBound = true;
@@ -259,10 +274,17 @@ function showSetPasswordScreen() {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const pwd  = document.getElementById('new-password').value;
-    const pwd2 = document.getElementById('new-password-confirm').value;
+    const prenom = document.getElementById('new-prenom').value.trim();
+    const nom    = document.getElementById('new-nom').value.trim();
+    const pwd    = document.getElementById('new-password').value;
+    const pwd2   = document.getElementById('new-password-confirm').value;
 
     errorEl.classList.add('hidden');
+    if (!prenom || !nom) {
+      errorEl.textContent = 'Merci de renseigner votre prénom et votre nom.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
     if (pwd.length < 8) {
       errorEl.textContent = 'Le mot de passe doit contenir au moins 8 caractères.';
       errorEl.classList.remove('hidden');
@@ -277,23 +299,34 @@ function showSetPasswordScreen() {
     btn.disabled = true;
     btn.textContent = 'Enregistrement…';
 
-    const { error } = await sb.auth.updateUser({ password: pwd });
-
-    if (error) {
-      errorEl.textContent = 'Erreur : ' + error.message;
+    const { error: pwdErr } = await sb.auth.updateUser({ password: pwd });
+    if (pwdErr) {
+      errorEl.textContent = 'Erreur : ' + pwdErr.message;
       errorEl.classList.remove('hidden');
       btn.disabled = false;
-      btn.textContent = 'Créer mon mot de passe';
-    } else {
-      localStorage.removeItem(PWD_SETUP_FLAG);
-      history.replaceState(null, '', window.location.pathname);
-      const { data: { session } } = await sb.auth.getSession();
-      if (session) {
-        currentUser = session.user;
-        document.getElementById('set-password-screen').classList.add('hidden');
-        showApp();
-      }
+      btn.textContent = 'Créer mon compte';
+      return;
     }
+
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      const { error: profErr } = await sb.from('profiles')
+        .update({ prenom, nom })
+        .eq('id', session.user.id);
+      if (profErr) {
+        errorEl.textContent = 'Mot de passe enregistré, mais impossible de sauver le profil : ' + profErr.message;
+        errorEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Réessayer';
+        return;
+      }
+      currentUser = session.user;
+    }
+
+    localStorage.removeItem(PWD_SETUP_FLAG);
+    history.replaceState(null, '', window.location.pathname);
+    document.getElementById('set-password-screen').classList.add('hidden');
+    showApp();
   });
 }
 

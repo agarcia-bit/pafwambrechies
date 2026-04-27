@@ -338,6 +338,7 @@ body {
 .form-row-2 .form-group { min-width: 0; overflow: hidden; }
 .form-row-2 .form-group input { width: 100%; max-width: 100%; box-sizing: border-box; -webkit-appearance: none; appearance: none; }
 .form-group label { display: block; font-size: .84rem; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+.form-hint { font-weight: 400; color: var(--text-muted); font-size: .78rem; }
 .form-group input,
 .form-group select,
 .form-group textarea {
