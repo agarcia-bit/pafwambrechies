@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="css/style.css?v=36" />
+  <link rel="stylesheet" href="css/style.css?v=37" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
   <title>PAF Wambrechies</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -47,17 +47,25 @@
       <div class="auth-logo">
         <img src="icons/icon.png" width="120" height="120" alt="PAF Wambrechies" />
       </div>
-      <p class="auth-sub">Bienvenue ! Choisissez votre mot de passe pour accéder à l'espace adhérents.</p>
+      <p class="auth-sub">Bienvenue ! Complétez votre profil et choisissez votre mot de passe.</p>
       <form id="set-password-form" novalidate>
         <div class="form-group">
-          <label for="new-password">Nouveau mot de passe</label>
+          <label for="new-prenom">Prénom</label>
+          <input type="text" id="new-prenom" autocomplete="given-name" />
+        </div>
+        <div class="form-group">
+          <label for="new-nom">Nom <span class="form-hint">(ou nom de votre commerce)</span></label>
+          <input type="text" id="new-nom" autocomplete="family-name" />
+        </div>
+        <div class="form-group">
+          <label for="new-password">Mot de passe</label>
           <input type="password" id="new-password" placeholder="8 caractères minimum" autocomplete="new-password" />
         </div>
         <div class="form-group">
           <label for="new-password-confirm">Confirmer le mot de passe</label>
           <input type="password" id="new-password-confirm" placeholder="••••••••" autocomplete="new-password" />
         </div>
-        <button type="submit" class="btn btn-primary" id="set-password-submit">Créer mon mot de passe</button>
+        <button type="submit" class="btn btn-primary" id="set-password-submit">Créer mon compte</button>
         <div id="set-password-error" class="auth-error hidden"></div>
       </form>
     </div>
@@ -338,7 +346,7 @@
     document.addEventListener('touchmove', function(e){ if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
   </script>
   <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
-  <script src="js/app.js?v=7"></script>
+  <script src="js/app.js?v=8"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
