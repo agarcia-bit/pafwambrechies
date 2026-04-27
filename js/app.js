@@ -355,6 +355,23 @@ async function initAuth() {
   const urlType      = hashParams.get('type') || searchParams.get('type');
   const fromUrl      = urlType === 'invite' || urlType === 'recovery';
 
+  // Surface Supabase auth errors carried in the URL hash (e.g. expired or
+  // already-consumed invitation links) instead of silently falling through
+  // to the login screen with no explanation.
+  const urlError = hashParams.get('error_code') || searchParams.get('error_code');
+  let pendingErrorMsg = null;
+  if (urlError) {
+    history.replaceState(null, '', window.location.pathname);
+    localStorage.removeItem(PWD_SETUP_FLAG);
+    if (urlError === 'otp_expired') {
+      pendingErrorMsg = 'Le lien d\'invitation a expiré ou a déjà été utilisé. Demandez à un administrateur de la PAF de vous renvoyer une invitation.';
+    } else if (urlError === 'access_denied') {
+      pendingErrorMsg = 'Accès refusé. Demandez une nouvelle invitation à un administrateur.';
+    } else {
+      pendingErrorMsg = 'Le lien d\'invitation est invalide.';
+    }
+  }
+
   // Persist the flag so it survives any reload (e.g. SW update banner click)
   // before the user actually sets the password.
   if (fromUrl) {
@@ -396,11 +413,18 @@ async function initAuth() {
     return;
   }
 
-  if (session) {
+  if (session && !pendingErrorMsg) {
     currentUser = session.user;
     showApp();
   } else {
     showAuthScreen();
+    if (pendingErrorMsg) {
+      const errorEl = document.getElementById('auth-error');
+      if (errorEl) {
+        errorEl.textContent = pendingErrorMsg;
+        errorEl.classList.remove('hidden');
+      }
+    }
   }
 
   const form = document.getElementById('auth-form');
