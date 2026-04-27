@@ -545,6 +545,46 @@ function renderActusCats() {
 }
 window.setActuCat = function(cat) { actuFilter = cat; renderActusCats(); loadActusPage(true); };
 
+/* ── Comments helpers (shared by actus & idees) ───────────────────────────── */
+function canDeleteComment(c) {
+  if (!currentUser) return false;
+  return isAdmin || c.user_id === currentUser.id;
+}
+
+function commentHtml(c, kind, parentId) {
+  const del = canDeleteComment(c) ? `
+    <button class="comment-delete" onclick="deleteComment('${kind}', ${c.id}, ${parentId})" aria-label="Supprimer ce commentaire" title="Supprimer">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+    </button>` : '';
+  return `
+    <div class="comment" data-comment-id="${c.id}">
+      <span class="comment-author">${escHtml(c.prenom || 'Anonyme')}</span>
+      <span class="comment-text">${escHtml(c.texte)}</span>
+      ${del}
+    </div>`;
+}
+
+window.deleteComment = async function(kind, id, parentId) {
+  if (!currentUser) return;
+  if (!confirm('Supprimer ce commentaire ?')) return;
+  const table = kind === 'actu' ? 'actus_commentaires' : 'idees_commentaires';
+  const { error } = await sb.from(table).delete().eq('id', id);
+  if (error) {
+    showToast('Suppression impossible : ' + error.message, 'error');
+    return;
+  }
+  const listEl = document.getElementById((kind === 'actu' ? 'actu-comments-list-' : 'comments-list-') + parentId);
+  if (listEl) {
+    const node = listEl.querySelector('[data-comment-id="' + id + '"]');
+    if (node) node.remove();
+  }
+  const countEl = document.getElementById((kind === 'actu' ? 'actu-comment-count-' : 'idea-comment-count-') + parentId);
+  if (countEl) {
+    const n = parseInt(countEl.textContent, 10);
+    if (!isNaN(n) && n > 0) countEl.textContent = n - 1;
+  }
+};
+
 function renderActusList() {
   const container = document.getElementById('actus-list');
 
@@ -557,11 +597,7 @@ function renderActusList() {
     const likeCount    = a.actus_likes?.[0]?.count || 0;
     const comments     = a.actus_commentaires || [];
     const commentCount = comments.length;
-    const commentsHtml = comments.map(c => `
-      <div class="comment">
-        <span class="comment-author">${escHtml(c.prenom || 'Anonyme')}</span>
-        <span class="comment-text">${escHtml(c.texte)}</span>
-      </div>`).join('');
+    const commentsHtml = comments.map(c => commentHtml(c, 'actu', a.id)).join('');
     return `
     <div class="actu-card" id="actu-card-${a.id}">
       <div class="actu-header" onclick="toggleActu(${a.id})">
@@ -625,7 +661,7 @@ async function loadActusPage(reset = false) {
   const from = actuPage * ACTUS_PAGE_SIZE;
   const to   = from + ACTUS_PAGE_SIZE - 1;
   let query = sb.from('actus')
-    .select('*, actus_likes(count), actus_commentaires(id, prenom, texte, created_at)')
+    .select('*, actus_likes(count), actus_commentaires(id, user_id, prenom, texte, created_at)')
     .order('date', { ascending: false })
     .range(from, to);
   if (actuFilter !== 'Tous') query = query.eq('categorie', actuFilter);
@@ -676,15 +712,15 @@ async function addActuComment(e, actuId) {
   const texte = input?.value.trim();
   if (!texte) return;
   const prenom = [currentProfile?.prenom, currentProfile?.nom].filter(Boolean).join(' ') || currentUser.email?.split('@')[0] || 'Anonyme';
-  const { error } = await sb.from('actus_commentaires').insert({ actu_id: actuId, user_id: currentUser.id, prenom, texte });
-  if (error) return;
+  const { data: inserted, error } = await sb.from('actus_commentaires')
+    .insert({ actu_id: actuId, user_id: currentUser.id, prenom, texte })
+    .select('id, user_id, prenom, texte')
+    .single();
+  if (error || !inserted) return;
   input.value = '';
   const listEl = document.getElementById('actu-comments-list-' + actuId);
   if (listEl) {
-    const div = document.createElement('div');
-    div.className = 'comment';
-    div.innerHTML = `<span class="comment-author">${escHtml(prenom)}</span><span class="comment-text">${escHtml(texte)}</span>`;
-    listEl.appendChild(div);
+    listEl.insertAdjacentHTML('beforeend', commentHtml(inserted, 'actu', actuId));
     const countEl = document.getElementById('actu-comment-count-' + actuId);
     if (countEl) countEl.textContent = parseInt(countEl.textContent, 10) + 1;
   }
@@ -935,12 +971,7 @@ function renderIdeesList() {
       ? new Date(idea.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
       : '';
 
-    const commentsHtml = comments.map(c => `
-      <div class="comment">
-        <span class="comment-author">${escHtml(c.prenom || 'Anonyme')}</span>
-        <span class="comment-text">${escHtml(c.texte)}</span>
-      </div>
-    `).join('');
+    const commentsHtml = comments.map(c => commentHtml(c, 'idea', idea.id)).join('');
 
     return `
       <div class="idea-card" id="idea-card-${idea.id}">
@@ -958,7 +989,7 @@ function renderIdeesList() {
           </button>
           <button class="idea-comment-toggle" onclick="toggleComments(${idea.id})" aria-label="Commentaires">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            <span>${commentCount}</span>
+            <span id="idea-comment-count-${idea.id}">${commentCount}</span>
           </button>
         </div>
         <div class="idea-comments hidden" id="comments-${idea.id}">
@@ -1000,7 +1031,7 @@ async function loadIdeesPage(reset = false) {
   const to   = from + IDEES_PAGE_SIZE - 1;
   const { data, error } = await sb
     .from('idees')
-    .select('*, idees_likes(count), idees_commentaires(id, prenom, texte, created_at)')
+    .select('*, idees_likes(count), idees_commentaires(id, user_id, prenom, texte, created_at)')
     .eq('visible', true)
     .order('created_at', { ascending: false })
     .range(from, to);
@@ -1081,35 +1112,25 @@ async function addComment(e, ideeId) {
 
   const prenom = [currentProfile?.prenom, currentProfile?.nom].filter(Boolean).join(' - ') || currentUser.email?.split('@')[0] || 'Anonyme';
 
-  const { error } = await sb.from('idees_commentaires').insert({
-    idee_id: ideeId,
-    user_id: currentUser.id,
-    prenom,
-    texte
-  });
+  const { data: inserted, error } = await sb.from('idees_commentaires')
+    .insert({ idee_id: ideeId, user_id: currentUser.id, prenom, texte })
+    .select('id, user_id, prenom, texte')
+    .single();
 
-  if (error) {
+  if (error || !inserted) {
     showToast('Erreur lors de l\'envoi du commentaire.', 'error');
     return;
   }
 
   if (input) input.value = '';
 
-  // Append dans le DOM sans re-render
   const listEl = document.getElementById('comments-list-' + ideeId);
   if (listEl) {
-    const div = document.createElement('div');
-    div.className = 'comment';
-    div.innerHTML = `<span class="comment-author">${escHtml(prenom)}</span><span class="comment-text">${escHtml(texte)}</span>`;
-    listEl.appendChild(div);
+    listEl.insertAdjacentHTML('beforeend', commentHtml(inserted, 'idea', ideeId));
   }
 
-  // Incrémenter le compteur
-  const card = document.getElementById('idea-card-' + ideeId);
-  if (card) {
-    const countSpan = card.querySelector('.idea-comment-toggle span');
-    if (countSpan) countSpan.textContent = parseInt(countSpan.textContent, 10) + 1;
-  }
+  const countEl = document.getElementById('idea-comment-count-' + ideeId);
+  if (countEl) countEl.textContent = parseInt(countEl.textContent, 10) + 1;
 }
 window.addComment = addComment;
 

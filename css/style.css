@@ -596,9 +596,16 @@ body {
 .idea-like-btn.liked { color: #E84528; }
 .idea-like-btn.liked svg { fill: #E84528; stroke: #E84528; }
 .idea-comments { margin-top: 10px; padding-top: 8px; border-top: 1px solid #E5E7EB; }
-.comment { padding: 5px 0; font-size: .84rem; }
-.comment-author { font-weight: 700; color: #1F2937; margin-right: 6px; }
-.comment-text { color: #6B7280; }
+.comment { padding: 5px 0; font-size: .84rem; display: flex; align-items: flex-start; gap: 6px; }
+.comment-author { font-weight: 700; color: #1F2937; flex-shrink: 0; }
+.comment-text { color: #6B7280; flex: 1; min-width: 0; }
+.comment-delete {
+  background: none; border: none; padding: 2px 4px; cursor: pointer;
+  color: #9CA3AF; opacity: .55; transition: opacity .15s, color .15s;
+  flex-shrink: 0; line-height: 1; border-radius: 4px;
+}
+.comment-delete:hover { opacity: 1; color: #DC2626; }
+.comment-delete:active { transform: scale(.92); }
 .comment-form { display: flex; gap: 8px; margin-top: 10px; }
 .comment-input {
   flex: 1; padding: 8px 12px; border: 1.5px solid #E5E7EB;
