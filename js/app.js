@@ -281,7 +281,7 @@ async function showSetPasswordScreen() {
 
     errorEl.classList.add('hidden');
     if (!prenom || !nom) {
-      errorEl.textContent = 'Merci de renseigner votre prénom et votre nom.';
+      errorEl.textContent = 'Merci de renseigner votre prénom et le nom de votre entreprise.';
       errorEl.classList.remove('hidden');
       return;
     }
