@@ -372,6 +372,23 @@ async function initAuth() {
     }
   }
 
+  // Scanner-safe flow: the email template uses ?token_hash=xxx&type=invite.
+  // Token hashes don't grant access on their own; consuming them requires a
+  // POST via verifyOtp from JS. Email security scanners only do GETs, so
+  // pre-fetching the link no longer burns the invitation.
+  const tokenHash = searchParams.get('token_hash');
+  if (tokenHash && fromUrl) {
+    localStorage.setItem(PWD_SETUP_FLAG, '1');
+    const { error: verifyErr } = await sb.auth.verifyOtp({ token_hash: tokenHash, type: urlType });
+    history.replaceState(null, '', window.location.pathname);
+    if (verifyErr) {
+      localStorage.removeItem(PWD_SETUP_FLAG);
+      pendingErrorMsg = 'Le lien d\'invitation a expiré ou a déjà été utilisé. Demandez à un administrateur de la PAF de vous renvoyer une invitation.';
+    }
+    // On success the SDK fires SIGNED_IN, which the listener below routes
+    // to the set-password screen via the PWD_SETUP_FLAG.
+  }
+
   // Persist the flag so it survives any reload (e.g. SW update banner click)
   // before the user actually sets the password.
   if (fromUrl) {
