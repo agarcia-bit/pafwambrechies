@@ -1,7 +1,8 @@
 // Service Worker - PAF Wambrechies
 // Cache-first strategy for all static assets + Push notifications
 
-const CACHE_NAME = 'paf-wambrechies-v5';
+const CACHE_NAME = 'paf-wambrechies-v9';
+const IMAGE_CACHE_NAME = 'paf-images-v1';
 
 const ASSETS_TO_CACHE = [
   '/',
@@ -11,7 +12,8 @@ const ASSETS_TO_CACHE = [
   '/js/app.js',
   '/icons/icon.svg',
   '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  '/icons/icon-512.png',
+  '/images/login-bg.png'
 ];
 
 // ── Install: pre-cache all static assets ────────────────────────────────────
@@ -39,7 +41,7 @@ self.addEventListener('activate', event => {
     caches.keys().then(cacheNames =>
       Promise.all(
         cacheNames
-          .filter(name => name !== CACHE_NAME)
+          .filter(name => name !== CACHE_NAME && name !== IMAGE_CACHE_NAME)
           .map(name => {
             console.log('[SW] Deleting old cache:', name);
             return caches.delete(name);
@@ -53,10 +55,30 @@ self.addEventListener('activate', event => {
   );
 });
 
-// ── Fetch: cache-first, fallback to network ──────────────────────────────────
+// ── Fetch: cache-first for static assets, network-only for everything else ──
 self.addEventListener('fetch', event => {
-  // Only handle GET requests and same-origin / cdn requests
   if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+
+  // Supabase Storage public images: cache-first with no background refresh.
+  // Photo paths embed a timestamp + random suffix, so a new upload yields a
+  // brand-new URL — cached entries are safe to keep indefinitely.
+  if (url.pathname.startsWith('/storage/v1/object/public/')) {
+    event.respondWith(
+      caches.open(IMAGE_CACHE_NAME).then(cache =>
+        cache.match(event.request).then(hit => hit || fetch(event.request).then(res => {
+          if (res && res.status === 200) cache.put(event.request, res.clone());
+          return res;
+        }))
+      )
+    );
+    return;
+  }
+
+  // Don't cache anything else cross-origin (Supabase REST API, CDNs, …).
+  // Caching API responses caused stale data after edits.
+  if (url.origin !== self.location.origin) return;
 
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {

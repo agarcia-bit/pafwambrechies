@@ -182,8 +182,13 @@ function showUpdateBanner() {
 }
 
 if ('serviceWorker' in navigator) {
+  // controllerchange also fires the very first time a SW takes control of an
+  // uncontrolled page (initial install) — that's not a real "update", so skip
+  // the banner in that case to avoid confusing first-time visitors (e.g. users
+  // arriving via an invitation link).
+  const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    showUpdateBanner();
+    if (hadController) showUpdateBanner();
   });
 }
 
@@ -233,7 +238,63 @@ function showToast(msg, type) {
    ============================================================ */
 function showAuthScreen() {
   document.getElementById('auth-screen').classList.remove('hidden');
+  document.getElementById('set-password-screen').classList.add('hidden');
   document.getElementById('app').classList.add('hidden');
+}
+
+const PWD_SETUP_FLAG = 'paf_needs_password_setup';
+let setPasswordFormBound = false;
+
+function showSetPasswordScreen() {
+  document.getElementById('set-password-screen').classList.remove('hidden');
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('app').classList.add('hidden');
+
+  if (setPasswordFormBound) return;
+  setPasswordFormBound = true;
+
+  const form    = document.getElementById('set-password-form');
+  const errorEl = document.getElementById('set-password-error');
+  const btn     = document.getElementById('set-password-submit');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const pwd  = document.getElementById('new-password').value;
+    const pwd2 = document.getElementById('new-password-confirm').value;
+
+    errorEl.classList.add('hidden');
+    if (pwd.length < 8) {
+      errorEl.textContent = 'Le mot de passe doit contenir au moins 8 caractères.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    if (pwd !== pwd2) {
+      errorEl.textContent = 'Les mots de passe ne correspondent pas.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Enregistrement…';
+
+    const { error } = await sb.auth.updateUser({ password: pwd });
+
+    if (error) {
+      errorEl.textContent = 'Erreur : ' + error.message;
+      errorEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Créer mon mot de passe';
+    } else {
+      localStorage.removeItem(PWD_SETUP_FLAG);
+      history.replaceState(null, '', window.location.pathname);
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        document.getElementById('set-password-screen').classList.add('hidden');
+        showApp();
+      }
+    }
+  });
 }
 
 async function loadProfile() {
@@ -255,24 +316,59 @@ async function showApp() {
 }
 
 async function initAuth() {
+  // Detect invite/recovery token in hash (#type=invite) or query (?type=invite).
+  const hashParams   = new URLSearchParams(window.location.hash.slice(1));
+  const searchParams = new URLSearchParams(window.location.search);
+  const urlType      = hashParams.get('type') || searchParams.get('type');
+  const fromUrl      = urlType === 'invite' || urlType === 'recovery';
+
+  // Persist the flag so it survives any reload (e.g. SW update banner click)
+  // before the user actually sets the password.
+  if (fromUrl) {
+    localStorage.setItem(PWD_SETUP_FLAG, '1');
+  }
+  const needsPassword = fromUrl || localStorage.getItem(PWD_SETUP_FLAG) === '1';
+
+  // Set up ongoing auth state listener
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      localStorage.setItem(PWD_SETUP_FLAG, '1');
+      showSetPasswordScreen();
+      return;
+    }
+    if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      appInitialized = false;
+      localStorage.removeItem(PWD_SETUP_FLAG);
+      showAuthScreen();
+      return;
+    }
+    if (event === 'SIGNED_IN' && session) {
+      if (localStorage.getItem(PWD_SETUP_FLAG) === '1') {
+        showSetPasswordScreen();
+      } else {
+        currentUser = session.user;
+        showApp();
+      }
+    }
+  });
+
+  // Check current session
   const { data: { session } } = await sb.auth.getSession();
+
+  if (needsPassword) {
+    // Token already processed by SDK → show set-password screen
+    if (session) showSetPasswordScreen();
+    // else: onAuthStateChange will fire SIGNED_IN when token is processed
+    return;
+  }
+
   if (session) {
     currentUser = session.user;
     showApp();
   } else {
     showAuthScreen();
   }
-
-  sb.auth.onAuthStateChange((event, session) => {
-    if (session) {
-      currentUser = session.user;
-      showApp();
-    } else {
-      currentUser = null;
-      appInitialized = false;
-      showAuthScreen();
-    }
-  });
 
   const form = document.getElementById('auth-form');
   form.addEventListener('submit', async (e) => {
@@ -306,6 +402,7 @@ async function initAuth() {
 }
 
 async function logout() {
+  localStorage.removeItem(PWD_SETUP_FLAG);
   await sb.auth.signOut();
   appInitialized = false;
 }
@@ -352,12 +449,13 @@ const ACTU_CAT_CLASS = {
   'Infos pratiques': 'badge-cat-infos',
   'Événement':    'badge-cat-event',
   'Partenaire':   'badge-cat-partenaire',
+  'Membres':      'badge-cat-membres',
 };
 function actuBadgeClass(cat) {
   return ACTU_CAT_CLASS[cat] || 'badge-cat-default';
 }
 
-const ACTU_CATS = ['Tous', 'Actu Asso', 'Infos pratiques', 'Événement'];
+const ACTU_CATS = ['Tous', 'Actu Asso', 'Infos pratiques', 'Événement', 'Membres'];
 const ACTUS_PAGE_SIZE = 10;
 let actuFilter  = 'Tous';
 let actuData    = [];
@@ -1134,8 +1232,7 @@ function renderUpcomingEvents() {
     .filter(ev => {
       const [y, m, d] = ev.date.split('-').map(Number);
       return new Date(y, m - 1, d) >= new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    })
-    .slice(0, 5);
+    });
 
   if (!upcoming.length) {
     container.innerHTML = '<div class="empty-state">Aucun événement à venir.</div>';
@@ -1353,6 +1450,7 @@ async function renderAdminActus(el) {
             <option value="Actu Asso">Actu Asso</option>
             <option value="Infos pratiques">Infos pratiques</option>
             <option value="Événement">Événement</option>
+            <option value="Membres">Membres</option>
           </select>
         </div>
         <div class="form-group"><label>Contenu</label><textarea id="actu-contenu" rows="4"></textarea></div>

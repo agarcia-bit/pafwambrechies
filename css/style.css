@@ -174,6 +174,7 @@ body {
 .badge-cat-infos    { background: #ECFDF5; color: #065F46; }
 .badge-cat-event    { background: #FFF7ED; color: #9A3412; }
 .badge-cat-partenaire { background: #FDF4FF; color: #7E22CE; }
+.badge-cat-membres  { background: #FFF0F6; color: #9D174D; }
 .badge-cat-default  { background: #F3F4F6; color: var(--text-muted); }
 
 /* ── Actus ──────────────────────────────────────────────────────────────── */
@@ -458,7 +459,7 @@ body {
   height: calc(var(--nav-height) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
   background: var(--card); border-top: 1px solid var(--border);
-  display: grid; grid-template-columns: repeat(5, 1fr);
+  display: grid; grid-template-columns: repeat(6, 1fr);
   box-shadow: 0 -2px 12px rgba(0,0,0,.08); z-index: 200;
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
@@ -467,13 +468,20 @@ body {
 .nav-item {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   background: none; border: none; cursor: pointer;
-  color: var(--text-muted); font-size: .65rem; font-weight: 600; letter-spacing: .02em;
-  padding: 6px 2px; transition: color .15s, transform .1s;
+  color: var(--text-muted); font-size: .62rem; font-weight: 600; letter-spacing: .01em;
+  padding: 6px 1px; transition: color .15s, transform .1s;
   -webkit-tap-highlight-color: transparent; font-family: inherit;
+  min-width: 0;
+}
+.nav-item span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .nav-item.active { color: var(--accent); }
 .nav-item:active { transform: scale(.92); }
-.nav-icon { width: 22px; height: 22px; transition: stroke-width .15s; }
+.nav-icon { width: 21px; height: 21px; transition: stroke-width .15s; }
 .nav-item.active .nav-icon { stroke-width: 2.2; }
 
 /* ── Utilities ────────────────────────────────────────────────────────────── */
@@ -482,21 +490,33 @@ body {
 /* ── Auth screen ──────────────────────────────────────────────────────────── */
 .auth-screen {
   min-height: 100dvh; display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(160deg, #E84528 0%, #C43520 60%, #A02818 100%);
+  background: url('/images/login-bg.png') center center / cover no-repeat;
   padding: 24px 16px;
+  position: relative;
+}
+.auth-screen::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.18);
 }
 .auth-card {
-  background: white; border-radius: 20px; padding: 32px 24px;
-  width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  background: rgba(255,255,255,.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 20px; padding: 32px 24px;
+  width: 100%; max-width: 360px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.2);
+  position: relative; z-index: 1;
+  border: 1px solid rgba(255,255,255,.6);
 }
 .auth-logo { display: flex; justify-content: center; margin-bottom: 16px; }
 .auth-logo img { border-radius: 12px; }
-.auth-sub { font-size: .85rem; color: #6B7280; text-align: center; margin-bottom: 28px; }
+.auth-sub { font-size: .85rem; color: #1F2937; font-weight: 600; text-align: center; margin-bottom: 28px; text-shadow: 0 1px 3px rgba(255,255,255,.5); }
 .auth-error {
   background: #FEF2F2; color: #DC2626; border-radius: 8px;
   padding: 10px 12px; font-size: .85rem; margin-top: 10px; text-align: center;
 }
-.auth-footer { font-size: .75rem; color: #9CA3AF; text-align: center; margin-top: 20px; }
+.auth-footer { font-size: .75rem; color: #374151; font-weight: 500; text-align: center; margin-top: 20px; text-shadow: 0 1px 3px rgba(255,255,255,.5); }
 .auth-card .btn-primary { background: var(--accent); }
 
 /* ── Header right buttons ─────────────────────────────────────────────────── */
@@ -602,7 +622,7 @@ body {
 .add-to-cal-btn:hover { background: var(--primary-light); opacity: .85; }
 
 /* ── Admin ────────────────────────────────────────────────────────────────── */
-.bottom-nav.admin-mode { grid-template-columns: repeat(6, 1fr); }
+.bottom-nav.admin-mode { grid-template-columns: repeat(7, 1fr); }
 .admin-tabs {
   display: flex; gap: 6px; overflow-x: auto;
   padding-bottom: 8px; margin-bottom: 12px; scrollbar-width: none;
