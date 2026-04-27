@@ -233,7 +233,57 @@ function showToast(msg, type) {
    ============================================================ */
 function showAuthScreen() {
   document.getElementById('auth-screen').classList.remove('hidden');
+  document.getElementById('set-password-screen').classList.add('hidden');
   document.getElementById('app').classList.add('hidden');
+}
+
+function showSetPasswordScreen() {
+  document.getElementById('set-password-screen').classList.remove('hidden');
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('app').classList.add('hidden');
+
+  const form    = document.getElementById('set-password-form');
+  const errorEl = document.getElementById('set-password-error');
+  const btn     = document.getElementById('set-password-submit');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const pwd  = document.getElementById('new-password').value;
+    const pwd2 = document.getElementById('new-password-confirm').value;
+
+    errorEl.classList.add('hidden');
+    if (pwd.length < 8) {
+      errorEl.textContent = 'Le mot de passe doit contenir au moins 8 caractères.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    if (pwd !== pwd2) {
+      errorEl.textContent = 'Les mots de passe ne correspondent pas.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Enregistrement…';
+
+    const { error } = await sb.auth.updateUser({ password: pwd });
+
+    if (error) {
+      errorEl.textContent = 'Erreur : ' + error.message;
+      errorEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Créer mon mot de passe';
+    } else {
+      // Clear hash and go to app
+      history.replaceState(null, '', window.location.pathname);
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        document.getElementById('set-password-screen').classList.add('hidden');
+        showApp();
+      }
+    }
+  });
 }
 
 async function loadProfile() {
@@ -255,6 +305,18 @@ async function showApp() {
 }
 
 async function initAuth() {
+  // Detect invite / password-reset tokens in URL hash
+  const hash = window.location.hash;
+  const isInvite   = hash.includes('type=invite');
+  const isRecovery = hash.includes('type=recovery');
+
+  if (isInvite || isRecovery) {
+    // Supabase SDK picks up the token automatically; wait for session
+    await sb.auth.getSession();
+    showSetPasswordScreen();
+    return;
+  }
+
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     currentUser = session.user;
@@ -264,6 +326,7 @@ async function initAuth() {
   }
 
   sb.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY' || event === 'USER_UPDATED') return;
     if (session) {
       currentUser = session.user;
       showApp();
