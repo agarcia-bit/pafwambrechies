@@ -305,37 +305,50 @@ async function showApp() {
 }
 
 async function initAuth() {
-  // Detect invite / password-reset tokens in URL hash
-  const hash = window.location.hash;
-  const isInvite   = hash.includes('type=invite');
-  const isRecovery = hash.includes('type=recovery');
+  // Detect invite/recovery token in both hash (#type=invite) and query (?type=invite)
+  const hashParams   = new URLSearchParams(window.location.hash.slice(1));
+  const searchParams = new URLSearchParams(window.location.search);
+  const urlType      = hashParams.get('type') || searchParams.get('type');
+  const needsPassword = urlType === 'invite' || urlType === 'recovery';
 
-  if (isInvite || isRecovery) {
-    // Supabase SDK picks up the token automatically; wait for session
-    await sb.auth.getSession();
-    showSetPasswordScreen();
+  // Set up ongoing auth state listener
+  sb.auth.onAuthStateChange((event, session) => {
+    if (needsPassword && event === 'SIGNED_IN') {
+      showSetPasswordScreen();
+      return;
+    }
+    if (event === 'PASSWORD_RECOVERY') {
+      showSetPasswordScreen();
+      return;
+    }
+    if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      appInitialized = false;
+      showAuthScreen();
+      return;
+    }
+    if (event === 'SIGNED_IN' && session && !needsPassword) {
+      currentUser = session.user;
+      showApp();
+    }
+  });
+
+  // Check current session
+  const { data: { session } } = await sb.auth.getSession();
+
+  if (needsPassword) {
+    // Token already processed by SDK → show set-password screen
+    if (session) showSetPasswordScreen();
+    // else: onAuthStateChange will fire SIGNED_IN when token is processed
     return;
   }
 
-  const { data: { session } } = await sb.auth.getSession();
   if (session) {
     currentUser = session.user;
     showApp();
   } else {
     showAuthScreen();
   }
-
-  sb.auth.onAuthStateChange((event, session) => {
-    if (event === 'PASSWORD_RECOVERY' || event === 'USER_UPDATED') return;
-    if (session) {
-      currentUser = session.user;
-      showApp();
-    } else {
-      currentUser = null;
-      appInitialized = false;
-      showAuthScreen();
-    }
-  });
 
   const form = document.getElementById('auth-form');
   form.addEventListener('submit', async (e) => {
