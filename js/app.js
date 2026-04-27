@@ -352,12 +352,13 @@ const ACTU_CAT_CLASS = {
   'Infos pratiques': 'badge-cat-infos',
   'Événement':    'badge-cat-event',
   'Partenaire':   'badge-cat-partenaire',
+  'Membres':      'badge-cat-membres',
 };
 function actuBadgeClass(cat) {
   return ACTU_CAT_CLASS[cat] || 'badge-cat-default';
 }
 
-const ACTU_CATS = ['Tous', 'Actu Asso', 'Infos pratiques', 'Événement'];
+const ACTU_CATS = ['Tous', 'Actu Asso', 'Infos pratiques', 'Événement', 'Membres'];
 const ACTUS_PAGE_SIZE = 10;
 let actuFilter  = 'Tous';
 let actuData    = [];
@@ -1352,6 +1353,7 @@ async function renderAdminActus(el) {
             <option value="Actu Asso">Actu Asso</option>
             <option value="Infos pratiques">Infos pratiques</option>
             <option value="Événement">Événement</option>
+            <option value="Membres">Membres</option>
           </select>
         </div>
         <div class="form-group"><label>Contenu</label><textarea id="actu-contenu" rows="4"></textarea></div>
