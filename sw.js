@@ -1,7 +1,8 @@
 // Service Worker - PAF Wambrechies
 // Cache-first strategy for all static assets + Push notifications
 
-const CACHE_NAME = 'paf-wambrechies-v8';
+const CACHE_NAME = 'paf-wambrechies-v9';
+const IMAGE_CACHE_NAME = 'paf-images-v1';
 
 const ASSETS_TO_CACHE = [
   '/',
@@ -40,7 +41,7 @@ self.addEventListener('activate', event => {
     caches.keys().then(cacheNames =>
       Promise.all(
         cacheNames
-          .filter(name => name !== CACHE_NAME)
+          .filter(name => name !== CACHE_NAME && name !== IMAGE_CACHE_NAME)
           .map(name => {
             console.log('[SW] Deleting old cache:', name);
             return caches.delete(name);
@@ -58,9 +59,25 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
-  // Never cache cross-origin requests (Supabase API/Storage, CDNs, …).
-  // Caching API responses caused stale data to appear after edits.
   const url = new URL(event.request.url);
+
+  // Supabase Storage public images: cache-first with no background refresh.
+  // Photo paths embed a timestamp + random suffix, so a new upload yields a
+  // brand-new URL — cached entries are safe to keep indefinitely.
+  if (url.pathname.startsWith('/storage/v1/object/public/')) {
+    event.respondWith(
+      caches.open(IMAGE_CACHE_NAME).then(cache =>
+        cache.match(event.request).then(hit => hit || fetch(event.request).then(res => {
+          if (res && res.status === 200) cache.put(event.request, res.clone());
+          return res;
+        }))
+      )
+    );
+    return;
+  }
+
+  // Don't cache anything else cross-origin (Supabase REST API, CDNs, …).
+  // Caching API responses caused stale data after edits.
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
