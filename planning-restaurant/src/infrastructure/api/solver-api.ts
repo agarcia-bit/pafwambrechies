@@ -55,7 +55,7 @@ export async function callKitchenSolver(request: unknown): Promise<SolverRespons
 
 export async function checkSolverHealth(): Promise<boolean> {
   try {
-    const res = await fetch(`${SOLVER_URL}/health`, { signal: AbortSignal.timeout(3000) })
+    const res = await fetch(`${SOLVER_URL}/health`, { signal: AbortSignal.timeout(60000) })
     return res.ok
   } catch {
     return false

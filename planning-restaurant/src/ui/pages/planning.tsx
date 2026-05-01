@@ -162,13 +162,22 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
         setConstraintsError('Certaines contraintes n\'ont pas pu être chargées — le planning risque d\'être incomplet.')
       }
     })
-    // Check solver availability
-    checkSolverHealth().then((ok) => {
-      if (cancelled) return
-      setSolverAvailable(ok)
-      if (!ok) setSolverMode('local')
-    })
-    return () => { cancelled = true }
+    // Check solver availability — retry until ready or user gives up
+    // eslint-disable-next-line prefer-const
+    let retryTimer: ReturnType<typeof setInterval>
+    function tryHealth() {
+      checkSolverHealth().then((ok) => {
+        if (cancelled) return
+        setSolverAvailable(ok)
+        if (ok) {
+          setSolverMode('cpsat')
+          clearInterval(retryTimer)
+        }
+      })
+    }
+    tryHealth()
+    retryTimer = setInterval(tryHealth, 15000) // retry toutes les 15s
+    return () => { cancelled = true; clearInterval(retryTimer) }
   }, [loadEmployees, loadRoles, loadTemplates, loadForecasts, loadTenant, tenantId])
 
   const activeEmployees = employees.filter((e) => e.active && e.department === 'salle')
@@ -964,6 +973,28 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           <span>Les horaires fixes des managers n'ont pas été chargés. Le planning sera généré sans eux (0h). Rechargez la page avant de générer.</span>
         </div>
       )}
+
+      {/* Indicateur solveur */}
+      <div className="flex items-center justify-center gap-2 text-xs">
+        {solverAvailable === null && (
+          <span className="flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-slate-500">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
+            Solveur CP-SAT : connexion en cours…
+          </span>
+        )}
+        {solverAvailable === true && (
+          <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            Solveur CP-SAT prêt
+          </span>
+        )}
+        {solverAvailable === false && (
+          <span className="flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-red-600">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-red-400" />
+            Solveur CP-SAT indisponible — fallback local (qualité réduite) — reconnexion auto…
+          </span>
+        )}
+      </div>
 
       {/* Bouton générer + enregistrer + exporter */}
       <div ref={generateRef} className="flex items-center justify-center gap-3">
