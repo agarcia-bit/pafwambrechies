@@ -16,10 +16,11 @@ export function RolesPage() {
   const [newRoleColor, setNewRoleColor] = useState('#3b82f6')
 
   useEffect(() => {
-    // Charge uniquement si pas encore chargé (évite le flicker au changement de page)
-    if (!rolesLoaded) load()
-    if (!employeesLoaded) loadEmployees()
-  }, [load, loadEmployees, rolesLoaded, employeesLoaded])
+    // Toujours refetch à l'arrivée sur la page (les stores conservent les
+    // données précédentes pendant le refetch, donc pas de flicker).
+    load()
+    loadEmployees()
+  }, [load, loadEmployees])
 
   const activeEmployees = employees.filter((e) => e.active)
   const bothLoaded = rolesLoaded && employeesLoaded
