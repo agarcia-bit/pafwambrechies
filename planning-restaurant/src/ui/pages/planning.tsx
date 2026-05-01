@@ -977,21 +977,21 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
       {/* Indicateur solveur */}
       <div className="flex items-center justify-center gap-2 text-xs">
         {solverAvailable === null && (
-          <span className="flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-slate-500">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
-            Solveur CP-SAT : connexion en cours…
+          <span className="flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-amber-700">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+            Connexion en cours à l'algorythme Planning, patientez quelques secondes...
           </span>
         )}
         {solverAvailable === true && (
           <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            Solveur CP-SAT prêt
+            Connecté à l'algorythme, vous pouvez lancer la génération
           </span>
         )}
         {solverAvailable === false && (
           <span className="flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-red-600">
             <span className="h-2 w-2 animate-pulse rounded-full bg-red-400" />
-            Solveur CP-SAT indisponible — fallback local (qualité réduite) — reconnexion auto…
+            Algorythme indisponible, réessayer plus tard
           </span>
         )}
       </div>
