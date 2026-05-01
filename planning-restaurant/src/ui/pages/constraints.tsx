@@ -26,6 +26,7 @@ export function ConstraintsPage() {
   const [conditionals, setConditionals] = useState<ConditionalAvailability[]>([])
   const [managerSchedules, setManagerSchedules] = useState<ManagerFixedSchedule[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState('')
 
   // Unavailability form
   const [newType, setNewType] = useState<'fixed' | 'punctual'>('fixed')
@@ -48,19 +49,38 @@ export function ConstraintsPage() {
 
   async function loadConstraints(empId: string) {
     setLoading(true)
-    try {
-      const [ua, ms, ca] = await Promise.all([
-        fetchUnavailabilities(empId),
-        fetchManagerSchedules(empId),
-        fetchConditionalAvailabilities(empId),
+    setLoadError('')
+
+    // Helper: race chaque fetch contre un timeout 10s pour éviter les blocages
+    function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+      return Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error(`Timeout: ${label}`)), 10000),
+        ),
       ])
-      setUnavailabilities(ua)
-      setManagerSchedules(ms)
-      setConditionals(ca)
-    } catch {
-      // silently fail if no connection
     }
-    setLoading(false)
+
+    try {
+      // allSettled pour ne pas tout perdre si un seul fetch échoue
+      const results = await Promise.allSettled([
+        withTimeout(fetchUnavailabilities(empId), 'unavailabilities'),
+        withTimeout(fetchManagerSchedules(empId), 'manager_schedules'),
+        withTimeout(fetchConditionalAvailabilities(empId), 'conditional_availabilities'),
+      ])
+      const [uaRes, msRes, caRes] = results
+      setUnavailabilities(uaRes.status === 'fulfilled' ? uaRes.value : [])
+      setManagerSchedules(msRes.status === 'fulfilled' ? msRes.value : [])
+      setConditionals(caRes.status === 'fulfilled' ? caRes.value : [])
+      const failed = results.filter((r) => r.status === 'rejected')
+      if (failed.length > 0) {
+        setLoadError('Certaines données n\'ont pas pu être chargées. Réessayer ?')
+      }
+    } catch (e) {
+      setLoadError((e as Error).message || 'Erreur inconnue')
+    } finally {
+      setLoading(false)
+    }
   }
 
   function handleSelectEmployee(empId: string) {
@@ -200,6 +220,18 @@ export function ConstraintsPage() {
       </Card>
 
       {selectedEmployee && loading && <p className="text-muted-foreground">Chargement...</p>}
+
+      {selectedEmployee && !loading && loadError && (
+        <div className="flex items-center justify-between rounded-lg border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive">
+          <span>{loadError}</span>
+          <button
+            onClick={() => loadConstraints(selectedEmployee)}
+            className="rounded-md bg-destructive px-3 py-1 text-xs font-medium text-white hover:bg-destructive/90"
+          >
+            Réessayer
+          </button>
+        </div>
+      )}
 
       {/* Horaires fixes manager */}
       {selectedEmp?.isManager && selectedEmployee && !loading && (
