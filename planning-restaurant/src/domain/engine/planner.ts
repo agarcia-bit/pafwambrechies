@@ -107,6 +107,25 @@ export function generatePlanning(input: PlannerInput): PlanningReport {
     closingTimeSunday: input.tenant.closingTimeSunday,
   })
 
+  // Recalcule les warnings "sous le contrat" depuis l'état FINAL des entries
+  // (les warnings intermédiaires émis pendant l'algorithme peuvent devenir
+  // obsolètes après les phases d'upgrade/délestage suivantes).
+  const finalUnderContractWarnings: string[] = []
+  for (const emp of input.employees.filter((e) => e.active && !e.isManager)) {
+    const totalHours = state.entries
+      .filter((e) => e.employeeId === emp.id)
+      .reduce((sum, e) => sum + e.effectiveHours, 0)
+    if (totalHours < emp.weeklyHours) {
+      const delta = emp.weeklyHours - totalHours
+      finalUnderContractWarnings.push(
+        `${emp.firstName} : ${delta.toFixed(1)}h sous le contrat (${emp.weeklyHours}h)`,
+      )
+    }
+  }
+  // Retire les anciens warnings "sous le contrat" et remplace par les recalculés
+  state.warnings = state.warnings.filter((w) => !w.includes('sous le contrat'))
+  state.warnings.push(...finalUnderContractWarnings)
+
   if (isShortage) {
     state.warnings.unshift(`Délestage activé : budget total ${totalBudget.toFixed(1)}h > disponible ${totalAvailable.toFixed(1)}h`)
   }

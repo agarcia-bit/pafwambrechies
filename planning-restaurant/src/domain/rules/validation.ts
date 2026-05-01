@@ -144,6 +144,18 @@ export function validatePlanning(ctx: ValidationContext): RuleViolation[] {
         message: `${dayName} : ${closingCheck}`,
       })
     }
+
+    // 8. Couverture ouverture (au moins 1 personne à 9h30 ou avant)
+    const hasOpener = dayEntries.some((e) => e.startTime <= 9.5)
+    if (!hasOpener) {
+      violations.push({
+        rule: 'opening_coverage',
+        severity: 'blocking',
+        employeeId: null,
+        dayOfWeek: day,
+        message: `${dayName} : aucune personne à l'ouverture (≤ 9h30)`,
+      })
+    }
   }
 
   return violations
