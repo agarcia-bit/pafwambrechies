@@ -110,20 +110,24 @@ export function generatePlanning(input: PlannerInput): PlanningReport {
   // Recalcule les warnings "sous le contrat" depuis l'état FINAL des entries
   // (les warnings intermédiaires émis pendant l'algorithme peuvent devenir
   // obsolètes après les phases d'upgrade/délestage suivantes).
+  // Ne signale QUE si on est en dessous de la borne min (contrat - modulation).
+  // Tant que c'est dans la tranche autorisée [contract - modulation, contract + modulation],
+  // c'est OK : pas de warning.
   const finalUnderContractWarnings: string[] = []
   for (const emp of input.employees.filter((e) => e.active && !e.isManager)) {
     const totalHours = state.entries
       .filter((e) => e.employeeId === emp.id)
       .reduce((sum, e) => sum + e.effectiveHours, 0)
-    if (totalHours < emp.weeklyHours) {
-      const delta = emp.weeklyHours - totalHours
+    const minBound = emp.weeklyHours - emp.modulationRange
+    if (totalHours < minBound) {
+      const delta = minBound - totalHours
       finalUnderContractWarnings.push(
-        `${emp.firstName} : ${delta.toFixed(1)}h sous le contrat (${emp.weeklyHours}h)`,
+        `${emp.firstName} : ${delta.toFixed(1)}h sous la borne min (${minBound}h, contrat ${emp.weeklyHours}h ±${emp.modulationRange}h)`,
       )
     }
   }
   // Retire les anciens warnings "sous le contrat" et remplace par les recalculés
-  state.warnings = state.warnings.filter((w) => !w.includes('sous le contrat'))
+  state.warnings = state.warnings.filter((w) => !w.includes('sous le contrat') && !w.includes('sous la borne'))
   state.warnings.push(...finalUnderContractWarnings)
 
   if (isShortage) {
