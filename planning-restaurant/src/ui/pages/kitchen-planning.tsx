@@ -4,6 +4,7 @@ import { useShiftTemplateStore } from '@/store/shift-template-store'
 import { useForecastStore } from '@/store/forecast-store'
 import { useTenantStore } from '@/store/tenant-store'
 import { useAuthStore } from '@/store/auth-store'
+import { useCurrentPlanningStore } from '@/store/current-planning-store'
 import { Button, Card, CardContent } from '@/ui/components'
 import { callKitchenSolver } from '@/infrastructure/api/solver-api'
 import {
@@ -62,9 +63,20 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
   const { forecasts, load: loadForecasts } = useForecastStore()
   const { tenant, load: loadTenant } = useTenantStore()
   const { tenantId, user } = useAuthStore()
+  const { kitchenEntries, kitchenWeekISO, setKitchenEntries } = useCurrentPlanningStore()
 
-  const [weekStart, setWeekStart] = useState(getNextMonday())
-  const [entries, setEntries] = useState<KitchenEntry[]>([])
+  const [weekStart, setWeekStart] = useState(() => {
+    if (kitchenWeekISO) return new Date(kitchenWeekISO + 'T00:00:00')
+    return getNextMonday()
+  })
+  const [entries, setEntriesLocal] = useState<KitchenEntry[]>(kitchenEntries)
+  const setEntries = (e: KitchenEntry[] | ((prev: KitchenEntry[]) => KitchenEntry[])) => {
+    setEntriesLocal((prev) => {
+      const next = typeof e === 'function' ? (e as (p: KitchenEntry[]) => KitchenEntry[])(prev) : e
+      setKitchenEntries(next, formatISO(weekStart))
+      return next
+    })
+  }
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
   const [solverInfo, setSolverInfo] = useState('')

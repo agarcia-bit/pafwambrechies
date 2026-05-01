@@ -5,6 +5,7 @@ import { useShiftTemplateStore } from '@/store/shift-template-store'
 import { useForecastStore } from '@/store/forecast-store'
 import { useTenantStore } from '@/store/tenant-store'
 import { useAuthStore } from '@/store/auth-store'
+import { useCurrentPlanningStore } from '@/store/current-planning-store'
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/ui/components'
 import { PlanningGrid } from '@/ui/components/planning-grid'
 import { generatePlanning } from '@/domain/engine'
@@ -69,9 +70,20 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
   const { forecasts, load: loadForecasts } = useForecastStore()
   const { tenant, load: loadTenant } = useTenantStore()
   const { tenantId, user } = useAuthStore()
+  const { salleReport, salleWeekISO, setSalleReport } = useCurrentPlanningStore()
 
-  const [weekStart, setWeekStart] = useState(getNextMonday())
-  const [report, setReport] = useState<PlanningReport | null>(null)
+  const [weekStart, setWeekStart] = useState(() => {
+    // Si un planning non sauvegardé existe pour une semaine précédente, on
+    // restaure cette semaine pour que le rapport stocké soit cohérent.
+    if (salleWeekISO) return new Date(salleWeekISO + 'T00:00:00')
+    return getNextMonday()
+  })
+  const [report, setReportLocal] = useState<PlanningReport | null>(salleReport)
+  // Wrapper qui sync le state local et le store global
+  const setReport = (r: PlanningReport | null) => {
+    setReportLocal(r)
+    setSalleReport(r, formatISO(weekStart))
+  }
   const [generating, setGenerating] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
