@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useEmployeeStore } from '@/store/employee-store'
 import { Button, Select, Input, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
 import type { Unavailability, ManagerFixedSchedule, ConditionalAvailability } from '@/domain/models/constraint'
@@ -47,27 +47,24 @@ export function ConstraintsPage() {
   const activeEmployees = employees.filter((e) => e.active)
   const selectedEmp = activeEmployees.find((e) => e.id === selectedEmployee)
 
+  // ID de la requête courante pour annuler les résultats périmés si on
+  // change de salarié avant que le précédent ait chargé.
+  const loadRequestIdRef = useRef(0)
+
   async function loadConstraints(empId: string) {
+    const requestId = ++loadRequestIdRef.current
     setLoading(true)
     setLoadError('')
 
-    // Helper: race chaque fetch contre un timeout 10s pour éviter les blocages
-    function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
-      return Promise.race([
-        promise,
-        new Promise<T>((_, reject) =>
-          setTimeout(() => reject(new Error(`Timeout: ${label}`)), 10000),
-        ),
-      ])
-    }
-
     try {
-      // allSettled pour ne pas tout perdre si un seul fetch échoue
       const results = await Promise.allSettled([
-        withTimeout(fetchUnavailabilities(empId), 'unavailabilities'),
-        withTimeout(fetchManagerSchedules(empId), 'manager_schedules'),
-        withTimeout(fetchConditionalAvailabilities(empId), 'conditional_availabilities'),
+        fetchUnavailabilities(empId),
+        fetchManagerSchedules(empId),
+        fetchConditionalAvailabilities(empId),
       ])
+      // Si un autre salarié a été sélectionné entre-temps, ignore ces résultats
+      if (requestId !== loadRequestIdRef.current) return
+
       const [uaRes, msRes, caRes] = results
       setUnavailabilities(uaRes.status === 'fulfilled' ? uaRes.value : [])
       setManagerSchedules(msRes.status === 'fulfilled' ? msRes.value : [])
@@ -77,9 +74,10 @@ export function ConstraintsPage() {
         setLoadError('Certaines données n\'ont pas pu être chargées. Réessayer ?')
       }
     } catch (e) {
+      if (requestId !== loadRequestIdRef.current) return
       setLoadError((e as Error).message || 'Erreur inconnue')
     } finally {
-      setLoading(false)
+      if (requestId === loadRequestIdRef.current) setLoading(false)
     }
   }
 

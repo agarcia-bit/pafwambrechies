@@ -121,6 +121,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
   }
 
   useEffect(() => {
+    let cancelled = false
     loadEmployees()
     loadRoles()
     loadTemplates()
@@ -138,6 +139,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
       withTimeout(fetchManagerSchedules(), 'manager_schedules'),
       withTimeout(fetchConditionalAvailabilities(), 'conditional_availabilities'),
     ]).then((results) => {
+      if (cancelled) return
       const [uaRes, msRes, caRes] = results
       setUnavailabilities(uaRes.status === 'fulfilled' ? uaRes.value : [])
       setManagerSchedules(msRes.status === 'fulfilled' ? msRes.value : [])
@@ -150,9 +152,11 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
     })
     // Check solver availability
     checkSolverHealth().then((ok) => {
+      if (cancelled) return
       setSolverAvailable(ok)
       if (!ok) setSolverMode('local')
     })
+    return () => { cancelled = true }
   }, [loadEmployees, loadRoles, loadTemplates, loadForecasts, loadTenant, tenantId])
 
   const activeEmployees = employees.filter((e) => e.active && e.department === 'salle')
