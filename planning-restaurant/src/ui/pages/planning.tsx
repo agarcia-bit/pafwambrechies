@@ -83,6 +83,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
   const [managerSchedules, setManagerSchedules] = useState<ManagerFixedSchedule[]>([])
   const [conditionalAvailabilities, setConditionalAvailabilities] = useState<ConditionalAvailability[]>([])
   const [constraintsLoaded, setConstraintsLoaded] = useState(false)
+  const [constraintsError, setConstraintsError] = useState<string>('')
 
   // CA adjustments per day (% override) and min staff
   const [dayAdjustments, setDayAdjustments] = useState<Record<number, { percent: number; minMidi: number; minSoir: number; minFermeture: number }>>({})
@@ -125,16 +126,27 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
     loadTemplates()
     loadForecasts()
     if (tenantId) loadTenant(tenantId)
-    // Constraints: fetch inline to satisfy strict lint (no setState before async)
-    Promise.all([
-      fetchUnavailabilities().catch(() => [] as Unavailability[]),
-      fetchManagerSchedules().catch(() => [] as ManagerFixedSchedule[]),
-      fetchConditionalAvailabilities().catch(() => [] as ConditionalAvailability[]),
-    ]).then(([ua, ms, ca]) => {
-      setUnavailabilities(ua)
-      setManagerSchedules(ms)
-      setConditionalAvailabilities(ca)
+    // Constraints: fetch with timeout to avoid silent hangs
+    function withTimeout<T>(p: Promise<T>, label: string, ms = 10000): Promise<T> {
+      return Promise.race([
+        p,
+        new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`Timeout: ${label}`)), ms)),
+      ])
+    }
+    Promise.allSettled([
+      withTimeout(fetchUnavailabilities(), 'unavailabilities'),
+      withTimeout(fetchManagerSchedules(), 'manager_schedules'),
+      withTimeout(fetchConditionalAvailabilities(), 'conditional_availabilities'),
+    ]).then((results) => {
+      const [uaRes, msRes, caRes] = results
+      setUnavailabilities(uaRes.status === 'fulfilled' ? uaRes.value : [])
+      setManagerSchedules(msRes.status === 'fulfilled' ? msRes.value : [])
+      setConditionalAvailabilities(caRes.status === 'fulfilled' ? caRes.value : [])
       setConstraintsLoaded(true)
+      const failed = results.filter((r) => r.status === 'rejected')
+      if (failed.length > 0) {
+        setConstraintsError('Certaines contraintes n\'ont pas pu être chargées — le planning risque d\'être incomplet.')
+      }
     })
     // Check solver availability
     checkSolverHealth().then((ok) => {
@@ -914,6 +926,28 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           })()}
         </CardContent>
       </Card>
+
+      {/* Alertes pré-génération */}
+      {constraintsError && (
+        <div className="flex items-center justify-between rounded-lg border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={16} />
+            <span>{constraintsError}</span>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded-md bg-destructive px-3 py-1 text-xs font-medium text-white hover:bg-destructive/90"
+          >
+            Recharger
+          </button>
+        </div>
+      )}
+      {constraintsLoaded && activeEmployees.some((e) => e.isManager) && managerSchedules.length === 0 && (
+        <div className="flex items-center gap-2 rounded-lg border border-warning/50 bg-warning/5 p-3 text-sm text-warning">
+          <AlertTriangle size={16} />
+          <span>Les horaires fixes des managers n'ont pas été chargés. Le planning sera généré sans eux (0h). Rechargez la page avant de générer.</span>
+        </div>
+      )}
 
       {/* Bouton générer + enregistrer + exporter */}
       <div ref={generateRef} className="flex items-center justify-center gap-3">
