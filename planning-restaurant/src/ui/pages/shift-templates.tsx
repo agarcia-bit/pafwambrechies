@@ -22,6 +22,11 @@ const APPLICABILITY_OPTIONS = [
   { value: 'sunday', label: 'Dimanche' },
 ]
 
+const DEPARTMENT_OPTIONS = [
+  { value: 'salle', label: 'Salle' },
+  { value: 'cuisine', label: 'Cuisine' },
+]
+
 
 function formatDecimalTime(t: number): string {
   const h = Math.floor(t)
@@ -44,6 +49,7 @@ export function ShiftTemplatesPage() {
   const [meals, setMeals] = useState(0)
   const [baskets, setBaskets] = useState(0)
   const [applicability, setApplicability] = useState<DayApplicability>('tue_sat')
+  const [department, setDepartment] = useState<'salle' | 'cuisine'>('salle')
 
   useEffect(() => {
     load()
@@ -83,7 +89,7 @@ export function ShiftTemplatesPage() {
       baskets,
       applicability,
       sortOrder: templates.length,
-      department: 'salle' as const,
+      department,
     })
     setShowAddForm(false)
     resetForm()
@@ -99,14 +105,24 @@ export function ShiftTemplatesPage() {
     setMeals(0)
     setBaskets(0)
     setApplicability('tue_sat')
+    setDepartment('salle')
   }
 
-  // Group templates by applicability
-  const grouped = {
-    tue_sat: templates.filter((t) => t.applicability === 'tue_sat'),
-    sat_only: templates.filter((t) => t.applicability === 'sat_only'),
-    sunday: templates.filter((t) => t.applicability === 'sunday'),
+  // Group templates by department then by applicability
+  const groupedByDept = {
+    salle: {
+      tue_sat: templates.filter((t) => t.department === 'salle' && t.applicability === 'tue_sat'),
+      sat_only: templates.filter((t) => t.department === 'salle' && t.applicability === 'sat_only'),
+      sunday: templates.filter((t) => t.department === 'salle' && t.applicability === 'sunday'),
+    },
+    cuisine: {
+      tue_sat: templates.filter((t) => t.department === 'cuisine' && t.applicability === 'tue_sat'),
+      sat_only: templates.filter((t) => t.department === 'cuisine' && t.applicability === 'sat_only'),
+      sunday: templates.filter((t) => t.department === 'cuisine' && t.applicability === 'sunday'),
+    },
   }
+  const totalSalle = templates.filter((t) => t.department === 'salle').length
+  const totalCuisine = templates.filter((t) => t.department === 'cuisine').length
 
   return (
     <div className="flex flex-col gap-6">
@@ -126,57 +142,73 @@ export function ShiftTemplatesPage() {
 
       {loading && <p className="text-muted-foreground">Chargement...</p>}
 
-      {/* Tables par groupe */}
-      {Object.entries(grouped).map(([key, shifts]) =>
-        shifts.length > 0 ? (
-          <Card key={key}>
-            <CardHeader>
-              <CardTitle>{key === 'tue_sat' ? 'Mardi → Samedi' : key === 'sat_only' ? 'Samedi uniquement' : 'Dimanche'}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Code</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Libellé</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Type</th>
-                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">Début</th>
-                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">Fin</th>
-                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">H.eff</th>
-                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">Repas</th>
-                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">Paniers</th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {shifts.map((t) => (
-                      <tr key={t.id} className="border-b border-border hover:bg-muted/30">
-                        <td className="px-3 py-2 font-mono text-xs font-bold">{t.code}</td>
-                        <td className="px-3 py-2">{t.label}</td>
-                        <td className="px-3 py-2 capitalize">{t.category}</td>
-                        <td className="px-3 py-2 text-center">{formatDecimalTime(t.startTime)}</td>
-                        <td className="px-3 py-2 text-center">{formatDecimalTime(t.endTime)}</td>
-                        <td className="px-3 py-2 text-center font-bold">{t.effectiveHours}h</td>
-                        <td className="px-3 py-2 text-center">{t.meals}</td>
-                        <td className="px-3 py-2 text-center">{t.baskets}</td>
-                        <td className="px-3 py-2 text-right">
-                          <button
-                            onClick={() => { if (confirm(`Supprimer "${t.code}" ?`)) remove(t.id) }}
-                            className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        ) : null,
-      )}
+      {/* Tables par département puis par applicabilité */}
+      {(['salle', 'cuisine'] as const).map((dept) => {
+        const groups = groupedByDept[dept]
+        const total = dept === 'salle' ? totalSalle : totalCuisine
+        if (total === 0) return null
+        const isCuisine = dept === 'cuisine'
+        return (
+          <div key={dept} className="flex flex-col gap-3">
+            <h2 className={`flex items-center gap-2 text-lg font-bold ${isCuisine ? 'text-amber-700' : 'text-blue-700'}`}>
+              <span className={`inline-block h-3 w-3 rounded-full ${isCuisine ? 'bg-amber-500' : 'bg-blue-500'}`} />
+              {dept === 'salle' ? 'Salle' : 'Cuisine'} ({total})
+            </h2>
+            {Object.entries(groups).map(([key, shifts]) =>
+              shifts.length > 0 ? (
+                <Card key={`${dept}-${key}`} className={isCuisine ? 'border-amber-200/60' : 'border-blue-200/60'}>
+                  <CardHeader>
+                    <CardTitle className="text-base">
+                      {key === 'tue_sat' ? 'Mardi → Samedi' : key === 'sat_only' ? 'Samedi uniquement' : 'Dimanche'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse text-sm">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">Code</th>
+                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">Libellé</th>
+                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">Type</th>
+                            <th className="px-3 py-2 text-center font-medium text-muted-foreground">Début</th>
+                            <th className="px-3 py-2 text-center font-medium text-muted-foreground">Fin</th>
+                            <th className="px-3 py-2 text-center font-medium text-muted-foreground">H.eff</th>
+                            <th className="px-3 py-2 text-center font-medium text-muted-foreground">Repas</th>
+                            <th className="px-3 py-2 text-center font-medium text-muted-foreground">Paniers</th>
+                            <th className="px-3 py-2 text-right font-medium text-muted-foreground"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {shifts.map((t) => (
+                            <tr key={t.id} className="border-b border-border hover:bg-muted/30">
+                              <td className="px-3 py-2 font-mono text-xs font-bold">{t.code}</td>
+                              <td className="px-3 py-2">{t.label}</td>
+                              <td className="px-3 py-2 capitalize">{t.category}</td>
+                              <td className="px-3 py-2 text-center">{formatDecimalTime(t.startTime)}</td>
+                              <td className="px-3 py-2 text-center">{formatDecimalTime(t.endTime)}</td>
+                              <td className="px-3 py-2 text-center font-bold">{t.effectiveHours}h</td>
+                              <td className="px-3 py-2 text-center">{t.meals}</td>
+                              <td className="px-3 py-2 text-center">{t.baskets}</td>
+                              <td className="px-3 py-2 text-right">
+                                <button
+                                  onClick={() => { if (confirm(`Supprimer "${t.code}" ?`)) remove(t.id) }}
+                                  className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null,
+            )}
+          </div>
+        )
+      })}
 
       {templates.length === 0 && !loading && (
         <Card>
@@ -198,6 +230,19 @@ export function ShiftTemplatesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <Input id="code" label="Code" placeholder="SOIR" value={code} onChange={(e) => setCode(e.target.value)} required />
                 <Input id="label" label="Libellé" placeholder="Soir" value={label} onChange={(e) => setLabel(e.target.value)} required />
+              </div>
+              <div>
+                <Select
+                  id="department"
+                  label="Département (obligatoire)"
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value as 'salle' | 'cuisine')}
+                  options={DEPARTMENT_OPTIONS}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Salle : pour les serveurs, barmen, runners. Cuisine : pour les cuisiniers.
+                  Le créneau sera utilisé uniquement par le planning du département choisi.
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Select id="category" label="Type" value={category} onChange={(e) => setCategory(e.target.value as ShiftCategory)} options={CATEGORY_OPTIONS} />
