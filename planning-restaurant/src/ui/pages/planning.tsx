@@ -1002,7 +1002,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           size="lg"
           className="px-12"
           onClick={handleGenerate}
-          disabled={!allReady || generating}
+          disabled={!allReady || generating || solverAvailable === null}
         >
           <Play size={18} className="mr-2" />
           {generating ? (
