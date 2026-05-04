@@ -418,12 +418,41 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
     if penalties:
         model.minimize(sum(penalties))
 
-    # --- Solve ---
+    # --- Solve (multi-tentatives: relance si solution sous-optimale) ---
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 30.0
+    solver.parameters.max_time_in_seconds = 10.0
     solver.parameters.num_workers = 4
 
-    status = solver.solve(model)
+    best_status = None
+    best_objective = float('inf')
+    best_solver = solver
+    max_attempts = 3
+
+    for attempt in range(max_attempts):
+        if attempt > 0:
+            solver = cp_model.CpSolver()
+            solver.parameters.max_time_in_seconds = 10.0
+            solver.parameters.num_workers = 4
+            solver.parameters.random_seed = attempt * 42
+
+        status = solver.solve(model)
+        if status == cp_model.OPTIMAL:
+            best_solver = solver
+            best_status = status
+            break
+        if status == cp_model.FEASIBLE:
+            obj = solver.objective_value
+            if best_status is None or obj < best_objective:
+                best_objective = obj
+                best_solver = solver
+                best_status = status
+            if obj == 0:
+                break
+        elif best_status is None:
+            best_status = status
+
+    solver = best_solver
+    status = best_status
     solve_time = int((time.time() - start_time) * 1000)
 
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
