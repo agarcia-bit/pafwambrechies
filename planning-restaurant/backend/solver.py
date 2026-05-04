@@ -223,6 +223,10 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
                 penalties.append(var * weight)
 
     # 8. Closing coverage: weekday vs weekend (configurable via req)
+    # Track des shortfalls "violations visibles utilisateur"
+    # (ce qui apparaît dans le bloc rouge "Ajustement manuel nécessaire")
+    user_visible_shortfalls = []
+
     for day in working_days:
         min_closing = (
             req.min_closing_weekday if day < req.weekend_start_day
@@ -252,6 +256,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
             shortfall = model.new_int_var(0, needed, f"close_short_{day}")
             model.add(sum(closing_vars) + shortfall >= needed)
             penalties.append(shortfall * 50)
+            user_visible_shortfalls.append(shortfall)
 
     # 9. Continuous coverage ≥2 from 11h to closing
     for day in working_days:
@@ -281,6 +286,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
                 gap = model.new_int_var(0, needed, f"cov_gap_{day}_{h_idx}")
                 model.add(sum(present) + gap >= needed)
                 penalties.append(gap * 20)
+                user_visible_shortfalls.append(gap)
 
     # 9b. Manual minimum staff midi (12-15h)
     for day_str, min_count in req.min_staff_midi.items():
@@ -424,6 +430,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
     solver.parameters.num_workers = 4
 
     best_status = None
+    best_shortfalls = float('inf')
     best_objective = float('inf')
     best_solver = solver
     max_attempts = 3
@@ -436,20 +443,34 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
             solver.parameters.random_seed = attempt * 42
 
         status = solver.solve(model)
-        if status == cp_model.OPTIMAL:
+        if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            if best_status is None:
+                best_status = status
+            continue
+
+        # Compte les "violations visibles utilisateur" pour ce résultat
+        total_shortfalls = sum(solver.value(v) for v in user_visible_shortfalls)
+        obj = solver.objective_value
+
+        # Garde la meilleure solution: priorité aux moins de violations,
+        # puis au meilleur objectif global
+        is_better = (
+            best_status is None
+            or total_shortfalls < best_shortfalls
+            or (total_shortfalls == best_shortfalls and obj < best_objective)
+        )
+        if is_better:
+            best_shortfalls = total_shortfalls
+            best_objective = obj
             best_solver = solver
             best_status = status
+
+        # Stop dès qu'on a 0 violation visible (planning valide UX)
+        if total_shortfalls == 0:
             break
-        if status == cp_model.FEASIBLE:
-            obj = solver.objective_value
-            if best_status is None or obj < best_objective:
-                best_objective = obj
-                best_solver = solver
-                best_status = status
-            if obj == 0:
-                break
-        elif best_status is None:
-            best_status = status
+        # Ou si OPTIMAL prouvé (pas de meilleure solution possible)
+        if status == cp_model.OPTIMAL:
+            break
 
     solver = best_solver
     status = best_status
