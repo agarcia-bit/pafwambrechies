@@ -10,6 +10,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    // Bug connu de Supabase JS v2: le lock par défaut basé sur navigator.locks
+    // peut deadlock quand on change d'onglet et qu'on revient (le lock reste
+    // tenu par un onglet fermé/inactif). Conséquence: tous les appels au SDK
+    // hangent indéfiniment après un tab switch.
+    // Fix: lock no-op (on n'a qu'un seul onglet actif à la fois en pratique).
+    lock: async (_name, _acquireTimeout, fn) => await fn(),
+  },
   global: {
     fetch: (url, options) => {
       return fetch(url, {
