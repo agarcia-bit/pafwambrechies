@@ -4,12 +4,9 @@ import { supabase } from '@/infrastructure/supabase/client'
 import { Button, Select, Input, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
 import type { Unavailability, ManagerFixedSchedule, ConditionalAvailability } from '@/domain/models/constraint'
 import {
-  fetchUnavailabilities,
   createUnavailability,
   deleteUnavailability,
-  fetchManagerSchedules,
   upsertManagerSchedule,
-  fetchConditionalAvailabilities,
   createConditionalAvailability,
   deleteConditionalAvailability,
 } from '@/infrastructure/supabase/repositories/constraint-repo'
@@ -58,19 +55,61 @@ export function ConstraintsPage() {
     setLoadError('')
 
     try {
-      // Force un refresh de la session avant les requêtes : si une génération
-      // longue a précédé cette navigation, l'auto-refresh interne du SDK
-      // Supabase peut être bloqué et bloquer toutes les requêtes suivantes.
-      // Un refresh explicite avec timeout garantit qu'on ne hang pas.
-      await Promise.race([
-        supabase.auth.getSession(),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('session timeout')), 5000)),
-      ]).catch(() => {})
+      // BYPASS du SDK Supabase: après une longue génération, le SDK peut être
+      // dans un état interne corrompu (refresh stuck, etc.). On fait des
+      // requêtes HTTP directes à l'API REST Supabase avec un timeout strict.
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+      const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+
+      async function directFetch<T>(table: string): Promise<T[]> {
+        const res = await fetch(
+          `${supabaseUrl}/rest/v1/${table}?employee_id=eq.${empId}&order=day_of_week`,
+          {
+            headers: {
+              apikey: apiKey,
+              Authorization: `Bearer ${token ?? apiKey}`,
+            },
+            signal: AbortSignal.timeout(8000),
+          },
+        )
+        if (!res.ok) throw new Error(`${table} ${res.status}`)
+        return res.json()
+      }
 
       const results = await Promise.allSettled([
-        fetchUnavailabilities(empId),
-        fetchManagerSchedules(empId),
-        fetchConditionalAvailabilities(empId),
+        directFetch<Record<string, unknown>>('unavailabilities').then((rows) =>
+          rows.map((r) => ({
+            id: r.id,
+            employeeId: r.employee_id,
+            type: r.type,
+            dayOfWeek: r.day_of_week,
+            specificDate: r.specific_date,
+            availableFrom: r.available_from,
+            availableUntil: r.available_until,
+            label: r.label ?? '',
+          })) as Unavailability[],
+        ),
+        directFetch<Record<string, unknown>>('manager_fixed_schedules').then((rows) =>
+          rows.map((r) => ({
+            id: r.id,
+            employeeId: r.employee_id,
+            dayOfWeek: r.day_of_week,
+            shiftTemplateId: r.shift_template_id,
+            startTime: r.start_time === null ? null : Number(r.start_time),
+            endTime: r.end_time === null ? null : Number(r.end_time),
+          })) as ManagerFixedSchedule[],
+        ),
+        directFetch<Record<string, unknown>>('conditional_availabilities').then((rows) =>
+          rows.map((r) => ({
+            id: r.id,
+            employeeId: r.employee_id,
+            dayOfWeek: r.day_of_week,
+            allowedShiftCodes: r.allowed_shift_codes ?? [],
+            maxHours: r.max_hours === null ? null : Number(r.max_hours),
+          })) as ConditionalAvailability[],
+        ),
       ])
       // Si un autre salarié a été sélectionné entre-temps, ignore ces résultats
       if (requestId !== loadRequestIdRef.current) return
