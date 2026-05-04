@@ -420,7 +420,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
 
     # --- Solve ---
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 10.0
+    solver.parameters.max_time_in_seconds = 30.0
     solver.parameters.num_workers = 4
 
     status = solver.solve(model)
