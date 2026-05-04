@@ -1,8 +1,10 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useEmployeeStore } from '@/store/employee-store'
+import { useRoleStore } from '@/store/role-store'
 import { Button, Select, Input, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
 import type { Unavailability, ManagerFixedSchedule, ConditionalAvailability } from '@/domain/models/constraint'
 import {
+  fetchUnavailabilities,
   createUnavailability,
   deleteUnavailability,
   upsertManagerSchedule,
@@ -18,8 +20,10 @@ const DAY_SHORT = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 export function ConstraintsPage() {
   const { employees, load: loadEmployees } = useEmployeeStore()
   const { templates, load: loadTemplates } = useShiftTemplateStore()
+  const { roles, employeeRoles, load: loadRoles } = useRoleStore()
   const [selectedEmployee, setSelectedEmployee] = useState<string>('')
   const [unavailabilities, setUnavailabilities] = useState<Unavailability[]>([])
+  const [allUnavailabilities, setAllUnavailabilities] = useState<Unavailability[]>([])
   const [conditionals, setConditionals] = useState<ConditionalAvailability[]>([])
   const [managerSchedules, setManagerSchedules] = useState<ManagerFixedSchedule[]>([])
   const [loading, setLoading] = useState(false)
@@ -36,12 +40,34 @@ export function ConstraintsPage() {
   const [condShiftCodes, setCondShiftCodes] = useState<string[]>([])
   const [condMaxHours, setCondMaxHours] = useState<string>('')
 
+  function getRoleName(empId: string): string {
+    const er = employeeRoles.find((e) => e.employeeId === empId)
+    if (!er) return '—'
+    return roles.find((r) => r.id === er.roleId)?.name ?? '—'
+  }
+
+  function getConstraintSummary(empId: string): string {
+    const empUa = allUnavailabilities.filter((u) => u.employeeId === empId && u.type === 'fixed')
+    if (empUa.length === 0) return 'Aucune contrainte'
+    const dayLabels = empUa
+      .filter((u) => u.dayOfWeek != null)
+      .sort((a, b) => (a.dayOfWeek ?? 0) - (b.dayOfWeek ?? 0))
+      .map((u) => DAY_SHORT[u.dayOfWeek!])
+    return dayLabels.length > 0 ? `OFF ${dayLabels.join(', ')}` : 'Contraintes ponctuelles'
+  }
+
   useEffect(() => {
     loadEmployees()
     loadTemplates()
-  }, [loadEmployees, loadTemplates])
+    loadRoles()
+    // Charge toutes les indispos pour le résumé dans la liste
+    fetchUnavailabilities().then(setAllUnavailabilities).catch(() => {})
+  }, [loadEmployees, loadTemplates, loadRoles])
 
-  const activeEmployees = employees.filter((e) => e.active)
+  const activeEmployees = useMemo(
+    () => [...employees.filter((e) => e.active)].sort((a, b) => a.firstName.localeCompare(b.firstName)),
+    [employees],
+  )
   const selectedEmp = activeEmployees.find((e) => e.id === selectedEmployee)
 
   // ID de la requête courante pour annuler les résultats périmés si on
@@ -287,33 +313,40 @@ export function ConstraintsPage() {
                     <tr className="border-b border-border">
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Nom</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Département</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Type</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Rôle</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Contraintes</th>
                       <th className="px-3 py-2 text-right font-medium text-muted-foreground"></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {activeEmployees.map((emp) => (
-                      <tr key={emp.id} className="border-b border-border hover:bg-muted/30">
-                        <td className="px-3 py-2 font-medium">
-                          {emp.firstName} {emp.lastName}
-                        </td>
-                        <td className="px-3 py-2 capitalize">{emp.department}</td>
-                        <td className="px-3 py-2">
-                          {emp.isManager ? (
-                            <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                              Manager
+                    {activeEmployees.map((emp) => {
+                      const roleName = getRoleName(emp.id)
+                      const summary = getConstraintSummary(emp.id)
+                      return (
+                        <tr key={emp.id} className="border-b border-border hover:bg-muted/30">
+                          <td className="px-3 py-2 font-medium">
+                            {emp.firstName} {emp.lastName}
+                            {emp.isManager && (
+                              <span className="ml-1.5 inline-flex items-center rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                                Manager
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 capitalize text-muted-foreground">{emp.department}</td>
+                          <td className="px-3 py-2">{roleName}</td>
+                          <td className="px-3 py-2">
+                            <span className={`text-xs ${summary === 'Aucune contrainte' ? 'text-muted-foreground' : 'text-warning font-medium'}`}>
+                              {summary}
                             </span>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">Salarié</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          <Button size="sm" onClick={() => handleSelectEmployee(emp.id)}>
-                            Modifier
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <Button size="sm" onClick={() => handleSelectEmployee(emp.id)}>
+                              Modifier
+                            </Button>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
