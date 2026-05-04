@@ -6,7 +6,7 @@ import { useTenantStore } from '@/store/tenant-store'
 import { useAuthStore } from '@/store/auth-store'
 import { useCurrentPlanningStore } from '@/store/current-planning-store'
 import { Button, Card, CardContent } from '@/ui/components'
-import { callKitchenSolver } from '@/infrastructure/api/solver-api'
+import { callKitchenSolver, checkSolverHealth } from '@/infrastructure/api/solver-api'
 import {
   createUnavailability,
   deleteUnavailability,
@@ -89,12 +89,29 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
   const [newConstraintDay, setNewConstraintDay] = useState(1)
   const [newConstraintScope, setNewConstraintScope] = useState<'day' | 'midi' | 'soir'>('day')
 
+  const [solverAvailable, setSolverAvailable] = useState<boolean | null>(null)
+
   useEffect(() => {
+    let cancelled = false
     loadEmployees()
     loadTemplates()
     loadForecasts()
     if (tenantId) loadTenant(tenantId)
-    fetchUnavailabilities().then(setUnavailabilities).catch(() => {})
+    fetchUnavailabilities().then((u) => { if (!cancelled) setUnavailabilities(u) }).catch(() => {})
+
+    // Check solver availability — retry until ready
+    // eslint-disable-next-line prefer-const
+    let retryTimer: ReturnType<typeof setInterval>
+    function tryHealth() {
+      checkSolverHealth().then((ok) => {
+        if (cancelled) return
+        setSolverAvailable(ok)
+        if (ok) clearInterval(retryTimer)
+      })
+    }
+    tryHealth()
+    retryTimer = setInterval(tryHealth, 15000)
+    return () => { cancelled = true; clearInterval(retryTimer) }
   }, [loadEmployees, loadTemplates, loadForecasts, loadTenant, tenantId])
 
   const kitchenEmployees = employees.filter((e) => e.active && e.department === 'cuisine')
@@ -433,13 +450,35 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
         </CardContent>
       </Card>
 
+      {/* Indicateur solveur */}
+      <div className="flex items-center justify-center gap-2 text-xs">
+        {solverAvailable === null && (
+          <span className="flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-amber-700">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+            Connexion en cours à l'algorithme Planning, patientez quelques secondes...
+          </span>
+        )}
+        {solverAvailable === true && (
+          <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            Connecté à l'algorithme, vous pouvez lancer la génération
+          </span>
+        )}
+        {solverAvailable === false && (
+          <span className="flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-red-600">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-red-400" />
+            Algorithme indisponible, réessayer plus tard
+          </span>
+        )}
+      </div>
+
       {/* Bouton générer */}
       <div ref={generateRef} className="flex items-center justify-center gap-3">
         <Button
           size="lg"
           className="px-12"
           onClick={handleGenerate}
-          disabled={kitchenEmployees.length === 0 || generating}
+          disabled={kitchenEmployees.length === 0 || generating || solverAvailable === null}
         >
           {generating ? (
             <>
