@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
 import { useEmployeeStore } from '@/store/employee-store'
-import { supabase } from '@/infrastructure/supabase/client'
 import { Button, Select, Input, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
 import type { Unavailability, ManagerFixedSchedule, ConditionalAvailability } from '@/domain/models/constraint'
 import {
@@ -55,13 +54,29 @@ export function ConstraintsPage() {
     setLoadError('')
 
     try {
-      // BYPASS du SDK Supabase: après une longue génération, le SDK peut être
-      // dans un état interne corrompu (refresh stuck, etc.). On fait des
-      // requêtes HTTP directes à l'API REST Supabase avec un timeout strict.
-      const { data: sessionData } = await supabase.auth.getSession()
-      const token = sessionData.session?.access_token
+      // BYPASS TOTAL du SDK Supabase: même getSession() peut hang après une
+      // longue génération. On lit le token directement dans localStorage
+      // (clé sb-{ref}-auth-token créée par le SDK Supabase).
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
       const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+
+      let token: string | undefined
+      try {
+        // Cherche dans localStorage la clé qui contient le JWT
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i)
+          if (k && k.startsWith('sb-') && k.endsWith('-auth-token')) {
+            const raw = localStorage.getItem(k)
+            if (raw) {
+              const parsed = JSON.parse(raw)
+              token = parsed?.access_token ?? parsed?.currentSession?.access_token
+              break
+            }
+          }
+        }
+      } catch {
+        // Si parsing fail, on continuera avec apikey only
+      }
 
       async function directFetch<T>(table: string): Promise<T[]> {
         const res = await fetch(
