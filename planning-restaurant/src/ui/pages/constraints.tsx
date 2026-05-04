@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useEmployeeStore } from '@/store/employee-store'
+import { supabase } from '@/infrastructure/supabase/client'
 import { Button, Select, Input, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
 import type { Unavailability, ManagerFixedSchedule, ConditionalAvailability } from '@/domain/models/constraint'
 import {
@@ -57,6 +58,15 @@ export function ConstraintsPage() {
     setLoadError('')
 
     try {
+      // Force un refresh de la session avant les requêtes : si une génération
+      // longue a précédé cette navigation, l'auto-refresh interne du SDK
+      // Supabase peut être bloqué et bloquer toutes les requêtes suivantes.
+      // Un refresh explicite avec timeout garantit qu'on ne hang pas.
+      await Promise.race([
+        supabase.auth.getSession(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('session timeout')), 5000)),
+      ]).catch(() => {})
+
       const results = await Promise.allSettled([
         fetchUnavailabilities(empId),
         fetchManagerSchedules(empId),

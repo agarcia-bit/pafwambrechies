@@ -6,6 +6,7 @@ import { useForecastStore } from '@/store/forecast-store'
 import { useTenantStore } from '@/store/tenant-store'
 import { useAuthStore } from '@/store/auth-store'
 import { useCurrentPlanningStore } from '@/store/current-planning-store'
+import { supabase } from '@/infrastructure/supabase/client'
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/ui/components'
 import { PlanningGrid } from '@/ui/components/planning-grid'
 import { generatePlanning } from '@/domain/engine'
@@ -361,6 +362,18 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
     setReport(null) // Hide previous planning during generation
     setSaved(false)
     setError('')
+
+    // Refresh la session AVANT la longue génération pour éviter que l'auto-refresh
+    // interne du SDK Supabase ne se déclenche pendant le solve (et reste coincé,
+    // bloquant les requêtes suivantes des autres pages).
+    try {
+      await Promise.race([
+        supabase.auth.refreshSession(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('refresh timeout')), 5000)),
+      ])
+    } catch {
+      // Si le refresh échoue, on continue quand même avec le token actuel
+    }
 
     let result: PlanningReport | null = null
 
