@@ -979,13 +979,13 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
         {solverAvailable === null && (
           <span className="flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-amber-700">
             <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-            Connexion en cours à l'algorythme Planning, patientez quelques secondes...
+            Connexion en cours à l'algorithme Planning, patientez quelques secondes...
           </span>
         )}
         {solverAvailable === true && (
           <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            Connecté à l'algorythme, vous pouvez lancer la génération
+            Connecté à l'algorithme, vous pouvez lancer la génération
           </span>
         )}
         {solverAvailable === false && (
