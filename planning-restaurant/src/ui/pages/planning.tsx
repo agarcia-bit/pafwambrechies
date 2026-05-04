@@ -41,13 +41,20 @@ function getNextMonday(from: Date = new Date()): Date {
 }
 
 function formatISO(d: Date): string {
-  return d.toISOString().split('T')[0]
+  // Utilise les composants LOCAUX (pas UTC) pour éviter le décalage d'un
+  // jour quand on est en UTC+ (zone Europe). toISOString() convertit en UTC,
+  // ce qui décale le minuit local vers le jour précédent.
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
 }
 
 function addDays(isoDate: string, days: number): string {
-  const d = new Date(isoDate)
-  d.setDate(d.getDate() + days)
-  return d.toISOString().split('T')[0]
+  // Parse l'ISO date comme date locale (pas UTC) pour éviter le décalage
+  const [y, m, d] = isoDate.split('-').map(Number)
+  const date = new Date(y, m - 1, d + days)
+  return formatISO(date)
 }
 
 function getWeekNumber(d: Date): number {

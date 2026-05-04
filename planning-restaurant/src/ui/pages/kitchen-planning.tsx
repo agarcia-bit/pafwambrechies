@@ -30,7 +30,11 @@ function getNextMonday(): Date {
 }
 
 function formatISO(d: Date): string {
-  return d.toISOString().split('T')[0]
+  // Composants locaux pour éviter le décalage UTC
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
 }
 
 function getWeekNumber(d: Date): number {
@@ -42,9 +46,9 @@ function getWeekNumber(d: Date): number {
 }
 
 function addDays(isoDate: string, days: number): string {
-  const d = new Date(isoDate)
-  d.setDate(d.getDate() + days)
-  return d.toISOString().split('T')[0]
+  const [y, m, d] = isoDate.split('-').map(Number)
+  const date = new Date(y, m - 1, d + days)
+  return formatISO(date)
 }
 
 interface KitchenEntry {
@@ -412,40 +416,72 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
             </div>
           )}
 
-          {/* Display current constraints */}
-          <div className="flex flex-wrap gap-2">
-            {unavailabilities
-              .filter((u) => kitchenEmployees.some((e) => e.id === u.employeeId))
-              .map((u) => {
-                const emp = kitchenEmployees.find((e) => e.id === u.employeeId)
-                // Pour une ponctuelle, retrouve le jour de la semaine depuis specific_date
-                let punctualDayLabel = ''
-                if (u.type === 'punctual' && u.specificDate) {
-                  const d = new Date(u.specificDate)
-                  const jsDay = d.getDay() // 0=dim, 1=lun..6=sam
-                  const appDay = jsDay === 0 ? 6 : jsDay - 1 // 0=lundi..6=dimanche
-                  punctualDayLabel = DAY_NAMES[appDay]
-                }
-                return (
-                  <span key={u.id} className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${u.type === 'fixed' ? 'bg-warning/10 text-warning' : 'bg-destructive/10 text-destructive'}`}>
-                    {emp?.firstName} —{' '}
-                    {u.type === 'fixed' && u.dayOfWeek != null
-                      ? DAY_NAMES[u.dayOfWeek]
-                      : `${punctualDayLabel} ${u.label}`.trim()}
-                    {u.type === 'punctual' && (
-                      <button
-                        onClick={async () => {
-                          await deleteUnavailability(u.id)
-                          fetchUnavailabilities().then(setUnavailabilities).catch(() => {})
-                        }}
-                        className="ml-1 hover:text-destructive"
-                      >
-                        <X size={12} />
-                      </button>
-                    )}
-                  </span>
-                )
-              })}
+          {/* Display current constraints — layout en colonnes par jour */}
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  {DAY_NAMES.slice(1).map((name, i) => (
+                    <th key={i + 1} className="w-1/6 px-2 py-2 text-center font-medium text-muted-foreground">
+                      {name}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  {[1, 2, 3, 4, 5, 6].map((dayIdx) => {
+                    const dayISO = addDays(weekStartISO, dayIdx)
+                    const items = unavailabilities
+                      .filter((u) => kitchenEmployees.some((e) => e.id === u.employeeId))
+                      .filter((u) => {
+                        if (u.type === 'fixed') return u.dayOfWeek === dayIdx
+                        if (u.type === 'punctual') return u.specificDate === dayISO
+                        return false
+                      })
+                    return (
+                      <td key={dayIdx} className="px-2 py-2 align-top">
+                        {items.length === 0 ? (
+                          <span className="text-xs text-muted-foreground/40">—</span>
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            {items.map((u) => {
+                              const emp = kitchenEmployees.find((e) => e.id === u.employeeId)
+                              return (
+                                <div
+                                  key={u.id}
+                                  className={`group relative rounded px-2 py-1 text-xs ${
+                                    u.type === 'punctual'
+                                      ? 'bg-destructive/10 border border-destructive/20 text-destructive'
+                                      : 'bg-warning/10 text-warning'
+                                  }`}
+                                >
+                                  <span className="font-medium">{emp?.firstName}</span>
+                                  <br />
+                                  <span className="opacity-80">{u.label || 'OFF'}</span>
+                                  {u.type === 'punctual' && (
+                                    <button
+                                      onClick={async () => {
+                                        await deleteUnavailability(u.id)
+                                        fetchUnavailabilities().then(setUnavailabilities).catch(() => {})
+                                      }}
+                                      className="absolute -right-1 -top-1 hidden rounded-full bg-destructive p-0.5 text-white group-hover:block"
+                                      title="Supprimer"
+                                    >
+                                      <X size={10} />
+                                    </button>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </td>
+                    )
+                  })}
+                </tr>
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>
