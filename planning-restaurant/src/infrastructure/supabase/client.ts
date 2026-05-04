@@ -11,12 +11,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    // Bug connu de Supabase JS v2: le lock par défaut basé sur navigator.locks
-    // peut deadlock quand on change d'onglet et qu'on revient (le lock reste
-    // tenu par un onglet fermé/inactif). Conséquence: tous les appels au SDK
-    // hangent indéfiniment après un tab switch.
-    // Fix: lock no-op (on n'a qu'un seul onglet actif à la fois en pratique).
+    // Bug connu de Supabase JS v2: le lock par défaut + l'auto-refresh
+    // peuvent deadlock quand on change d'onglet et qu'on revient.
+    // Fix: lock no-op + désactiver autoRefreshToken.
+    // Le token JWT a 1h de validité. Si on est dans le tab >1h, on
+    // demandera à l'utilisateur de se reconnecter via une vérification
+    // d'expiration manuelle au moment des requêtes.
     lock: async (_name, _acquireTimeout, fn) => await fn(),
+    autoRefreshToken: false,
+    persistSession: true,
+    detectSessionInUrl: true,
   },
   global: {
     fetch: (url, options) => {
