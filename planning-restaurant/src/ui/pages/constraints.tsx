@@ -365,7 +365,7 @@ export function ConstraintsPage() {
                           <td className="px-3 py-2">
                             {role ? (
                               <span
-                                className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium text-white"
+                                className="inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium text-white"
                                 style={{ backgroundColor: role.color }}
                               >
                                 {role.name}
