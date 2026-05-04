@@ -260,26 +260,89 @@ export function ConstraintsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold">Contraintes & Disponibilités</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Contraintes & Disponibilités</h1>
+        {selectedEmployee && (
+          <Button variant="outline" onClick={() => setSelectedEmployee('')}>
+            ← Retour à la liste
+          </Button>
+        )}
+      </div>
 
-      {/* Sélection employé */}
-      <Card>
-        <CardContent className="pt-6">
-          <Select
-            id="employee"
-            label="Sélectionner un salarié"
-            value={selectedEmployee}
-            onChange={(e) => handleSelectEmployee(e.target.value)}
-            options={[
-              { value: '', label: '— Choisir un salarié —' },
-              ...activeEmployees.map((e) => ({
-                value: e.id,
-                label: `${e.firstName} ${e.lastName}${e.isManager ? ' (Manager)' : ''}`,
-              })),
-            ]}
-          />
-        </CardContent>
-      </Card>
+      {/* Liste des salariés (mode liste) */}
+      {!selectedEmployee && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Sélectionner un salarié</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {activeEmployees.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Aucun salarié actif. Ajoutez-en depuis l'onglet Salariés.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Nom</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Département</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Type</th>
+                      <th className="px-3 py-2 text-right font-medium text-muted-foreground"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeEmployees.map((emp) => (
+                      <tr key={emp.id} className="border-b border-border hover:bg-muted/30">
+                        <td className="px-3 py-2 font-medium">
+                          {emp.firstName} {emp.lastName}
+                        </td>
+                        <td className="px-3 py-2 capitalize">{emp.department}</td>
+                        <td className="px-3 py-2">
+                          {emp.isManager ? (
+                            <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                              Manager
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Salarié</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <Button size="sm" onClick={() => handleSelectEmployee(emp.id)}>
+                            Modifier
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Bandeau salarié sélectionné */}
+      {selectedEmployee && selectedEmp && (
+        <Card>
+          <CardContent className="flex items-center gap-3 py-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">
+              {selectedEmp.firstName.charAt(0)}
+            </div>
+            <div>
+              <div className="font-semibold">
+                {selectedEmp.firstName} {selectedEmp.lastName}
+                {selectedEmp.isManager && (
+                  <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                    Manager
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground capitalize">{selectedEmp.department}</div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {selectedEmployee && loading && <p className="text-muted-foreground">Chargement...</p>}
 
