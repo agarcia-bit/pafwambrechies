@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/store/auth-store'
-import { supabase } from '@/infrastructure/supabase/client'
 import { LoginPage } from '@/ui/pages/login'
 import { DashboardPage } from '@/ui/pages/dashboard'
 import { EmployeesPage } from '@/ui/pages/employees'
@@ -23,26 +22,11 @@ export default function App() {
     initialize()
   }, [initialize])
 
-  // Watchdog: quand l'utilisateur revient sur l'onglet après une absence,
-  // refresh la session Supabase pour éviter les requêtes avec un JWT expiré.
-  // Sinon, après une heure d'inactivité, les pages "chargent dans le vide"
-  // (RLS retourne 0 ligne avec un token expiré).
-  useEffect(() => {
-    function onVisible() {
-      if (document.visibilityState === 'visible') {
-        supabase.auth.refreshSession().catch(() => {
-          // Si le refresh échoue, on relance l'init complet
-          initialize()
-        })
-      }
-    }
-    document.addEventListener('visibilitychange', onVisible)
-    window.addEventListener('focus', onVisible)
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible)
-      window.removeEventListener('focus', onVisible)
-    }
-  }, [initialize])
+  // NOTE: pas de watchdog visibilitychange ici. Le SDK Supabase JS gère
+  // déjà l'auto-refresh des tokens en interne (autoRefreshToken: true par
+  // défaut). Un appel manuel à refreshSession() au retour sur l'onglet
+  // créait un état corrompu où le SDK restait bloqué en "refresh in
+  // progress", faisant hang toutes les requêtes ultérieures.
 
   if (!initialized) {
     return (
