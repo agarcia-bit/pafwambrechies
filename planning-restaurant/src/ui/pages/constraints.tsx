@@ -5,6 +5,7 @@ import { Button, Select, Input, Card, CardHeader, CardTitle, CardContent } from 
 import type { Unavailability, ManagerFixedSchedule, ConditionalAvailability } from '@/domain/models/constraint'
 import {
   fetchUnavailabilities,
+  fetchConditionalAvailabilities,
   createUnavailability,
   deleteUnavailability,
   upsertManagerSchedule,
@@ -24,6 +25,7 @@ export function ConstraintsPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<string>('')
   const [unavailabilities, setUnavailabilities] = useState<Unavailability[]>([])
   const [allUnavailabilities, setAllUnavailabilities] = useState<Unavailability[]>([])
+  const [allConditionals, setAllConditionals] = useState<ConditionalAvailability[]>([])
   const [conditionals, setConditionals] = useState<ConditionalAvailability[]>([])
   const [managerSchedules, setManagerSchedules] = useState<ManagerFixedSchedule[]>([])
   const [loading, setLoading] = useState(false)
@@ -40,28 +42,54 @@ export function ConstraintsPage() {
   const [condShiftCodes, setCondShiftCodes] = useState<string[]>([])
   const [condMaxHours, setCondMaxHours] = useState<string>('')
 
-  function getRoleName(empId: string): string {
+  function getRole(empId: string): { name: string; color: string } | null {
     const er = employeeRoles.find((e) => e.employeeId === empId)
-    if (!er) return '—'
-    return roles.find((r) => r.id === er.roleId)?.name ?? '—'
+    if (!er) return null
+    const role = roles.find((r) => r.id === er.roleId)
+    if (!role) return null
+    return { name: role.name, color: role.color }
   }
 
-  function getConstraintSummary(empId: string): string {
-    const empUa = allUnavailabilities.filter((u) => u.employeeId === empId && u.type === 'fixed')
-    if (empUa.length === 0) return 'Aucune contrainte'
-    const dayLabels = empUa
-      .filter((u) => u.dayOfWeek != null)
+  // Items pour la colonne Contraintes: OFF (orange) + Dispos restreintes (bleu)
+  function getConstraintItems(empId: string): { type: 'off' | 'conditional'; label: string }[] {
+    const items: { type: 'off' | 'conditional'; label: string }[] = []
+
+    const offDays = allUnavailabilities
+      .filter((u) => u.employeeId === empId && u.type === 'fixed' && u.dayOfWeek != null)
       .sort((a, b) => (a.dayOfWeek ?? 0) - (b.dayOfWeek ?? 0))
-      .map((u) => DAY_SHORT[u.dayOfWeek!])
-    return dayLabels.length > 0 ? `OFF ${dayLabels.join(', ')}` : 'Contraintes ponctuelles'
+    if (offDays.length > 0) {
+      items.push({
+        type: 'off',
+        label: `OFF ${offDays.map((u) => DAY_SHORT[u.dayOfWeek!]).join(', ')}`,
+      })
+    }
+
+    // Groupe les dispos conditionnelles par codes de shift autorisés
+    const empCond = allConditionals.filter((c) => c.employeeId === empId)
+    const byCodes = new Map<string, number[]>()
+    for (const c of empCond) {
+      const key = (c.allowedShiftCodes || []).slice().sort().join('+') || '?'
+      if (!byCodes.has(key)) byCodes.set(key, [])
+      byCodes.get(key)!.push(c.dayOfWeek)
+    }
+    for (const [codes, days] of byCodes) {
+      const sortedDays = days.sort((a, b) => a - b).map((d) => DAY_SHORT[d])
+      items.push({
+        type: 'conditional',
+        label: `${codes} ${sortedDays.join(', ')}`,
+      })
+    }
+
+    return items
   }
 
   useEffect(() => {
     loadEmployees()
     loadTemplates()
     loadRoles()
-    // Charge toutes les indispos pour le résumé dans la liste
+    // Charge toutes les indispos + dispos conditionnelles pour le résumé
     fetchUnavailabilities().then(setAllUnavailabilities).catch(() => {})
+    fetchConditionalAvailabilities().then(setAllConditionals).catch(() => {})
   }, [loadEmployees, loadTemplates, loadRoles])
 
   const activeEmployees = useMemo(
@@ -314,14 +342,15 @@ export function ConstraintsPage() {
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Nom</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Département</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Rôle</th>
+                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">Contrat</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Contraintes</th>
                       <th className="px-3 py-2 text-right font-medium text-muted-foreground"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {activeEmployees.map((emp) => {
-                      const roleName = getRoleName(emp.id)
-                      const summary = getConstraintSummary(emp.id)
+                      const role = getRole(emp.id)
+                      const items = getConstraintItems(emp.id)
                       return (
                         <tr key={emp.id} className="border-b border-border hover:bg-muted/30">
                           <td className="px-3 py-2 font-medium">
@@ -333,11 +362,38 @@ export function ConstraintsPage() {
                             )}
                           </td>
                           <td className="px-3 py-2 capitalize text-muted-foreground">{emp.department}</td>
-                          <td className="px-3 py-2">{roleName}</td>
                           <td className="px-3 py-2">
-                            <span className={`text-xs ${summary === 'Aucune contrainte' ? 'text-muted-foreground' : 'text-warning font-medium'}`}>
-                              {summary}
-                            </span>
+                            {role ? (
+                              <span
+                                className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium text-white"
+                                style={{ backgroundColor: role.color }}
+                              >
+                                {role.name}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-center font-mono text-xs">{emp.weeklyHours}h</td>
+                          <td className="px-3 py-2">
+                            {items.length === 0 ? (
+                              <span className="text-xs text-muted-foreground">Aucune</span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {items.map((item, i) => (
+                                  <span
+                                    key={i}
+                                    className={`inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium ${
+                                      item.type === 'off'
+                                        ? 'bg-warning/10 text-warning'
+                                        : 'bg-blue-100 text-blue-700'
+                                    }`}
+                                  >
+                                    {item.label}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </td>
                           <td className="px-3 py-2 text-right">
                             <Button size="sm" onClick={() => handleSelectEmployee(emp.id)}>
