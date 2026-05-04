@@ -215,11 +215,11 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
         </table>
       </div>
 
-      {/* Violations */}
+      {/* Ajustements manuels */}
       {report.violations.length > 0 && (
         <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4">
           <h3 className="mb-2 font-bold text-destructive">
-            Violations ({report.violations.length})
+            Ajustement manuel nécessaire ({report.violations.length})
           </h3>
           <ul className="space-y-1">
             {report.violations.map((v, i) => (
@@ -231,23 +231,11 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
         </div>
       )}
 
-      {/* Warnings */}
-      {report.warnings.length > 0 && (
-        <div className="rounded-lg border border-warning/50 bg-warning/5 p-4">
-          <h3 className="mb-2 font-bold text-warning">
-            Avertissements ({report.warnings.length})
-          </h3>
-          <ul className="space-y-1">
-            {report.warnings.map((w, i) => (
-              <li key={i} className="text-sm">{w}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       {/* Statut */}
       <div className={`rounded-lg p-4 text-center font-bold ${report.isValid ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
-        {report.isValid ? 'PLANNING VALIDE' : 'PLANNING INVALIDE — Voir les violations ci-dessus'}
+        {report.isValid
+          ? 'PLANNING VALIDE'
+          : 'Apporter les modifications manuelles demandées pour obtenir le planning valide'}
       </div>
     </div>
   )
