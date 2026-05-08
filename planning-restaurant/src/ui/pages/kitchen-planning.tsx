@@ -84,6 +84,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
   const [error, setError] = useState('')
   const [solverInfo, setSolverInfo] = useState('')
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [editingCell, setEditingCell] = useState<{ empId: string; day: number } | null>(null)
   const [planningId] = useState(crypto.randomUUID())
   const [savedPlanningMeta, setSavedPlanningMeta] = useState<SavedPlanning | null>(null)
@@ -582,35 +583,43 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
           <Button
             size="lg"
             variant="outline"
+            disabled={saving}
             onClick={async () => {
-              if (!tenantId) return
-              const planningEntries: PlanningEntry[] = entries.map((e) => ({
-                id: crypto.randomUUID(),
-                planningId,
-                employeeId: e.employeeId,
-                roleId: null as unknown as string,
-                date: addDays(weekStartISO, e.dayOfWeek),
-                dayOfWeek: e.dayOfWeek,
-                shiftTemplateId: e.shiftTemplateId,
-                startTime: e.startTime,
-                endTime: e.endTime,
-                effectiveHours: e.effectiveHours,
-                meals: 0,
-                baskets: 0,
-              }))
-              await savePlanningWithEntries({
-                id: planningId,
-                tenantId,
-                weekStartDate: weekStartISO,
-                weekNumber,
-                status: 'draft',
-                createdBy: user?.id ?? '',
-                department: 'cuisine',
-              }, planningEntries)
-              setSaved(true)
+              if (!tenantId || saving) return
+              setSaving(true)
+              try {
+                const planningEntries: PlanningEntry[] = entries.map((e) => ({
+                  id: crypto.randomUUID(),
+                  planningId,
+                  employeeId: e.employeeId,
+                  roleId: null as unknown as string,
+                  date: addDays(weekStartISO, e.dayOfWeek),
+                  dayOfWeek: e.dayOfWeek,
+                  shiftTemplateId: e.shiftTemplateId,
+                  startTime: e.startTime,
+                  endTime: e.endTime,
+                  effectiveHours: e.effectiveHours,
+                  meals: 0,
+                  baskets: 0,
+                }))
+                await savePlanningWithEntries({
+                  id: planningId,
+                  tenantId,
+                  weekStartDate: weekStartISO,
+                  weekNumber,
+                  status: 'draft',
+                  createdBy: user?.id ?? '',
+                  department: 'cuisine',
+                }, planningEntries)
+                setSaved(true)
+              } catch (e) {
+                alert(`Erreur lors de l'enregistrement : ${(e as Error).message}\n\nRechargez la page et réessayez.`)
+              } finally {
+                setSaving(false)
+              }
             }}
           >
-            <Save size={16} className="mr-2" /> Enregistrer
+            <Save size={16} className="mr-2" /> {saving ? 'Enregistrement...' : 'Enregistrer'}
           </Button>
         )}
         {entries.length > 0 && saved && (

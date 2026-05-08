@@ -89,6 +89,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
   }
   const [generating, setGenerating] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [solverAvailable, setSolverAvailable] = useState<boolean | null>(null)
   const [solverMode, setSolverMode] = useState<'cpsat' | 'local'>('cpsat')
@@ -1127,20 +1128,28 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           <Button
             size="lg"
             variant="outline"
+            disabled={saving}
             onClick={async () => {
-              if (!tenantId) return
-              await savePlanningWithEntries({
-                id: report.planning.id,
-                tenantId,
-                weekStartDate: report.planning.weekStartDate,
-                weekNumber: report.planning.weekNumber,
-                status: 'draft',
-                createdBy: user?.id ?? '',
-              }, report.planning.entries)
-              setSaved(true)
+              if (!tenantId || saving) return
+              setSaving(true)
+              try {
+                await savePlanningWithEntries({
+                  id: report.planning.id,
+                  tenantId,
+                  weekStartDate: report.planning.weekStartDate,
+                  weekNumber: report.planning.weekNumber,
+                  status: 'draft',
+                  createdBy: user?.id ?? '',
+                }, report.planning.entries)
+                setSaved(true)
+              } catch (e) {
+                alert(`Erreur lors de l'enregistrement : ${(e as Error).message}\n\nRechargez la page et réessayez.`)
+              } finally {
+                setSaving(false)
+              }
             }}
           >
-            <Save size={16} className="mr-2" /> Enregistrer
+            <Save size={16} className="mr-2" /> {saving ? 'Enregistrement...' : 'Enregistrer'}
           </Button>
         )}
         {report && saved && (
