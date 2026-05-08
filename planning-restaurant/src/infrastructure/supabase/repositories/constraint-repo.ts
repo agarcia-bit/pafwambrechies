@@ -1,14 +1,16 @@
 import { supabase } from '../client'
+import { freshQuery } from '../fresh-query'
 import type { Unavailability, ManagerFixedSchedule, ConditionalAvailability } from '@/domain/models/constraint'
 
 // --- Unavailabilities ---
 
 export async function fetchUnavailabilities(employeeId?: string): Promise<Unavailability[]> {
-  let query = supabase.from('unavailabilities').select('*')
-  if (employeeId) query = query.eq('employee_id', employeeId)
-  const { data, error } = await query.order('day_of_week')
-  if (error) throw error
-  return (data ?? []).map(mapUnavailability)
+  const data = await freshQuery((c) => {
+    let q = c.from('unavailabilities').select('*')
+    if (employeeId) q = q.eq('employee_id', employeeId)
+    return q.order('day_of_week')
+  })
+  return ((data as Record<string, unknown>[]) ?? []).map(mapUnavailability)
 }
 
 export async function createUnavailability(u: Omit<Unavailability, 'id'>): Promise<Unavailability> {
@@ -37,11 +39,12 @@ export async function deleteUnavailability(id: string): Promise<void> {
 // --- Manager Fixed Schedules ---
 
 export async function fetchManagerSchedules(employeeId?: string): Promise<ManagerFixedSchedule[]> {
-  let query = supabase.from('manager_fixed_schedules').select('*')
-  if (employeeId) query = query.eq('employee_id', employeeId)
-  const { data, error } = await query.order('day_of_week')
-  if (error) throw error
-  return (data ?? []).map(mapManagerSchedule)
+  const data = await freshQuery((c) => {
+    let q = c.from('manager_fixed_schedules').select('*')
+    if (employeeId) q = q.eq('employee_id', employeeId)
+    return q.order('day_of_week')
+  })
+  return ((data as Record<string, unknown>[]) ?? []).map(mapManagerSchedule)
 }
 
 export async function upsertManagerSchedule(s: Omit<ManagerFixedSchedule, 'id'>): Promise<ManagerFixedSchedule> {
@@ -66,11 +69,12 @@ export async function upsertManagerSchedule(s: Omit<ManagerFixedSchedule, 'id'>)
 // --- Conditional Availabilities ---
 
 export async function fetchConditionalAvailabilities(employeeId?: string): Promise<ConditionalAvailability[]> {
-  let query = supabase.from('conditional_availabilities').select('*')
-  if (employeeId) query = query.eq('employee_id', employeeId)
-  const { data, error } = await query.order('day_of_week')
-  if (error) throw error
-  return (data ?? []).map(mapConditionalAvailability)
+  const data = await freshQuery((c) => {
+    let q = c.from('conditional_availabilities').select('*')
+    if (employeeId) q = q.eq('employee_id', employeeId)
+    return q.order('day_of_week')
+  })
+  return ((data as Record<string, unknown>[]) ?? []).map(mapConditionalAvailability)
 }
 
 export async function createConditionalAvailability(ca: Omit<ConditionalAvailability, 'id'>): Promise<ConditionalAvailability> {

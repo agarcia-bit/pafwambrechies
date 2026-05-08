@@ -1,14 +1,12 @@
 import { supabase } from '../client'
+import { freshQuery } from '../fresh-query'
 import type { DailyForecast } from '@/domain/models/planning'
 
 export async function fetchDailyForecasts(): Promise<DailyForecast[]> {
-  const { data, error } = await supabase
-    .from('daily_forecasts')
-    .select('*')
-    .order('month')
-    .order('day_of_week')
-  if (error) throw error
-  return (data ?? []).map(mapForecast)
+  const data = await freshQuery((c) =>
+    c.from('daily_forecasts').select('*').order('month').order('day_of_week'),
+  )
+  return ((data as Record<string, unknown>[]) ?? []).map(mapForecast)
 }
 
 export async function upsertDailyForecast(f: Omit<DailyForecast, 'id'>): Promise<DailyForecast> {

@@ -1,16 +1,14 @@
 import { supabase } from '../client'
+import { freshQuery } from '../fresh-query'
 import type { Tenant, TenantRules } from '@/domain/models/tenant'
 import { mergeRules } from '@/domain/models/tenant'
 
 export async function fetchTenant(tenantId: string): Promise<Tenant | null> {
-  const { data, error } = await supabase
-    .from('tenants')
-    .select('*')
-    .eq('id', tenantId)
-    .single()
-  if (error) throw error
+  const data = await freshQuery((c) =>
+    c.from('tenants').select('*').eq('id', tenantId).single(),
+  )
   if (!data) return null
-  return mapTenant(data)
+  return mapTenant(data as Record<string, unknown>)
 }
 
 export async function updateTenant(
