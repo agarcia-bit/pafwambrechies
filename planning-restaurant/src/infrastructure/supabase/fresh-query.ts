@@ -1,15 +1,9 @@
-import { freshClient } from './client'
+import { createClient } from '@supabase/supabase-js'
 
-/**
- * Exécute une query Supabase via un client frais (pas de state machine partagé).
- * Récupère le JWT depuis localStorage pour l'authentification.
- * Garantit qu'aucun deadlock du client principal ne bloque la requête.
- */
-export async function freshQuery<T>(
-  queryFn: (client: ReturnType<typeof freshClient>) => PromiseLike<{ data: T | null; error: { message: string } | null }>,
-): Promise<T> {
-  // Récupère le JWT depuis localStorage
-  let token: string | undefined
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+
+function getToken(): string {
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i)
@@ -17,20 +11,34 @@ export async function freshQuery<T>(
         const raw = localStorage.getItem(k)
         if (raw) {
           const parsed = JSON.parse(raw)
-          token = parsed?.access_token ?? parsed?.currentSession?.access_token
-          break
+          return parsed?.access_token ?? parsed?.currentSession?.access_token ?? supabaseAnonKey
         }
       }
     }
-  } catch { /* continue with anon */ }
+  } catch { /* fallback */ }
+  return supabaseAnonKey
+}
 
-  const client = freshClient()
-  if (token) {
-    await client.auth.setSession({
-      access_token: token,
-      refresh_token: '',
-    }).catch(() => {})
-  }
+/**
+ * Exécute une query via un client Supabase frais avec le JWT injecté en header.
+ * Contourne tout deadlock du client principal.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function freshQuery<T>(
+  queryFn: (client: any) => PromiseLike<{ data: T | null; error: { message: string } | null }>,
+): Promise<T> {
+  const token = getToken()
+
+  const client = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      headers: { Authorization: `Bearer ${token}` },
+      fetch: (url, options) => fetch(url, {
+        ...options,
+        signal: options?.signal ?? AbortSignal.timeout(10000),
+      }),
+    },
+  })
 
   const { data, error } = await queryFn(client)
   if (error) throw new Error(error.message)
