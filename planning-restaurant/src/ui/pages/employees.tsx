@@ -28,7 +28,7 @@ export function EmployeesPage() {
   const { tenantId } = useAuthStore()
   const [showForm, setShowForm] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>()
-  const [showInactive, setShowInactive] = useState(false)
+  const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active')
   const [sortKey, setSortKey] = useState<string>('firstName')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
@@ -63,7 +63,7 @@ export function EmployeesPage() {
   }
 
   const displayedEmployees = useMemo(() => {
-    const list = [...(showInactive ? employees : activeEmployees)]
+    const list = [...(activeTab === 'active' ? activeEmployees : inactiveEmployees)]
     const dir = sortDir === 'asc' ? 1 : -1
     return list.sort((a, b) => {
       switch (sortKey) {
@@ -82,7 +82,7 @@ export function EmployeesPage() {
       }
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization
-  }, [employees, activeEmployees, showInactive, sortKey, sortDir, roles, employeeRoles])
+  }, [employees, activeEmployees, inactiveEmployees, activeTab, sortKey, sortDir, roles, employeeRoles])
 
   function handleAdd(data: Omit<Employee, 'id' | 'createdAt'>) {
     add(data)
@@ -110,24 +110,26 @@ export function EmployeesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold">
-            Salariés ({activeEmployees.length} actif{activeEmployees.length > 1 ? 's' : ''})
-          </h1>
-          {inactiveEmployees.length > 0 && (
-            <button
-              onClick={() => setShowInactive(!showInactive)}
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
-              {showInactive
-                ? 'Masquer inactifs'
-                : `+ ${inactiveEmployees.length} inactif${inactiveEmployees.length > 1 ? 's' : ''}`}
-            </button>
-          )}
-        </div>
+        <h1 className="text-2xl font-bold">Salariés</h1>
         <Button onClick={() => { setEditingEmployee(undefined); setShowForm(true) }}>
           <Plus size={16} className="mr-2" /> Ajouter
         </Button>
+      </div>
+
+      {/* Onglets Actifs / Inactifs */}
+      <div className="flex gap-2 border-b border-border">
+        <button
+          onClick={() => setActiveTab('active')}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'active' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          Actifs ({activeEmployees.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('inactive')}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'inactive' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          Inactifs ({inactiveEmployees.length})
+        </button>
       </div>
 
       {loading && <p className="text-muted-foreground">Chargement...</p>}
