@@ -11,7 +11,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 const clientOptions = {
   auth: {
-    lock: async (_name: string, _acquireTimeout: number, fn: () => Promise<unknown>) => await fn(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    lock: async <R>(_name: string, _acquireTimeout: number, fn: () => Promise<R>): Promise<R> => await fn(),
     autoRefreshToken: false,
     persistSession: true,
     detectSessionInUrl: true,
