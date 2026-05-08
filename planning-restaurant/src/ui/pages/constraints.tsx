@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useRoleStore } from '@/store/role-store'
-import { Button, Select, Input, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
+import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
 import type { Unavailability, ManagerFixedSchedule, ConditionalAvailability } from '@/domain/models/constraint'
 import {
   fetchUnavailabilities,
@@ -32,9 +32,7 @@ export function ConstraintsPage() {
   const [loadError, setLoadError] = useState('')
 
   // Unavailability form
-  const [newType, setNewType] = useState<'fixed' | 'punctual'>('fixed')
   const [newDays, setNewDays] = useState<number[]>([])
-  const [newDates, setNewDates] = useState<string[]>([''])
   const [newLabel, setNewLabel] = useState('')
 
   // Conditional availability form
@@ -219,43 +217,26 @@ export function ConstraintsPage() {
   // --- Unavailabilities ---
 
   async function handleAddUnavailability() {
-    if (!selectedEmployee) return
-    if (newType === 'fixed' && newDays.length === 0) return
-    if (newType === 'punctual' && newDates.filter(Boolean).length === 0) return
+    if (!selectedEmployee || newDays.length === 0) return
 
     const created: Unavailability[] = []
 
-    if (newType === 'fixed') {
-      for (const day of newDays) {
-        const u = await createUnavailability({
-          employeeId: selectedEmployee,
-          type: 'fixed',
-          dayOfWeek: day,
-          specificDate: null,
-          availableFrom: null,
-          availableUntil: null,
-          label: newLabel || `OFF ${DAY_NAMES[day]}`,
-        })
-        created.push(u)
-      }
-    } else {
-      for (const date of newDates.filter(Boolean)) {
-        const u = await createUnavailability({
-          employeeId: selectedEmployee,
-          type: 'punctual',
-          dayOfWeek: null,
-          specificDate: date,
-          availableFrom: null,
-          availableUntil: null,
-          label: newLabel || `OFF ${date}`,
-        })
-        created.push(u)
-      }
+    for (const day of newDays) {
+      const u = await createUnavailability({
+        employeeId: selectedEmployee,
+        type: 'fixed',
+        dayOfWeek: day,
+        specificDate: null,
+        availableFrom: null,
+        availableUntil: null,
+        label: newLabel || `OFF ${DAY_NAMES[day]}`,
+      })
+      created.push(u)
     }
 
     setUnavailabilities([...unavailabilities, ...created])
+    setAllUnavailabilities([...allUnavailabilities, ...created])
     setNewDays([])
-    setNewDates([''])
     setNewLabel('')
   }
 
@@ -493,22 +474,20 @@ export function ConstraintsPage() {
       {selectedEmployee && !loading && (
         <Card>
           <CardHeader>
-            <CardTitle>Indisponibilités (jours OFF)</CardTitle>
+            <CardTitle>Indisponibilités récurrentes (jours OFF)</CardTitle>
           </CardHeader>
           <CardContent>
-            {/* Liste existante */}
-            {unavailabilities.length > 0 && (
+            {/* Liste existante (uniquement récurrent) */}
+            {unavailabilities.filter((u) => u.type === 'fixed').length > 0 && (
               <div className="mb-4 flex flex-col gap-2">
-                {unavailabilities.map((u) => (
+                {unavailabilities.filter((u) => u.type === 'fixed').map((u) => (
                   <div key={u.id} className="flex items-center justify-between rounded border border-border px-3 py-2">
                     <div>
-                      <span className={`mr-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${u.type === 'fixed' ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'}`}>
-                        {u.type === 'fixed' ? 'Récurrent' : 'Ponctuel'}
+                      <span className="mr-2 inline-flex items-center rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+                        Récurrent
                       </span>
                       <span className="text-sm">
-                        {u.type === 'fixed' && u.dayOfWeek != null
-                          ? `Chaque ${DAY_NAMES[u.dayOfWeek]}`
-                          : u.specificDate && new Date(u.specificDate).toLocaleDateString('fr-FR')}
+                        {u.dayOfWeek != null ? `Chaque ${DAY_NAMES[u.dayOfWeek]}` : ''}
                       </span>
                       {u.label && <span className="ml-2 text-sm text-muted-foreground">— {u.label}</span>}
                     </div>
@@ -523,19 +502,9 @@ export function ConstraintsPage() {
               </div>
             )}
 
-            {/* Formulaire ajout */}
+            {/* Formulaire ajout (récurrent uniquement) */}
             <div className="rounded-lg bg-muted/50 p-4">
-              <div className="mb-3 flex gap-3">
-                <Select
-                  id="newType"
-                  label="Type"
-                  value={newType}
-                  onChange={(e) => { setNewType(e.target.value as 'fixed' | 'punctual'); setNewDays([]); setNewDates(['']) }}
-                  options={[
-                    { value: 'fixed', label: 'Récurrent (chaque semaine)' },
-                    { value: 'punctual', label: 'Ponctuel (dates précises)' },
-                  ]}
-                />
+              <div className="mb-3">
                 <Input
                   id="newLabel"
                   label="Motif (optionnel)"
@@ -545,72 +514,36 @@ export function ConstraintsPage() {
                 />
               </div>
 
-              {newType === 'fixed' ? (
-                <div className="mb-3">
-                  <label className="mb-2 block text-sm font-medium">Jours (cochez plusieurs)</label>
-                  <div className="flex flex-wrap gap-2">
-                    {DAY_NAMES.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => toggleDay(i, newDays, setNewDays)}
-                        className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                          newDays.includes(i)
-                            ? 'bg-warning text-white'
-                            : 'bg-background border border-border text-foreground hover:bg-muted'
-                        }`}
-                      >
-                        {DAY_SHORT[i]}
-                      </button>
-                    ))}
-                  </div>
-                  {newDays.length > 0 && (
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {newDays.length} jour{newDays.length > 1 ? 's' : ''} sélectionné{newDays.length > 1 ? 's' : ''} : {newDays.sort((a, b) => a - b).map((d) => DAY_SHORT[d]).join(', ')}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="mb-3">
-                  <label className="mb-2 block text-sm font-medium">Dates</label>
-                  <div className="flex flex-col gap-2">
-                    {newDates.map((date, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <input
-                          type="date"
-                          value={date}
-                          onChange={(e) => {
-                            const updated = [...newDates]
-                            updated[i] = e.target.value
-                            setNewDates(updated)
-                          }}
-                          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                        />
-                        {newDates.length > 1 && (
-                          <button
-                            onClick={() => setNewDates(newDates.filter((_, j) => j !== i))}
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
+              <div className="mb-3">
+                <label className="mb-2 block text-sm font-medium">Jours (cochez plusieurs)</label>
+                <div className="flex flex-wrap gap-2">
+                  {DAY_NAMES.map((_, i) => (
                     <button
-                      onClick={() => setNewDates([...newDates, ''])}
-                      className="self-start text-sm text-primary hover:underline"
+                      key={i}
+                      onClick={() => toggleDay(i, newDays, setNewDays)}
+                      className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                        newDays.includes(i)
+                          ? 'bg-warning text-white'
+                          : 'bg-background border border-border text-foreground hover:bg-muted'
+                      }`}
                     >
-                      + Ajouter une date
+                      {DAY_SHORT[i]}
                     </button>
-                  </div>
+                  ))}
                 </div>
-              )}
+                {newDays.length > 0 && (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {newDays.length} jour{newDays.length > 1 ? 's' : ''} sélectionné{newDays.length > 1 ? 's' : ''} : {newDays.sort((a, b) => a - b).map((d) => DAY_SHORT[d]).join(', ')}
+                  </p>
+                )}
+              </div>
 
               <Button
                 onClick={handleAddUnavailability}
                 size="sm"
-                disabled={newType === 'fixed' ? newDays.length === 0 : newDates.filter(Boolean).length === 0}
+                disabled={newDays.length === 0}
               >
-                <Plus size={16} className="mr-1" /> Ajouter {newType === 'fixed' && newDays.length > 1 ? `(${newDays.length} jours)` : ''}
+                <Plus size={16} className="mr-1" /> Ajouter {newDays.length > 1 ? `(${newDays.length} jours)` : ''}
               </Button>
             </div>
           </CardContent>
