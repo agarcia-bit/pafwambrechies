@@ -834,6 +834,9 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
             const totalBaseHours = activeEmployees.reduce((sum, e) => sum + e.weeklyHours, 0)
             const totalMaxHours = activeEmployees.reduce((sum, e) => sum + e.weeklyHours + e.modulationRange, 0)
             const weekProductivity = totalBaseHours > 0 ? totalCA / totalBaseHours : 0
+            const productivityTarget = tenant?.productivityTarget ?? 95
+            const targetHours = productivityTarget > 0 ? totalCA / productivityTarget : 0
+            const hoursDelta = Math.round(totalBaseHours - targetHours)
             // 3 levels: <85 = overstaffed, 85-110 = good, >110 = understaffed
             const level = weekProductivity < 85 ? 'overstaffed' : weekProductivity > 110 ? 'understaffed' : 'good'
 
@@ -975,7 +978,14 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
                   <div>
                     <p className="text-sm font-bold">Productivité semaine estimée</p>
                     <p className="text-xs text-muted-foreground">
-                      CA total : {Math.round(totalCA).toLocaleString('fr-FR')}€ / Heures contrat : {totalBaseHours}h (max {totalMaxHours}h)
+                      CA total : {Math.round(totalCA).toLocaleString('fr-FR')}€ / Heures contrat : {totalBaseHours}h (max {totalMaxHours}h) / Cible {productivityTarget} = {Math.round(targetHours)}h idéal
+                    </p>
+                    <p className={`mt-0.5 text-xs font-semibold ${hoursDelta > 0 ? 'text-warning' : hoursDelta < 0 ? 'text-destructive' : 'text-success'}`}>
+                      {hoursDelta > 0
+                        ? `${hoursDelta}h en trop pour atteindre la cible ${productivityTarget}`
+                        : hoursDelta < 0
+                        ? `${Math.abs(hoursDelta)}h manquantes pour atteindre la cible ${productivityTarget}`
+                        : `Pile sur la cible ${productivityTarget}`}
                     </p>
                   </div>
                   <div className="text-right">
