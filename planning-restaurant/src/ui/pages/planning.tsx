@@ -77,19 +77,14 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
   const { forecasts, load: loadForecasts } = useForecastStore()
   const { tenant, load: loadTenant } = useTenantStore()
   const { tenantId, user } = useAuthStore()
-  const { salleReport, salleWeekISO, setSalleReport } = useCurrentPlanningStore()
+  const { setSalleReport, getSalleReport } = useCurrentPlanningStore()
 
-  const [weekStart, setWeekStart] = useState(() => {
-    // Si un planning non sauvegardé existe pour une semaine précédente, on
-    // restaure cette semaine pour que le rapport stocké soit cohérent.
-    if (salleWeekISO) return new Date(salleWeekISO + 'T00:00:00')
-    return getNextMonday()
-  })
-  const [report, setReportLocal] = useState<PlanningReport | null>(salleReport)
-  // Wrapper qui sync le state local et le store global
+  const [weekStart, setWeekStart] = useState(getNextMonday)
+  const weekStartISO = formatISO(weekStart)
+  const [report, setReportLocal] = useState<PlanningReport | null>(() => getSalleReport(formatISO(getNextMonday())))
   const setReport = (r: PlanningReport | null) => {
     setReportLocal(r)
-    setSalleReport(r, formatISO(weekStart))
+    setSalleReport(r, weekStartISO)
   }
   const [generating, setGenerating] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -273,14 +268,16 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
     const d = new Date(weekStart)
     d.setDate(d.getDate() + delta * 7)
     setWeekStart(d)
-    setReport(null)
+    // Restaure le planning de cette semaine s'il existe en mémoire
+    const newWeekISO = formatISO(d)
+    const cached = getSalleReport(newWeekISO)
+    setReportLocal(cached)
     setSaved(false)
     setDayAdjustments({})
     reloadConstraints()
   }
 
   const weekNumber = getWeekNumber(weekStart)
-  const weekStartISO = formatISO(weekStart)
 
   // Build the week dates (Mon-Sun)
   const weekDates = useMemo(() => {

@@ -12,37 +12,34 @@ interface KitchenEntry {
 }
 
 interface CurrentPlanningState {
-  // Planning salle généré (non sauvegardé)
-  salleReport: PlanningReport | null
-  salleWeekISO: string | null
+  // Plannings salle par semaine (clé = weekISO)
+  salleReports: Record<string, PlanningReport>
   setSalleReport: (report: PlanningReport | null, weekISO: string) => void
+  getSalleReport: (weekISO: string) => PlanningReport | null
 
-  // Planning cuisine généré (non sauvegardé)
-  kitchenEntries: KitchenEntry[]
-  kitchenWeekISO: string | null
+  // Plannings cuisine par semaine
+  kitchenEntriesMap: Record<string, KitchenEntry[]>
   setKitchenEntries: (entries: KitchenEntry[], weekISO: string) => void
+  getKitchenEntries: (weekISO: string) => KitchenEntry[]
 
   clearAll: () => void
 }
 
-/**
- * Store transient: garde en mémoire le dernier planning généré non sauvegardé,
- * pour qu'il reste affiché si l'utilisateur navigue ailleurs et revient.
- * Effacé à la déconnexion ou au refresh complet de la page.
- */
-export const useCurrentPlanningStore = create<CurrentPlanningState>((set) => ({
-  salleReport: null,
-  salleWeekISO: null,
-  setSalleReport: (report, weekISO) => set({ salleReport: report, salleWeekISO: weekISO }),
-
-  kitchenEntries: [],
-  kitchenWeekISO: null,
-  setKitchenEntries: (entries, weekISO) => set({ kitchenEntries: entries, kitchenWeekISO: weekISO }),
-
-  clearAll: () => set({
-    salleReport: null,
-    salleWeekISO: null,
-    kitchenEntries: [],
-    kitchenWeekISO: null,
+export const useCurrentPlanningStore = create<CurrentPlanningState>((set, get) => ({
+  salleReports: {},
+  setSalleReport: (report, weekISO) => set((s) => {
+    const next = { ...s.salleReports }
+    if (report) next[weekISO] = report
+    else delete next[weekISO]
+    return { salleReports: next }
   }),
+  getSalleReport: (weekISO) => get().salleReports[weekISO] ?? null,
+
+  kitchenEntriesMap: {},
+  setKitchenEntries: (entries, weekISO) => set((s) => ({
+    kitchenEntriesMap: { ...s.kitchenEntriesMap, [weekISO]: entries },
+  })),
+  getKitchenEntries: (weekISO) => get().kitchenEntriesMap[weekISO] ?? [],
+
+  clearAll: () => set({ salleReports: {}, kitchenEntriesMap: {} }),
 }))

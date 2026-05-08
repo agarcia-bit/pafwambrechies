@@ -67,17 +67,15 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
   const { forecasts, load: loadForecasts } = useForecastStore()
   const { tenant, load: loadTenant } = useTenantStore()
   const { tenantId, user } = useAuthStore()
-  const { kitchenEntries, kitchenWeekISO, setKitchenEntries } = useCurrentPlanningStore()
+  const { setKitchenEntries, getKitchenEntries } = useCurrentPlanningStore()
 
-  const [weekStart, setWeekStart] = useState(() => {
-    if (kitchenWeekISO) return new Date(kitchenWeekISO + 'T00:00:00')
-    return getNextMonday()
-  })
-  const [entries, setEntriesLocal] = useState<KitchenEntry[]>(kitchenEntries)
+  const [weekStart, setWeekStart] = useState(getNextMonday)
+  const weekStartISO = formatISO(weekStart)
+  const [entries, setEntriesLocal] = useState<KitchenEntry[]>(() => getKitchenEntries(formatISO(getNextMonday())))
   const setEntries = (e: KitchenEntry[] | ((prev: KitchenEntry[]) => KitchenEntry[])) => {
     setEntriesLocal((prev) => {
       const next = typeof e === 'function' ? (e as (p: KitchenEntry[]) => KitchenEntry[])(prev) : e
-      setKitchenEntries(next, formatISO(weekStart))
+      setKitchenEntries(next, weekStartISO)
       return next
     })
   }
@@ -120,7 +118,6 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
 
   const kitchenEmployees = employees.filter((e) => e.active && e.department === 'cuisine')
   const weekNumber = getWeekNumber(weekStart)
-  const weekStartISO = formatISO(weekStart)
 
   // Load saved kitchen planning from dashboard
   useEffect(() => {
@@ -150,7 +147,8 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
     const d = new Date(weekStart)
     d.setDate(d.getDate() + delta * 7)
     setWeekStart(d)
-    setEntries([])
+    const cached = getKitchenEntries(formatISO(d))
+    setEntriesLocal(cached)
     setSaved(false)
     setSolverInfo('')
   }
