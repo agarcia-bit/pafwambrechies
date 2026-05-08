@@ -1,4 +1,5 @@
 import { supabase } from '../client'
+import { freshQuery } from '../fresh-query'
 import type { PlanningEntry } from '@/domain/models/planning'
 
 export interface SavedPlanning {
@@ -13,13 +14,10 @@ export interface SavedPlanning {
 }
 
 export async function fetchPlannings(): Promise<SavedPlanning[]> {
-  const { data, error } = await supabase
-    .from('plannings')
-    .select('*')
-    .order('week_start_date', { ascending: false })
-    .limit(20)
-  if (error) throw error
-  return (data ?? []).map(mapPlanning)
+  const data = await freshQuery((c) =>
+    c.from('plannings').select('*').order('week_start_date', { ascending: false }).limit(20),
+  )
+  return ((data as Record<string, unknown>[]) ?? []).map(mapPlanning)
 }
 
 export async function savePlanningWithEntries(

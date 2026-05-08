@@ -1,17 +1,15 @@
 import { supabase } from '../client'
+import { freshQuery } from '../fresh-query'
 import type { Employee } from '@/domain/models/employee'
 
 export async function fetchEmployees(): Promise<Employee[]> {
-  const { data, error } = await supabase
-    .from('employees')
-    .select('*')
-    .order('is_manager', { ascending: false })
-    .order('level', { ascending: false })
-    .order('weekly_hours', { ascending: false })
-
-  if (error) throw error
-
-  return (data ?? []).map(mapEmployee)
+  const data = await freshQuery((c) =>
+    c.from('employees').select('*')
+      .order('is_manager', { ascending: false })
+      .order('level', { ascending: false })
+      .order('weekly_hours', { ascending: false }),
+  )
+  return ((data as Record<string, unknown>[]) ?? []).map(mapEmployee)
 }
 
 export async function createEmployee(

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -9,25 +9,36 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+const clientOptions = {
   auth: {
-    // Bug connu de Supabase JS v2: le lock par défaut + l'auto-refresh
-    // peuvent deadlock quand on change d'onglet et qu'on revient.
-    // Fix: lock no-op + désactiver autoRefreshToken.
-    // Le token JWT a 1h de validité. Si on est dans le tab >1h, on
-    // demandera à l'utilisateur de se reconnecter via une vérification
-    // d'expiration manuelle au moment des requêtes.
-    lock: async (_name, _acquireTimeout, fn) => await fn(),
+    lock: async (_name: string, _acquireTimeout: number, fn: () => Promise<unknown>) => await fn(),
     autoRefreshToken: false,
     persistSession: true,
     detectSessionInUrl: true,
   },
   global: {
-    fetch: (url, options) => {
+    fetch: (url: RequestInfo | URL, options?: RequestInit) => {
       return fetch(url, {
         ...options,
         signal: options?.signal ?? AbortSignal.timeout(15000),
       })
     },
   },
-})
+}
+
+// Client principal (utilisé pour l'auth: login, session, etc.)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, clientOptions)
+
+// Client secondaire pour les requêtes data: si le client principal est
+// dans un état corrompu (deadlock auth), celui-ci reste fonctionnel car
+// il ne partage pas l'état interne (locks, refresh timers, etc.)
+// On le recrée à chaque appel pour garantir un état propre.
+export function freshClient(): SupabaseClient {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    ...clientOptions,
+    auth: {
+      ...clientOptions.auth,
+      persistSession: false, // pas de conflit de storage avec le client principal
+    },
+  })
+}

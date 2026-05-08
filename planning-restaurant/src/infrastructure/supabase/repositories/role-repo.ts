@@ -1,13 +1,12 @@
 import { supabase } from '../client'
+import { freshQuery } from '../fresh-query'
 import type { Role, EmployeeRole } from '@/domain/models/role'
 
 export async function fetchRoles(): Promise<Role[]> {
-  const { data, error } = await supabase
-    .from('roles')
-    .select('*')
-    .order('sort_order')
-  if (error) throw error
-  return (data ?? []).map(mapRole)
+  const data = await freshQuery((c) =>
+    c.from('roles').select('*').order('sort_order'),
+  )
+  return ((data as Record<string, unknown>[]) ?? []).map(mapRole)
 }
 
 export async function createRole(role: Omit<Role, 'id'>): Promise<Role> {
@@ -43,11 +42,12 @@ export async function deleteRole(id: string): Promise<void> {
 
 // Employee-Role associations
 export async function fetchEmployeeRoles(): Promise<EmployeeRole[]> {
-  const { data, error } = await supabase.from('employee_roles').select('*')
-  if (error) throw error
-  return (data ?? []).map((r) => ({
-    employeeId: r.employee_id,
-    roleId: r.role_id,
+  const data = await freshQuery((c) =>
+    c.from('employee_roles').select('*'),
+  )
+  return ((data as Record<string, unknown>[]) ?? []).map((r) => ({
+    employeeId: r.employee_id as string,
+    roleId: r.role_id as string,
   }))
 }
 
