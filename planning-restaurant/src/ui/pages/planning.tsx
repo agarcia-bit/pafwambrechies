@@ -25,9 +25,10 @@ import {
   fetchConditionalAvailabilities,
 } from '@/infrastructure/supabase/repositories/constraint-repo'
 import { exportPlanningToExcel } from '@/infrastructure/export/excel-export'
-import { savePlanningWithEntries, fetchPlanningEntries, fetchPlannings } from '@/infrastructure/supabase/repositories/planning-repo'
+import { savePlanningWithEntries, fetchPlanningEntries, fetchPlannings, fetchPlanningForWeek } from '@/infrastructure/supabase/repositories/planning-repo'
+import type { SavedPlanning } from '@/infrastructure/supabase/repositories/planning-repo'
 import type { EventOverride } from '@/domain/engine'
-import { Calendar, Download, Play, ChevronLeft, ChevronRight, AlertTriangle, TrendingUp, Plus, X, Save, CheckCircle } from 'lucide-react'
+import { Calendar, Download, Play, ChevronLeft, ChevronRight, AlertTriangle, TrendingUp, Plus, X, Save, CheckCircle, FolderOpen } from 'lucide-react'
 
 const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 
@@ -98,6 +99,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
   const [conditionalAvailabilities, setConditionalAvailabilities] = useState<ConditionalAvailability[]>([])
   const [constraintsLoaded, setConstraintsLoaded] = useState(false)
   const [constraintsError, setConstraintsError] = useState<string>('')
+  const [savedPlanningMeta, setSavedPlanningMeta] = useState<SavedPlanning | null>(null)
 
   // CA adjustments per day (% override) and min staff
   const [dayAdjustments, setDayAdjustments] = useState<Record<number, { percent: number; minMidi: number; minSoir: number; minFermeture: number }>>({})
@@ -183,6 +185,14 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
   }, [loadEmployees, loadRoles, loadTemplates, loadForecasts, loadTenant, tenantId])
 
   const activeEmployees = employees.filter((e) => e.active && e.department === 'salle')
+
+  // Check si un planning enregistré existe pour la semaine courante
+  useEffect(() => {
+    setSavedPlanningMeta(null)
+    fetchPlanningForWeek(weekStartISO, 'salle')
+      .then((p) => setSavedPlanningMeta(p))
+      .catch(() => {})
+  }, [weekStartISO])
 
   // Load a saved planning when coming from dashboard
   useEffect(() => {
@@ -1019,6 +1029,99 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
             </>
           ) : 'Générer le planning'}
         </Button>
+
+        {savedPlanningMeta && !report && (
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => {
+              if (!loadPlanningId) {
+                // Simulate loading from the saved planning ID
+                const fakeEvent = savedPlanningMeta.id
+                // Reuse existing load logic
+                Promise.all([
+                  fetchPlannings(),
+                  fetchPlanningEntries(fakeEvent),
+                ]).then(([plannings, entries]) => {
+                  const planning = plannings.find((p) => p.id === fakeEvent)
+                  if (!planning || entries.length === 0) return
+                  setWeekStart(new Date(planning.weekStartDate + 'T00:00:00'))
+
+                  const empSummaries = buildSummaries(entries, activeEmployees)
+                  const dailySummaries = [1, 2, 3, 4, 5, 6].map((day) => {
+                    const dayEntries = entries.filter((e) => e.dayOfWeek === day)
+                    const isSunday = day === 6
+                    const closingTime = isSunday ? (tenant?.closingTimeSunday ?? 21) : (tenant?.closingTimeWeek ?? 24)
+                    const plannedHours = dayEntries.reduce((s, e) => s + e.effectiveHours, 0)
+                    const month = new Date(planning.weekStartDate).getMonth() + 1
+                    const forecast = forecasts.find((f) => f.month === month && f.dayOfWeek === day)
+                    const revenue = forecast?.forecastedRevenue ?? 0
+                    const countCov = (from: number, to: number) => {
+                      let min = Infinity
+                      for (let h = from; h < to; h += 0.5) {
+                        const c = dayEntries.filter((e) => e.startTime <= h && e.endTime > h).length
+                        if (c < min) min = c
+                      }
+                      return min === Infinity ? 0 : min
+                    }
+                    return {
+                      date: addDays(planning.weekStartDate, day),
+                      dayOfWeek: day,
+                      forecastedRevenue: revenue,
+                      plannedHours,
+                      productivity: plannedHours > 0 ? revenue / plannedHours : 0,
+                      coverageMidi: countCov(12, 15),
+                      coverageApresMidi: countCov(15, 18),
+                      coverageSoir: countCov(18, closingTime),
+                      openingStaff: dayEntries.filter((e) => e.startTime <= 9.5).length,
+                      closingStaff: dayEntries.filter((e) => e.endTime >= closingTime).length,
+                      isDelestage: false,
+                      delestageReason: null,
+                    }
+                  })
+
+                  const violations = validatePlanning({
+                    entries,
+                    employees: activeEmployees,
+                    managerIds: activeEmployees.filter((e) => e.isManager).map((e) => e.id),
+                    shiftTemplates: templates,
+                    closingTimeWeek: tenant?.closingTimeWeek ?? 24,
+                    closingTimeSunday: tenant?.closingTimeSunday ?? 21,
+                  })
+
+                  setReport({
+                    planning: {
+                      id: planning.id,
+                      tenantId: planning.tenantId,
+                      weekStartDate: planning.weekStartDate,
+                      weekNumber: planning.weekNumber,
+                      status: planning.status,
+                      generatedAt: planning.generatedAt,
+                      createdBy: planning.createdBy ?? '',
+                      entries,
+                    },
+                    employeeSummaries: empSummaries,
+                    dailySummaries,
+                    violations,
+                    warnings: [],
+                    isValid: violations.length === 0,
+                  })
+                  setSaved(true)
+                }).catch(() => {})
+              }
+            }}
+          >
+            <FolderOpen size={16} className="mr-2" />
+            Charger le planning enregistré
+            <span className={`ml-2 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+              savedPlanningMeta.status === 'validated'
+                ? 'bg-success/10 text-success'
+                : 'bg-warning/10 text-warning'
+            }`}>
+              {savedPlanningMeta.status === 'validated' ? 'Validé' : 'Brouillon'}
+            </span>
+          </Button>
+        )}
 
         {report && !saved && (
           <Button

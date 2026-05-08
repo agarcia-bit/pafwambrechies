@@ -15,8 +15,9 @@ import type { SolverShiftAssignment } from '@/infrastructure/api/solver-api'
 import { fetchUnavailabilities } from '@/infrastructure/supabase/repositories/constraint-repo'
 import type { Unavailability } from '@/domain/models/constraint'
 import { getWeeklyBounds } from '@/domain/models/employee'
-import { Calendar, Play, ChevronLeft, ChevronRight, Plus, X, Save, CheckCircle } from 'lucide-react'
-import { savePlanningWithEntries } from '@/infrastructure/supabase/repositories/planning-repo'
+import { Calendar, Play, ChevronLeft, ChevronRight, Plus, X, Save, CheckCircle, FolderOpen } from 'lucide-react'
+import { savePlanningWithEntries, fetchPlanningForWeek, fetchPlannings, fetchPlanningEntries } from '@/infrastructure/supabase/repositories/planning-repo'
+import type { SavedPlanning } from '@/infrastructure/supabase/repositories/planning-repo'
 import type { PlanningEntry } from '@/domain/models/planning'
 
 const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
@@ -85,6 +86,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
   const [saved, setSaved] = useState(false)
   const [editingCell, setEditingCell] = useState<{ empId: string; day: number } | null>(null)
   const [planningId] = useState(crypto.randomUUID())
+  const [savedPlanningMeta, setSavedPlanningMeta] = useState<SavedPlanning | null>(null)
   const [unavailabilities, setUnavailabilities] = useState<Unavailability[]>([])
   const [addingConstraint, setAddingConstraint] = useState(false)
   const [newConstraintEmpId, setNewConstraintEmpId] = useState('')
@@ -118,6 +120,14 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
 
   const kitchenEmployees = employees.filter((e) => e.active && e.department === 'cuisine')
   const weekNumber = getWeekNumber(weekStart)
+
+  // Check si un planning cuisine enregistré existe pour la semaine courante
+  useEffect(() => {
+    setSavedPlanningMeta(null)
+    fetchPlanningForWeek(weekStartISO, 'cuisine')
+      .then((p) => setSavedPlanningMeta(p))
+      .catch(() => {})
+  }, [weekStartISO])
 
   // Load saved kitchen planning from dashboard
   useEffect(() => {
@@ -528,6 +538,45 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
             </>
           )}
         </Button>
+
+        {savedPlanningMeta && entries.length === 0 && (
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => {
+              Promise.all([
+                fetchPlannings(),
+                fetchPlanningEntries(savedPlanningMeta.id),
+              ]).then(([plannings, dbEntries]) => {
+                const planning = plannings.find((p) => p.id === savedPlanningMeta.id)
+                if (!planning || dbEntries.length === 0) return
+                setWeekStart(new Date(planning.weekStartDate + 'T00:00:00'))
+                const mapped: KitchenEntry[] = dbEntries.map((e) => ({
+                  employeeId: e.employeeId,
+                  dayOfWeek: e.dayOfWeek,
+                  shiftTemplateId: e.shiftTemplateId,
+                  startTime: e.startTime,
+                  endTime: e.endTime,
+                  effectiveHours: e.effectiveHours,
+                  period: e.startTime < 16 ? 'midi' as const : 'soir' as const,
+                }))
+                setEntries(mapped)
+                setSaved(true)
+                setSolverInfo(`Planning chargé (S${planning.weekNumber} — ${planning.status})`)
+              }).catch(() => {})
+            }}
+          >
+            <FolderOpen size={16} className="mr-2" />
+            Charger le planning enregistré
+            <span className={`ml-2 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+              savedPlanningMeta.status === 'validated'
+                ? 'bg-success/10 text-success'
+                : 'bg-warning/10 text-warning'
+            }`}>
+              {savedPlanningMeta.status === 'validated' ? 'Validé' : 'Brouillon'}
+            </span>
+          </Button>
+        )}
 
         {entries.length > 0 && !saved && (
           <Button

@@ -19,6 +19,22 @@ export async function fetchPlannings(): Promise<SavedPlanning[]> {
   return ((data as Record<string, unknown>[]) ?? []).map(mapPlanning)
 }
 
+export async function fetchPlanningForWeek(
+  weekStartDate: string,
+  department: string = 'salle',
+): Promise<SavedPlanning | null> {
+  const data = await freshQuery((c) =>
+    c.from('plannings')
+      .select('*')
+      .eq('week_start_date', weekStartDate)
+      .eq('department', department)
+      .order('generated_at', { ascending: false })
+      .limit(1),
+  )
+  const rows = (data as Record<string, unknown>[]) ?? []
+  return rows.length > 0 ? mapPlanning(rows[0]) : null
+}
+
 export async function savePlanningWithEntries(
   planning: {
     id: string
