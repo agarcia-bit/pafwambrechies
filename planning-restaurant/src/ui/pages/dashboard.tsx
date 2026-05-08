@@ -25,7 +25,7 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
   const { employees, load } = useEmployeeStore()
   const { forecasts, load: loadForecasts } = useForecastStore()
   const [plannings, setPlannings] = useState<SavedPlanning[]>([])
-  const [loadingPlannings, setLoadingPlannings] = useState(false)
+  const [loadingPlannings, setLoadingPlannings] = useState(true)
 
   function refreshPlannings() {
     setLoadingPlannings(true)
@@ -38,7 +38,7 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
   useEffect(() => {
     load()
     loadForecasts()
-    // Load plannings inline to satisfy strict lint
+    setLoadingPlannings(true)
     fetchPlannings()
       .then(setPlannings)
       .catch(() => {})
