@@ -1,4 +1,3 @@
-import { supabase } from '../client'
 import { freshQuery } from '../fresh-query'
 import type { PlanningEntry } from '@/domain/models/planning'
 
@@ -32,10 +31,37 @@ export async function savePlanningWithEntries(
   },
   entries: PlanningEntry[],
 ): Promise<SavedPlanning> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+  const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+
+  // Récupère le JWT depuis localStorage
+  let token = apiKey
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k && k.startsWith('sb-') && k.endsWith('-auth-token')) {
+        const raw = localStorage.getItem(k)
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          token = parsed?.access_token ?? parsed?.currentSession?.access_token ?? apiKey
+          break
+        }
+      }
+    }
+  } catch { /* fallback */ }
+
+  const headers = {
+    apikey: apiKey,
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation',
+  }
+
   // Upsert planning
-  const { data, error } = await supabase
-    .from('plannings')
-    .upsert({
+  const upsertRes = await fetch(`${supabaseUrl}/rest/v1/plannings?on_conflict=id`, {
+    method: 'POST',
+    headers: { ...headers, Prefer: 'return=representation,resolution=merge-duplicates' },
+    body: JSON.stringify({
       id: planning.id,
       tenant_id: planning.tenantId,
       week_start_date: planning.weekStartDate,
@@ -43,13 +69,17 @@ export async function savePlanningWithEntries(
       status: planning.status,
       created_by: planning.createdBy || null,
       department: planning.department ?? 'salle',
-    })
-    .select()
-    .single()
-  if (error) throw error
+    }),
+    signal: AbortSignal.timeout(10000),
+  })
+  if (!upsertRes.ok) throw new Error(`Save planning: ${upsertRes.status}`)
+  const [saved] = await upsertRes.json()
 
-  // Delete old entries for this planning
-  await supabase.from('planning_entries').delete().eq('planning_id', planning.id)
+  // Delete old entries
+  await fetch(
+    `${supabaseUrl}/rest/v1/planning_entries?planning_id=eq.${planning.id}`,
+    { method: 'DELETE', headers, signal: AbortSignal.timeout(10000) },
+  )
 
   // Insert new entries
   if (entries.length > 0) {
@@ -67,22 +97,24 @@ export async function savePlanningWithEntries(
       meals: e.meals,
       baskets: e.baskets,
     }))
-    const { error: entryError } = await supabase.from('planning_entries').insert(rows)
-    if (entryError) throw entryError
+    const insertRes = await fetch(`${supabaseUrl}/rest/v1/planning_entries`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(rows),
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!insertRes.ok) throw new Error(`Save entries: ${insertRes.status}`)
   }
 
-  return mapPlanning(data)
+  return mapPlanning(saved)
 }
 
 export async function fetchPlanningEntries(planningId: string): Promise<PlanningEntry[]> {
-  const { data, error } = await supabase
-    .from('planning_entries')
-    .select('*')
-    .eq('planning_id', planningId)
-    .order('day_of_week')
-  if (error) throw error
+  const data = await freshQuery((c) =>
+    c.from('planning_entries').select('*').eq('planning_id', planningId).order('day_of_week'),
+  )
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data ?? []).map((row: any) => ({
+  return ((data as any[]) ?? []).map((row: any) => ({
     id: row.id,
     planningId: row.planning_id,
     employeeId: row.employee_id,
@@ -99,16 +131,11 @@ export async function fetchPlanningEntries(planningId: string): Promise<Planning
 }
 
 export async function updatePlanningStatus(id: string, status: 'draft' | 'validated'): Promise<void> {
-  const { error } = await supabase
-    .from('plannings')
-    .update({ status })
-    .eq('id', id)
-  if (error) throw error
+  await freshQuery((c) => c.from('plannings').update({ status }).eq('id', id).select())
 }
 
 export async function deletePlanning(id: string): Promise<void> {
-  const { error } = await supabase.from('plannings').delete().eq('id', id)
-  if (error) throw error
+  await freshQuery((c) => c.from('plannings').delete().eq('id', id).select())
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
