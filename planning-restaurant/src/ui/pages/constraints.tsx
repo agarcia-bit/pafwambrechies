@@ -707,6 +707,20 @@ export function ConstraintsPage() {
               <div className="mb-3">
                 <label className="mb-2 block text-sm font-medium">Créneaux autorisés uniquement</label>
                 <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setCondShiftCodes(
+                      condShiftCodes.length === uniqueShiftOptions.length
+                        ? []
+                        : uniqueShiftOptions.map((s) => s.code),
+                    )}
+                    className={`rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
+                      condShiftCodes.length === uniqueShiftOptions.length
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-background border-2 border-blue-400 text-blue-600 hover:bg-blue-50'
+                    }`}
+                  >
+                    Tous les créneaux
+                  </button>
                   {uniqueShiftOptions.map((s) => (
                     <button
                       key={s.code}
