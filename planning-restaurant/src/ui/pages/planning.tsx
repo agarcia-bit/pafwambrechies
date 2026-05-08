@@ -980,13 +980,6 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
                     <p className="text-xs text-muted-foreground">
                       CA total : {Math.round(totalCA).toLocaleString('fr-FR')}€ / Heures contrat : {totalBaseHours}h (max {totalMaxHours}h) / Cible {productivityTarget} = {Math.round(targetHours)}h idéal
                     </p>
-                    <p className={`mt-0.5 text-xs font-semibold ${hoursDelta > 0 ? 'text-warning' : hoursDelta < 0 ? 'text-destructive' : 'text-success'}`}>
-                      {hoursDelta > 0
-                        ? `${hoursDelta}h en trop pour atteindre la cible ${productivityTarget}`
-                        : hoursDelta < 0
-                        ? `${Math.abs(hoursDelta)}h manquantes pour atteindre la cible ${productivityTarget}`
-                        : `Pile sur la cible ${productivityTarget}`}
-                    </p>
                   </div>
                   <div className="text-right">
                     <p className={`text-2xl font-bold ${
@@ -1002,6 +995,13 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
                       {level === 'understaffed' ? 'Envisager un renfort' :
                        level === 'overstaffed' ? 'Délester des heures' :
                        'Effectif suffisant'}
+                    </p>
+                    <p className={`mt-0.5 text-[11px] font-semibold ${hoursDelta > 0 ? 'text-warning' : hoursDelta < 0 ? 'text-destructive' : 'text-success'}`}>
+                      {hoursDelta > 0
+                        ? `${hoursDelta}h en trop vs cible ${productivityTarget}`
+                        : hoursDelta < 0
+                        ? `${Math.abs(hoursDelta)}h manquantes vs cible ${productivityTarget}`
+                        : `Pile sur la cible`}
                     </p>
                   </div>
                 </div>
