@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useRoleStore } from '@/store/role-store'
 import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardHeader, CardTitle, Button } from '@/ui/components'
 import { EmployeeForm } from '@/ui/components/employee-form'
-import { getWeeklyBounds } from '@/domain/models/employee'
 import type { Employee } from '@/domain/models/employee'
-import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react'
+import { Plus, Pencil, Trash2, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 
 const CONTRACT_LABELS: Record<string, string> = {
   cdi: 'CDI',
@@ -30,6 +29,24 @@ export function EmployeesPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>()
   const [showInactive, setShowInactive] = useState(false)
+  const [sortKey, setSortKey] = useState<string>('firstName')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  function toggleSort(key: string) {
+    if (sortKey === key) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
+  function SortIcon({ col }: { col: string }) {
+    if (sortKey !== col) return <ArrowUpDown size={12} className="ml-1 opacity-30" />
+    return sortDir === 'asc'
+      ? <ArrowUp size={12} className="ml-1" />
+      : <ArrowDown size={12} className="ml-1" />
+  }
 
   useEffect(() => {
     load()
@@ -45,9 +62,27 @@ export function EmployeesPage() {
     return roles.find((r) => r.id === er.roleId) ?? null
   }
 
-  // Sort by role name, then by name
-  const displayedEmployees = (showInactive ? employees : activeEmployees)
-    .sort((a, b) => a.firstName.localeCompare(b.firstName))
+  const displayedEmployees = useMemo(() => {
+    const list = [...(showInactive ? employees : activeEmployees)]
+    const dir = sortDir === 'asc' ? 1 : -1
+    return list.sort((a, b) => {
+      switch (sortKey) {
+        case 'firstName': return dir * a.firstName.localeCompare(b.firstName)
+        case 'contractType': return dir * a.contractType.localeCompare(b.contractType)
+        case 'weeklyHours': return dir * (a.weeklyHours - b.weeklyHours)
+        case 'level': return dir * (a.level - b.level)
+        case 'role': {
+          const ra = getRoleForEmployee(a.id)?.name ?? 'zzz'
+          const rb = getRoleForEmployee(b.id)?.name ?? 'zzz'
+          return dir * ra.localeCompare(rb)
+        }
+        case 'department': return dir * a.department.localeCompare(b.department)
+        case 'createdAt': return dir * a.createdAt.localeCompare(b.createdAt)
+        default: return 0
+      }
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization
+  }, [employees, activeEmployees, showInactive, sortKey, sortDir, roles, employeeRoles])
 
   function handleAdd(data: Omit<Employee, 'id' | 'createdAt'>) {
     add(data)
@@ -123,19 +158,32 @@ export function EmployeesPage() {
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/50">
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Nom</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Contrat</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Heures</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Bornes</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Niveau</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Rôle</th>
+                {([
+                  ['firstName', 'Nom', 'left'],
+                  ['department', 'Département', 'left'],
+                  ['contractType', 'Contrat', 'left'],
+                  ['weeklyHours', 'Heures', 'left'],
+                  ['level', 'Niveau', 'left'],
+                  ['role', 'Rôle', 'left'],
+                  ['createdAt', 'Ajouté le', 'left'],
+                ] as [string, string, string][]).map(([key, label, align]) => (
+                  <th
+                    key={key}
+                    onClick={() => toggleSort(key)}
+                    className={`px-4 py-3 text-${align} font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none`}
+                  >
+                    <span className="inline-flex items-center">
+                      {label}
+                      <SortIcon col={key} />
+                    </span>
+                  </th>
+                ))}
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Actif</th>
                 <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
               {displayedEmployees.map((emp) => {
-                const bounds = getWeeklyBounds(emp)
                 const role = getRoleForEmployee(emp.id)
                 return (
                   <tr
@@ -145,9 +193,9 @@ export function EmployeesPage() {
                     <td className="px-4 py-3 font-medium">
                       {emp.firstName} {emp.lastName}
                     </td>
+                    <td className="px-4 py-3 capitalize text-muted-foreground">{emp.department}</td>
                     <td className="px-4 py-3">{CONTRACT_LABELS[emp.contractType] ?? emp.contractType}</td>
                     <td className="px-4 py-3">{emp.weeklyHours}h</td>
-                    <td className="px-4 py-3">{bounds.min}h — {bounds.max}h</td>
                     <td className="px-4 py-3">{LEVEL_LABELS[emp.level] ?? `Niv. ${emp.level}`}</td>
                     <td className="px-4 py-3">
                       {role ? (
@@ -162,6 +210,9 @@ export function EmployeesPage() {
                           <AlertTriangle size={12} /> Non attribué
                         </span>
                       )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {new Date(emp.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <button
