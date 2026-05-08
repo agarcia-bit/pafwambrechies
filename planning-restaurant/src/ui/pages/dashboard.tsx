@@ -1,20 +1,25 @@
-import { Card, CardContent, CardHeader, CardTitle, Button } from '@/ui/components'
+import { Card, CardContent, CardHeader, CardTitle, Button, Input } from '@/ui/components'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useForecastStore } from '@/store/forecast-store'
+import { useAuthStore } from '@/store/auth-store'
 import { useEffect, useMemo, useState } from 'react'
-import { fetchPlannings, updatePlanningStatus, deletePlanning } from '@/infrastructure/supabase/repositories/planning-repo'
-import type { SavedPlanning } from '@/infrastructure/supabase/repositories/planning-repo'
-import { CheckCircle, Clock, Trash2, FileSpreadsheet, Users, Euro } from 'lucide-react'
+import { fetchPlannings, updatePlanningStatus, deletePlanning, fetchMonthlyHours } from '@/infrastructure/supabase/repositories/planning-repo'
+import type { SavedPlanning, MonthlyHours } from '@/infrastructure/supabase/repositories/planning-repo'
+import { fetchMonthlyActuals, upsertMonthlyActual, type MonthlyActual } from '@/infrastructure/supabase/repositories/monthly-actual-repo'
+import { CheckCircle, Clock, Trash2, FileSpreadsheet, Users, Euro, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts'
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   draft: { label: 'Brouillon', color: 'bg-warning/10 text-warning' },
   validated: { label: 'Validé', color: 'bg-success/10 text-success' },
 }
 
-/** Retourne le lundi de la semaine courante (ou le lundi du jour si on est lundi). */
+const MONTH_NAMES = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+const MONTH_SHORT = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc']
+
 function getCurrentMonday(from: Date = new Date()): Date {
   const d = new Date(from)
-  const day = d.getDay() // 0=dim, 1=lun, ..., 6=sam
+  const day = d.getDay()
   const diff = day === 0 ? -6 : 1 - day
   d.setDate(d.getDate() + diff)
   d.setHours(0, 0, 0, 0)
@@ -24,8 +29,16 @@ function getCurrentMonday(from: Date = new Date()): Date {
 export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string, department?: string) => void }) {
   const { employees, load } = useEmployeeStore()
   const { forecasts, load: loadForecasts } = useForecastStore()
+  const { tenantId } = useAuthStore()
   const [plannings, setPlannings] = useState<SavedPlanning[]>([])
   const [loadingPlannings, setLoadingPlannings] = useState(true)
+
+  // Monthly tracking
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [monthlyHours, setMonthlyHours] = useState<MonthlyHours[]>([])
+  const [monthlyActuals, setMonthlyActuals] = useState<MonthlyActual[]>([])
+  const [editingMonth, setEditingMonth] = useState<number | null>(null)
+  const [editingCA, setEditingCA] = useState('')
 
   function refreshPlannings() {
     setLoadingPlannings(true)
@@ -45,6 +58,12 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
       .finally(() => setLoadingPlannings(false))
   }, [load, loadForecasts])
 
+  // Load monthly data when year changes
+  useEffect(() => {
+    fetchMonthlyHours(selectedYear).then(setMonthlyHours).catch(() => {})
+    fetchMonthlyActuals(selectedYear).then(setMonthlyActuals).catch(() => {})
+  }, [selectedYear])
+
   const activeEmployees = employees.filter((e) => e.active)
 
   const totalWeeklyHours = useMemo(
@@ -60,8 +79,6 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
     [activeEmployees],
   )
 
-  // CA prévu cette semaine = somme des forecasts pour chaque jour de la semaine courante
-  // (lundi fermé => on itère les jours 1..6 = mardi..dimanche, comme la page planning)
   const weeklyForecastRevenue = useMemo(() => {
     const monday = getCurrentMonday()
     let total = 0
@@ -74,6 +91,33 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
     }
     return total
   }, [forecasts])
+
+  // Monthly data for display
+  const monthlyData = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const month = i + 1
+      const hours = monthlyHours.find((h) => h.month === month)?.totalHours ?? 0
+      const actual = monthlyActuals.find((a) => a.month === month)
+      const ca = actual?.actualRevenue ?? null
+      const productivity = hours > 0 && ca != null ? Math.round(ca / hours) : null
+      return { month, name: MONTH_NAMES[i], short: MONTH_SHORT[i], hours, ca, productivity }
+    })
+  }, [monthlyHours, monthlyActuals])
+
+  // Chart data (only months with both hours and CA)
+  const chartData = useMemo(() =>
+    monthlyData
+      .filter((d) => d.hours > 0 && d.ca != null)
+      .map((d) => ({ name: d.short, productivité: d.productivity })),
+  [monthlyData])
+
+  async function handleSaveCA(month: number) {
+    if (!tenantId || !editingCA) return
+    await upsertMonthlyActual(tenantId, selectedYear, month, Number(editingCA))
+    fetchMonthlyActuals(selectedYear).then(setMonthlyActuals).catch(() => {})
+    setEditingMonth(null)
+    setEditingCA('')
+  }
 
   async function handleValidate(id: string) {
     await updatePlanningStatus(id, 'validated')
@@ -147,6 +191,115 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
         </Card>
       </div>
 
+      {/* Suivi mensuel */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100">
+                <TrendingUp size={15} className="text-indigo-600" />
+              </div>
+              Suivi mensuel
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setSelectedYear(selectedYear - 1)} className="rounded p-1 hover:bg-muted">
+                <ChevronLeft size={18} />
+              </button>
+              <span className="text-sm font-bold">{selectedYear}</span>
+              <button onClick={() => setSelectedYear(selectedYear + 1)} className="rounded p-1 hover:bg-muted">
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Grille des 12 mois */}
+          <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+            {monthlyData.map((d) => {
+              const hasHours = d.hours > 0
+              const hasCA = d.ca != null
+              const isEditing = editingMonth === d.month
+              const prodColor = d.productivity != null
+                ? (d.productivity >= 85 && d.productivity <= 110 ? 'text-success' : 'text-destructive')
+                : ''
+              return (
+                <div
+                  key={d.month}
+                  className={`rounded-xl border p-3 transition-colors ${
+                    !hasHours ? 'border-border bg-muted/30 opacity-50' :
+                    hasCA ? 'border-border bg-white' :
+                    'border-warning/30 bg-warning/5'
+                  }`}
+                >
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">{d.name}</p>
+
+                  <div className="mt-2 flex items-end justify-between">
+                    <div>
+                      <p className="text-lg font-bold">{hasHours ? `${d.hours}h` : '—'}</p>
+                      <p className="text-[10px] text-muted-foreground">heures attribuées</p>
+                    </div>
+                    {d.productivity != null && (
+                      <div className="text-right">
+                        <p className={`text-xl font-bold ${prodColor}`}>{d.productivity}</p>
+                        <p className="text-[10px] text-muted-foreground">prod.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {hasHours && (
+                    <div className="mt-2">
+                      {isEditing ? (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            value={editingCA}
+                            onChange={(e) => setEditingCA(e.target.value)}
+                            placeholder="CA réalisé €"
+                            className="h-7 text-xs"
+                            autoFocus
+                            onKeyDown={(e) => e.key === 'Enter' && handleSaveCA(d.month)}
+                          />
+                          <Button size="sm" onClick={() => handleSaveCA(d.month)} className="h-7 px-2 text-[10px]">OK</Button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setEditingMonth(d.month); setEditingCA(d.ca != null ? String(d.ca) : '') }}
+                          className="w-full rounded-md border border-dashed border-slate-200 px-2 py-1 text-left text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                        >
+                          {hasCA ? `CA : ${d.ca!.toLocaleString('fr-FR')}€` : 'Renseigner le CA réalisé'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Graphique linéaire */}
+          {chartData.length >= 2 && (
+            <div>
+              <p className="mb-2 text-sm font-semibold text-muted-foreground">Évolution de la productivité {selectedYear}</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <YAxis domain={[60, 140]} tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <ReferenceLine y={95} stroke="#94a3b8" strokeDasharray="5 5" label={{ value: 'Cible 95', position: 'right', fontSize: 11, fill: '#94a3b8' }} />
+                  <Line type="monotone" dataKey="productivité" stroke="#6366f1" strokeWidth={2.5} dot={{ r: 5, fill: '#6366f1' }} activeDot={{ r: 7 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+          {chartData.length < 2 && (
+            <p className="text-center text-xs text-muted-foreground py-4">
+              Le graphique apparaîtra dès que 2 mois auront des heures attribuées et un CA renseigné.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Historique des plannings */}
       <Card>
         <CardHeader>
@@ -162,7 +315,7 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
 
           {!loadingPlannings && plannings.length === 0 && (
             <p className="text-muted-foreground">
-              Aucun planning enregistré. Générez et enregistrez votre premier planning dans l'onglet "Générer un planning".
+              Aucun planning enregistré. Générez votre premier planning dans l'onglet "Planning salle".
             </p>
           )}
 

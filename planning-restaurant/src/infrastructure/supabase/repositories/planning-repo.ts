@@ -167,3 +167,30 @@ function mapPlanning(row: any): SavedPlanning {
     department: row.department ?? 'salle',
   }
 }
+
+export interface MonthlyHours {
+  month: number
+  totalHours: number
+}
+
+export async function fetchMonthlyHours(year: number): Promise<MonthlyHours[]> {
+  // Récupère toutes les entries de l'année et agrège côté client
+  // (PostgREST ne supporte pas GROUP BY nativement via le client JS)
+  const data = await freshQuery((c) =>
+    c.from('planning_entries')
+      .select('date, effective_hours')
+      .gte('date', `${year}-01-01`)
+      .lte('date', `${year}-12-31`),
+  )
+  const rows = (data as { date: string; effective_hours: number }[]) ?? []
+  const byMonth: Record<number, number> = {}
+  for (const row of rows) {
+    const [, m] = row.date.split('-')
+    const month = parseInt(m, 10)
+    byMonth[month] = (byMonth[month] ?? 0) + Number(row.effective_hours)
+  }
+  return Object.entries(byMonth).map(([m, h]) => ({
+    month: Number(m),
+    totalHours: Math.round(h * 10) / 10,
+  }))
+}
