@@ -199,7 +199,7 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100">
                 <TrendingUp size={15} className="text-indigo-600" />
               </div>
-              Suivi productivité annuel Salle
+              Suivi annuel : Productivité Salle
             </CardTitle>
             <div className="flex items-center gap-2">
               <button onClick={() => setSelectedYear(selectedYear - 1)} className="rounded p-1 hover:bg-muted">
