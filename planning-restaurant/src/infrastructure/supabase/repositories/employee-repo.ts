@@ -1,4 +1,3 @@
-import { supabase } from '../client'
 import { freshQuery } from '../fresh-query'
 import type { Employee } from '@/domain/models/employee'
 
@@ -15,9 +14,8 @@ export async function fetchEmployees(): Promise<Employee[]> {
 export async function createEmployee(
   employee: Omit<Employee, 'id' | 'createdAt'>,
 ): Promise<Employee> {
-  const { data, error } = await supabase
-    .from('employees')
-    .insert({
+  const data = await freshQuery((c) =>
+    c.from('employees').insert({
       tenant_id: employee.tenantId,
       first_name: employee.firstName,
       last_name: employee.lastName,
@@ -28,12 +26,9 @@ export async function createEmployee(
       is_manager: employee.isManager,
       department: employee.department,
       active: employee.active,
-    })
-    .select()
-    .single()
-
-  if (error) throw error
-  return mapEmployee(data)
+    }).select().single(),
+  )
+  return mapEmployee(data as Record<string, unknown>)
 }
 
 export async function updateEmployee(
@@ -51,20 +46,14 @@ export async function updateEmployee(
   if (updates.department !== undefined) dbUpdates.department = updates.department
   if (updates.active !== undefined) dbUpdates.active = updates.active
 
-  const { data, error } = await supabase
-    .from('employees')
-    .update(dbUpdates)
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) throw error
-  return mapEmployee(data)
+  const data = await freshQuery((c) =>
+    c.from('employees').update(dbUpdates).eq('id', id).select().single(),
+  )
+  return mapEmployee(data as Record<string, unknown>)
 }
 
 export async function deleteEmployee(id: string): Promise<void> {
-  const { error } = await supabase.from('employees').delete().eq('id', id)
-  if (error) throw error
+  await freshQuery((c) => c.from('employees').delete().eq('id', id).select())
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

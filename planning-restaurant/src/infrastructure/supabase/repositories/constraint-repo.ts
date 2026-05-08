@@ -1,4 +1,3 @@
-import { supabase } from '../client'
 import { freshQuery } from '../fresh-query'
 import type { Unavailability, ManagerFixedSchedule, ConditionalAvailability } from '@/domain/models/constraint'
 
@@ -14,9 +13,8 @@ export async function fetchUnavailabilities(employeeId?: string): Promise<Unavai
 }
 
 export async function createUnavailability(u: Omit<Unavailability, 'id'>): Promise<Unavailability> {
-  const { data, error } = await supabase
-    .from('unavailabilities')
-    .insert({
+  const data = await freshQuery((c) =>
+    c.from('unavailabilities').insert({
       employee_id: u.employeeId,
       type: u.type,
       day_of_week: u.dayOfWeek,
@@ -24,16 +22,13 @@ export async function createUnavailability(u: Omit<Unavailability, 'id'>): Promi
       available_from: u.availableFrom,
       available_until: u.availableUntil,
       label: u.label,
-    })
-    .select()
-    .single()
-  if (error) throw error
-  return mapUnavailability(data)
+    }).select().single(),
+  )
+  return mapUnavailability(data as Record<string, unknown>)
 }
 
 export async function deleteUnavailability(id: string): Promise<void> {
-  const { error } = await supabase.from('unavailabilities').delete().eq('id', id)
-  if (error) throw error
+  await freshQuery((c) => c.from('unavailabilities').delete().eq('id', id).select())
 }
 
 // --- Manager Fixed Schedules ---
@@ -48,9 +43,8 @@ export async function fetchManagerSchedules(employeeId?: string): Promise<Manage
 }
 
 export async function upsertManagerSchedule(s: Omit<ManagerFixedSchedule, 'id'>): Promise<ManagerFixedSchedule> {
-  const { data, error } = await supabase
-    .from('manager_fixed_schedules')
-    .upsert(
+  const data = await freshQuery((c) =>
+    c.from('manager_fixed_schedules').upsert(
       {
         employee_id: s.employeeId,
         day_of_week: s.dayOfWeek,
@@ -59,11 +53,9 @@ export async function upsertManagerSchedule(s: Omit<ManagerFixedSchedule, 'id'>)
         end_time: s.endTime,
       },
       { onConflict: 'employee_id,day_of_week' },
-    )
-    .select()
-    .single()
-  if (error) throw error
-  return mapManagerSchedule(data)
+    ).select().single(),
+  )
+  return mapManagerSchedule(data as Record<string, unknown>)
 }
 
 // --- Conditional Availabilities ---
@@ -78,23 +70,19 @@ export async function fetchConditionalAvailabilities(employeeId?: string): Promi
 }
 
 export async function createConditionalAvailability(ca: Omit<ConditionalAvailability, 'id'>): Promise<ConditionalAvailability> {
-  const { data, error } = await supabase
-    .from('conditional_availabilities')
-    .insert({
+  const data = await freshQuery((c) =>
+    c.from('conditional_availabilities').insert({
       employee_id: ca.employeeId,
       day_of_week: ca.dayOfWeek,
       allowed_shift_codes: ca.allowedShiftCodes,
       max_hours: ca.maxHours,
-    })
-    .select()
-    .single()
-  if (error) throw error
-  return mapConditionalAvailability(data)
+    }).select().single(),
+  )
+  return mapConditionalAvailability(data as Record<string, unknown>)
 }
 
 export async function deleteConditionalAvailability(id: string): Promise<void> {
-  const { error } = await supabase.from('conditional_availabilities').delete().eq('id', id)
-  if (error) throw error
+  await freshQuery((c) => c.from('conditional_availabilities').delete().eq('id', id).select())
 }
 
 // --- Mappers ---

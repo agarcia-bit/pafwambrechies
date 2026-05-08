@@ -1,4 +1,3 @@
-import { supabase } from '../client'
 import { freshQuery } from '../fresh-query'
 import type { DailyForecast } from '@/domain/models/planning'
 
@@ -10,9 +9,8 @@ export async function fetchDailyForecasts(): Promise<DailyForecast[]> {
 }
 
 export async function upsertDailyForecast(f: Omit<DailyForecast, 'id'>): Promise<DailyForecast> {
-  const { data, error } = await supabase
-    .from('daily_forecasts')
-    .upsert(
+  const data = await freshQuery((c) =>
+    c.from('daily_forecasts').upsert(
       {
         tenant_id: f.tenantId,
         month: f.month,
@@ -20,11 +18,9 @@ export async function upsertDailyForecast(f: Omit<DailyForecast, 'id'>): Promise
         forecasted_revenue: f.forecastedRevenue,
       },
       { onConflict: 'tenant_id,month,day_of_week' },
-    )
-    .select()
-    .single()
-  if (error) throw error
-  return mapForecast(data)
+    ).select().single(),
+  )
+  return mapForecast(data as Record<string, unknown>)
 }
 
 export async function upsertDailyForecasts(forecasts: Omit<DailyForecast, 'id'>[]): Promise<void> {
@@ -34,10 +30,9 @@ export async function upsertDailyForecasts(forecasts: Omit<DailyForecast, 'id'>[
     day_of_week: f.dayOfWeek,
     forecasted_revenue: f.forecastedRevenue,
   }))
-  const { error } = await supabase
-    .from('daily_forecasts')
-    .upsert(rows, { onConflict: 'tenant_id,month,day_of_week' })
-  if (error) throw error
+  await freshQuery((c) =>
+    c.from('daily_forecasts').upsert(rows, { onConflict: 'tenant_id,month,day_of_week' }).select(),
+  )
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -28,14 +28,10 @@ export async function updateTenant(
   if (patch.productivityTarget !== undefined) row.productivity_target = patch.productivityTarget
   if (patch.rules !== undefined) row.rules = patch.rules
 
-  const { data, error } = await supabase
-    .from('tenants')
-    .update(row)
-    .eq('id', tenantId)
-    .select()
-    .single()
-  if (error) throw error
-  return mapTenant(data)
+  const data = await freshQuery((c) =>
+    c.from('tenants').update(row).eq('id', tenantId).select().single(),
+  )
+  return mapTenant(data as Record<string, unknown>)
 }
 
 export async function updateTenantRules(

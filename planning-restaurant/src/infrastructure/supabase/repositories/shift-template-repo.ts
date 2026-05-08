@@ -1,40 +1,36 @@
-import { supabase } from '../client'
+import { freshQuery } from '../fresh-query'
 import type { ShiftTemplate } from '@/domain/models/shift'
 
 export async function fetchShiftTemplates(): Promise<ShiftTemplate[]> {
-  const { data, error } = await supabase
-    .from('shift_templates')
-    .select('*')
-    .order('sort_order')
-
-  if (error) throw error
-  return (data ?? []).map(mapShiftTemplate)
+  const data = await freshQuery((c) =>
+    c.from('shift_templates').select('*').order('sort_order'),
+  )
+  return ((data as Record<string, unknown>[]) ?? []).map(mapShiftTemplate)
 }
 
 export async function createShiftTemplate(
   template: Omit<ShiftTemplate, 'id'>,
 ): Promise<ShiftTemplate> {
-  const { data, error } = await supabase
-    .from('shift_templates')
-    .insert({
-      tenant_id: template.tenantId,
-      code: template.code,
-      label: template.label,
-      category: template.category,
-      start_time: template.startTime,
-      end_time: template.endTime,
-      effective_hours: template.effectiveHours,
-      meals: template.meals,
-      baskets: template.baskets,
-      applicability: template.applicability,
-      sort_order: template.sortOrder,
-      department: template.department,
-    })
-    .select()
-    .single()
-
-  if (error) throw error
-  return mapShiftTemplate(data)
+  const data = await freshQuery((c) =>
+    c.from('shift_templates')
+      .insert({
+        tenant_id: template.tenantId,
+        code: template.code,
+        label: template.label,
+        category: template.category,
+        start_time: template.startTime,
+        end_time: template.endTime,
+        effective_hours: template.effectiveHours,
+        meals: template.meals,
+        baskets: template.baskets,
+        applicability: template.applicability,
+        sort_order: template.sortOrder,
+        department: template.department,
+      })
+      .select()
+      .single(),
+  )
+  return mapShiftTemplate(data as Record<string, unknown>)
 }
 
 export async function updateShiftTemplate(
@@ -53,20 +49,14 @@ export async function updateShiftTemplate(
   if (updates.applicability !== undefined) dbUpdates.applicability = updates.applicability
   if (updates.sortOrder !== undefined) dbUpdates.sort_order = updates.sortOrder
 
-  const { data, error } = await supabase
-    .from('shift_templates')
-    .update(dbUpdates)
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) throw error
-  return mapShiftTemplate(data)
+  const data = await freshQuery((c) =>
+    c.from('shift_templates').update(dbUpdates).eq('id', id).select().single(),
+  )
+  return mapShiftTemplate(data as Record<string, unknown>)
 }
 
 export async function deleteShiftTemplate(id: string): Promise<void> {
-  const { error } = await supabase.from('shift_templates').delete().eq('id', id)
-  if (error) throw error
+  await freshQuery((c) => c.from('shift_templates').delete().eq('id', id).select())
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
