@@ -988,14 +988,6 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
                     }`}>
                       {Math.round(weekProductivity)}
                     </p>
-                    <p className={`text-xs font-medium ${
-                      level === 'understaffed' ? 'text-destructive' :
-                      level === 'overstaffed' ? 'text-warning' : 'text-success'
-                    }`}>
-                      {level === 'understaffed' ? 'Envisager un renfort' :
-                       level === 'overstaffed' ? 'Délester des heures' :
-                       'Effectif suffisant'}
-                    </p>
                     <p className={`mt-0.5 text-[11px] font-semibold ${hoursDelta > 0 ? 'text-warning' : hoursDelta < 0 ? 'text-destructive' : 'text-success'}`}>
                       {hoursDelta > 0
                         ? `${hoursDelta}h en trop vs cible ${productivityTarget}`
