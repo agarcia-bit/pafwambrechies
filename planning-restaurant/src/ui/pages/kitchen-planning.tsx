@@ -253,6 +253,42 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
     setGenerating(false)
   }
 
+  // Auto-save debounce: sauvegarde automatique 2s après chaque modification
+  useEffect(() => {
+    if (entries.length === 0 || !tenantId || saved) return
+    setSaving(true)
+    const planningEntries: PlanningEntry[] = entries.map((e) => ({
+      id: crypto.randomUUID(),
+      planningId,
+      employeeId: e.employeeId,
+      roleId: null as unknown as string,
+      date: addDays(weekStartISO, e.dayOfWeek),
+      dayOfWeek: e.dayOfWeek,
+      shiftTemplateId: e.shiftTemplateId,
+      startTime: e.startTime,
+      endTime: e.endTime,
+      effectiveHours: e.effectiveHours,
+      meals: 0,
+      baskets: 0,
+    }))
+    const timer = setTimeout(() => {
+      savePlanningWithEntries({
+        id: planningId,
+        tenantId,
+        weekStartDate: weekStartISO,
+        weekNumber,
+        status: 'draft',
+        createdBy: user?.id ?? '',
+        department: 'cuisine',
+      }, planningEntries)
+        .then(() => setSaved(true))
+        .catch(() => {})
+        .finally(() => setSaving(false))
+    }, 2000)
+    return () => { clearTimeout(timer); setSaving(false) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries, saved])
+
   // Calculate totals per employee
   const empTotals = kitchenEmployees.map((emp) => {
     const empEntries = entries.filter((e) => e.employeeId === emp.id)
@@ -579,52 +615,15 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
           </Button>
         )}
 
-        {entries.length > 0 && !saved && (
-          <Button
-            size="lg"
-            variant="outline"
-            disabled={saving}
-            onClick={async () => {
-              if (!tenantId || saving) return
-              setSaving(true)
-              try {
-                const planningEntries: PlanningEntry[] = entries.map((e) => ({
-                  id: crypto.randomUUID(),
-                  planningId,
-                  employeeId: e.employeeId,
-                  roleId: null as unknown as string,
-                  date: addDays(weekStartISO, e.dayOfWeek),
-                  dayOfWeek: e.dayOfWeek,
-                  shiftTemplateId: e.shiftTemplateId,
-                  startTime: e.startTime,
-                  endTime: e.endTime,
-                  effectiveHours: e.effectiveHours,
-                  meals: 0,
-                  baskets: 0,
-                }))
-                await savePlanningWithEntries({
-                  id: planningId,
-                  tenantId,
-                  weekStartDate: weekStartISO,
-                  weekNumber,
-                  status: 'draft',
-                  createdBy: user?.id ?? '',
-                  department: 'cuisine',
-                }, planningEntries)
-                setSaved(true)
-              } catch (e) {
-                alert(`Erreur lors de l'enregistrement : ${(e as Error).message}\n\nRechargez la page et réessayez.`)
-              } finally {
-                setSaving(false)
-              }
-            }}
-          >
-            <Save size={16} className="mr-2" /> {saving ? 'Enregistrement...' : 'Enregistrer'}
-          </Button>
-        )}
-        {entries.length > 0 && saved && (
-          <span className="flex items-center gap-1 rounded-md bg-success/10 px-4 py-2.5 text-sm font-medium text-success">
-            <CheckCircle size={16} /> Enregistré
+        {entries.length > 0 && (
+          <span className={`flex items-center gap-1 rounded-md px-4 py-2.5 text-xs font-medium ${
+            saving ? 'bg-slate-100 text-slate-500' : saved ? 'bg-success/10 text-success' : 'bg-slate-50 text-slate-400'
+          }`}>
+            {saving ? (
+              <><Save size={14} className="animate-pulse" /> Sauvegarde...</>
+            ) : saved ? (
+              <><CheckCircle size={14} /> Sauvegardé</>
+            ) : null}
           </span>
         )}
       </div>

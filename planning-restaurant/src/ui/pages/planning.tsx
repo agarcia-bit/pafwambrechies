@@ -187,6 +187,27 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
 
   const activeEmployees = employees.filter((e) => e.active && e.department === 'salle')
 
+  // Auto-save debounce: sauvegarde automatique 2s après chaque modification
+  useEffect(() => {
+    if (!report || !tenantId || saved) return
+    setSaving(true)
+    const timer = setTimeout(() => {
+      savePlanningWithEntries({
+        id: report.planning.id,
+        tenantId,
+        weekStartDate: report.planning.weekStartDate,
+        weekNumber: report.planning.weekNumber,
+        status: 'draft',
+        createdBy: user?.id ?? '',
+      }, report.planning.entries)
+        .then(() => setSaved(true))
+        .catch(() => {})
+        .finally(() => setSaving(false))
+    }, 2000)
+    return () => { clearTimeout(timer); setSaving(false) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report, saved])
+
   // Check si un planning enregistré existe pour la semaine courante
   useEffect(() => {
     setSavedPlanningMeta(null)
@@ -543,7 +564,20 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
 
     // Minimum 3s loading for premium UX
     await new Promise((r) => setTimeout(r, 3000))
-    if (result) setReport(result)
+    if (result) {
+      setReport(result)
+      // Auto-save en brouillon
+      if (tenantId) {
+        savePlanningWithEntries({
+          id: result.planning.id,
+          tenantId,
+          weekStartDate: result.planning.weekStartDate,
+          weekNumber: result.planning.weekNumber,
+          status: 'draft',
+          createdBy: user?.id ?? '',
+        }, result.planning.entries).then(() => setSaved(true)).catch(() => {})
+      }
+    }
     setGenerating(false)
   }
 
@@ -1124,37 +1158,15 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           </Button>
         )}
 
-        {report && !saved && (
-          <Button
-            size="lg"
-            variant="outline"
-            disabled={saving}
-            onClick={async () => {
-              if (!tenantId || saving) return
-              setSaving(true)
-              try {
-                await savePlanningWithEntries({
-                  id: report.planning.id,
-                  tenantId,
-                  weekStartDate: report.planning.weekStartDate,
-                  weekNumber: report.planning.weekNumber,
-                  status: 'draft',
-                  createdBy: user?.id ?? '',
-                }, report.planning.entries)
-                setSaved(true)
-              } catch (e) {
-                alert(`Erreur lors de l'enregistrement : ${(e as Error).message}\n\nRechargez la page et réessayez.`)
-              } finally {
-                setSaving(false)
-              }
-            }}
-          >
-            <Save size={16} className="mr-2" /> {saving ? 'Enregistrement...' : 'Enregistrer'}
-          </Button>
-        )}
-        {report && saved && (
-          <span className="flex items-center gap-1 rounded-md bg-success/10 px-4 py-2.5 text-sm font-medium text-success">
-            <CheckCircle size={16} /> Enregistré
+        {report && (
+          <span className={`flex items-center gap-1 rounded-md px-4 py-2.5 text-xs font-medium ${
+            saving ? 'bg-slate-100 text-slate-500' : saved ? 'bg-success/10 text-success' : 'bg-slate-50 text-slate-400'
+          }`}>
+            {saving ? (
+              <><Save size={14} className="animate-pulse" /> Sauvegarde...</>
+            ) : saved ? (
+              <><CheckCircle size={14} /> Sauvegardé</>
+            ) : null}
           </span>
         )}
         {report && (
