@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useShiftTemplateStore } from '@/store/shift-template-store'
 import { useAuthStore } from '@/store/auth-store'
 import { Button, Input, Select, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
+import { TimeInput } from '@/ui/components/time-input'
 import { DEFAULT_SHIFTS_HCR } from '@/domain/models/shift'
 import type { ShiftCategory, DayApplicability } from '@/domain/models/shift'
 import { Plus, Trash2, Zap } from 'lucide-react'
@@ -55,15 +56,14 @@ export function ShiftTemplatesPage() {
     load()
   }, [load])
 
-  // Auto-calculate effective hours when changing start/end in form
   function handleStartTimeChange(val: number) {
     setStartTime(val)
-    if (endTime > val) setEffectiveHours(endTime - val)
+    if (endTime > val) setEffectiveHours(Math.round((endTime - val) * 10) / 10)
   }
 
   function handleEndTimeChange(val: number) {
     setEndTime(val)
-    if (val > startTime) setEffectiveHours(val - startTime)
+    if (val > startTime) setEffectiveHours(Math.round((val - startTime) * 10) / 10)
   }
 
   async function handleLoadDefaults() {
@@ -108,7 +108,6 @@ export function ShiftTemplatesPage() {
     setDepartment('salle')
   }
 
-  // Group templates by department then by applicability
   const groupedByDept = {
     salle: {
       tue_sat: templates.filter((t) => t.department === 'salle' && t.applicability === 'tue_sat'),
@@ -142,7 +141,6 @@ export function ShiftTemplatesPage() {
 
       {loading && <p className="text-muted-foreground">Chargement...</p>}
 
-      {/* Tables par département puis par applicabilité */}
       {(['salle', 'cuisine'] as const).map((dept) => {
         const groups = groupedByDept[dept]
         const total = dept === 'salle' ? totalSalle : totalCuisine
@@ -249,8 +247,8 @@ export function ShiftTemplatesPage() {
                 <Select id="applicability" label="Jours" value={applicability} onChange={(e) => setApplicability(e.target.value as DayApplicability)} options={APPLICABILITY_OPTIONS} />
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <Input id="startTime" label="Début (décimal)" type="number" step={0.5} min={0} max={24} value={startTime} onChange={(e) => handleStartTimeChange(Number(e.target.value))} />
-                <Input id="endTime" label="Fin (décimal)" type="number" step={0.5} min={0} max={24} value={endTime} onChange={(e) => handleEndTimeChange(Number(e.target.value))} />
+                <TimeInput label="Début" value={startTime} onChange={handleStartTimeChange} />
+                <TimeInput label="Fin" value={endTime} onChange={handleEndTimeChange} />
                 <Input id="effectiveHours" label="H. effectives" type="number" step={0.5} min={0} max={24} value={effectiveHours} onChange={(e) => setEffectiveHours(Number(e.target.value))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
