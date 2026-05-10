@@ -73,8 +73,9 @@ export async function savePlanningWithEntries(
     Prefer: 'return=representation',
   }
 
-  // Upsert planning
-  const upsertRes = await fetch(`${supabaseUrl}/rest/v1/plannings?on_conflict=id`, {
+  // Upsert planning — match sur (tenant_id, week_start_date, department)
+  // pour qu'un nouveau planning écrase l'ancien de la même semaine
+  const upsertRes = await fetch(`${supabaseUrl}/rest/v1/plannings?on_conflict=tenant_id,week_start_date,department`, {
     method: 'POST',
     headers: { ...headers, Prefer: 'return=representation,resolution=merge-duplicates' },
     body: JSON.stringify({
@@ -91,9 +92,9 @@ export async function savePlanningWithEntries(
   if (!upsertRes.ok) throw new Error(`Save planning: ${upsertRes.status}`)
   const [saved] = await upsertRes.json()
 
-  // Delete old entries
+  // Delete old entries (utilise saved.id car l'upsert peut avoir matché un planning existant)
   await fetch(
-    `${supabaseUrl}/rest/v1/planning_entries?planning_id=eq.${planning.id}`,
+    `${supabaseUrl}/rest/v1/planning_entries?planning_id=eq.${saved.id}`,
     { method: 'DELETE', headers, signal: AbortSignal.timeout(10000) },
   )
 
@@ -101,7 +102,7 @@ export async function savePlanningWithEntries(
   if (entries.length > 0) {
     const rows = entries.map((e) => ({
       id: e.id,
-      planning_id: planning.id,
+      planning_id: saved.id,
       employee_id: e.employeeId,
       role_id: e.roleId || null,
       date: e.date,
@@ -174,8 +175,6 @@ export interface MonthlyHours {
 }
 
 export async function fetchMonthlyHours(year: number): Promise<MonthlyHours[]> {
-  // Récupère toutes les entries de l'année et agrège côté client
-  // (PostgREST ne supporte pas GROUP BY nativement via le client JS)
   const data = await freshQuery((c) =>
     c.from('planning_entries')
       .select('date, effective_hours')
