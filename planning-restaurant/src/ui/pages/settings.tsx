@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Select } from '@/ui/components'
+import { TimeInput } from '@/ui/components/time-input'
 import { useAuthStore } from '@/store/auth-store'
 import { useTenantStore } from '@/store/tenant-store'
 import { useEmployeeStore } from '@/store/employee-store'
@@ -83,13 +84,12 @@ export function SettingsPage() {
     try {
       const url = await uploadTenantLogo(tenantId, file)
       setLogoUrl(url)
-      // Persist immédiatement (indépendamment du bouton Enregistrer)
       await update(tenantId, { logoUrl: url })
     } catch (err) {
       setLogoError((err as Error).message)
     } finally {
       setUploadingLogo(false)
-      e.target.value = '' // reset input pour permettre re-upload du même fichier
+      e.target.value = ''
     }
   }
 
@@ -186,39 +186,9 @@ export function SettingsPage() {
               <label className="mb-1 block text-sm font-medium">Nom</label>
               <Input value={restaurantName} onChange={(e) => setRestaurantName(e.target.value)} />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Ouverture (h)</label>
-              <Input
-                type="number"
-                step="0.5"
-                min="0"
-                max="23"
-                value={openingTime}
-                onChange={(e) => setOpeningTime(Number(e.target.value))}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Fermeture semaine (h)</label>
-              <Input
-                type="number"
-                step="0.5"
-                min="12"
-                max="30"
-                value={closingTimeWeek}
-                onChange={(e) => setClosingTimeWeek(Number(e.target.value))}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Fermeture dimanche (h)</label>
-              <Input
-                type="number"
-                step="0.5"
-                min="12"
-                max="30"
-                value={closingTimeSunday}
-                onChange={(e) => setClosingTimeSunday(Number(e.target.value))}
-              />
-            </div>
+            <TimeInput label="Ouverture" value={openingTime} onChange={setOpeningTime} />
+            <TimeInput label="Fermeture semaine" value={closingTimeWeek} onChange={setClosingTimeWeek} />
+            <TimeInput label="Fermeture dimanche" value={closingTimeSunday} onChange={setClosingTimeSunday} />
             <div>
               <label className="mb-1 block text-sm font-medium">Productivité cible (€/h)</label>
               <Input
