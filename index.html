@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="css/style.css?v=39" />
+  <link rel="stylesheet" href="css/style.css?v=40" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
   <title>PAF Wambrechies</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -37,7 +37,43 @@
         <button type="submit" class="btn btn-primary" id="auth-submit">Se connecter</button>
         <div id="auth-error" class="auth-error hidden"></div>
       </form>
+      <p class="auth-switch">Première fois ? <a href="#" id="go-to-signup">Créer mon compte</a></p>
       <p class="auth-footer">Application réservée aux adhérents PAF Wambrechies</p>
+    </div>
+  </div>
+
+  <!-- ── Signup screen (shared access code) ───────────────────────────────── -->
+  <div id="signup-screen" class="auth-screen hidden">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <img src="icons/icon.png" width="120" height="120" alt="PAF Wambrechies" />
+      </div>
+      <p class="auth-sub">Créer mon compte adhérent</p>
+      <form id="signup-form" novalidate>
+        <div class="form-group">
+          <label for="signup-prenom">Prénom</label>
+          <input type="text" id="signup-prenom" autocomplete="given-name" />
+        </div>
+        <div class="form-group">
+          <label for="signup-nom">Nom de l'entreprise</label>
+          <input type="text" id="signup-nom" autocomplete="organization" />
+        </div>
+        <div class="form-group">
+          <label for="signup-email">Email</label>
+          <input type="email" id="signup-email" placeholder="votre@email.fr" autocomplete="email" inputmode="email" />
+        </div>
+        <div class="form-group">
+          <label for="signup-password">Mot de passe</label>
+          <input type="password" id="signup-password" placeholder="8 caractères minimum" autocomplete="new-password" />
+        </div>
+        <div class="form-group">
+          <label for="signup-code">Code d'accès PAF</label>
+          <input type="text" id="signup-code" placeholder="Communiqué par la PAF" autocomplete="off" />
+        </div>
+        <button type="submit" class="btn btn-primary" id="signup-submit">Créer mon compte</button>
+        <div id="signup-error" class="auth-error hidden"></div>
+      </form>
+      <p class="auth-switch">Déjà inscrit ? <a href="#" id="go-to-login">Se connecter</a></p>
     </div>
   </div>
 
@@ -235,6 +271,7 @@
           <button class="admin-tab"        data-sub="annuaire" onclick="showAdminSub('annuaire')">Annuaire</button>
           <button class="admin-tab"        data-sub="idees"    onclick="showAdminSub('idees')">Idées</button>
           <button class="admin-tab"        data-sub="liens"    onclick="showAdminSub('liens')">Liens</button>
+          <button class="admin-tab"        data-sub="settings" onclick="showAdminSub('settings')">Réglages</button>
         </div>
         <div id="admin-content"></div>
       </section>
@@ -346,7 +383,7 @@
     document.addEventListener('touchmove', function(e){ if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
   </script>
   <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
-  <script src="js/app.js?v=12"></script>
+  <script src="js/app.js?v=13"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
