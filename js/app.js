@@ -239,7 +239,87 @@ function showToast(msg, type) {
 function showAuthScreen() {
   document.getElementById('auth-screen').classList.remove('hidden');
   document.getElementById('set-password-screen').classList.add('hidden');
+  document.getElementById('signup-screen').classList.add('hidden');
   document.getElementById('app').classList.add('hidden');
+}
+
+function showSignupScreen() {
+  document.getElementById('signup-screen').classList.remove('hidden');
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('set-password-screen').classList.add('hidden');
+  document.getElementById('app').classList.add('hidden');
+}
+
+let signupFormBound = false;
+function bindSignupForm() {
+  if (signupFormBound) return;
+  signupFormBound = true;
+
+  const form    = document.getElementById('signup-form');
+  const errorEl = document.getElementById('signup-error');
+  const btn     = document.getElementById('signup-submit');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const prenom = document.getElementById('signup-prenom').value.trim();
+    const nom    = document.getElementById('signup-nom').value.trim();
+    const email  = document.getElementById('signup-email').value.trim();
+    const pwd    = document.getElementById('signup-password').value;
+    const code   = document.getElementById('signup-code').value.trim();
+
+    errorEl.classList.add('hidden');
+    if (!prenom || !nom || !email || !pwd || !code) {
+      errorEl.textContent = 'Merci de remplir tous les champs.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    if (pwd.length < 8) {
+      errorEl.textContent = 'Le mot de passe doit contenir au moins 8 caractères.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Création…';
+
+    const { data: ok, error: rpcErr } = await sb.rpc('validate_signup_code', { p_code: code });
+    if (rpcErr || !ok) {
+      errorEl.textContent = 'Code d\'accès invalide. Contactez un administrateur de la PAF.';
+      errorEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Créer mon compte';
+      return;
+    }
+
+    const { data, error } = await sb.auth.signUp({
+      email,
+      password: pwd,
+      options: { data: { prenom, nom } }
+    });
+    if (error) {
+      let msg = 'Erreur : ' + error.message;
+      if (/already.*registered|exists/i.test(error.message)) {
+        msg = 'Un compte existe déjà avec cet email. Cliquez sur "Se connecter".';
+      }
+      errorEl.textContent = msg;
+      errorEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Créer mon compte';
+      return;
+    }
+
+    // If email confirmation is enabled on Supabase, no session is returned.
+    if (!data.session) {
+      errorEl.textContent = 'Compte créé. Vérifiez votre boîte mail pour confirmer votre adresse, puis revenez vous connecter.';
+      errorEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Créer mon compte';
+      return;
+    }
+    // Otherwise the SDK fires SIGNED_IN, which routes to showApp() (no
+    // PWD_SETUP_FLAG was set, so we skip the set-password screen).
+    currentUser = data.session.user;
+  });
 }
 
 const PWD_SETUP_FLAG = 'paf_needs_password_setup';
@@ -443,6 +523,20 @@ async function initAuth() {
       }
     }
   }
+
+  document.getElementById('go-to-signup').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('auth-error').classList.add('hidden');
+    document.getElementById('signup-error').classList.add('hidden');
+    showSignupScreen();
+    bindSignupForm();
+  });
+  document.getElementById('go-to-login').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('signup-error').classList.add('hidden');
+    document.getElementById('auth-error').classList.add('hidden');
+    showAuthScreen();
+  });
 
   const form = document.getElementById('auth-form');
   form.addEventListener('submit', async (e) => {
@@ -1528,7 +1622,41 @@ async function loadAdminSub() {
     case 'annuaire': await renderAdminAnnuaire(el); break;
     case 'idees':    await renderAdminIdees(el);    break;
     case 'liens':    await renderAdminLiens(el);    break;
+    case 'settings': await renderAdminSettings(el); break;
   }
+}
+
+async function renderAdminSettings(el) {
+  const { data, error } = await sb.from('app_settings')
+    .select('value')
+    .eq('key', 'signup_code')
+    .maybeSingle();
+  if (error) { el.innerHTML = '<div class="empty-state">Impossible de charger les réglages.</div>'; return; }
+  const current = data?.value || '';
+  el.innerHTML = `
+    <div class="card">
+      <div style="font-weight:700;font-size:1rem;margin-bottom:6px">Code d'inscription</div>
+      <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:12px">
+        Les nouveaux adhérents en ont besoin pour créer leur compte depuis la page de connexion. Changez-le quand vous voulez révoquer les inscriptions avec l'ancien code.
+      </p>
+      <form id="admin-signup-code-form">
+        <div class="form-group">
+          <label for="admin-signup-code">Code actuel</label>
+          <input type="text" id="admin-signup-code" value="${escHtml(current)}" autocomplete="off" />
+        </div>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </form>
+    </div>
+  `;
+  document.getElementById('admin-signup-code-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const value = document.getElementById('admin-signup-code').value.trim();
+    if (!value) { showToast('Le code ne peut pas être vide.', 'error'); return; }
+    const { error: upErr } = await sb.from('app_settings')
+      .upsert({ key: 'signup_code', value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    if (upErr) { showToast('Erreur : ' + upErr.message, 'error'); return; }
+    showToast('Code d\'inscription mis à jour.', 'success');
+  });
 }
 
 async function renderAdminActus(el) {

@@ -518,6 +518,9 @@ body {
   padding: 10px 12px; font-size: .85rem; margin-top: 10px; text-align: center;
 }
 .auth-footer { font-size: .75rem; color: #374151; font-weight: 500; text-align: center; margin-top: 20px; text-shadow: 0 1px 3px rgba(255,255,255,.5); }
+.auth-switch { font-size: .85rem; color: #374151; text-align: center; margin-top: 16px; text-shadow: 0 1px 3px rgba(255,255,255,.5); }
+.auth-switch a { color: var(--accent); font-weight: 700; text-decoration: none; }
+.auth-switch a:active { opacity: .7; }
 .auth-card .btn-primary { background: var(--accent); }
 
 /* ── Header right buttons ─────────────────────────────────────────────────── */
