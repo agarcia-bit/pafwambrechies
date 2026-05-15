@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { PlanningReport } from '@/domain/models/planning'
 import type { ShiftTemplate } from '@/domain/models/shift'
 import type { Employee } from '@/domain/models/employee'
@@ -37,35 +37,31 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
     return { ...s, plannedHours, totalMeals, totalBaskets }
   })
 
-  // Compte les salariés présents pendant une période [from, to)
-  // Un salarié est compté s'il travaille pendant au moins une partie de la période
-  function countStaffDuring(dayEntries: { startTime: number; endTime: number }[], from: number, to: number): number {
+  function countPresent(dayEntries: { startTime: number; endTime: number }[], from: number, to: number): number {
     return dayEntries.filter((e) => e.startTime < to && e.endTime > from).length
   }
 
-  const dailyStats = report.dailySummaries.map((ds) => {
+  const dailyStats = useMemo(() => report.dailySummaries.map((ds) => {
     const dayEntries = report.planning.entries.filter((e) => e.dayOfWeek === ds.dayOfWeek)
     const plannedHours = dayEntries.reduce((sum, e) => sum + e.effectiveHours, 0)
     const productivity = plannedHours > 0 ? ds.forecastedRevenue / plannedHours : 0
-
     const isSunday = ds.dayOfWeek === 6
     const closingTime = isSunday ? 21 : 24
-    const openingTime = 9.5
-
     return {
       ...ds,
       plannedHours,
       productivity,
-      staffMatin: countStaffDuring(dayEntries, openingTime, 12),
-      staffMidi: countStaffDuring(dayEntries, 12, 14),
-      staffAprem: countStaffDuring(dayEntries, 14, 18),
-      staffSoir: countStaffDuring(dayEntries, 18, closingTime),
+      staffOuverture: dayEntries.filter((e) => e.startTime <= 9.5).length,
+      staffMatin: countPresent(dayEntries, 9.5, 12),
+      staffMidi: countPresent(dayEntries, 12, 14),
+      staffAprem: countPresent(dayEntries, 14, 18),
+      staffSoir: countPresent(dayEntries, 18, closingTime),
+      staffFermeture: dayEntries.filter((e) => e.endTime >= closingTime).length,
     }
-  })
+  }), [report.dailySummaries, report.planning.entries])
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Grille principale */}
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full border-collapse text-xs">
           <thead>
@@ -100,7 +96,6 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
                 ...(cuisineSummaries.length > 0 ? [{ label: 'Cuisine', items: cuisineSummaries }] : []),
               ]
               const showHeaders = sections.length > 1
-
               return sections.flatMap((section) => [
                 ...(showHeaders ? [
                   <tr key={`dept-${section.label}`} className="bg-muted/60">
@@ -120,27 +115,18 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
                   return (
                     <td key={d} className={`px-1 py-1 text-center ${bgClass} relative`}>
                       {isEditing ? (
-                        <select
-                          autoFocus
-                          className="w-full h-7 rounded border border-primary bg-background text-xs"
-                          value={entry?.shiftTemplateId ?? ''}
+                        <select autoFocus className="w-full h-7 rounded border border-primary bg-background text-xs" value={entry?.shiftTemplateId ?? ''}
                           onChange={(e) => { onShiftChange?.(summary.employeeId, d, e.target.value || null); setEditingCell(null) }}
-                          onBlur={() => setEditingCell(null)}
-                        >
+                          onBlur={() => setEditingCell(null)}>
                           <option value="">OFF</option>
                           {dayShifts.map((s) => <option key={s.id} value={s.id}>{s.startTime}→{s.endTime} ({s.effectiveHours}h)</option>)}
                         </select>
                       ) : (
-                        <button
-                          onClick={() => setEditingCell({ empId: summary.employeeId, day: d })}
-                          className="w-full rounded px-1 py-0.5 hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer"
-                          title="Cliquer pour modifier"
-                        >
+                        <button onClick={() => setEditingCell({ empId: summary.employeeId, day: d })}
+                          className="w-full rounded px-1 py-0.5 hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer" title="Cliquer pour modifier">
                           {entry ? (
                             <span className="inline-flex gap-1">
-                              <span>{entry.startTime}</span>
-                              <span className="text-muted-foreground">→</span>
-                              <span>{entry.endTime}</span>
+                              <span>{entry.startTime}</span><span className="text-muted-foreground">→</span><span>{entry.endTime}</span>
                               <span className="font-bold">({entry.effectiveHours})</span>
                             </span>
                           ) : <span className="text-muted-foreground">OFF</span>}
@@ -155,8 +141,7 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
                     const delta = summary.plannedHours - summary.contractHours
                     if (delta === 0) return null
                     const sign = delta > 0 ? '+' : ''
-                    const color = delta > 0 ? 'text-warning' : 'text-blue-600'
-                    return <span className={`ml-1 text-[10px] font-medium ${color}`}>({sign}{delta}h)</span>
+                    return <span className={`ml-1 text-[10px] font-medium ${delta > 0 ? 'text-warning' : 'text-blue-600'}`}>({sign}{delta}h)</span>
                   })()}
                 </td>
                 <td className="px-2 py-1.5 text-center">{summary.totalMeals}</td>
@@ -177,28 +162,32 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
               <th className="px-3 py-2 text-left font-medium">Jour</th>
               <th className="px-3 py-2 text-center font-medium">CA cible</th>
               <th className="px-3 py-2 text-center font-medium">Heures</th>
-              <th className="px-3 py-2 text-center font-medium">Productivité</th>
+              <th className="px-3 py-2 text-center font-medium">Prod.</th>
+              <th className="px-3 py-2 text-center font-medium">Ouverture<br/><span className="text-[9px] font-normal text-muted-foreground">≤9h30</span></th>
               <th className="px-3 py-2 text-center font-medium">Matin<br/><span className="text-[9px] font-normal text-muted-foreground">ouv→12h</span></th>
               <th className="px-3 py-2 text-center font-medium">Midi<br/><span className="text-[9px] font-normal text-muted-foreground">12h→14h</span></th>
               <th className="px-3 py-2 text-center font-medium">Après-midi<br/><span className="text-[9px] font-normal text-muted-foreground">14h→18h</span></th>
               <th className="px-3 py-2 text-center font-medium">Soir<br/><span className="text-[9px] font-normal text-muted-foreground">18h→ferm</span></th>
+              <th className="px-3 py-2 text-center font-medium">Fermeture<br/><span className="text-[9px] font-normal text-muted-foreground">≥ferm</span></th>
             </tr>
           </thead>
           <tbody>
             {dailyStats.map((ds) => {
-              const prodLevel = (ds.productivity >= 85 && ds.productivity <= 110) ? 'good' : 'bad'
+              const prodOk = ds.productivity >= 85 && ds.productivity <= 110
               return (
                 <tr key={ds.dayOfWeek} className="border-b border-border">
                   <td className="px-3 py-2 font-medium">{DAY_NAMES[ds.dayOfWeek]}</td>
                   <td className="px-3 py-2 text-center">{ds.forecastedRevenue.toLocaleString('fr-FR')}€</td>
                   <td className="px-3 py-2 text-center">{ds.plannedHours}h</td>
-                  <td className={`px-3 py-2 text-center font-bold ${prodLevel === 'good' ? 'text-success' : 'text-destructive'}`}>
+                  <td className={`px-3 py-2 text-center font-bold ${prodOk ? 'text-success' : 'text-destructive'}`}>
                     {ds.productivity > 0 ? Math.round(ds.productivity) : '—'}
                   </td>
+                  <td className={`px-3 py-2 text-center ${ds.staffOuverture === 0 ? 'text-destructive font-bold' : ''}`}>{ds.staffOuverture}</td>
                   <td className="px-3 py-2 text-center">{ds.staffMatin}</td>
                   <td className="px-3 py-2 text-center">{ds.staffMidi}</td>
                   <td className="px-3 py-2 text-center">{ds.staffAprem}</td>
                   <td className="px-3 py-2 text-center">{ds.staffSoir}</td>
+                  <td className="px-3 py-2 text-center">{ds.staffFermeture}</td>
                 </tr>
               )
             })}
@@ -206,7 +195,6 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
         </table>
       </div>
 
-      {/* Ajustements manuels */}
       {report.violations.length > 0 && (
         <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4">
           <h3 className="mb-2 font-bold text-destructive">Ajustement manuel nécessaire ({report.violations.length})</h3>
@@ -216,7 +204,6 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
         </div>
       )}
 
-      {/* Statut */}
       <div className={`rounded-lg p-4 text-center font-bold ${report.isValid ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
         {report.isValid ? 'PLANNING VALIDE' : 'Apporter les modifications manuelles demandées pour obtenir le planning valide'}
       </div>
