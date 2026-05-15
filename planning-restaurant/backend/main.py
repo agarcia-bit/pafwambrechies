@@ -14,6 +14,7 @@ app = FastAPI(title="Planning Restaurant Solver", version="1.0.0")
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:4173",
+    "https://planning-agalumy.netlify.app",
     "https://planning-restaurant.netlify.app",
     "https://lecap-planning.netlify.app",
 ]
