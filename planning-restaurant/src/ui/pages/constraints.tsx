@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
+import { getStoredToken } from '@/lib/auth-token'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useRoleStore } from '@/store/role-store'
 import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
@@ -73,8 +74,8 @@ export function ConstraintsPage() {
     loadEmployees()
     loadTemplates()
     loadRoles()
-    fetchUnavailabilities().then(setAllUnavailabilities).catch(() => {})
-    fetchConditionalAvailabilities().then(setAllConditionals).catch(() => {})
+    fetchUnavailabilities().then(setAllUnavailabilities).catch((e: unknown) => console.warn('[constraints]', e))
+    fetchConditionalAvailabilities().then(setAllConditionals).catch((e: unknown) => console.warn('[constraints]', e))
   }, [loadEmployees, loadTemplates, loadRoles])
 
   const activeEmployees = useMemo(
@@ -92,24 +93,11 @@ export function ConstraintsPage() {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
       const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
-      let token: string | undefined
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i)
-          if (k && k.startsWith('sb-') && k.endsWith('-auth-token')) {
-            const raw = localStorage.getItem(k)
-            if (raw) {
-              const parsed = JSON.parse(raw)
-              token = parsed?.access_token ?? parsed?.currentSession?.access_token
-              break
-            }
-          }
-        }
-      } catch { /* */ }
+      const token = getStoredToken()
       async function directFetch<T>(table: string): Promise<T[]> {
         const res = await fetch(
-          `${supabaseUrl}/rest/v1/${table}?employee_id=eq.${empId}&order=day_of_week`,
-          { headers: { apikey: apiKey, Authorization: `Bearer ${token ?? apiKey}` }, signal: AbortSignal.timeout(8000) },
+          `${supabaseUrl}/rest/v1/${table}?employee_id=eq.${encodeURIComponent(empId)}&order=day_of_week`,
+          { headers: { apikey: apiKey, Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(8000) },
         )
         if (!res.ok) throw new Error(`${table} ${res.status}`)
         return res.json()

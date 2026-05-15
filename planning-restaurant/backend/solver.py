@@ -26,7 +26,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
                 result.append(s)
             elif day == 5 and s.applicability in ("tue_sat", "sat_only"):
                 result.append(s)
-            elif day < 5 and s.applicability == "tue_sat":
+            elif 1 <= day < 5 and s.applicability == "tue_sat":
                 result.append(s)
         return result
 
@@ -140,7 +140,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
         if emp_hours:
             total = sum(v * h for v, h in emp_hours)
             avail = available_days_count(emp.id)
-            ratio = avail / len(working_days)  # 6 jours max
+            ratio = avail / len(working_days) if working_days else 1
             adjusted_min = emp.weekly_hours * ratio
             min_hours = int(adjusted_min * 10)
             max_hours = int((emp.weekly_hours + emp.modulation_range) * 10)
@@ -270,7 +270,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
             day_forecasts[ov.day_of_week] *= (1 + ov.revenue_multiplier_percent / 100)
     for day in working_days:
         ca = day_forecasts.get(day, 0)
-        if ca <= 0: continue
+        if ca <= 0 or req.productivity_target <= 0: continue
         target_hours_10 = int(ca / req.productivity_target * 10)
         day_terms = [(x[k], int(shift_map[k[2]].effective_hours * 10)) for k in x if k[1] == day and k[0] in salle_ids]
         mgr_h10 = sum(int(((ms.end_time or 0) - (ms.start_time or 0)) * 10) for ms in req.manager_schedules if ms.day_of_week == day and ms.shift_template_id)
@@ -326,9 +326,10 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
     for ms in req.manager_schedules:
         if not ms.shift_template_id: continue
         s = shift_map.get(ms.shift_template_id)
-        start = ms.start_time if ms.start_time is not None else (s.start_time if s else 0)
-        end = ms.end_time if ms.end_time is not None else (s.end_time if s else 0)
-        entries.append(ShiftAssignment(employee_id=ms.employee_id, day_of_week=ms.day_of_week, shift_template_id=ms.shift_template_id, start_time=start, end_time=end, effective_hours=end - start, meals=s.meals if s else 0, baskets=s.baskets if s else 0))
+        if not s: continue
+        start = ms.start_time if ms.start_time is not None else s.start_time
+        end = ms.end_time if ms.end_time is not None else s.end_time
+        entries.append(ShiftAssignment(employee_id=ms.employee_id, day_of_week=ms.day_of_week, shift_template_id=ms.shift_template_id, start_time=start, end_time=end, effective_hours=end - start, meals=s.meals, baskets=s.baskets))
 
     for k, var in x.items():
         if solver.value(var) == 1:

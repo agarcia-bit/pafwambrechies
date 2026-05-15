@@ -1,23 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
+import { getStoredToken } from '@/lib/auth-token'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
-
-function getToken(): string {
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i)
-      if (k && k.startsWith('sb-') && k.endsWith('-auth-token')) {
-        const raw = localStorage.getItem(k)
-        if (raw) {
-          const parsed = JSON.parse(raw)
-          return parsed?.access_token ?? parsed?.currentSession?.access_token ?? supabaseAnonKey
-        }
-      }
-    }
-  } catch { /* fallback */ }
-  return supabaseAnonKey
-}
 
 /**
  * Exécute une query via un client Supabase frais avec le JWT injecté en header.
@@ -27,7 +12,7 @@ function getToken(): string {
 export async function freshQuery<T>(
   queryFn: (client: any) => PromiseLike<{ data: T | null; error: { message: string } | null }>,
 ): Promise<T> {
-  const token = getToken()
+  const token = getStoredToken()
 
   const client = createClient(supabaseUrl, supabaseAnonKey, {
     auth: { persistSession: false, autoRefreshToken: false },

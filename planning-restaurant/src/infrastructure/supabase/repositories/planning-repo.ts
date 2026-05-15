@@ -1,4 +1,5 @@
 import { freshQuery } from '../fresh-query'
+import { getStoredToken } from '@/lib/auth-token'
 import type { PlanningEntry } from '@/domain/models/planning'
 
 export interface SavedPlanning {
@@ -49,22 +50,7 @@ export async function savePlanningWithEntries(
 ): Promise<SavedPlanning> {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
   const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
-
-  // Récupère le JWT depuis localStorage
-  let token = apiKey
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i)
-      if (k && k.startsWith('sb-') && k.endsWith('-auth-token')) {
-        const raw = localStorage.getItem(k)
-        if (raw) {
-          const parsed = JSON.parse(raw)
-          token = parsed?.access_token ?? parsed?.currentSession?.access_token ?? apiKey
-          break
-        }
-      }
-    }
-  } catch { /* fallback */ }
+  const token = getStoredToken()
 
   const headers = {
     apikey: apiKey,

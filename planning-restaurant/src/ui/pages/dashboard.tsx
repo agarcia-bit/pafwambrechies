@@ -44,7 +44,7 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
     setLoadingPlannings(true)
     fetchPlannings()
       .then(setPlannings)
-      .catch(() => {})
+      .catch((e: unknown) => console.warn('[dashboard]', e))
       .finally(() => setLoadingPlannings(false))
   }
 
@@ -54,14 +54,14 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
     setLoadingPlannings(true)
     fetchPlannings()
       .then(setPlannings)
-      .catch(() => {})
+      .catch((e: unknown) => console.warn('[dashboard]', e))
       .finally(() => setLoadingPlannings(false))
   }, [load, loadForecasts])
 
   // Load monthly data when year changes
   useEffect(() => {
-    fetchMonthlyHours(selectedYear).then(setMonthlyHours).catch(() => {})
-    fetchMonthlyActuals(selectedYear).then(setMonthlyActuals).catch(() => {})
+    fetchMonthlyHours(selectedYear).then(setMonthlyHours).catch((e: unknown) => console.warn('[dashboard]', e))
+    fetchMonthlyActuals(selectedYear).then(setMonthlyActuals).catch((e: unknown) => console.warn('[dashboard]', e))
   }, [selectedYear])
 
   const activeEmployees = employees.filter((e) => e.active)
@@ -114,7 +114,7 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
   async function handleSaveCA(month: number) {
     if (!tenantId || !editingCA) return
     await upsertMonthlyActual(tenantId, selectedYear, month, Number(editingCA))
-    fetchMonthlyActuals(selectedYear).then(setMonthlyActuals).catch(() => {})
+    fetchMonthlyActuals(selectedYear).then(setMonthlyActuals).catch((e: unknown) => console.warn('[dashboard]', e))
     setEditingMonth(null)
     setEditingCA('')
   }

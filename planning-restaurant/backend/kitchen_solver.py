@@ -141,13 +141,20 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
                 model.add(sum(all_vars) == 0).only_enforce_if(wd.negated())
                 works_day[(emp.id, day)] = wd
 
-    # 4. Max N working days, full-time = exactly N (configurable)
+    # 4. Max N working days, full-time >= min(max_working_days, available_days)
+    def kitchen_available_days(emp_id: str) -> int:
+        off = fixed_unavail.get(emp_id, set())
+        return len([d for d in working_days if d not in off])
+
     for emp in kitchen_employees:
         emp_days = [works_day[k] for k in works_day if k[0] == emp.id]
         if emp_days:
             model.add(sum(emp_days) <= req.max_working_days)
             if emp.weekly_hours >= req.fulltime_threshold:
-                model.add(sum(emp_days) >= req.max_working_days)
+                avail = kitchen_available_days(emp.id)
+                target_days = min(req.max_working_days, avail)
+                if target_days > 0:
+                    model.add(sum(emp_days) >= target_days)
 
     # 5. Contract hours: total >= weekly_hours, total <= weekly_hours + modulation
     for emp in kitchen_employees:
@@ -297,12 +304,32 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
     if penalties:
         model.minimize(sum(penalties))
 
-    # --- Solve ---
+    # --- Solve (multi-tentatives comme salle) ---
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = 10.0
     solver.parameters.num_workers = 4
+    best_status = None
+    best_objective = float('inf')
+    best_solver = solver
+    for attempt in range(3):
+        if attempt > 0:
+            solver = cp_model.CpSolver()
+            solver.parameters.max_time_in_seconds = 10.0
+            solver.parameters.num_workers = 4
+            solver.parameters.random_seed = attempt * 42
+        status = solver.solve(model)
+        if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            if best_status is None: best_status = status
+            continue
+        obj = solver.objective_value
+        if best_status is None or obj < best_objective:
+            best_objective = obj
+            best_solver = solver
+            best_status = status
+        if status == cp_model.OPTIMAL: break
 
-    status = solver.solve(model)
+    solver = best_solver
+    status = best_status
     solve_time = int((time.time() - start_time) * 1000)
 
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):

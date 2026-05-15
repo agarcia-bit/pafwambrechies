@@ -102,7 +102,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
     loadTemplates()
     loadForecasts()
     if (tenantId) loadTenant(tenantId)
-    fetchUnavailabilities().then((u) => { if (!cancelled) setUnavailabilities(u) }).catch(() => {})
+    fetchUnavailabilities().then((u) => { if (!cancelled) setUnavailabilities(u) }).catch((e: unknown) => console.warn('[kitchen]', e))
 
     // Check solver availability — retry until ready
     // eslint-disable-next-line prefer-const
@@ -127,7 +127,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
     setSavedPlanningMeta(null)
     fetchPlanningForWeek(weekStartISO, 'cuisine')
       .then((p) => setSavedPlanningMeta(p))
-      .catch(() => {})
+      .catch((e: unknown) => console.warn('[kitchen]', e))
   }, [weekStartISO])
 
   // Load saved kitchen planning from dashboard
@@ -150,7 +150,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
         setEntries(mapped)
         setSaved(true)
         setSolverInfo(`Planning chargé (S${planning.weekNumber} — ${planning.status})`)
-      }).catch(() => {})
+      }).catch((e: unknown) => console.warn('[kitchen]', e))
     })
   }, [loadPlanningId, kitchenEmployees.length])
 
@@ -282,7 +282,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
         department: 'cuisine',
       }, planningEntries)
         .then(() => setSaved(true))
-        .catch(() => {})
+        .catch((e: unknown) => console.warn('[kitchen]', e))
         .finally(() => setSaving(false))
     }, 2000)
     return () => { clearTimeout(timer); setSaving(false) }
@@ -447,7 +447,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                     availableUntil,
                     label,
                   })
-                  fetchUnavailabilities().then(setUnavailabilities).catch(() => {})
+                  fetchUnavailabilities().then(setUnavailabilities).catch((e: unknown) => console.warn('[kitchen]', e))
                   setAddingConstraint(false)
                   setNewConstraintEmpId('')
                   setNewConstraintScope('day')
@@ -508,7 +508,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                                     <button
                                       onClick={async () => {
                                         await deleteUnavailability(u.id)
-                                        fetchUnavailabilities().then(setUnavailabilities).catch(() => {})
+                                        fetchUnavailabilities().then(setUnavailabilities).catch((e: unknown) => console.warn('[kitchen]', e))
                                       }}
                                       className="absolute -right-1 -top-1 hidden rounded-full bg-destructive p-0.5 text-white group-hover:block"
                                       title="Supprimer"
@@ -600,7 +600,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                 setEntries(mapped)
                 setSaved(true)
                 setSolverInfo(`Planning chargé (S${planning.weekNumber} — ${planning.status})`)
-              }).catch(() => {})
+              }).catch((e: unknown) => console.warn('[kitchen]', e))
             }}
           >
             <FolderOpen size={16} className="mr-2" />

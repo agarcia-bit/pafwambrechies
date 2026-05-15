@@ -201,7 +201,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
         createdBy: user?.id ?? '',
       }, report.planning.entries)
         .then(() => setSaved(true))
-        .catch(() => {})
+        .catch((e: unknown) => console.warn('[planning]', e))
         .finally(() => setSaving(false))
     }, 2000)
     return () => { clearTimeout(timer); setSaving(false) }
@@ -213,7 +213,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
     setSavedPlanningMeta(null)
     fetchPlanningForWeek(weekStartISO, 'salle')
       .then((p) => setSavedPlanningMeta(p))
-      .catch(() => {})
+      .catch((e: unknown) => console.warn('[planning]', e))
   }, [weekStartISO])
 
   // Load a saved planning when coming from dashboard
@@ -293,7 +293,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
         isValid: violations.filter((v) => v.severity === 'blocking').length === 0,
       })
       setSaved(true)
-    }).catch(() => {})
+    }).catch((e: unknown) => console.warn('[planning]', e))
   }, [loadPlanningId, activeEmployees.length, templates.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function shiftWeek(delta: number) {
@@ -562,8 +562,6 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
       setError((e as Error).message)
     }
 
-    // Minimum 3s loading for premium UX
-    await new Promise((r) => setTimeout(r, 3000))
     if (result) {
       setReport(result)
       // Auto-save en brouillon
@@ -575,7 +573,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           weekNumber: result.planning.weekNumber,
           status: 'draft',
           createdBy: user?.id ?? '',
-        }, result.planning.entries).then(() => setSaved(true)).catch(() => {})
+        }, result.planning.entries).then(() => setSaved(true)).catch((e: unknown) => console.warn('[planning]', e))
       }
     }
     setGenerating(false)
@@ -1144,7 +1142,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
                     isValid: violations.length === 0,
                   })
                   setSaved(true)
-                }).catch(() => {})
+                }).catch((e: unknown) => console.warn('[planning]', e))
               }
             }}
           >

@@ -14,7 +14,7 @@ import { AdminPage } from '@/ui/pages/admin'
 import { MainLayout } from '@/ui/layouts/main-layout'
 
 export default function App() {
-  const { session, initialized, initialize } = useAuthStore()
+  const { session, initialized, initialize, role } = useAuthStore()
   const [currentPage, setCurrentPage] = useState('dashboard')
   const [viewPlanningId, setViewPlanningId] = useState<string | null>(null)
 
@@ -46,6 +46,7 @@ export default function App() {
   }
 
   function handleNavigate(page: string) {
+    if (page === 'admin' && role !== 'super_admin') return
     setCurrentPage(page)
     if (page !== 'planning' && page !== 'kitchen-planning') setViewPlanningId(null)
   }
