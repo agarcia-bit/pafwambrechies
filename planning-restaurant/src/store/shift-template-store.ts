@@ -10,6 +10,7 @@ import {
 interface ShiftTemplateState {
   templates: ShiftTemplate[]
   loading: boolean
+  loaded: boolean
   error: string | null
 
   load: () => Promise<void>
@@ -21,13 +22,14 @@ interface ShiftTemplateState {
 export const useShiftTemplateStore = create<ShiftTemplateState>((set) => ({
   templates: [],
   loading: false,
+  loaded: false,
   error: null,
 
   load: async () => {
     set({ loading: true, error: null })
     try {
       const templates = await fetchShiftTemplates()
-      set({ templates, loading: false })
+      set({ templates, loading: false, loaded: true })
     } catch (e) {
       set({ error: (e as Error).message, loading: false })
     }
