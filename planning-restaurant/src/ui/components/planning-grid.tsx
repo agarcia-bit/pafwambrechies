@@ -29,7 +29,6 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
       .sort((a, b) => a.startTime - b.startTime || a.endTime - b.endTime)
   }
 
-  // Recalculate summaries from current entries
   const summaries = report.employeeSummaries.map((s) => {
     const entries = report.planning.entries.filter((e) => e.employeeId === s.employeeId)
     const plannedHours = entries.reduce((sum, e) => sum + e.effectiveHours, 0)
@@ -38,12 +37,30 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
     return { ...s, plannedHours, totalMeals, totalBaskets }
   })
 
-  // Recalculate daily stats
+  // Compte les salariés présents pendant une période [from, to)
+  // Un salarié est compté s'il travaille pendant au moins une partie de la période
+  function countStaffDuring(dayEntries: { startTime: number; endTime: number }[], from: number, to: number): number {
+    return dayEntries.filter((e) => e.startTime < to && e.endTime > from).length
+  }
+
   const dailyStats = report.dailySummaries.map((ds) => {
     const dayEntries = report.planning.entries.filter((e) => e.dayOfWeek === ds.dayOfWeek)
     const plannedHours = dayEntries.reduce((sum, e) => sum + e.effectiveHours, 0)
     const productivity = plannedHours > 0 ? ds.forecastedRevenue / plannedHours : 0
-    return { ...ds, plannedHours, productivity }
+
+    const isSunday = ds.dayOfWeek === 6
+    const closingTime = isSunday ? 21 : 24
+    const openingTime = 9.5
+
+    return {
+      ...ds,
+      plannedHours,
+      productivity,
+      staffMatin: countStaffDuring(dayEntries, openingTime, 12),
+      staffMidi: countStaffDuring(dayEntries, 12, 14),
+      staffAprem: countStaffDuring(dayEntries, 14, 18),
+      staffSoir: countStaffDuring(dayEntries, 18, closingTime),
+    }
   })
 
   return (
@@ -82,34 +99,24 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
                 ...(salleSummaries.length > 0 ? [{ label: 'Salle', items: salleSummaries }] : []),
                 ...(cuisineSummaries.length > 0 ? [{ label: 'Cuisine', items: cuisineSummaries }] : []),
               ]
-              // If only one section, don't show headers
               const showHeaders = sections.length > 1
 
               return sections.flatMap((section) => [
                 ...(showHeaders ? [
                   <tr key={`dept-${section.label}`} className="bg-muted/60">
-                    <td colSpan={100} className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      {section.label}
-                    </td>
+                    <td colSpan={100} className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">{section.label}</td>
                   </tr>,
                 ] : []),
                 ...section.items.map((summary) => (
               <tr key={summary.employeeId} className="border-b border-border hover:bg-muted/20">
-                <td className="sticky left-0 z-10 bg-background px-2 py-1.5 text-center font-mono">
-                  {summary.contractHours}
-                </td>
-                <td className="sticky left-16 z-10 bg-background px-2 py-1.5 font-medium whitespace-nowrap">
-                  {summary.employeeName}
-                </td>
+                <td className="sticky left-0 z-10 bg-background px-2 py-1.5 text-center font-mono">{summary.contractHours}</td>
+                <td className="sticky left-16 z-10 bg-background px-2 py-1.5 font-medium whitespace-nowrap">{summary.employeeName}</td>
                 {[1, 2, 3, 4, 5, 6].map((d) => {
-                  const entry = report.planning.entries.find(
-                    (e) => e.employeeId === summary.employeeId && e.dayOfWeek === d,
-                  )
+                  const entry = report.planning.entries.find((e) => e.employeeId === summary.employeeId && e.dayOfWeek === d)
                   const isOff = !entry
                   const bgClass = isOff ? 'bg-red-100' : 'bg-blue-100'
                   const isEditing = editingCell?.empId === summary.employeeId && editingCell?.day === d
                   const dayShifts = getShiftsForDay(d, summary.employeeId)
-
                   return (
                     <td key={d} className={`px-1 py-1 text-center ${bgClass} relative`}>
                       {isEditing ? (
@@ -117,19 +124,11 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
                           autoFocus
                           className="w-full h-7 rounded border border-primary bg-background text-xs"
                           value={entry?.shiftTemplateId ?? ''}
-                          onChange={(e) => {
-                            const val = e.target.value
-                            onShiftChange?.(summary.employeeId, d, val || null)
-                            setEditingCell(null)
-                          }}
+                          onChange={(e) => { onShiftChange?.(summary.employeeId, d, e.target.value || null); setEditingCell(null) }}
                           onBlur={() => setEditingCell(null)}
                         >
                           <option value="">OFF</option>
-                          {dayShifts.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.startTime}→{s.endTime} ({s.effectiveHours}h)
-                            </option>
-                          ))}
+                          {dayShifts.map((s) => <option key={s.id} value={s.id}>{s.startTime}→{s.endTime} ({s.effectiveHours}h)</option>)}
                         </select>
                       ) : (
                         <button
@@ -144,9 +143,7 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
                               <span>{entry.endTime}</span>
                               <span className="font-bold">({entry.effectiveHours})</span>
                             </span>
-                          ) : (
-                            <span className="text-muted-foreground">OFF</span>
-                          )}
+                          ) : <span className="text-muted-foreground">OFF</span>}
                         </button>
                       )}
                     </td>
@@ -159,11 +156,7 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
                     if (delta === 0) return null
                     const sign = delta > 0 ? '+' : ''
                     const color = delta > 0 ? 'text-warning' : 'text-blue-600'
-                    return (
-                      <span className={`ml-1 text-[10px] font-medium ${color}`}>
-                        ({sign}{delta}h)
-                      </span>
-                    )
+                    return <span className={`ml-1 text-[10px] font-medium ${color}`}>({sign}{delta}h)</span>
                   })()}
                 </td>
                 <td className="px-2 py-1.5 text-center">{summary.totalMeals}</td>
@@ -176,7 +169,7 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
         </table>
       </div>
 
-      {/* Tableau productivité */}
+      {/* Tableau récap effectifs par période */}
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full border-collapse text-xs">
           <thead>
@@ -185,11 +178,10 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
               <th className="px-3 py-2 text-center font-medium">CA cible</th>
               <th className="px-3 py-2 text-center font-medium">Heures</th>
               <th className="px-3 py-2 text-center font-medium">Productivité</th>
-              <th className="px-3 py-2 text-center font-medium">Ouverture</th>
-              <th className="px-3 py-2 text-center font-medium">Midi</th>
-              <th className="px-3 py-2 text-center font-medium">A-midi</th>
-              <th className="px-3 py-2 text-center font-medium">Soir</th>
-              <th className="px-3 py-2 text-center font-medium">Fermeture</th>
+              <th className="px-3 py-2 text-center font-medium">Matin<br/><span className="text-[9px] font-normal text-muted-foreground">ouv→12h</span></th>
+              <th className="px-3 py-2 text-center font-medium">Midi<br/><span className="text-[9px] font-normal text-muted-foreground">12h→14h</span></th>
+              <th className="px-3 py-2 text-center font-medium">Après-midi<br/><span className="text-[9px] font-normal text-muted-foreground">14h→18h</span></th>
+              <th className="px-3 py-2 text-center font-medium">Soir<br/><span className="text-[9px] font-normal text-muted-foreground">18h→ferm</span></th>
             </tr>
           </thead>
           <tbody>
@@ -203,11 +195,10 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
                   <td className={`px-3 py-2 text-center font-bold ${prodLevel === 'good' ? 'text-success' : 'text-destructive'}`}>
                     {ds.productivity > 0 ? Math.round(ds.productivity) : '—'}
                   </td>
-                  <td className={`px-3 py-2 text-center ${ds.openingStaff === 0 ? 'text-destructive font-bold' : ''}`}>{ds.openingStaff}</td>
-                  <td className="px-3 py-2 text-center">{ds.coverageMidi}</td>
-                  <td className="px-3 py-2 text-center">{ds.coverageApresMidi}</td>
-                  <td className="px-3 py-2 text-center">{ds.coverageSoir}</td>
-                  <td className="px-3 py-2 text-center">{ds.closingStaff}</td>
+                  <td className="px-3 py-2 text-center">{ds.staffMatin}</td>
+                  <td className="px-3 py-2 text-center">{ds.staffMidi}</td>
+                  <td className="px-3 py-2 text-center">{ds.staffAprem}</td>
+                  <td className="px-3 py-2 text-center">{ds.staffSoir}</td>
                 </tr>
               )
             })}
@@ -218,24 +209,16 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
       {/* Ajustements manuels */}
       {report.violations.length > 0 && (
         <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4">
-          <h3 className="mb-2 font-bold text-destructive">
-            Ajustement manuel nécessaire ({report.violations.length})
-          </h3>
+          <h3 className="mb-2 font-bold text-destructive">Ajustement manuel nécessaire ({report.violations.length})</h3>
           <ul className="space-y-1">
-            {report.violations.map((v, i) => (
-              <li key={i} className="text-sm text-destructive">
-                [{v.rule}] {v.message}
-              </li>
-            ))}
+            {report.violations.map((v, i) => <li key={i} className="text-sm text-destructive">[{v.rule}] {v.message}</li>)}
           </ul>
         </div>
       )}
 
       {/* Statut */}
       <div className={`rounded-lg p-4 text-center font-bold ${report.isValid ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
-        {report.isValid
-          ? 'PLANNING VALIDE'
-          : 'Apporter les modifications manuelles demandées pour obtenir le planning valide'}
+        {report.isValid ? 'PLANNING VALIDE' : 'Apporter les modifications manuelles demandées pour obtenir le planning valide'}
       </div>
     </div>
   )
