@@ -9,6 +9,7 @@ export interface SavedPlanning {
   weekNumber: number
   status: 'draft' | 'validated'
   generatedAt: string
+  updatedAt: string
   createdBy: string | null
   department: string
 }
@@ -149,6 +150,7 @@ function mapPlanning(row: any): SavedPlanning {
     weekNumber: row.week_number,
     status: row.status,
     generatedAt: row.generated_at,
+    updatedAt: row.updated_at ?? row.generated_at,
     createdBy: row.created_by,
     department: row.department ?? 'salle',
   }

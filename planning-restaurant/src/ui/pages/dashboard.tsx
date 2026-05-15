@@ -327,6 +327,7 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">Semaine</th>
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">Début</th>
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">Généré le</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Dernière modif.</th>
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">Statut</th>
                     <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
                   </tr>
@@ -340,7 +341,7 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
                       <>
                         {isNewWeek && (
                           <tr key={`sep-${p.id}`}>
-                            <td colSpan={5} className="py-1">
+                            <td colSpan={6} className="py-1">
                               <div className="border-t-2 border-primary/20" />
                             </td>
                           </tr>
@@ -365,6 +366,14 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
                           {new Date(p.generatedAt).toLocaleDateString('fr-FR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {new Date(p.updatedAt).toLocaleDateString('fr-FR', {
                             day: '2-digit',
                             month: '2-digit',
                             hour: '2-digit',
