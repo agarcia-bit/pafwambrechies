@@ -3,9 +3,10 @@ import { useShiftTemplateStore } from '@/store/shift-template-store'
 import { useAuthStore } from '@/store/auth-store'
 import { Button, Input, Select, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
 import { TimeInput } from '@/ui/components/time-input'
+import { freshQuery } from '@/infrastructure/supabase/fresh-query'
 import { DEFAULT_SHIFTS_HCR } from '@/domain/models/shift'
-import type { ShiftCategory, DayApplicability } from '@/domain/models/shift'
-import { Plus, Trash2, Zap } from 'lucide-react'
+import type { ShiftTemplate, ShiftCategory, DayApplicability } from '@/domain/models/shift'
+import { Plus, Trash2, Zap, Pencil } from 'lucide-react'
 
 const CATEGORY_OPTIONS = [
   { value: 'ouverture', label: 'Ouverture' },
@@ -16,18 +17,15 @@ const CATEGORY_OPTIONS = [
   { value: 'soir', label: 'Soir' },
   { value: 'renfort', label: 'Renfort' },
 ]
-
 const APPLICABILITY_OPTIONS = [
   { value: 'tue_sat', label: 'Mardi → Samedi' },
   { value: 'sat_only', label: 'Samedi uniquement' },
   { value: 'sunday', label: 'Dimanche' },
 ]
-
 const DEPARTMENT_OPTIONS = [
   { value: 'salle', label: 'Salle' },
   { value: 'cuisine', label: 'Cuisine' },
 ]
-
 
 function formatDecimalTime(t: number): string {
   const h = Math.floor(t)
@@ -36,11 +34,11 @@ function formatDecimalTime(t: number): string {
 }
 
 export function ShiftTemplatesPage() {
-  const { templates, loading, load, add, remove } = useShiftTemplateStore()
+  const { templates, loading, load, add, update, remove } = useShiftTemplateStore()
   const { tenantId } = useAuthStore()
-  const [showAddForm, setShowAddForm] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
 
-  // Form state
   const [code, setCode] = useState('')
   const [label, setLabel] = useState('')
   const [category, setCategory] = useState<ShiftCategory>('midi')
@@ -52,60 +50,107 @@ export function ShiftTemplatesPage() {
   const [applicability, setApplicability] = useState<DayApplicability>('tue_sat')
   const [department, setDepartment] = useState<'salle' | 'cuisine'>('salle')
 
-  useEffect(() => {
-    load()
-  }, [load])
+  useEffect(() => { load() }, [load])
 
   function handleStartTimeChange(val: number) {
     setStartTime(val)
     if (endTime > val) setEffectiveHours(Math.round((endTime - val) * 10) / 10)
   }
-
   function handleEndTimeChange(val: number) {
     setEndTime(val)
     if (val > startTime) setEffectiveHours(Math.round((val - startTime) * 10) / 10)
   }
 
-  async function handleLoadDefaults() {
-    if (!tenantId) return
-    if (templates.length > 0 && !confirm('Cela va ajouter les créneaux HCR par défaut. Continuer ?')) return
-
-    for (const shift of DEFAULT_SHIFTS_HCR) {
-      await add({ ...shift, tenantId })
-    }
+  function resetForm() {
+    setCode(''); setLabel(''); setCategory('midi'); setStartTime(11); setEndTime(15)
+    setEffectiveHours(4); setMeals(0); setBaskets(0); setApplicability('tue_sat')
+    setDepartment('salle'); setEditingId(null)
   }
 
-  function handleAdd() {
+  function openAdd() {
+    resetForm()
+    setShowForm(true)
+  }
+
+  function openEdit(t: ShiftTemplate) {
+    setEditingId(t.id)
+    setCode(t.code); setLabel(t.label); setCategory(t.category as ShiftCategory)
+    setStartTime(t.startTime); setEndTime(t.endTime); setEffectiveHours(t.effectiveHours)
+    setMeals(t.meals); setBaskets(t.baskets); setApplicability(t.applicability as DayApplicability)
+    setDepartment(t.department as 'salle' | 'cuisine')
+    setShowForm(true)
+  }
+
+  async function checkLinkedPlannings(templateId: string): Promise<number> {
+    try {
+      const data = await freshQuery((c) =>
+        c.from('planning_entries').select('planning_id').eq('shift_template_id', templateId).limit(100),
+      )
+      const rows = (data as { planning_id: string }[]) ?? []
+      const uniquePlannings = new Set(rows.map((r) => r.planning_id))
+      return uniquePlannings.size
+    } catch { return 0 }
+  }
+
+  async function deleteLinkedPlannings(templateId: string) {
+    try {
+      const data = await freshQuery((c) =>
+        c.from('planning_entries').select('planning_id').eq('shift_template_id', templateId).limit(100),
+      )
+      const rows = (data as { planning_id: string }[]) ?? []
+      const ids = [...new Set(rows.map((r) => r.planning_id))]
+      for (const pid of ids) {
+        await freshQuery((c) => c.from('planning_entries').delete().eq('planning_id', pid).select())
+        await freshQuery((c) => c.from('plannings').delete().eq('id', pid).select())
+      }
+    } catch { /* best effort */ }
+  }
+
+  async function handleSave() {
     if (!tenantId || !code.trim() || !label.trim()) return
-    add({
-      tenantId,
-      code: code.trim().toUpperCase(),
-      label: label.trim(),
-      category,
-      startTime,
-      endTime,
-      effectiveHours,
-      meals,
-      baskets,
-      applicability,
-      sortOrder: templates.length,
-      department,
-    })
-    setShowAddForm(false)
+
+    if (editingId) {
+      const count = await checkLinkedPlannings(editingId)
+      if (count > 0) {
+        const ok = confirm(
+          `Ce créneau est utilisé dans ${count} planning(s) enregistré(s).\n\nModifier ce créneau supprimera ces plannings.\nVous pourrez les regénérer ensuite.\n\nContinuer ?`
+        )
+        if (!ok) return
+        await deleteLinkedPlannings(editingId)
+      }
+      await update(editingId, {
+        code: code.trim().toUpperCase(), label: label.trim(), category,
+        startTime, endTime, effectiveHours, meals, baskets, applicability, department,
+      })
+    } else {
+      await add({
+        tenantId, code: code.trim().toUpperCase(), label: label.trim(), category,
+        startTime, endTime, effectiveHours, meals, baskets, applicability,
+        sortOrder: templates.length, department,
+      })
+    }
+    setShowForm(false)
     resetForm()
   }
 
-  function resetForm() {
-    setCode('')
-    setLabel('')
-    setCategory('midi')
-    setStartTime(11)
-    setEndTime(15)
-    setEffectiveHours(4)
-    setMeals(0)
-    setBaskets(0)
-    setApplicability('tue_sat')
-    setDepartment('salle')
+  async function handleDelete(t: ShiftTemplate) {
+    const count = await checkLinkedPlannings(t.id)
+    if (count > 0) {
+      const ok = confirm(
+        `Ce créneau est utilisé dans ${count} planning(s).\nSupprimer le créneau supprimera aussi ces plannings.\n\nContinuer ?`
+      )
+      if (!ok) return
+      await deleteLinkedPlannings(t.id)
+    } else {
+      if (!confirm(`Supprimer "${t.code}" ?`)) return
+    }
+    await remove(t.id)
+  }
+
+  async function handleLoadDefaults() {
+    if (!tenantId) return
+    if (templates.length > 0 && !confirm('Cela va ajouter les créneaux HCR par défaut. Continuer ?')) return
+    for (const shift of DEFAULT_SHIFTS_HCR) { await add({ ...shift, tenantId }) }
   }
 
   const groupedByDept = {
@@ -129,13 +174,9 @@ export function ShiftTemplatesPage() {
         <h1 className="text-2xl font-bold">Créneaux horaires ({templates.length})</h1>
         <div className="flex gap-2">
           {templates.length === 0 && (
-            <Button variant="secondary" onClick={handleLoadDefaults}>
-              <Zap size={16} className="mr-2" /> Charger défauts HCR
-            </Button>
+            <Button variant="secondary" onClick={handleLoadDefaults}><Zap size={16} className="mr-2" /> Charger défauts HCR</Button>
           )}
-          <Button onClick={() => setShowAddForm(true)}>
-            <Plus size={16} className="mr-2" /> Ajouter
-          </Button>
+          <Button onClick={openAdd}><Plus size={16} className="mr-2" /> Ajouter</Button>
         </div>
       </div>
 
@@ -173,7 +214,7 @@ export function ShiftTemplatesPage() {
                             <th className="px-3 py-2 text-center font-medium text-muted-foreground">H.eff</th>
                             <th className="px-3 py-2 text-center font-medium text-muted-foreground">Repas</th>
                             <th className="px-3 py-2 text-center font-medium text-muted-foreground">Paniers</th>
-                            <th className="px-3 py-2 text-right font-medium text-muted-foreground"></th>
+                            <th className="px-3 py-2 text-right font-medium text-muted-foreground">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -188,12 +229,22 @@ export function ShiftTemplatesPage() {
                               <td className="px-3 py-2 text-center">{t.meals}</td>
                               <td className="px-3 py-2 text-center">{t.baskets}</td>
                               <td className="px-3 py-2 text-right">
-                                <button
-                                  onClick={() => { if (confirm(`Supprimer "${t.code}" ?`)) remove(t.id) }}
-                                  className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
+                                <div className="flex items-center justify-end gap-1">
+                                  <button
+                                    onClick={() => openEdit(t)}
+                                    className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                                    title="Modifier"
+                                  >
+                                    <Pencil size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(t)}
+                                    className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                    title="Supprimer"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -211,36 +262,21 @@ export function ShiftTemplatesPage() {
       {templates.length === 0 && !loading && (
         <Card>
           <CardHeader><CardTitle>Aucun créneau</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Chargez les créneaux par défaut HCR ou ajoutez les manuellement.
-            </p>
-          </CardContent>
+          <CardContent><p className="text-muted-foreground">Chargez les créneaux par défaut HCR ou ajoutez les manuellement.</p></CardContent>
         </Card>
       )}
 
-      {/* Modal ajout */}
-      {showAddForm && (
+      {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-lg rounded-lg border border-border bg-background p-6 shadow-lg">
-            <h2 className="mb-4 text-lg font-semibold">Ajouter un créneau</h2>
+            <h2 className="mb-4 text-lg font-semibold">{editingId ? 'Modifier le créneau' : 'Ajouter un créneau'}</h2>
             <div className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-3">
                 <Input id="code" label="Code" placeholder="SOIR" value={code} onChange={(e) => setCode(e.target.value)} required />
                 <Input id="label" label="Libellé" placeholder="Soir" value={label} onChange={(e) => setLabel(e.target.value)} required />
               </div>
               <div>
-                <Select
-                  id="department"
-                  label="Département (obligatoire)"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value as 'salle' | 'cuisine')}
-                  options={DEPARTMENT_OPTIONS}
-                />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Salle : pour les serveurs, barmen, runners. Cuisine : pour les cuisiniers.
-                  Le créneau sera utilisé uniquement par le planning du département choisi.
-                </p>
+                <Select id="department" label="Département" value={department} onChange={(e) => setDepartment(e.target.value as 'salle' | 'cuisine')} options={DEPARTMENT_OPTIONS} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Select id="category" label="Type" value={category} onChange={(e) => setCategory(e.target.value as ShiftCategory)} options={CATEGORY_OPTIONS} />
@@ -256,8 +292,10 @@ export function ShiftTemplatesPage() {
                 <Input id="baskets" label="Paniers" type="number" min={0} max={3} value={baskets} onChange={(e) => setBaskets(Number(e.target.value))} />
               </div>
               <div className="flex gap-3 pt-2">
-                <Button onClick={handleAdd} className="flex-1" disabled={!code.trim() || !label.trim()}>Ajouter</Button>
-                <Button variant="outline" onClick={() => { setShowAddForm(false); resetForm() }}>Annuler</Button>
+                <Button onClick={handleSave} className="flex-1" disabled={!code.trim() || !label.trim()}>
+                  {editingId ? 'Sauvegarder' : 'Ajouter'}
+                </Button>
+                <Button variant="outline" onClick={() => { setShowForm(false); resetForm() }}>Annuler</Button>
               </div>
             </div>
           </div>
