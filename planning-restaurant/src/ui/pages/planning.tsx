@@ -385,6 +385,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
 
   async function handleGenerate() {
     if (!tenantId) return
+    if (savedPlanningMeta && !confirm(`Un planning existe déjà pour la semaine ${weekNumber}. Voulez-vous le remplacer ?`)) return
     setGenerating(true)
     setTimeout(() => generateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100)
     setReport(null) // Hide previous planning during generation
