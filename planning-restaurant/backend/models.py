@@ -24,7 +24,7 @@ class Employee(BaseModel):
     is_manager: bool = False
     department: str = "salle"
     role_id: str = ""
-    level: float = 1  # 1, 2, 2.5, 3, 4 — le plus bas = débutant
+    level: float = 1
 
 
 class ManagerSchedule(BaseModel):
@@ -42,6 +42,7 @@ class Unavailability(BaseModel):
     specific_date: Optional[str] = None
     available_from: Optional[float] = None
     available_until: Optional[float] = None
+    hours_reduction: Optional[float] = None  # heures à retirer du contrat cette semaine
 
 
 class ConditionalAvailability(BaseModel):
@@ -74,20 +75,18 @@ class SolverRequest(BaseModel):
     closing_time_week: float = 24.0
     closing_time_sunday: float = 21.0
     productivity_target: float = 95.0
-    # Manual minimum staff overrides per day: {day_of_week: count}
     min_staff_midi: Dict[str, int] = {}
     min_staff_soir: Dict[str, int] = {}
     min_staff_fermeture: Dict[str, int] = {}
-    # --- Tenant rules (multi-tenant configurable) ---
     min_rest_hours: float = 11.0
     max_working_days: int = 5
     fulltime_threshold: float = 35.0
     min_closing_weekday: int = 4
     min_closing_weekend: int = 6
-    weekend_start_day: int = 3  # 0=lundi, 3=jeudi par défaut
+    weekend_start_day: int = 3
     min_kitchen_midi: int = 2
-    kitchen_prep_day: Optional[int] = None  # 0-6 ou None pour désactiver
-    kitchen_prep_team: List[str] = []  # UUIDs des employés
+    kitchen_prep_day: Optional[int] = None
+    kitchen_prep_team: List[str] = []
     kitchen_closed_sunday_evening: bool = True
 
 
