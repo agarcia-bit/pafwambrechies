@@ -215,8 +215,7 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
         <CardContent>
           {/* Grille des 12 mois */}
           <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-            {monthlyData.map((d) => {
-              const hasHours = d.hours > 0
+            {monthlyData.filter((d) => d.hours > 0).map((d) => {
               const hasCA = d.ca != null
               const isEditing = editingMonth === d.month
               const prodColor = d.productivity != null
@@ -226,7 +225,6 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
                 <div
                   key={d.month}
                   className={`rounded-xl border p-3 transition-colors ${
-                    !hasHours ? 'border-border bg-muted/30 opacity-50' :
                     hasCA ? 'border-border bg-white' :
                     'border-warning/30 bg-warning/5'
                   }`}
@@ -235,7 +233,7 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
 
                   <div className="mt-2 flex items-end justify-between">
                     <div>
-                      <p className="text-lg font-bold">{hasHours ? `${d.hours}h` : '—'}</p>
+                      <p className="text-lg font-bold">{`${d.hours}h`}</p>
                       <p className="text-[10px] text-muted-foreground">heures attribuées</p>
                     </div>
                     {d.productivity != null && (
@@ -246,7 +244,7 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
                     )}
                   </div>
 
-                  {hasHours && (
+                  {d.hours > 0 && (
                     <div className="mt-2">
                       {isEditing ? (
                         <div className="flex items-center gap-1">
