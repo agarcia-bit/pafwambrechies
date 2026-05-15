@@ -564,6 +564,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
     }
 
     if (result) {
+      setSaved(true)
       setReport(result)
       // Auto-save en brouillon
       if (tenantId) {
@@ -574,7 +575,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           weekNumber: result.planning.weekNumber,
           status: 'draft',
           createdBy: user?.id ?? '',
-        }, result.planning.entries).then(() => setSaved(true)).catch((e: unknown) => console.warn('[planning]', e))
+        }, result.planning.entries).catch((e: unknown) => console.warn('[planning]', e))
       }
     }
     setGenerating(false)

@@ -65,7 +65,6 @@ export async function savePlanningWithEntries(
     method: 'POST',
     headers: { ...headers, Prefer: 'return=representation,resolution=merge-duplicates' },
     body: JSON.stringify({
-      id: planning.id,
       tenant_id: planning.tenantId,
       week_start_date: planning.weekStartDate,
       week_number: planning.weekNumber,
