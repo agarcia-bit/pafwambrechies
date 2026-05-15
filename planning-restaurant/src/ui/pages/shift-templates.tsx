@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useShiftTemplateStore } from '@/store/shift-template-store'
 import { useAuthStore } from '@/store/auth-store'
 import { Button, Input, Select, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
@@ -44,26 +44,22 @@ export function ShiftTemplatesPage() {
   const [category, setCategory] = useState<ShiftCategory>('midi')
   const [startTime, setStartTime] = useState(11)
   const [endTime, setEndTime] = useState(15)
-  const [effectiveHours, setEffectiveHours] = useState(4)
   const [meals, setMeals] = useState(0)
   const [baskets, setBaskets] = useState(0)
   const [applicability, setApplicability] = useState<DayApplicability>('tue_sat')
   const [department, setDepartment] = useState<'salle' | 'cuisine'>('salle')
 
-  useEffect(() => { load() }, [load])
+  // Heures effectives calculées automatiquement : durée - (repas × 0.5h)
+  const effectiveHours = useMemo(() => {
+    const raw = endTime > startTime ? endTime - startTime : 0
+    return Math.round((raw - meals * 0.5) * 10) / 10
+  }, [startTime, endTime, meals])
 
-  function handleStartTimeChange(val: number) {
-    setStartTime(val)
-    if (endTime > val) setEffectiveHours(Math.round((endTime - val) * 10) / 10)
-  }
-  function handleEndTimeChange(val: number) {
-    setEndTime(val)
-    if (val > startTime) setEffectiveHours(Math.round((val - startTime) * 10) / 10)
-  }
+  useEffect(() => { load() }, [load])
 
   function resetForm() {
     setCode(''); setLabel(''); setCategory('midi'); setStartTime(11); setEndTime(15)
-    setEffectiveHours(4); setMeals(0); setBaskets(0); setApplicability('tue_sat')
+    setMeals(0); setBaskets(0); setApplicability('tue_sat')
     setDepartment('salle'); setEditingId(null)
   }
 
@@ -75,7 +71,7 @@ export function ShiftTemplatesPage() {
   function openEdit(t: ShiftTemplate) {
     setEditingId(t.id)
     setCode(t.code); setLabel(t.label); setCategory(t.category as ShiftCategory)
-    setStartTime(t.startTime); setEndTime(t.endTime); setEffectiveHours(t.effectiveHours)
+    setStartTime(t.startTime); setEndTime(t.endTime)
     setMeals(t.meals); setBaskets(t.baskets); setApplicability(t.applicability as DayApplicability)
     setDepartment(t.department as 'salle' | 'cuisine')
     setShowForm(true)
@@ -87,8 +83,7 @@ export function ShiftTemplatesPage() {
         c.from('planning_entries').select('planning_id').eq('shift_template_id', templateId).limit(100),
       )
       const rows = (data as { planning_id: string }[]) ?? []
-      const uniquePlannings = new Set(rows.map((r) => r.planning_id))
-      return uniquePlannings.size
+      return new Set(rows.map((r) => r.planning_id)).size
     } catch { return 0 }
   }
 
@@ -108,13 +103,10 @@ export function ShiftTemplatesPage() {
 
   async function handleSave() {
     if (!tenantId || !code.trim() || !label.trim()) return
-
     if (editingId) {
       const count = await checkLinkedPlannings(editingId)
       if (count > 0) {
-        const ok = confirm(
-          `Ce créneau est utilisé dans ${count} planning(s) enregistré(s).\n\nModifier ce créneau supprimera ces plannings.\nVous pourrez les regénérer ensuite.\n\nContinuer ?`
-        )
+        const ok = confirm(`Ce créneau est utilisé dans ${count} planning(s).\nModifier supprimera ces plannings.\nContinuer ?`)
         if (!ok) return
         await deleteLinkedPlannings(editingId)
       }
@@ -136,10 +128,7 @@ export function ShiftTemplatesPage() {
   async function handleDelete(t: ShiftTemplate) {
     const count = await checkLinkedPlannings(t.id)
     if (count > 0) {
-      const ok = confirm(
-        `Ce créneau est utilisé dans ${count} planning(s).\nSupprimer le créneau supprimera aussi ces plannings.\n\nContinuer ?`
-      )
-      if (!ok) return
+      if (!confirm(`Ce créneau est utilisé dans ${count} planning(s).\nSupprimer le créneau supprimera aussi ces plannings.\nContinuer ?`)) return
       await deleteLinkedPlannings(t.id)
     } else {
       if (!confirm(`Supprimer "${t.code}" ?`)) return
@@ -230,20 +219,8 @@ export function ShiftTemplatesPage() {
                               <td className="px-3 py-2 text-center">{t.baskets}</td>
                               <td className="px-3 py-2 text-right">
                                 <div className="flex items-center justify-end gap-1">
-                                  <button
-                                    onClick={() => openEdit(t)}
-                                    className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                                    title="Modifier"
-                                  >
-                                    <Pencil size={14} />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDelete(t)}
-                                    className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                    title="Supprimer"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
+                                  <button onClick={() => openEdit(t)} className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Modifier"><Pencil size={14} /></button>
+                                  <button onClick={() => handleDelete(t)} className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Supprimer"><Trash2 size={14} /></button>
                                 </div>
                               </td>
                             </tr>
@@ -282,17 +259,23 @@ export function ShiftTemplatesPage() {
                 <Select id="category" label="Type" value={category} onChange={(e) => setCategory(e.target.value as ShiftCategory)} options={CATEGORY_OPTIONS} />
                 <Select id="applicability" label="Jours" value={applicability} onChange={(e) => setApplicability(e.target.value as DayApplicability)} options={APPLICABILITY_OPTIONS} />
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <TimeInput label="Début" value={startTime} onChange={handleStartTimeChange} />
-                <TimeInput label="Fin" value={endTime} onChange={handleEndTimeChange} />
-                <Input id="effectiveHours" label="H. effectives" type="number" step={0.5} min={0} max={24} value={effectiveHours} onChange={(e) => setEffectiveHours(Number(e.target.value))} />
-              </div>
               <div className="grid grid-cols-2 gap-3">
+                <TimeInput label="Début" value={startTime} onChange={setStartTime} />
+                <TimeInput label="Fin" value={endTime} onChange={setEndTime} />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
                 <Input id="meals" label="Repas" type="number" min={0} max={3} value={meals} onChange={(e) => setMeals(Number(e.target.value))} />
                 <Input id="baskets" label="Paniers" type="number" min={0} max={3} value={baskets} onChange={(e) => setBaskets(Number(e.target.value))} />
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">H. effectives</label>
+                  <div className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-700">
+                    {effectiveHours}h
+                  </div>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">= durée - repas × 0.5h</p>
+                </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <Button onClick={handleSave} className="flex-1" disabled={!code.trim() || !label.trim()}>
+                <Button onClick={handleSave} className="flex-1" disabled={!code.trim() || !label.trim() || effectiveHours <= 0}>
                   {editingId ? 'Sauvegarder' : 'Ajouter'}
                 </Button>
                 <Button variant="outline" onClick={() => { setShowForm(false); resetForm() }}>Annuler</Button>
