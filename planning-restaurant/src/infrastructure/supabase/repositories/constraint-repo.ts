@@ -22,6 +22,7 @@ export async function createUnavailability(u: Omit<Unavailability, 'id'>): Promi
       available_from: u.availableFrom,
       available_until: u.availableUntil,
       label: u.label,
+      hours_reduction: u.hoursReduction,
     }).select().single(),
   )
   return mapUnavailability(data as Record<string, unknown>)
@@ -98,6 +99,7 @@ function mapUnavailability(row: any): Unavailability {
     availableFrom: row.available_from != null ? Number(row.available_from) : null,
     availableUntil: row.available_until != null ? Number(row.available_until) : null,
     label: row.label,
+    hoursReduction: row.hours_reduction != null ? Number(row.hours_reduction) : null,
   }
 }
 
