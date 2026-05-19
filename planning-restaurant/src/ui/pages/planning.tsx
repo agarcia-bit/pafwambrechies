@@ -119,7 +119,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
   // Ajout contrainte ponctuelle inline
   const [addingConstraint, setAddingConstraint] = useState(false)
   const [newConstraintEmpId, setNewConstraintEmpId] = useState('')
-  const [newConstraintDay, setNewConstraintDay] = useState(1)
+  const [newConstraintDays, setNewConstraintDays] = useState<number[]>([])
   const [newConstraintType, setNewConstraintType] = useState<'off' | 'from' | 'until'>('off')
   const [newConstraintHour, setNewConstraintHour] = useState(14)
 
@@ -659,16 +659,23 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
                     </select>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium">Jour</label>
-                    <select
-                      value={newConstraintDay}
-                      onChange={(e) => setNewConstraintDay(Number(e.target.value))}
-                      className="h-8 rounded border border-input bg-background px-2 text-sm"
-                    >
-                      {DAY_NAMES.slice(1).map((name, i) => (
-                        <option key={i + 1} value={i + 1}>{name} {weekDates[i + 1] ? new Date(weekDates[i + 1]).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : ''}</option>
-                      ))}
-                    </select>
+                    <label className="text-xs font-medium">Jours</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {DAY_NAMES.slice(1).map((name, i) => {
+                        const day = i + 1
+                        const selected = newConstraintDays.includes(day)
+                        const dateLabel = weekDates[day] ? new Date(weekDates[day]).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : ''
+                        return (
+                          <button
+                            key={day}
+                            onClick={() => setNewConstraintDays(selected ? newConstraintDays.filter((d) => d !== day) : [...newConstraintDays, day])}
+                            className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${selected ? 'bg-destructive text-white' : 'bg-background border border-border text-foreground hover:bg-muted'}`}
+                          >
+                            {name.slice(0, 3)} {dateLabel}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium">Type</label>
@@ -701,11 +708,9 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
                   <Button
                     size="sm"
                     variant="destructive"
-                    disabled={!newConstraintEmpId}
+                    disabled={!newConstraintEmpId || newConstraintDays.length === 0}
                     onClick={async () => {
-                      if (!newConstraintEmpId) return
-                      const date = weekDates[newConstraintDay]
-                      if (!date) return
+                      if (!newConstraintEmpId || newConstraintDays.length === 0) return
                       let label = 'OFF'
                       let availableFrom: number | null = null
                       let availableUntil: number | null = null
@@ -718,22 +723,27 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
                         label = `Doit partir avant ${newConstraintHour}h`
                       }
 
-                      await createUnavailability({
-                        employeeId: newConstraintEmpId,
-                        type: 'punctual',
-                        dayOfWeek: null,
-                        specificDate: date,
-                        availableFrom,
-                        availableUntil,
-                        label,
-                      })
+                      for (const day of newConstraintDays) {
+                        const date = weekDates[day]
+                        if (!date) continue
+                        await createUnavailability({
+                          employeeId: newConstraintEmpId,
+                          type: 'punctual',
+                          dayOfWeek: null,
+                          specificDate: date,
+                          availableFrom,
+                          availableUntil,
+                          label,
+                        })
+                      }
                       reloadConstraints()
                       setAddingConstraint(false)
                       setNewConstraintEmpId('')
+                      setNewConstraintDays([])
                       setNewConstraintType('off')
                     }}
                   >
-                    Ajouter
+                    Ajouter {newConstraintDays.length > 1 ? `(${newConstraintDays.length} jours)` : ''}
                   </Button>
                   <button onClick={() => setAddingConstraint(false)} className="text-muted-foreground hover:text-foreground">
                     <X size={16} />
