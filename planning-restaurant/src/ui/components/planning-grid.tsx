@@ -79,7 +79,16 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
           : h === 9.5
           ? dayEntries.filter((e) => e.startTime <= 9.5)
           : dayEntries.filter((e) => e.startTime <= h && e.endTime > h)
-        return { hour: h, total: present.length, isLast }
+        const byRole = new Map<string, number>()
+        for (const e of present) {
+          const badge = getRoleBadge(e.employeeId)
+          const name = badge?.name ?? 'Autre'
+          byRole.set(name, (byRole.get(name) ?? 0) + 1)
+        }
+        const tooltip = present.length > 0
+          ? Array.from(byRole.entries()).map(([name, count]) => `${name}: ${count}`).join('\n')
+          : ''
+        return { hour: h, total: present.length, isLast, tooltip }
       })
       return { day, plannedHours, productivity, ca: ds?.forecastedRevenue ?? 0, closingTime, byHour }
     })
@@ -233,7 +242,7 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
                       : slot.total <= 4 ? 'bg-emerald-50'
                       : 'bg-emerald-100'
                     return (
-                      <td key={slot.hour} className={`px-1 py-2 text-center font-bold ${bg}`}>
+                      <td key={slot.hour} className={`px-1 py-2 text-center font-bold ${bg} cursor-default`} title={slot.tooltip}>
                         {slot.total}
                       </td>
                     )
