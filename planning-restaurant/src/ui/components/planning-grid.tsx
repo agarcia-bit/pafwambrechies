@@ -245,14 +245,17 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
             {hourlyBreakdown.map(({ day, productivity, ca, byHour }) => {
               const prodOk = productivity >= 85 && productivity <= 110
               return (
-                <tr key={day} className={`border-b border-border ${selectedDay === day ? 'bg-primary/10 ring-2 ring-inset ring-primary/30' : ''}`}>
-                  <td className="px-3 py-2 font-medium sticky left-0 bg-background z-10">{DAY_NAMES[day]}</td>
-                  <td className="px-2 py-2 text-center text-muted-foreground">{ca > 0 ? `${Math.round(ca)}€` : '—'}</td>
-                  <td className={`px-2 py-2 text-center font-bold ${prodOk ? 'text-success' : 'text-destructive'}`}>
+                <tr key={day}
+                  onClick={() => setSelectedDay(selectedDay === day ? null : day)}
+                  className={`border-b border-border cursor-pointer transition-colors ${selectedDay === day ? 'ring-2 ring-inset ring-primary' : 'hover:bg-muted/30'}`}>
+                  <td className={`px-3 py-2 font-medium sticky left-0 z-10 ${selectedDay === day ? 'bg-primary/10' : 'bg-background'}`}>{DAY_NAMES[day]}</td>
+                  <td className={`px-2 py-2 text-center ${selectedDay === day ? 'bg-primary/10' : ''} text-muted-foreground`}>{ca > 0 ? `${Math.round(ca)}€` : '—'}</td>
+                  <td className={`px-2 py-2 text-center font-bold ${selectedDay === day ? 'bg-primary/10' : ''} ${prodOk ? 'text-success' : 'text-destructive'}`}>
                     {productivity > 0 ? Math.round(productivity) : '—'}
                   </td>
                   {byHour.map((slot) => {
-                    const bg = slot.total === 0 ? 'bg-red-50 text-red-400'
+                    const bg = selectedDay === day ? 'bg-primary/10'
+                      : slot.total === 0 ? 'bg-red-50 text-red-400'
                       : slot.total <= 2 ? 'bg-amber-50'
                       : slot.total <= 4 ? 'bg-emerald-50'
                       : 'bg-emerald-100'
