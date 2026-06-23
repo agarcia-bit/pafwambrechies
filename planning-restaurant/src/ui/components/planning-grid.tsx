@@ -62,43 +62,44 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
     return { ...s, plannedHours, totalMeals, totalBaskets }
   })
 
-  const dailyStats = useMemo(() => report.dailySummaries.map((ds) => {
-    const dayEntries = report.planning.entries.filter((e) => e.dayOfWeek === ds.dayOfWeek)
-    const plannedHours = dayEntries.reduce((sum, e) => sum + e.effectiveHours, 0)
-    const productivity = plannedHours > 0 ? ds.forecastedRevenue / plannedHours : 0
-    const isSunday = ds.dayOfWeek === 6
-    const closingTime = isSunday ? 21 : 24
-    return {
-      ...ds,
-      plannedHours,
-      productivity,
-      staffOuverture: dayEntries.filter((e) => e.startTime <= 9.5).length,
-      staffFermeture: dayEntries.filter((e) => e.endTime >= closingTime).length,
-    }
-  }), [report.dailySummaries, report.planning.entries])
-
-  const hourlyBreakdown = useMemo(() => {
-    const hours = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+  const periodStats = useMemo(() => {
+    const periods = [
+      { key: 'ouverture', label: 'Ouverture', sub: '≤9h30', from: 0, to: 9.5, mode: 'start' as const },
+      { key: 'matin', label: 'Matin', sub: '9h30→12h', from: 9.5, to: 12, mode: 'overlap' as const },
+      { key: 'midi', label: 'Midi', sub: '12h→14h', from: 12, to: 14, mode: 'overlap' as const },
+      { key: 'aprem', label: 'Après-midi', sub: '14h→18h', from: 14, to: 18, mode: 'overlap' as const },
+      { key: 'soir', label: 'Soir', sub: '18h→ferm', from: 18, to: 24, mode: 'overlap' as const },
+      { key: 'fermeture', label: 'Fermeture', sub: '≥ferm', from: 0, to: 0, mode: 'end' as const },
+    ]
     return [1, 2, 3, 4, 5, 6].map((day) => {
       const dayEntries = report.planning.entries.filter((e) => e.dayOfWeek === day)
       const isSunday = day === 6
       const closingTime = isSunday ? 21 : 24
-      const byHour = hours.filter((h) => h < closingTime).map((h) => {
-        const present = dayEntries.filter((e) => e.startTime <= h && e.endTime > h)
+      const plannedHours = dayEntries.reduce((sum, e) => sum + e.effectiveHours, 0)
+      const ds = report.dailySummaries.find((s) => s.dayOfWeek === day)
+      const productivity = plannedHours > 0 && ds ? ds.forecastedRevenue / plannedHours : 0
+      const byPeriod = periods.map((p) => {
+        let present: typeof dayEntries
+        if (p.mode === 'start') present = dayEntries.filter((e) => e.startTime <= 9.5)
+        else if (p.mode === 'end') present = dayEntries.filter((e) => e.endTime >= closingTime)
+        else {
+          const to = p.key === 'soir' ? closingTime : p.to
+          present = dayEntries.filter((e) => e.startTime < to && e.endTime > p.from)
+        }
         const byRole = new Map<string, { count: number; color: string; name: string }>()
         for (const e of present) {
           const badge = getRoleBadge(e.employeeId)
-          const key = badge?.name ?? 'Sans rôle'
+          const key = badge?.name ?? 'Autre'
           const color = badge?.color ?? '#94a3b8'
           const cur = byRole.get(key) ?? { count: 0, color, name: key }
           cur.count++
           byRole.set(key, cur)
         }
-        return { hour: h, total: present.length, byRole: Array.from(byRole.values()) }
+        return { ...p, total: present.length, roles: Array.from(byRole.values()) }
       })
-      return { day, byHour }
+      return { day, plannedHours, productivity, ca: ds?.forecastedRevenue ?? 0, byPeriod }
     })
-  }, [report.planning.entries, employeeRoles, roles]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [report.planning.entries, report.dailySummaries, employeeRoles, roles]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex flex-col gap-4">
@@ -217,58 +218,69 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
         </table>
       </div>
 
-      {/* Tableau décompte heure par heure */}
+      {/* Tableau récap effectifs par période */}
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-muted">
-              <th className="px-3 py-2 text-left font-medium sticky left-0 bg-muted z-10">Jour</th>
+              <th className="px-3 py-2 text-left font-medium">Jour</th>
               <th className="px-2 py-2 text-center font-medium">CA</th>
+              <th className="px-2 py-2 text-center font-medium">Heures</th>
               <th className="px-2 py-2 text-center font-medium">Prod.</th>
-              {[9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23].map((h) => (
-                <th key={h} className="px-1 py-2 text-center font-medium min-w-[36px]">{h}h</th>
+              {periodStats[0]?.byPeriod.map((p) => (
+                <th key={p.key} className="px-2 py-2 text-center font-medium min-w-[90px]">
+                  {p.label}<br/><span className="text-[9px] font-normal text-muted-foreground">{p.sub}</span>
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {hourlyBreakdown.map(({ day, byHour }) => {
-              const ds = dailyStats.find((s) => s.dayOfWeek === day)
-              if (!ds) return null
-              const prodOk = ds.productivity >= 85 && ds.productivity <= 110
+            {periodStats.map(({ day, plannedHours, productivity, ca, byPeriod }) => {
+              const prodOk = productivity >= 85 && productivity <= 110
+              const maxStaff = Math.max(...byPeriod.map((p) => p.total), 1)
               return (
                 <tr key={day} className="border-b border-border">
-                  <td className="px-3 py-2 font-medium sticky left-0 bg-background z-10">{DAY_NAMES[day]}</td>
-                  <td className="px-2 py-2 text-center text-muted-foreground">{ds.forecastedRevenue > 0 ? `${Math.round(ds.forecastedRevenue)}€` : '—'}</td>
+                  <td className="px-3 py-2 font-medium">{DAY_NAMES[day]}</td>
+                  <td className="px-2 py-2 text-center text-muted-foreground">{ca > 0 ? `${Math.round(ca)}€` : '—'}</td>
+                  <td className="px-2 py-2 text-center">{plannedHours}h</td>
                   <td className={`px-2 py-2 text-center font-bold ${prodOk ? 'text-success' : 'text-destructive'}`}>
-                    {ds.productivity > 0 ? Math.round(ds.productivity) : '—'}
+                    {productivity > 0 ? Math.round(productivity) : '—'}
                   </td>
-                  {[9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23].map((h) => {
-                    const slot = byHour.find((s) => s.hour === h)
-                    if (!slot) return <td key={h} className="px-1 py-2 text-center text-muted-foreground/30">—</td>
-                    const intensity = slot.total === 0 ? 'bg-red-50 text-red-400'
-                      : slot.total <= 2 ? 'bg-amber-50'
-                      : slot.total <= 4 ? 'bg-emerald-50'
-                      : 'bg-emerald-100'
-                    return (
-                      <td key={h} className={`px-1 py-1 text-center ${intensity}`}>
-                        <div className="font-bold">{slot.total}</div>
-                        {slot.byRole.length > 0 && (
-                          <div className="flex flex-wrap justify-center gap-0.5 mt-0.5">
-                            {slot.byRole.map((r) => (
-                              <span key={r.name} className="inline-block rounded-sm px-1 text-[7px] font-medium text-white" style={{ backgroundColor: r.color }} title={`${r.name}: ${r.count}`}>
-                                {r.count}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                    )
-                  })}
+                  {byPeriod.map((p) => (
+                    <td key={p.key} className="px-2 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-5 text-right font-bold ${p.total === 0 ? 'text-red-400' : ''}`}>{p.total}</span>
+                        <div className="flex h-4 flex-1 overflow-hidden rounded" title={p.roles.map((r) => `${r.name}: ${r.count}`).join(', ')}>
+                          {p.roles.map((r) => (
+                            <div
+                              key={r.name}
+                              className="flex items-center justify-center text-[8px] font-bold text-white"
+                              style={{ backgroundColor: r.color, width: `${(r.count / maxStaff) * 100}%`, minWidth: r.count > 0 ? '14px' : 0 }}
+                            >
+                              {r.count > 1 ? r.count : ''}
+                            </div>
+                          ))}
+                          {p.total === 0 && <div className="flex-1 bg-red-100" />}
+                        </div>
+                      </div>
+                    </td>
+                  ))}
                 </tr>
               )
             })}
           </tbody>
         </table>
+        {roles.length > 0 && (
+          <div className="flex items-center gap-3 border-t border-border px-3 py-2">
+            <span className="text-[10px] text-muted-foreground">Légende :</span>
+            {roles.map((r) => (
+              <span key={r.id} className="inline-flex items-center gap-1 text-[10px]">
+                <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: r.color }} />
+                {r.name}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {report.violations.length > 0 && (
