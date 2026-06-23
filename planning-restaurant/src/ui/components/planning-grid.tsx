@@ -249,7 +249,7 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
                       <td key={slot.hour} className={`px-1 py-2 text-center ${bg}`}>
                         <div className="font-bold text-sm leading-tight">{slot.total}</div>
                         {slot.roleBreakdown.length > 0 && (
-                          <div className="mt-1 flex flex-col items-center gap-0.5">
+                          <div className="mt-1 flex flex-wrap justify-center gap-x-1 gap-y-0.5">
                             {slot.roleBreakdown.map((r) => (
                               <span key={r.name} className="inline-flex items-center gap-0.5 text-[9px] leading-none text-slate-600">
                                 <span className="inline-block h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: r.color }} />
