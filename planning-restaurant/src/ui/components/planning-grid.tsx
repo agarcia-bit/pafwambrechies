@@ -146,9 +146,9 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
                   return (
                 <tr key={summary.employeeId}
                   onClick={() => setSelectedEmpId(selectedEmpId === summary.employeeId ? null : summary.employeeId)}
-                  className={`border-b border-border cursor-pointer transition-colors ${selectedEmpId === summary.employeeId ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-muted/20'}`}>
-                  <td className="sticky left-0 z-10 bg-background px-2 py-1.5 text-center font-mono">{summary.contractHours}</td>
-                  <td className="sticky left-16 z-10 bg-background px-2 py-1.5 whitespace-nowrap">
+                  className={`border-b border-border cursor-pointer transition-colors ${selectedEmpId === summary.employeeId ? 'ring-2 ring-inset ring-primary bg-primary/10' : 'hover:bg-muted/20'}`}>
+                  <td className={`sticky left-0 z-10 px-2 py-1.5 text-center font-mono ${selectedEmpId === summary.employeeId ? 'bg-primary/10' : 'bg-background'}`}>{summary.contractHours}</td>
+                  <td className={`sticky left-16 z-10 px-2 py-1.5 whitespace-nowrap ${selectedEmpId === summary.employeeId ? 'bg-primary/10' : 'bg-background'}`}>
                     <div className="flex items-center gap-1.5">
                       <span className="font-medium">{summary.employeeName}</span>
                       {roleBadge && (
@@ -252,9 +252,9 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
                       <td key={slot.hour} className={`px-1 py-2 text-center ${bg}`}>
                         <div className="font-bold text-sm leading-tight">{slot.total}</div>
                         {slot.roleBreakdown.length > 0 && (
-                          <div className="mt-1 flex flex-wrap justify-center gap-x-1 gap-y-0.5">
+                          <div className="mt-1 grid grid-cols-2 gap-x-1 gap-y-0 justify-items-center mx-auto" style={{ width: 'fit-content' }}>
                             {slot.roleBreakdown.map((r) => (
-                              <span key={r.name} className="inline-flex items-center gap-0.5 text-[9px] leading-none text-slate-600">
+                              <span key={r.name} className="inline-flex items-center gap-0.5 text-[8px] leading-tight text-slate-600">
                                 <span className="inline-block h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: r.color }} />
                                 {r.count}
                               </span>
