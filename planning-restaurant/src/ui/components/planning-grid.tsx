@@ -162,7 +162,10 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
                     const entry = report.planning.entries.find((e) => e.employeeId === summary.employeeId && e.dayOfWeek === d)
                     const constraint = isConstrained(summary.employeeId, d)
                     const isOff = !entry
-                    const bgClass = constraint === 'off'
+                    const isSelected = selectedEmpId === summary.employeeId
+                    const bgClass = isSelected
+                      ? 'bg-primary/10'
+                      : constraint === 'off'
                       ? 'bg-orange-100'
                       : constraint === 'partial'
                       ? 'bg-amber-50'
