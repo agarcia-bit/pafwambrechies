@@ -19,6 +19,7 @@ interface PlanningGridProps {
 
 export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [], employeeRoles = [], unavailabilities = [], weekDates = [], onShiftChange }: PlanningGridProps) {
   const [editingCell, setEditingCell] = useState<{ empId: string; day: number } | null>(null)
+  const [selectedEmpId, setSelectedEmpId] = useState<string | null>(null)
 
   function getShiftsForDay(dayOfWeek: number, employeeId?: string): ShiftTemplate[] {
     const isSunday = dayOfWeek === 6
@@ -143,7 +144,9 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
                 ...section.items.map((summary) => {
                   const roleBadge = getRoleBadge(summary.employeeId)
                   return (
-                <tr key={summary.employeeId} className="border-b border-border hover:bg-muted/20">
+                <tr key={summary.employeeId}
+                  onClick={() => setSelectedEmpId(selectedEmpId === summary.employeeId ? null : summary.employeeId)}
+                  className={`border-b border-border cursor-pointer transition-colors ${selectedEmpId === summary.employeeId ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-muted/20'}`}>
                   <td className="sticky left-0 z-10 bg-background px-2 py-1.5 text-center font-mono">{summary.contractHours}</td>
                   <td className="sticky left-16 z-10 bg-background px-2 py-1.5 whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
