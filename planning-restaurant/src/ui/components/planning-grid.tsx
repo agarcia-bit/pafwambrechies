@@ -242,8 +242,15 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
                       : slot.total <= 4 ? 'bg-emerald-50'
                       : 'bg-emerald-100'
                     return (
-                      <td key={slot.hour} className={`px-1 py-2 text-center font-bold ${bg} cursor-default`} title={slot.tooltip}>
+                      <td key={slot.hour} className={`px-1 py-2 text-center font-bold ${bg} relative group`}>
                         {slot.total}
+                        {slot.tooltip && (
+                          <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50">
+                            <div className="whitespace-pre rounded bg-slate-800 px-2 py-1 text-[10px] font-normal text-white shadow-lg">
+                              {slot.tooltip}
+                            </div>
+                          </div>
+                        )}
                       </td>
                     )
                   })}
