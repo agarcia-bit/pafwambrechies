@@ -88,7 +88,11 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
         const tooltip = present.length > 0
           ? Array.from(byRole.entries()).map(([name, count]) => `${name}: ${count}`).join('\n')
           : ''
-        return { hour: h, total: present.length, isLast, tooltip }
+        const roleBreakdown = Array.from(byRole.entries()).map(([name, count]) => {
+          const badge = roles.find((r) => r.name === name)
+          return { name, count, color: badge?.color ?? '#94a3b8' }
+        })
+        return { hour: h, total: present.length, isLast, tooltip, roleBreakdown }
       })
       return { day, plannedHours, productivity, ca: ds?.forecastedRevenue ?? 0, closingTime, byHour }
     })
@@ -242,13 +246,16 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
                       : slot.total <= 4 ? 'bg-emerald-50'
                       : 'bg-emerald-100'
                     return (
-                      <td key={slot.hour} className={`px-1 py-2 text-center font-bold ${bg} relative group`}>
-                        {slot.total}
-                        {slot.tooltip && (
-                          <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50">
-                            <div className="whitespace-pre rounded bg-slate-800 px-2 py-1 text-[10px] font-normal text-white shadow-lg">
-                              {slot.tooltip}
-                            </div>
+                      <td key={slot.hour} className={`px-1 py-2 text-center ${bg}`}>
+                        <div className="font-bold text-sm leading-tight">{slot.total}</div>
+                        {slot.roleBreakdown.length > 0 && (
+                          <div className="mt-1 flex flex-col items-center gap-0.5">
+                            {slot.roleBreakdown.map((r) => (
+                              <span key={r.name} className="inline-flex items-center gap-0.5 text-[9px] leading-none text-slate-600">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: r.color }} />
+                                {r.count}
+                              </span>
+                            ))}
                           </div>
                         )}
                       </td>
@@ -259,6 +266,17 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
             })}
           </tbody>
         </table>
+        {roles.length > 0 && (
+          <div className="flex items-center gap-4 border-t border-border px-3 py-2">
+            <span className="text-[10px] font-medium text-muted-foreground">Légende :</span>
+            {roles.map((r) => (
+              <span key={r.id} className="inline-flex items-center gap-1.5 text-[11px]">
+                <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: r.color }} />
+                {r.name}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {report.violations.length > 0 && (
