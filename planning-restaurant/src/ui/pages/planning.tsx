@@ -1223,6 +1223,10 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           report={report}
           shiftTemplates={templates}
           employees={activeEmployees}
+          roles={roles}
+          employeeRoles={employeeRoles}
+          unavailabilities={unavailabilities}
+          weekDates={weekDates}
           onShiftChange={(employeeId, dayOfWeek, newShiftId) => {
             if (!report || !tenantId) return
             const entries = [...report.planning.entries]

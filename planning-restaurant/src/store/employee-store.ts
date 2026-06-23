@@ -49,17 +49,15 @@ export const useEmployeeStore = create<EmployeeState>((set) => ({
   },
 
   update: async (id, updates) => {
-    set({ loading: true, error: null })
     try {
       const updated = await updateEmployee(id, updates)
       set((state) => ({
         employees: state.employees.map((emp) =>
           emp.id === id ? updated : emp,
         ),
-        loading: false,
       }))
     } catch (e) {
-      set({ error: (e as Error).message, loading: false })
+      set({ error: (e as Error).message })
     }
   },
 

@@ -25,6 +25,7 @@ export function EmployeeForm({ employee, tenantId, onSubmit, onCancel }: Employe
   const [modulationRange, setModulationRange] = useState(employee?.modulationRange ?? 5)
   const [isManager, setIsManager] = useState(employee?.isManager ?? false)
   const [department, setDepartment] = useState<Department>(employee?.department ?? 'salle')
+  const [contractEndDate, setContractEndDate] = useState(employee?.contractEndDate ?? '')
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -39,6 +40,7 @@ export function EmployeeForm({ employee, tenantId, onSubmit, onCancel }: Employe
       level: isManager ? 4 : (employee?.level ?? 1),
       isManager,
       active: employee?.active ?? true,
+      contractEndDate: contractEndDate || null,
     })
   }
 
@@ -93,6 +95,16 @@ export function EmployeeForm({ employee, tenantId, onSubmit, onCancel }: Employe
               required
             />
           </div>
+
+          {contractType !== 'cdi' && (
+            <Input
+              id="contractEndDate"
+              label="Date de fin de contrat"
+              type="date"
+              value={contractEndDate}
+              onChange={(e) => setContractEndDate(e.target.value)}
+            />
+          )}
 
           <Input
             id="modulationRange"

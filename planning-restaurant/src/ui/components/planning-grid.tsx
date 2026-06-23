@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import type { PlanningReport } from '@/domain/models/planning'
 import type { ShiftTemplate } from '@/domain/models/shift'
 import type { Employee } from '@/domain/models/employee'
+import type { Unavailability } from '@/domain/models/constraint'
 
 const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
@@ -9,10 +10,14 @@ interface PlanningGridProps {
   report: PlanningReport
   shiftTemplates: ShiftTemplate[]
   employees?: Employee[]
+  roles?: { id: string; name: string; color: string }[]
+  employeeRoles?: { employeeId: string; roleId: string }[]
+  unavailabilities?: Unavailability[]
+  weekDates?: string[]
   onShiftChange?: (employeeId: string, dayOfWeek: number, newShiftId: string | null) => void
 }
 
-export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftChange }: PlanningGridProps) {
+export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [], employeeRoles = [], unavailabilities = [], weekDates = [], onShiftChange }: PlanningGridProps) {
   const [editingCell, setEditingCell] = useState<{ empId: string; day: number } | null>(null)
 
   function getShiftsForDay(dayOfWeek: number, employeeId?: string): ShiftTemplate[] {
@@ -29,6 +34,26 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
       .sort((a, b) => a.startTime - b.startTime || a.endTime - b.endTime)
   }
 
+  function getRoleBadge(empId: string): { name: string; color: string } | null {
+    const er = employeeRoles.find((e) => e.employeeId === empId)
+    if (!er) return null
+    const role = roles.find((r) => r.id === er.roleId)
+    return role ? { name: role.name, color: role.color } : null
+  }
+
+  function isConstrained(empId: string, dayOfWeek: number): 'off' | 'partial' | false {
+    const date = weekDates[dayOfWeek]
+    for (const u of unavailabilities) {
+      if (u.employeeId !== empId) continue
+      if (u.type === 'fixed' && u.dayOfWeek === dayOfWeek) return 'off'
+      if (u.type === 'punctual' && u.specificDate && date && u.specificDate === date) {
+        if (u.availableFrom == null && u.availableUntil == null) return 'off'
+        return 'partial'
+      }
+    }
+    return false
+  }
+
   const summaries = report.employeeSummaries.map((s) => {
     const entries = report.planning.entries.filter((e) => e.employeeId === s.employeeId)
     const plannedHours = entries.reduce((sum, e) => sum + e.effectiveHours, 0)
@@ -36,10 +61,6 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
     const totalBaskets = entries.reduce((sum, e) => sum + e.baskets, 0)
     return { ...s, plannedHours, totalMeals, totalBaskets }
   })
-
-  function countPresent(dayEntries: { startTime: number; endTime: number }[], from: number, to: number): number {
-    return dayEntries.filter((e) => e.startTime < to && e.endTime > from).length
-  }
 
   const dailyStats = useMemo(() => report.dailySummaries.map((ds) => {
     const dayEntries = report.planning.entries.filter((e) => e.dayOfWeek === ds.dayOfWeek)
@@ -52,13 +73,32 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
       plannedHours,
       productivity,
       staffOuverture: dayEntries.filter((e) => e.startTime <= 9.5).length,
-      staffMatin: countPresent(dayEntries, 9.5, 12),
-      staffMidi: countPresent(dayEntries, 12, 14),
-      staffAprem: countPresent(dayEntries, 14, 18),
-      staffSoir: countPresent(dayEntries, 18, closingTime),
       staffFermeture: dayEntries.filter((e) => e.endTime >= closingTime).length,
     }
   }), [report.dailySummaries, report.planning.entries])
+
+  const hourlyBreakdown = useMemo(() => {
+    const hours = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+    return [1, 2, 3, 4, 5, 6].map((day) => {
+      const dayEntries = report.planning.entries.filter((e) => e.dayOfWeek === day)
+      const isSunday = day === 6
+      const closingTime = isSunday ? 21 : 24
+      const byHour = hours.filter((h) => h < closingTime).map((h) => {
+        const present = dayEntries.filter((e) => e.startTime <= h && e.endTime > h)
+        const byRole = new Map<string, { count: number; color: string; name: string }>()
+        for (const e of present) {
+          const badge = getRoleBadge(e.employeeId)
+          const key = badge?.name ?? 'Sans rôle'
+          const color = badge?.color ?? '#94a3b8'
+          const cur = byRole.get(key) ?? { count: 0, color, name: key }
+          cur.count++
+          byRole.set(key, cur)
+        }
+        return { hour: h, total: present.length, byRole: Array.from(byRole.values()) }
+      })
+      return { day, byHour }
+    })
+  }, [report.planning.entries, employeeRoles, roles]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex flex-col gap-4">
@@ -102,92 +142,128 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], onShiftCh
                     <td colSpan={100} className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">{section.label}</td>
                   </tr>,
                 ] : []),
-                ...section.items.map((summary) => (
-              <tr key={summary.employeeId} className="border-b border-border hover:bg-muted/20">
-                <td className="sticky left-0 z-10 bg-background px-2 py-1.5 text-center font-mono">{summary.contractHours}</td>
-                <td className="sticky left-16 z-10 bg-background px-2 py-1.5 font-medium whitespace-nowrap">{summary.employeeName}</td>
-                {[1, 2, 3, 4, 5, 6].map((d) => {
-                  const entry = report.planning.entries.find((e) => e.employeeId === summary.employeeId && e.dayOfWeek === d)
-                  const isOff = !entry
-                  const bgClass = isOff ? 'bg-red-100' : 'bg-blue-100'
-                  const isEditing = editingCell?.empId === summary.employeeId && editingCell?.day === d
-                  const dayShifts = getShiftsForDay(d, summary.employeeId)
+                ...section.items.map((summary) => {
+                  const roleBadge = getRoleBadge(summary.employeeId)
                   return (
-                    <td key={d} className={`px-1 py-1 text-center ${bgClass} relative`}>
-                      {isEditing ? (
-                        <select autoFocus className="w-full h-7 rounded border border-primary bg-background text-xs" value={entry?.shiftTemplateId ?? ''}
-                          onChange={(e) => { onShiftChange?.(summary.employeeId, d, e.target.value || null); setEditingCell(null) }}
-                          onBlur={() => setEditingCell(null)}>
-                          <option value="">OFF</option>
-                          {dayShifts.map((s) => <option key={s.id} value={s.id}>{s.startTime}→{s.endTime} ({s.effectiveHours}h)</option>)}
-                        </select>
-                      ) : (
-                        <button onClick={() => setEditingCell({ empId: summary.employeeId, day: d })}
-                          className="w-full rounded px-1 py-0.5 hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer" title="Cliquer pour modifier">
-                          {entry ? (
-                            <span className="inline-flex gap-1">
-                              <span>{entry.startTime}</span><span className="text-muted-foreground">→</span><span>{entry.endTime}</span>
-                              <span className="font-bold">({entry.effectiveHours})</span>
-                            </span>
-                          ) : <span className="text-muted-foreground">OFF</span>}
-                        </button>
+                <tr key={summary.employeeId} className="border-b border-border hover:bg-muted/20">
+                  <td className="sticky left-0 z-10 bg-background px-2 py-1.5 text-center font-mono">{summary.contractHours}</td>
+                  <td className="sticky left-16 z-10 bg-background px-2 py-1.5 whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium">{summary.employeeName}</span>
+                      {roleBadge && (
+                        <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium text-white" style={{ backgroundColor: roleBadge.color }}>
+                          {roleBadge.name}
+                        </span>
                       )}
-                    </td>
+                    </div>
+                  </td>
+                  {[1, 2, 3, 4, 5, 6].map((d) => {
+                    const entry = report.planning.entries.find((e) => e.employeeId === summary.employeeId && e.dayOfWeek === d)
+                    const constraint = isConstrained(summary.employeeId, d)
+                    const isOff = !entry
+                    const bgClass = constraint === 'off'
+                      ? 'bg-orange-100'
+                      : constraint === 'partial'
+                      ? 'bg-amber-50'
+                      : isOff ? 'bg-red-100' : 'bg-blue-100'
+                    const isEditing = editingCell?.empId === summary.employeeId && editingCell?.day === d
+                    const dayShifts = getShiftsForDay(d, summary.employeeId)
+                    const locked = constraint === 'off'
+                    return (
+                      <td key={d} className={`px-1 py-1 text-center ${bgClass} relative`}>
+                        {locked ? (
+                          <span className="inline-flex items-center gap-1 text-orange-700 font-medium cursor-not-allowed" title="Indisponible (contrainte)">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            OFF
+                          </span>
+                        ) : isEditing ? (
+                          <select autoFocus className="w-full h-7 rounded border border-primary bg-background text-xs" value={entry?.shiftTemplateId ?? ''}
+                            onChange={(e) => { onShiftChange?.(summary.employeeId, d, e.target.value || null); setEditingCell(null) }}
+                            onBlur={() => setEditingCell(null)}>
+                            <option value="">OFF</option>
+                            {dayShifts.map((s) => <option key={s.id} value={s.id}>{s.startTime}→{s.endTime} ({s.effectiveHours}h)</option>)}
+                          </select>
+                        ) : (
+                          <button onClick={() => setEditingCell({ empId: summary.employeeId, day: d })}
+                            className="w-full rounded px-1 py-0.5 hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer" title="Cliquer pour modifier">
+                            {entry ? (
+                              <span className="inline-flex gap-1">
+                                <span>{entry.startTime}</span><span className="text-muted-foreground">→</span><span>{entry.endTime}</span>
+                                <span className="font-bold">({entry.effectiveHours})</span>
+                              </span>
+                            ) : <span className="text-muted-foreground">OFF</span>}
+                          </button>
+                        )}
+                      </td>
+                    )
+                  })}
+                  <td className={`px-2 py-1.5 text-center font-bold ${summary.plannedHours < summary.contractHours ? 'text-destructive' : ''}`}>
+                    {summary.plannedHours}h
+                    {(() => {
+                      const delta = summary.plannedHours - summary.contractHours
+                      if (delta === 0) return null
+                      const sign = delta > 0 ? '+' : ''
+                      return <span className={`ml-1 text-[10px] font-medium ${delta > 0 ? 'text-warning' : 'text-blue-600'}`}>({sign}{delta}h)</span>
+                    })()}
+                  </td>
+                  <td className="px-2 py-1.5 text-center">{summary.totalMeals}</td>
+                  <td className="px-2 py-1.5 text-center">{summary.totalBaskets}</td>
+                </tr>
                   )
-                })}
-                <td className={`px-2 py-1.5 text-center font-bold ${summary.plannedHours < summary.contractHours ? 'text-destructive' : ''}`}>
-                  {summary.plannedHours}h
-                  {(() => {
-                    const delta = summary.plannedHours - summary.contractHours
-                    if (delta === 0) return null
-                    const sign = delta > 0 ? '+' : ''
-                    return <span className={`ml-1 text-[10px] font-medium ${delta > 0 ? 'text-warning' : 'text-blue-600'}`}>({sign}{delta}h)</span>
-                  })()}
-                </td>
-                <td className="px-2 py-1.5 text-center">{summary.totalMeals}</td>
-                <td className="px-2 py-1.5 text-center">{summary.totalBaskets}</td>
-              </tr>
-                )),
+                }),
               ])
             })()}
           </tbody>
         </table>
       </div>
 
-      {/* Tableau récap effectifs par période */}
+      {/* Tableau décompte heure par heure */}
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-muted">
-              <th className="px-3 py-2 text-left font-medium">Jour</th>
-              <th className="px-3 py-2 text-center font-medium">CA cible</th>
-              <th className="px-3 py-2 text-center font-medium">Heures</th>
-              <th className="px-3 py-2 text-center font-medium">Prod.</th>
-              <th className="px-3 py-2 text-center font-medium">Ouverture<br/><span className="text-[9px] font-normal text-muted-foreground">≤9h30</span></th>
-              <th className="px-3 py-2 text-center font-medium">Matin<br/><span className="text-[9px] font-normal text-muted-foreground">ouv→12h</span></th>
-              <th className="px-3 py-2 text-center font-medium">Midi<br/><span className="text-[9px] font-normal text-muted-foreground">12h→14h</span></th>
-              <th className="px-3 py-2 text-center font-medium">Après-midi<br/><span className="text-[9px] font-normal text-muted-foreground">14h→18h</span></th>
-              <th className="px-3 py-2 text-center font-medium">Soir<br/><span className="text-[9px] font-normal text-muted-foreground">18h→ferm</span></th>
-              <th className="px-3 py-2 text-center font-medium">Fermeture<br/><span className="text-[9px] font-normal text-muted-foreground">≥ferm</span></th>
+              <th className="px-3 py-2 text-left font-medium sticky left-0 bg-muted z-10">Jour</th>
+              <th className="px-2 py-2 text-center font-medium">CA</th>
+              <th className="px-2 py-2 text-center font-medium">Prod.</th>
+              {[9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23].map((h) => (
+                <th key={h} className="px-1 py-2 text-center font-medium min-w-[36px]">{h}h</th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {dailyStats.map((ds) => {
+            {hourlyBreakdown.map(({ day, byHour }) => {
+              const ds = dailyStats.find((s) => s.dayOfWeek === day)
+              if (!ds) return null
               const prodOk = ds.productivity >= 85 && ds.productivity <= 110
               return (
-                <tr key={ds.dayOfWeek} className="border-b border-border">
-                  <td className="px-3 py-2 font-medium">{DAY_NAMES[ds.dayOfWeek]}</td>
-                  <td className="px-3 py-2 text-center">{ds.forecastedRevenue.toLocaleString('fr-FR')}€</td>
-                  <td className="px-3 py-2 text-center">{ds.plannedHours}h</td>
-                  <td className={`px-3 py-2 text-center font-bold ${prodOk ? 'text-success' : 'text-destructive'}`}>
+                <tr key={day} className="border-b border-border">
+                  <td className="px-3 py-2 font-medium sticky left-0 bg-background z-10">{DAY_NAMES[day]}</td>
+                  <td className="px-2 py-2 text-center text-muted-foreground">{ds.forecastedRevenue > 0 ? `${Math.round(ds.forecastedRevenue)}€` : '—'}</td>
+                  <td className={`px-2 py-2 text-center font-bold ${prodOk ? 'text-success' : 'text-destructive'}`}>
                     {ds.productivity > 0 ? Math.round(ds.productivity) : '—'}
                   </td>
-                  <td className={`px-3 py-2 text-center ${ds.staffOuverture === 0 ? 'text-destructive font-bold' : ''}`}>{ds.staffOuverture}</td>
-                  <td className="px-3 py-2 text-center">{ds.staffMatin}</td>
-                  <td className="px-3 py-2 text-center">{ds.staffMidi}</td>
-                  <td className="px-3 py-2 text-center">{ds.staffAprem}</td>
-                  <td className="px-3 py-2 text-center">{ds.staffSoir}</td>
-                  <td className="px-3 py-2 text-center">{ds.staffFermeture}</td>
+                  {[9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23].map((h) => {
+                    const slot = byHour.find((s) => s.hour === h)
+                    if (!slot) return <td key={h} className="px-1 py-2 text-center text-muted-foreground/30">—</td>
+                    const intensity = slot.total === 0 ? 'bg-red-50 text-red-400'
+                      : slot.total <= 2 ? 'bg-amber-50'
+                      : slot.total <= 4 ? 'bg-emerald-50'
+                      : 'bg-emerald-100'
+                    return (
+                      <td key={h} className={`px-1 py-1 text-center ${intensity}`}>
+                        <div className="font-bold">{slot.total}</div>
+                        {slot.byRole.length > 0 && (
+                          <div className="flex flex-wrap justify-center gap-0.5 mt-0.5">
+                            {slot.byRole.map((r) => (
+                              <span key={r.name} className="inline-block rounded-sm px-1 text-[7px] font-medium text-white" style={{ backgroundColor: r.color }} title={`${r.name}: ${r.count}`}>
+                                {r.count}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                    )
+                  })}
                 </tr>
               )
             })}

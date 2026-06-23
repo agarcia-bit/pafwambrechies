@@ -49,9 +49,17 @@ export function EmployeesPage() {
   }
 
   useEffect(() => {
-    load()
+    load().then(() => {
+      const today = new Date().toISOString().split('T')[0]
+      const { employees: emps } = useEmployeeStore.getState()
+      for (const emp of emps) {
+        if (emp.active && emp.contractEndDate && emp.contractEndDate < today) {
+          update(emp.id, { active: false })
+        }
+      }
+    })
     loadRoles()
-  }, [load, loadRoles])
+  }, [load, loadRoles, update])
 
   const activeEmployees = employees.filter((e) => e.active)
   const inactiveEmployees = employees.filter((e) => !e.active)
@@ -77,6 +85,7 @@ export function EmployeesPage() {
           return dir * ra.localeCompare(rb)
         }
         case 'department': return dir * a.department.localeCompare(b.department)
+        case 'contractEndDate': return dir * (a.contractEndDate ?? '').localeCompare(b.contractEndDate ?? '')
         case 'createdAt': return dir * a.createdAt.localeCompare(b.createdAt)
         default: return 0
       }
@@ -167,6 +176,7 @@ export function EmployeesPage() {
                   ['weeklyHours', 'Heures', 'left'],
                   ['level', 'Niveau', 'left'],
                   ['role', 'Rôle', 'left'],
+                  ['contractEndDate', 'Fin contrat', 'left'],
                   ['createdAt', 'Ajouté le', 'left'],
                 ] as [string, string, string][]).map(([key, label, align]) => (
                   <th
@@ -212,6 +222,13 @@ export function EmployeesPage() {
                           <AlertTriangle size={12} /> Non attribué
                         </span>
                       )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {emp.contractEndDate ? (
+                        <span className={emp.contractEndDate < new Date().toISOString().split('T')[0] ? 'text-destructive font-medium' : ''}>
+                          {new Date(emp.contractEndDate + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </span>
+                      ) : '—'}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
                       {new Date(emp.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}

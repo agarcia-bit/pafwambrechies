@@ -26,6 +26,7 @@ export async function createEmployee(
       is_manager: employee.isManager,
       department: employee.department,
       active: employee.active,
+      contract_end_date: employee.contractEndDate ?? null,
     }).select().single(),
   )
   return mapEmployee(data as Record<string, unknown>)
@@ -45,6 +46,7 @@ export async function updateEmployee(
   if (updates.isManager !== undefined) dbUpdates.is_manager = updates.isManager
   if (updates.department !== undefined) dbUpdates.department = updates.department
   if (updates.active !== undefined) dbUpdates.active = updates.active
+  if (updates.contractEndDate !== undefined) dbUpdates.contract_end_date = updates.contractEndDate
 
   const data = await freshQuery((c) =>
     c.from('employees').update(dbUpdates).eq('id', id).select().single(),
@@ -70,6 +72,7 @@ function mapEmployee(row: any): Employee {
     isManager: row.is_manager,
     department: row.department ?? 'salle',
     active: row.active,
+    contractEndDate: row.contract_end_date ?? null,
     createdAt: row.created_at,
   }
 }

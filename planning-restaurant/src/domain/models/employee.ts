@@ -16,6 +16,7 @@ export interface Employee {
   isManager: boolean
   department: Department
   active: boolean
+  contractEndDate: string | null
   createdAt: string
 }
 
