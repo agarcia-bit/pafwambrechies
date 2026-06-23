@@ -20,6 +20,7 @@ interface PlanningGridProps {
 export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [], employeeRoles = [], unavailabilities = [], weekDates = [], onShiftChange }: PlanningGridProps) {
   const [editingCell, setEditingCell] = useState<{ empId: string; day: number } | null>(null)
   const [selectedEmpId, setSelectedEmpId] = useState<string | null>(null)
+  const [selectedDay, setSelectedDay] = useState<number | null>(null)
 
   function getShiftsForDay(dayOfWeek: number, employeeId?: string): ShiftTemplate[] {
     const isSunday = dayOfWeek === 6
@@ -110,7 +111,9 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
               {DAY_NAMES.slice(1).map((day, i) => {
                 const dayIdx = i + 1
                 return (
-                  <th key={dayIdx} className="px-1 py-2 text-center min-w-[120px]">
+                  <th key={dayIdx}
+                    onClick={() => setSelectedDay(selectedDay === dayIdx ? null : dayIdx)}
+                    className={`px-1 py-2 text-center min-w-[120px] cursor-pointer transition-colors ${selectedDay === dayIdx ? 'bg-primary/30 ring-2 ring-inset ring-primary' : 'hover:bg-slate-700'}`}>
                     {day}
                     {report.dailySummaries.find((d) => d.dayOfWeek === dayIdx) && (
                       <div className="text-[10px] font-normal opacity-75">
@@ -162,8 +165,10 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
                     const entry = report.planning.entries.find((e) => e.employeeId === summary.employeeId && e.dayOfWeek === d)
                     const constraint = isConstrained(summary.employeeId, d)
                     const isOff = !entry
-                    const isSelected = selectedEmpId === summary.employeeId
-                    const bgClass = isSelected
+                    const isRowSelected = selectedEmpId === summary.employeeId
+                    const isColSelected = selectedDay === d
+                    const isHighlighted = isRowSelected || isColSelected
+                    const bgClass = isHighlighted
                       ? 'bg-primary/10'
                       : constraint === 'off'
                       ? 'bg-orange-100'
@@ -240,7 +245,7 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
             {hourlyBreakdown.map(({ day, productivity, ca, byHour }) => {
               const prodOk = productivity >= 85 && productivity <= 110
               return (
-                <tr key={day} className="border-b border-border">
+                <tr key={day} className={`border-b border-border ${selectedDay === day ? 'bg-primary/10 ring-2 ring-inset ring-primary/30' : ''}`}>
                   <td className="px-3 py-2 font-medium sticky left-0 bg-background z-10">{DAY_NAMES[day]}</td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{ca > 0 ? `${Math.round(ca)}€` : '—'}</td>
                   <td className={`px-2 py-2 text-center font-bold ${prodOk ? 'text-success' : 'text-destructive'}`}>
