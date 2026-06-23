@@ -19,7 +19,7 @@ const CONTRACT_OPTIONS = [
 
 export function EmployeeForm({ employee, tenantId, onSubmit, onCancel }: EmployeeFormProps) {
   const [firstName, setFirstName] = useState(employee?.firstName ?? '')
-  const lastName = employee?.lastName ?? ''
+  const [lastName, setLastName] = useState(employee?.lastName ?? '')
   const [contractType, setContractType] = useState<ContractType>(employee?.contractType ?? 'cdi')
   const [weeklyHours, setWeeklyHours] = useState(employee?.weeklyHours ?? 35)
   const [modulationRange, setModulationRange] = useState(employee?.modulationRange ?? 5)
@@ -57,13 +57,21 @@ export function EmployeeForm({ employee, tenantId, onSubmit, onCancel }: Employe
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <Input
-            id="firstName"
-            label="Prénom"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            required
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              id="firstName"
+              label="Prénom"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+            />
+            <Input
+              id="lastName"
+              label="Nom"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+            />
+          </div>
 
           <div className="grid grid-cols-3 gap-4">
             <Select

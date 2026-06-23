@@ -117,10 +117,12 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
             if next_day > 6: continue
             for k1 in x:
                 if k1[0] != emp.id or k1[1] != day: continue
-                s1 = shift_map[k1[2]]
+                s1 = shift_map.get(k1[2])
+                if not s1: continue
                 for k2 in x:
                     if k2[0] != emp.id or k2[1] != next_day: continue
-                    s2 = shift_map[k2[2]]
+                    s2 = shift_map.get(k2[2])
+                    if not s2: continue
                     rest = 24 - s1.end_time + s2.start_time
                     if rest < req.min_rest_hours:
                         model.add(x[k1] + x[k2] <= 1)
@@ -135,7 +137,8 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
         emp_hours = []
         for k in x:
             if k[0] == emp.id:
-                s = shift_map[k[2]]
+                s = shift_map.get(k[2])
+                if not s: continue
                 emp_hours.append((x[k], int(s.effective_hours * 10)))
         if emp_hours:
             total = sum(v * h for v, h in emp_hours)
@@ -154,7 +157,8 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
         opening_vars = []
         for k in x:
             if k[1] == day and k[0] in salle_ids:
-                s = shift_map[k[2]]
+                s = shift_map.get(k[2])
+                if not s: continue
                 if s.start_time <= 9.5:
                     opening_vars.append(x[k])
         manager_covers = any(ms.day_of_week == day and ms.shift_template_id and ms.start_time is not None and ms.start_time <= 9.5 for ms in req.manager_schedules)
@@ -167,7 +171,8 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
     for k, var in x.items():
         emp_id, day, shift_id = k
         if emp_id not in salle_ids: continue
-        s = shift_map[shift_id]
+        s = shift_map.get(shift_id)
+        if not s: continue
         if s.start_time <= 9.5:
             level = emp_level.get(emp_id, 1)
             weight = int((level - 1) * 3)
@@ -180,7 +185,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
     for day in working_days:
         min_closing = req.min_closing_weekday if day < req.weekend_start_day else req.min_closing_weekend
         closing_time = req.closing_time_sunday if day == 6 else req.closing_time_week
-        closing_vars = [x[k] for k in x if k[1] == day and k[0] in salle_ids and shift_map[k[2]].end_time >= closing_time]
+        closing_vars = [x[k] for k in x if k[1] == day and k[0] in salle_ids and shift_map.get(k[2]) and shift_map[k[2]].end_time >= closing_time]
         manager_closing = sum(1 for ms in req.manager_schedules if ms.day_of_week == day and ms.shift_template_id and ms.end_time is not None and ms.end_time >= closing_time)
         needed = max(0, min_closing - manager_closing)
         if closing_vars and needed > 0:
@@ -194,7 +199,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
         closing_time = req.closing_time_sunday if day == 6 else req.closing_time_week
         for h_idx, h in enumerate(HALF_HOURS):
             if h < 11 or h >= closing_time: continue
-            present = [x[k] for k in x if k[1] == day and k[0] in salle_ids and shift_map[k[2]].start_time <= h and shift_map[k[2]].end_time > h]
+            present = [x[k] for k in x if k[1] == day and k[0] in salle_ids and shift_map.get(k[2]) and shift_map[k[2]].start_time <= h and shift_map[k[2]].end_time > h]
             mgr_present = sum(1 for ms in req.manager_schedules if ms.day_of_week == day and ms.shift_template_id and ms.start_time is not None and ms.end_time is not None and ms.start_time <= h and ms.end_time > h)
             needed = max(0, 2 - mgr_present)
             if present and needed > 0:
@@ -206,8 +211,11 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
     # Min staff midi/soir/fermeture
     for day_str, min_count in req.min_staff_midi.items():
         if min_count <= 0: continue
-        day = int(day_str)
-        midi_vars = [x[k] for k in x if k[1] == day and k[0] in salle_ids and shift_map[k[2]].start_time <= 12 and shift_map[k[2]].end_time >= 15]
+        try:
+            day = int(day_str)
+        except (ValueError, TypeError):
+            continue
+        midi_vars = [x[k] for k in x if k[1] == day and k[0] in salle_ids and shift_map.get(k[2]) and shift_map[k[2]].start_time <= 12 and shift_map[k[2]].end_time >= 15]
         mgr = sum(1 for ms in req.manager_schedules if ms.day_of_week == day and ms.shift_template_id and ms.start_time is not None and ms.end_time is not None and ms.start_time <= 12 and ms.end_time >= 15)
         needed = max(0, min_count - mgr)
         if midi_vars and needed > 0:
@@ -217,9 +225,12 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
 
     for day_str, min_count in req.min_staff_soir.items():
         if min_count <= 0: continue
-        day = int(day_str)
+        try:
+            day = int(day_str)
+        except (ValueError, TypeError):
+            continue
         ct = req.closing_time_sunday if day == 6 else req.closing_time_week
-        soir_vars = [x[k] for k in x if k[1] == day and k[0] in salle_ids and shift_map[k[2]].start_time <= 18 and shift_map[k[2]].end_time >= ct]
+        soir_vars = [x[k] for k in x if k[1] == day and k[0] in salle_ids and shift_map.get(k[2]) and shift_map[k[2]].start_time <= 18 and shift_map[k[2]].end_time >= ct]
         mgr = sum(1 for ms in req.manager_schedules if ms.day_of_week == day and ms.shift_template_id and ms.start_time is not None and ms.end_time is not None and ms.start_time <= 18 and ms.end_time >= ct)
         needed = max(0, min_count - mgr)
         if soir_vars and needed > 0:
@@ -229,9 +240,12 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
 
     for day_str, min_count in req.min_staff_fermeture.items():
         if min_count <= 0: continue
-        day = int(day_str)
+        try:
+            day = int(day_str)
+        except (ValueError, TypeError):
+            continue
         ct = req.closing_time_sunday if day == 6 else req.closing_time_week
-        ferm_vars = [x[k] for k in x if k[1] == day and k[0] in salle_ids and shift_map[k[2]].end_time >= ct]
+        ferm_vars = [x[k] for k in x if k[1] == day and k[0] in salle_ids and shift_map.get(k[2]) and shift_map[k[2]].end_time >= ct]
         mgr = sum(1 for ms in req.manager_schedules if ms.day_of_week == day and ms.shift_template_id and ms.end_time is not None and ms.end_time >= ct)
         needed = max(0, min_count - mgr)
         if ferm_vars and needed > 0:
@@ -254,7 +268,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
 
     # Prefer hours close to contract (maximise heures même si réduction)
     for emp in non_managers:
-        terms = [(x[k], int(shift_map[k[2]].effective_hours * 10)) for k in x if k[0] == emp.id]
+        terms = [(x[k], int(shift_map[k[2]].effective_hours * 10)) for k in x if k[0] == emp.id and shift_map.get(k[2])]
         if terms:
             total = sum(v * h for v, h in terms)
             target = int(emp.weekly_hours * 10)
@@ -272,7 +286,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
         ca = day_forecasts.get(day, 0)
         if ca <= 0 or req.productivity_target <= 0: continue
         target_hours_10 = int(ca / req.productivity_target * 10)
-        day_terms = [(x[k], int(shift_map[k[2]].effective_hours * 10)) for k in x if k[1] == day and k[0] in salle_ids]
+        day_terms = [(x[k], int(shift_map[k[2]].effective_hours * 10)) for k in x if k[1] == day and k[0] in salle_ids and shift_map.get(k[2])]
         mgr_h10 = sum(int(((ms.end_time or 0) - (ms.start_time or 0)) * 10) for ms in req.manager_schedules if ms.day_of_week == day and ms.shift_template_id)
         if day_terms:
             day_total = sum(v * h for v, h in day_terms) + mgr_h10
@@ -334,7 +348,8 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
     for k, var in x.items():
         if solver.value(var) == 1:
             emp_id, day, shift_id = k
-            s = shift_map[shift_id]
+            s = shift_map.get(shift_id)
+            if not s: continue
             entries.append(ShiftAssignment(employee_id=emp_id, day_of_week=day, shift_template_id=shift_id, start_time=s.start_time, end_time=s.end_time, effective_hours=s.effective_hours, meals=s.meals, baskets=s.baskets))
 
     warnings = []
@@ -346,5 +361,8 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
 
 def _add_days(iso_date: str, days: int) -> str:
     from datetime import datetime, timedelta
-    d = datetime.fromisoformat(iso_date) + timedelta(days=days)
-    return d.strftime("%Y-%m-%d")
+    try:
+        d = datetime.fromisoformat(iso_date) + timedelta(days=days)
+        return d.strftime("%Y-%m-%d")
+    except (ValueError, TypeError):
+        return ""

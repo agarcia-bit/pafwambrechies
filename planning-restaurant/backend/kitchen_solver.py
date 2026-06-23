@@ -16,8 +16,11 @@ from models import SolverRequest, SolverResponse, ShiftAssignment
 
 
 def _add_days(iso_date: str, days: int) -> str:
-    d = date.fromisoformat(iso_date) + timedelta(days=days)
-    return d.isoformat()
+    try:
+        d = date.fromisoformat(iso_date) + timedelta(days=days)
+        return d.isoformat()
+    except (ValueError, TypeError):
+        return ""
 
 
 def solve_kitchen(req: SolverRequest) -> SolverResponse:
@@ -161,11 +164,13 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
         hour_terms = []
         for k in x_midi:
             if k[0] == emp.id:
-                s = shift_map[k[2]]
+                s = shift_map.get(k[2])
+                if not s: continue
                 hour_terms.append((x_midi[k], int(s.effective_hours * 10)))
         for k in x_soir:
             if k[0] == emp.id:
-                s = shift_map[k[2]]
+                s = shift_map.get(k[2])
+                if not s: continue
                 hour_terms.append((x_soir[k], int(s.effective_hours * 10)))
 
         if hour_terms:
@@ -189,11 +194,13 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
             for k_soir in x_soir:
                 if k_soir[0] != emp.id or k_soir[1] != day:
                     continue
-                s_soir = shift_map[k_soir[2]]
+                s_soir = shift_map.get(k_soir[2])
+                if not s_soir: continue
                 for k_midi in x_midi:
                     if k_midi[0] != emp.id or k_midi[1] != next_day:
                         continue
-                    s_midi = shift_map[k_midi[2]]
+                    s_midi = shift_map.get(k_midi[2])
+                    if not s_midi: continue
                     rest = 24 - s_soir.end_time + s_midi.start_time
                     if rest < 11:
                         # Soft penalty instead of hard block
@@ -233,10 +240,10 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
     for emp in kitchen_employees:
         hour_terms = []
         for k in x_midi:
-            if k[0] == emp.id:
+            if k[0] == emp.id and shift_map.get(k[2]):
                 hour_terms.append((x_midi[k], int(shift_map[k[2]].effective_hours * 10)))
         for k in x_soir:
-            if k[0] == emp.id:
+            if k[0] == emp.id and shift_map.get(k[2]):
                 hour_terms.append((x_soir[k], int(shift_map[k[2]].effective_hours * 10)))
         if hour_terms:
             total = sum(v * h for v, h in hour_terms)

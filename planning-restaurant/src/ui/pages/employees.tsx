@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardHeader, CardTitle, Button } from '@/ui/components'
 import { EmployeeForm } from '@/ui/components/employee-form'
 import type { Employee } from '@/domain/models/employee'
-import { Plus, Pencil, Trash2, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { Plus, Pencil, Trash2, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown, X } from 'lucide-react'
 
 const CONTRACT_LABELS: Record<string, string> = {
   cdi: 'CDI',
@@ -48,15 +48,20 @@ export function EmployeesPage() {
       : <ArrowDown size={12} className="ml-1" />
   }
 
+  const [deactivatedNames, setDeactivatedNames] = useState<string[]>([])
+
   useEffect(() => {
     load().then(() => {
       const today = new Date().toISOString().split('T')[0]
       const { employees: emps } = useEmployeeStore.getState()
+      const expired: string[] = []
       for (const emp of emps) {
         if (emp.active && emp.contractEndDate && emp.contractEndDate < today) {
           update(emp.id, { active: false })
+          expired.push(`${emp.firstName} ${emp.lastName}`)
         }
       }
+      if (expired.length > 0) setDeactivatedNames(expired)
     })
     loadRoles()
   }, [load, loadRoles, update])
@@ -142,6 +147,24 @@ export function EmployeesPage() {
       </div>
 
       {loading && <p className="text-muted-foreground">Chargement...</p>}
+
+      {/* Notification CDD expirés auto-désactivés */}
+      {deactivatedNames.length > 0 && (
+        <div className="flex items-start gap-3 rounded-lg border border-destructive/50 bg-destructive/5 p-4">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-destructive" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">
+              {deactivatedNames.length} contrat{deactivatedNames.length > 1 ? 's' : ''} expiré{deactivatedNames.length > 1 ? 's' : ''} — désactivé{deactivatedNames.length > 1 ? 's' : ''} automatiquement
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {deactivatedNames.join(', ')}
+            </p>
+          </div>
+          <button onClick={() => setDeactivatedNames([])} className="text-muted-foreground hover:text-foreground">
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {/* Alerte salariés sans rôle */}
       {(() => {

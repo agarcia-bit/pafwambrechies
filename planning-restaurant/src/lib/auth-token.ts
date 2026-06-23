@@ -12,6 +12,8 @@ export function getStoredToken(): string {
         }
       }
     }
-  } catch { /* fallback */ }
+  } catch (e) {
+    console.warn('[auth-token] Failed to extract token from localStorage:', e)
+  }
   return supabaseAnonKey
 }
