@@ -3,8 +3,20 @@ import type { PlanningReport } from '@/domain/models/planning'
 import type { ShiftTemplate } from '@/domain/models/shift'
 import type { Employee } from '@/domain/models/employee'
 import type { Unavailability } from '@/domain/models/constraint'
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 
 const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+
+const SERVICE_SLOTS = [
+  { key: 'ouverture', label: 'Ouv. 9h30' },
+  { key: 'matin', label: 'Matin 9-11' },
+  { key: 'midi', label: 'Midi 11-15' },
+  { key: 'aprem', label: 'A-midi 15-18' },
+  { key: 'soir', label: 'Soir 18-ferm.' },
+  { key: 'fermeture', label: 'Fermeture' },
+] as const
+
+type SortKey = 'name' | 'role' | 'contract'
 
 interface PlanningGridProps {
   report: PlanningReport
@@ -21,6 +33,18 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
   const [editingCell, setEditingCell] = useState<{ empId: string; day: number } | null>(null)
   const [selectedEmpId, setSelectedEmpId] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
+  const [sortKey, setSortKey] = useState<SortKey>('name')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }
+
+  function SortIcon({ col }: { col: SortKey }) {
+    if (sortKey !== col) return <ArrowUpDown size={10} className="ml-1 opacity-30" />
+    return sortDir === 'asc' ? <ArrowUp size={10} className="ml-1" /> : <ArrowDown size={10} className="ml-1" />
+  }
 
   function getShiftsForDay(dayOfWeek: number, employeeId?: string): ShiftTemplate[] {
     const isSunday = dayOfWeek === 6
@@ -64,55 +88,87 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
     return { ...s, plannedHours, totalMeals, totalBaskets }
   })
 
-  const hourlyBreakdown = useMemo(() => {
+  const sortedSummaries = useMemo(() => {
+    const list = [...summaries]
+    const dir = sortDir === 'asc' ? 1 : -1
+    return list.sort((a, b) => {
+      switch (sortKey) {
+        case 'name': return dir * a.employeeName.localeCompare(b.employeeName)
+        case 'role': {
+          const ra = getRoleBadge(a.employeeId)?.name ?? 'zzz'
+          const rb = getRoleBadge(b.employeeId)?.name ?? 'zzz'
+          return dir * ra.localeCompare(rb)
+        }
+        case 'contract': return dir * (a.contractHours - b.contractHours)
+        default: return 0
+      }
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summaries, sortKey, sortDir, employeeRoles, roles])
+
+  function countForSlot(dayEntries: { startTime: number; endTime: number; employeeId: string }[], slotKey: string, closingTime: number) {
+    switch (slotKey) {
+      case 'ouverture': return dayEntries.filter((e) => e.startTime <= 9.5)
+      case 'matin': return dayEntries.filter((e) => e.startTime < 11 && e.endTime > 9)
+      case 'midi': return dayEntries.filter((e) => e.startTime < 15 && e.endTime > 11)
+      case 'aprem': return dayEntries.filter((e) => e.startTime < 18 && e.endTime > 15)
+      case 'soir': return dayEntries.filter((e) => e.startTime < closingTime && e.endTime > 18)
+      case 'fermeture': return dayEntries.filter((e) => e.endTime >= closingTime)
+      default: return []
+    }
+  }
+
+  const serviceBreakdown = useMemo(() => {
     return [1, 2, 3, 4, 5, 6].map((day) => {
       const dayEntries = report.planning.entries.filter((e) => e.dayOfWeek === day)
       const isSunday = day === 6
-      const closingTime = isSunday ? 21 : 24
+      const closingTime = isSunday ? 21 : 23
       const plannedHours = dayEntries.reduce((sum, e) => sum + e.effectiveHours, 0)
       const ds = report.dailySummaries.find((s) => s.dayOfWeek === day)
       const productivity = plannedHours > 0 && ds ? ds.forecastedRevenue / plannedHours : 0
-      const hours = [9.5, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
-      const activeHours = hours.filter((h) => h <= closingTime)
-      const byHour = activeHours.map((h) => {
-        const isLast = h === closingTime
-        const present = isLast
-          ? dayEntries.filter((e) => e.endTime >= closingTime)
-          : h === 9.5
-          ? dayEntries.filter((e) => e.startTime <= 9.5)
-          : dayEntries.filter((e) => e.startTime <= h && e.endTime > h)
+
+      const bySlot = SERVICE_SLOTS.map((slot) => {
+        const present = countForSlot(dayEntries, slot.key, closingTime)
         const byRole = new Map<string, number>()
         for (const e of present) {
           const badge = getRoleBadge(e.employeeId)
           const name = badge?.name ?? 'Autre'
           byRole.set(name, (byRole.get(name) ?? 0) + 1)
         }
-        const tooltip = present.length > 0
-          ? Array.from(byRole.entries()).map(([name, count]) => `${name}: ${count}`).join('\n')
-          : ''
         const roleBreakdown = Array.from(byRole.entries()).map(([name, count]) => {
-          const badge = roles.find((r) => r.name === name)
-          return { name, count, color: badge?.color ?? '#94a3b8' }
+          const r = roles.find((r) => r.name === name)
+          return { name, count, color: r?.color ?? '#94a3b8' }
         })
-        return { hour: h, total: present.length, isLast, tooltip, roleBreakdown }
+        return { ...slot, total: present.length, roleBreakdown }
       })
-      return { day, plannedHours, productivity, ca: ds?.forecastedRevenue ?? 0, closingTime, byHour }
+
+      return { day, plannedHours, productivity, ca: ds?.forecastedRevenue ?? 0, closingTime, bySlot }
     })
   }, [report.planning.entries, report.dailySummaries])
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Planning grid */}
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-slate-800 text-white">
-              <th scope="col" className="sticky left-0 z-10 bg-slate-800 px-3 py-3 text-left text-xs font-semibold">Contrat</th>
-              <th scope="col" className="sticky left-16 z-10 bg-slate-800 px-3 py-3 text-left text-xs font-semibold">Salarié</th>
+              <th scope="col" onClick={() => toggleSort('contract')}
+                className="sticky left-0 z-10 bg-slate-800 px-3 py-3 text-left text-xs font-semibold cursor-pointer hover:bg-slate-700 select-none">
+                <span className="inline-flex items-center">Contrat<SortIcon col="contract" /></span>
+              </th>
+              <th scope="col" onClick={() => toggleSort('name')}
+                className="sticky left-16 z-10 bg-slate-800 px-3 py-3 text-left text-xs font-semibold cursor-pointer hover:bg-slate-700 select-none">
+                <span className="inline-flex items-center">Salarié<SortIcon col="name" /></span>
+              </th>
+              <th scope="col" onClick={() => toggleSort('role')}
+                className="bg-slate-800 px-2 py-3 text-left text-xs font-semibold cursor-pointer hover:bg-slate-700 select-none">
+                <span className="inline-flex items-center">Rôle<SortIcon col="role" /></span>
+              </th>
               {DAY_NAMES.slice(1).map((day, i) => {
                 const dayIdx = i + 1
                 return (
-                  <th key={dayIdx}
-                    scope="col"
+                  <th key={dayIdx} scope="col"
                     onClick={() => setSelectedDay(selectedDay === dayIdx ? null : dayIdx)}
                     className={`px-1 py-2 text-center min-w-[120px] cursor-pointer transition-colors ${selectedDay === dayIdx ? 'bg-primary/30 ring-2 ring-inset ring-primary' : 'hover:bg-slate-700'}`}>
                     {day}
@@ -132,11 +188,11 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
           <tbody>
             {(() => {
               const getDept = (empId: string) => employees.find((e) => e.id === empId)?.department ?? 'salle'
-              const salleSummaries = summaries.filter((s) => getDept(s.employeeId) === 'salle')
-              const cuisineSummaries = summaries.filter((s) => getDept(s.employeeId) === 'cuisine')
+              const salleSorted = sortedSummaries.filter((s) => getDept(s.employeeId) === 'salle')
+              const cuisineSorted = sortedSummaries.filter((s) => getDept(s.employeeId) === 'cuisine')
               const sections = [
-                ...(salleSummaries.length > 0 ? [{ label: 'Salle', items: salleSummaries }] : []),
-                ...(cuisineSummaries.length > 0 ? [{ label: 'Cuisine', items: cuisineSummaries }] : []),
+                ...(salleSorted.length > 0 ? [{ label: 'Salle', items: salleSorted }] : []),
+                ...(cuisineSorted.length > 0 ? [{ label: 'Cuisine', items: cuisineSorted }] : []),
               ]
               const showHeaders = sections.length > 1
               return sections.flatMap((section) => [
@@ -147,34 +203,34 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
                 ] : []),
                 ...section.items.map((summary) => {
                   const roleBadge = getRoleBadge(summary.employeeId)
+                  const isRowSelected = selectedEmpId === summary.employeeId
                   return (
                 <tr key={summary.employeeId}
-                  onClick={() => setSelectedEmpId(selectedEmpId === summary.employeeId ? null : summary.employeeId)}
-                  className={`border-b border-border cursor-pointer transition-colors ${selectedEmpId === summary.employeeId ? 'ring-2 ring-inset ring-primary bg-primary/10' : 'hover:bg-muted/20'}`}>
-                  <td className={`sticky left-0 z-10 px-2 py-1.5 text-center font-mono ${selectedEmpId === summary.employeeId ? 'bg-primary/10' : 'bg-background'}`}>{summary.contractHours}</td>
-                  <td className={`sticky left-16 z-10 px-2 py-1.5 whitespace-nowrap ${selectedEmpId === summary.employeeId ? 'bg-primary/10' : 'bg-background'}`}>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-medium">{summary.employeeName}</span>
-                      {roleBadge && (
-                        <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium text-white" style={{ backgroundColor: roleBadge.color }}>
-                          {roleBadge.name}
-                        </span>
-                      )}
-                    </div>
+                  onClick={() => setSelectedEmpId(isRowSelected ? null : summary.employeeId)}
+                  className={`border-b border-border cursor-pointer transition-colors ${isRowSelected ? 'ring-2 ring-inset ring-primary bg-primary/10' : 'hover:bg-muted/20'}`}>
+                  <td className={`sticky left-0 z-10 px-2 py-1.5 text-center font-mono ${isRowSelected ? 'bg-primary/10' : 'bg-background'}`}>{summary.contractHours}</td>
+                  <td className={`sticky left-16 z-10 px-2 py-1.5 whitespace-nowrap font-medium ${isRowSelected ? 'bg-primary/10' : 'bg-background'}`}>
+                    {summary.employeeName}
+                  </td>
+                  <td className={`px-2 py-1.5 ${isRowSelected ? 'bg-primary/10' : ''}`}>
+                    {roleBadge ? (
+                      <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium text-white whitespace-nowrap" style={{ backgroundColor: roleBadge.color }}>
+                        {roleBadge.name}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] text-muted-foreground">—</span>
+                    )}
                   </td>
                   {[1, 2, 3, 4, 5, 6].map((d) => {
                     const entry = report.planning.entries.find((e) => e.employeeId === summary.employeeId && e.dayOfWeek === d)
                     const constraint = isConstrained(summary.employeeId, d)
                     const isOff = !entry
-                    const isRowSelected = selectedEmpId === summary.employeeId
                     const isColSelected = selectedDay === d
                     const isHighlighted = isRowSelected || isColSelected
                     const bgClass = isHighlighted
                       ? 'bg-primary/10'
-                      : constraint === 'off'
-                      ? 'bg-orange-100'
-                      : constraint === 'partial'
-                      ? 'bg-amber-50'
+                      : constraint === 'off' ? 'bg-orange-100'
+                      : constraint === 'partial' ? 'bg-amber-50'
                       : isOff ? 'bg-red-100' : 'bg-blue-100'
                     const isEditing = editingCell?.empId === summary.employeeId && editingCell?.day === d
                     const dayShifts = getShiftsForDay(d, summary.employeeId)
@@ -194,7 +250,7 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
                             {dayShifts.map((s) => <option key={s.id} value={s.id}>{s.startTime}→{s.endTime} ({s.effectiveHours}h)</option>)}
                           </select>
                         ) : (
-                          <button onClick={() => setEditingCell({ empId: summary.employeeId, day: d })}
+                          <button onClick={(e) => { e.stopPropagation(); setEditingCell({ empId: summary.employeeId, day: d }) }}
                             className="w-full rounded px-1 py-0.5 hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer" title="Cliquer pour modifier">
                             {entry ? (
                               <span className="inline-flex gap-1">
@@ -227,7 +283,7 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
         </table>
       </div>
 
-      {/* Tableau récap effectifs heure par heure */}
+      {/* Tableau récap effectifs par catégorie de service */}
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full border-collapse text-xs">
           <thead>
@@ -235,33 +291,34 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
               <th scope="col" className="px-3 py-2 text-left font-medium sticky left-0 bg-muted z-10">Jour</th>
               <th scope="col" className="px-2 py-2 text-center font-medium">CA</th>
               <th scope="col" className="px-2 py-2 text-center font-medium">Prod.</th>
-              {(hourlyBreakdown[0]?.byHour ?? []).map((slot) => (
-                <th key={slot.hour} scope="col" className="px-1 py-2 text-center font-medium min-w-[32px]">
-                  {slot.hour === 9.5 ? 'Ouv.' : slot.isLast ? 'Ferm.' : `${slot.hour}h`}
+              {SERVICE_SLOTS.map((slot) => (
+                <th key={slot.key} scope="col" className="px-2 py-2 text-center font-medium min-w-[70px]">
+                  <div className="leading-tight">{slot.label}</div>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {hourlyBreakdown.map(({ day, productivity, ca, byHour }) => {
+            {serviceBreakdown.map(({ day, productivity, ca, bySlot }) => {
               const prodOk = productivity >= 85 && productivity <= 110
+              const isDaySelected = selectedDay === day
               return (
                 <tr key={day}
-                  onClick={() => setSelectedDay(selectedDay === day ? null : day)}
-                  className={`border-b border-border cursor-pointer transition-colors ${selectedDay === day ? 'ring-2 ring-inset ring-primary' : 'hover:bg-muted/30'}`}>
-                  <td className={`px-3 py-2 font-medium sticky left-0 z-10 ${selectedDay === day ? 'bg-primary/10' : 'bg-background'}`}>{DAY_NAMES[day]}</td>
-                  <td className={`px-2 py-2 text-center ${selectedDay === day ? 'bg-primary/10' : ''} text-muted-foreground`}>{ca > 0 ? `${Math.round(ca)}€` : '—'}</td>
-                  <td className={`px-2 py-2 text-center font-bold ${selectedDay === day ? 'bg-primary/10' : ''} ${prodOk ? 'text-success' : 'text-destructive'}`}>
+                  onClick={() => setSelectedDay(isDaySelected ? null : day)}
+                  className={`border-b border-border cursor-pointer transition-colors ${isDaySelected ? 'ring-2 ring-inset ring-primary' : 'hover:bg-muted/30'}`}>
+                  <td className={`px-3 py-2 font-medium sticky left-0 z-10 ${isDaySelected ? 'bg-primary/10' : 'bg-background'}`}>{DAY_NAMES[day]}</td>
+                  <td className={`px-2 py-2 text-center text-muted-foreground ${isDaySelected ? 'bg-primary/10' : ''}`}>{ca > 0 ? `${Math.round(ca)}€` : '—'}</td>
+                  <td className={`px-2 py-2 text-center font-bold ${isDaySelected ? 'bg-primary/10' : ''} ${prodOk ? 'text-success' : 'text-destructive'}`}>
                     {productivity > 0 ? Math.round(productivity) : '—'}
                   </td>
-                  {byHour.map((slot) => {
-                    const bg = selectedDay === day ? 'bg-primary/10'
+                  {bySlot.map((slot) => {
+                    const bg = isDaySelected ? 'bg-primary/10'
                       : slot.total === 0 ? 'bg-red-50 text-red-400'
                       : slot.total <= 2 ? 'bg-amber-50'
                       : slot.total <= 4 ? 'bg-emerald-50'
                       : 'bg-emerald-100'
                     return (
-                      <td key={slot.hour} className={`px-1 py-2 text-center ${bg}`}>
+                      <td key={slot.key} className={`px-2 py-2 text-center ${bg}`}>
                         <div className="font-bold text-sm leading-tight">{slot.total}</div>
                         {slot.roleBreakdown.length > 0 && (
                           <div className="mt-1 grid grid-cols-2 gap-x-1 gap-y-0 justify-items-center mx-auto" style={{ width: 'fit-content' }}>
