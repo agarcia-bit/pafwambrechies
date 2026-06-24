@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { Button, Input, Select } from '@/ui/components'
 import type { Employee, ContractType, Department } from '@/domain/models/employee'
 import { X } from 'lucide-react'
@@ -26,6 +26,18 @@ export function EmployeeForm({ employee, tenantId, onSubmit, onCancel }: Employe
   const [isManager, setIsManager] = useState(employee?.isManager ?? false)
   const [department, setDepartment] = useState<Department>(employee?.department ?? 'salle')
   const [contractEndDate, setContractEndDate] = useState(employee?.contractEndDate ?? '')
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onCancel()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    dialogRef.current?.focus()
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onCancel])
+
+  const today = new Date().toISOString().split('T')[0]
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -45,8 +57,8 @@ export function EmployeeForm({ employee, tenantId, onSubmit, onCancel }: Employe
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-lg border border-border bg-background p-6 shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={(e) => { if (e.target === e.currentTarget) onCancel() }} role="dialog" aria-modal="true">
+      <div ref={dialogRef} tabIndex={-1} className="w-full max-w-lg rounded-lg border border-border bg-background p-4 shadow-lg md:p-6 outline-none">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-lg font-semibold">
             {employee ? 'Modifier le salarié' : 'Ajouter un salarié'}
@@ -109,6 +121,7 @@ export function EmployeeForm({ employee, tenantId, onSubmit, onCancel }: Employe
               id="contractEndDate"
               label="Date de fin de contrat"
               type="date"
+              min={employee ? undefined : today}
               value={contractEndDate}
               onChange={(e) => setContractEndDate(e.target.value)}
             />

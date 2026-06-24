@@ -7,6 +7,22 @@ from models import SolverRequest, SolverResponse, ShiftAssignment
 
 HALF_HOURS = [h / 2 for h in range(19, 49)]
 
+# --- Solver parameters ---
+SOLVER_TIMEOUT_SECONDS = 10.0
+SOLVER_MAX_ATTEMPTS = 3
+SOLVER_NUM_WORKERS = 4
+SOLVER_SEED_MULTIPLIER = 42
+
+# --- Penalty weights ---
+PENALTY_CLOSING = 50
+PENALTY_COVERAGE = 20
+PENALTY_MIDI = 40
+PENALTY_SOIR = 40
+PENALTY_FERMETURE = 50
+PENALTY_VARIETY = 5
+PENALTY_HOUR_DIFF = 2
+PENALTY_LEVEL_OPENING = 3
+
 
 def solve_planning(req: SolverRequest) -> SolverResponse:
     start_time = time.time()
@@ -175,7 +191,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
         if not s: continue
         if s.start_time <= 9.5:
             level = emp_level.get(emp_id, 1)
-            weight = int((level - 1) * 3)
+            weight = int((level - 1) * PENALTY_LEVEL_OPENING)
             if weight > 0:
                 penalties.append(var * weight)
 
@@ -191,7 +207,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
         if closing_vars and needed > 0:
             shortfall = model.new_int_var(0, needed, f"close_short_{day}")
             model.add(sum(closing_vars) + shortfall >= needed)
-            penalties.append(shortfall * 50)
+            penalties.append(shortfall * PENALTY_CLOSING)
             user_visible_shortfalls.append(shortfall)
 
     # Continuous coverage ≥2
@@ -205,7 +221,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
             if present and needed > 0:
                 gap = model.new_int_var(0, needed, f"cov_gap_{day}_{h_idx}")
                 model.add(sum(present) + gap >= needed)
-                penalties.append(gap * 20)
+                penalties.append(gap * PENALTY_COVERAGE)
                 user_visible_shortfalls.append(gap)
 
     # Min staff midi/soir/fermeture
@@ -221,7 +237,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
         if midi_vars and needed > 0:
             sf = model.new_int_var(0, needed, f"midi_short_{day}")
             model.add(sum(midi_vars) + sf >= needed)
-            penalties.append(sf * 40)
+            penalties.append(sf * PENALTY_MIDI)
 
     for day_str, min_count in req.min_staff_soir.items():
         if min_count <= 0: continue
@@ -236,7 +252,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
         if soir_vars and needed > 0:
             sf = model.new_int_var(0, needed, f"soir_short_{day}")
             model.add(sum(soir_vars) + sf >= needed)
-            penalties.append(sf * 40)
+            penalties.append(sf * PENALTY_SOIR)
 
     for day_str, min_count in req.min_staff_fermeture.items():
         if min_count <= 0: continue
@@ -251,7 +267,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
         if ferm_vars and needed > 0:
             sf = model.new_int_var(0, needed, f"ferm_short_{day}")
             model.add(sum(ferm_vars) + sf >= needed)
-            penalties.append(sf * 50)
+            penalties.append(sf * PENALTY_FERMETURE)
 
     # Shift variety
     for emp in non_managers:
@@ -264,7 +280,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
                 if k1 in x and k2 in x:
                     both = model.new_bool_var(f"same_{emp.id}_{day}_{shift.id}")
                     model.add(x[k1] + x[k2] - 1 <= both)
-                    penalties.append(both * 5)
+                    penalties.append(both * PENALTY_VARIETY)
 
     # Prefer hours close to contract (maximise heures même si réduction)
     for emp in non_managers:
@@ -275,7 +291,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
             diff = model.new_int_var(0, 500, f"hdiff_{emp.id}")
             model.add(total - target <= diff)
             model.add(target - total <= diff)
-            penalties.append(diff * 2)
+            penalties.append(diff * PENALTY_HOUR_DIFF)
 
     # Productivity balance
     day_forecasts = {f.day_of_week: f.forecasted_revenue for f in req.day_forecasts}
@@ -303,18 +319,18 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
 
     # Solve (multi-tentatives)
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 10.0
-    solver.parameters.num_workers = 4
+    solver.parameters.max_time_in_seconds = SOLVER_TIMEOUT_SECONDS
+    solver.parameters.num_workers = SOLVER_NUM_WORKERS
     best_status = None
     best_shortfalls = float('inf')
     best_objective = float('inf')
     best_solver = solver
-    for attempt in range(3):
+    for attempt in range(SOLVER_MAX_ATTEMPTS):
         if attempt > 0:
             solver = cp_model.CpSolver()
-            solver.parameters.max_time_in_seconds = 10.0
-            solver.parameters.num_workers = 4
-            solver.parameters.random_seed = attempt * 42
+            solver.parameters.max_time_in_seconds = SOLVER_TIMEOUT_SECONDS
+            solver.parameters.num_workers = SOLVER_NUM_WORKERS
+            solver.parameters.random_seed = attempt * SOLVER_SEED_MULTIPLIER
         status = solver.solve(model)
         if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             if best_status is None: best_status = status

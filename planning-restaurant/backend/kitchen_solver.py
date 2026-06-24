@@ -14,6 +14,14 @@ from typing import List, Dict, Optional
 from ortools.sat.python import cp_model
 from models import SolverRequest, SolverResponse, ShiftAssignment
 
+SOLVER_TIMEOUT_SECONDS = 10.0
+SOLVER_MAX_ATTEMPTS = 3
+SOLVER_NUM_WORKERS = 4
+SOLVER_SEED_MULTIPLIER = 42
+PENALTY_REST = 3
+PENALTY_VARIETY = 3
+PENALTY_HOUR_DIFF = 2
+
 
 def _add_days(iso_date: str, days: int) -> str:
     try:
@@ -206,7 +214,7 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
                         # Soft penalty instead of hard block
                         both = model.new_bool_var(f"krest_{emp.id}_{day}")
                         model.add(x_soir[k_soir] + x_midi[k_midi] - 1 <= both)
-                        penalties.append(both * 3)
+                        penalties.append(both * PENALTY_REST)
 
     # 7. Équipe préparation : si un jour de prep et une équipe sont configurés,
     # tous les membres de l'équipe doivent être présents au MIDI ce jour-là.
@@ -251,7 +259,7 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
             diff = model.new_int_var(0, 500, f"khdiff_{emp.id}")
             model.add(total - target <= diff)
             model.add(target - total <= diff)
-            penalties.append(diff * 2)
+            penalties.append(diff * PENALTY_HOUR_DIFF)
 
     # 9. Variety: avoid same pattern every day
     for emp in kitchen_employees:
@@ -265,7 +273,7 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
                 if k1_m in x_midi and k2_m in x_midi:
                     both = model.new_bool_var(f"ksame_m_{emp.id}_{day}_{shift.id}")
                     model.add(x_midi[k1_m] + x_midi[k2_m] - 1 <= both)
-                    penalties.append(both * 3)
+                    penalties.append(both * PENALTY_VARIETY)
 
     # 10. Équilibrage pondéré par le CA prévisionnel
     # Plus le CA d'un jour est élevé, plus on met de monde (midi et soir)
@@ -313,17 +321,17 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
 
     # --- Solve (multi-tentatives comme salle) ---
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 10.0
-    solver.parameters.num_workers = 4
+    solver.parameters.max_time_in_seconds = SOLVER_TIMEOUT_SECONDS
+    solver.parameters.num_workers = SOLVER_NUM_WORKERS
     best_status = None
     best_objective = float('inf')
     best_solver = solver
-    for attempt in range(3):
+    for attempt in range(SOLVER_MAX_ATTEMPTS):
         if attempt > 0:
             solver = cp_model.CpSolver()
-            solver.parameters.max_time_in_seconds = 10.0
-            solver.parameters.num_workers = 4
-            solver.parameters.random_seed = attempt * 42
+            solver.parameters.max_time_in_seconds = SOLVER_TIMEOUT_SECONDS
+            solver.parameters.num_workers = SOLVER_NUM_WORKERS
+            solver.parameters.random_seed = attempt * SOLVER_SEED_MULTIPLIER
         status = solver.solve(model)
         if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             if best_status is None: best_status = status

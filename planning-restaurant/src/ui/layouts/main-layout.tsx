@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { useAuthStore } from '@/store/auth-store'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useRoleStore } from '@/store/role-store'
@@ -16,6 +16,8 @@ import {
   ChefHat,
   Utensils,
   Shield,
+  Menu,
+  X,
 } from 'lucide-react'
 
 interface MainLayoutProps {
@@ -102,11 +104,30 @@ export function MainLayout({ children, currentPage, onNavigate }: MainLayoutProp
     : 0
 
   const displayName = tenant?.name || 'Planning Restaurant'
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  function handleNav(page: string) {
+    onNavigate(page)
+    setSidebarOpen(false)
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
+      {/* Mobile header */}
+      <div className="fixed left-0 right-0 top-0 z-40 flex h-14 items-center gap-3 bg-slate-900 px-4 md:hidden">
+        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-slate-300">
+          {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
+        <span className="text-sm font-bold text-white truncate">{displayName}</span>
+      </div>
+
+      {/* Sidebar overlay on mobile */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-30 bg-black/50 md:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* Sidebar */}
-      <aside className="flex w-60 flex-col bg-slate-900 text-slate-300">
+      <aside className={`fixed inset-y-0 left-0 z-30 flex w-60 flex-col bg-slate-900 text-slate-300 transition-transform md:static md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} pt-14 md:pt-0`}>
         <div className="flex items-center gap-3 px-5 py-6">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-800">
             {tenant?.logoUrl ? (
@@ -135,7 +156,7 @@ export function MainLayout({ children, currentPage, onNavigate }: MainLayoutProp
                 {section.items.map((item) => (
                   <li key={item.id}>
                     <button
-                      onClick={() => onNavigate(item.id)}
+                      onClick={() => handleNav(item.id)}
                       className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all ${
                         currentPage === item.id
                           ? 'bg-primary text-white shadow-md shadow-primary/25'
@@ -169,8 +190,8 @@ export function MainLayout({ children, currentPage, onNavigate }: MainLayoutProp
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-[1400px] p-6 lg:p-8">
+      <main className="flex-1 overflow-auto pt-14 md:pt-0">
+        <div className="mx-auto max-w-[1400px] p-4 md:p-6 lg:p-8">
           {children}
         </div>
       </main>
