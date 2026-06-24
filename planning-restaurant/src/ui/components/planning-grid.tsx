@@ -106,12 +106,13 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-slate-800 text-white">
-              <th className="sticky left-0 z-10 bg-slate-800 px-3 py-3 text-left text-xs font-semibold">Contrat</th>
-              <th className="sticky left-16 z-10 bg-slate-800 px-3 py-3 text-left text-xs font-semibold">Salarié</th>
+              <th scope="col" className="sticky left-0 z-10 bg-slate-800 px-3 py-3 text-left text-xs font-semibold">Contrat</th>
+              <th scope="col" className="sticky left-16 z-10 bg-slate-800 px-3 py-3 text-left text-xs font-semibold">Salarié</th>
               {DAY_NAMES.slice(1).map((day, i) => {
                 const dayIdx = i + 1
                 return (
                   <th key={dayIdx}
+                    scope="col"
                     onClick={() => setSelectedDay(selectedDay === dayIdx ? null : dayIdx)}
                     className={`px-1 py-2 text-center min-w-[120px] cursor-pointer transition-colors ${selectedDay === dayIdx ? 'bg-primary/30 ring-2 ring-inset ring-primary' : 'hover:bg-slate-700'}`}>
                     {day}
@@ -123,9 +124,9 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
                   </th>
                 )
               })}
-              <th className="px-2 py-2 text-center">Total</th>
-              <th className="px-2 py-2 text-center">Repas</th>
-              <th className="px-2 py-2 text-center">Paniers</th>
+              <th scope="col" className="px-2 py-2 text-center">Total</th>
+              <th scope="col" className="px-2 py-2 text-center">Repas</th>
+              <th scope="col" className="px-2 py-2 text-center">Paniers</th>
             </tr>
           </thead>
           <tbody>
@@ -231,11 +232,11 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-muted">
-              <th className="px-3 py-2 text-left font-medium sticky left-0 bg-muted z-10">Jour</th>
-              <th className="px-2 py-2 text-center font-medium">CA</th>
-              <th className="px-2 py-2 text-center font-medium">Prod.</th>
+              <th scope="col" className="px-3 py-2 text-left font-medium sticky left-0 bg-muted z-10">Jour</th>
+              <th scope="col" className="px-2 py-2 text-center font-medium">CA</th>
+              <th scope="col" className="px-2 py-2 text-center font-medium">Prod.</th>
               {(hourlyBreakdown[0]?.byHour ?? []).map((slot) => (
-                <th key={slot.hour} className="px-1 py-2 text-center font-medium min-w-[32px]">
+                <th key={slot.hour} scope="col" className="px-1 py-2 text-center font-medium min-w-[32px]">
                   {slot.hour === 9.5 ? 'Ouv.' : slot.isLast ? 'Ferm.' : `${slot.hour}h`}
                 </th>
               ))}

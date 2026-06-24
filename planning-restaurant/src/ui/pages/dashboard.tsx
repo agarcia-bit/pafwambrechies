@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle, Button, Input } from '@/ui/components'
+import { Card, CardContent, CardHeader, CardTitle, Button, Input, TableSkeleton } from '@/ui/components'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useForecastStore } from '@/store/forecast-store'
 import { useAuthStore } from '@/store/auth-store'
@@ -202,11 +202,11 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
               Suivi annuel : Productivité Salle
             </CardTitle>
             <div className="flex items-center gap-2">
-              <button onClick={() => setSelectedYear(selectedYear - 1)} className="rounded p-1 hover:bg-muted">
+              <button onClick={() => setSelectedYear(selectedYear - 1)} className="rounded p-1 hover:bg-muted" aria-label="Année précédente">
                 <ChevronLeft size={18} />
               </button>
               <span className="text-sm font-bold">{selectedYear}</span>
-              <button onClick={() => setSelectedYear(selectedYear + 1)} className="rounded p-1 hover:bg-muted">
+              <button onClick={() => setSelectedYear(selectedYear + 1)} className="rounded p-1 hover:bg-muted" aria-label="Année suivante">
                 <ChevronRight size={18} />
               </button>
             </div>
@@ -309,7 +309,7 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {loadingPlannings && <p className="text-muted-foreground">Chargement...</p>}
+          {loadingPlannings && <TableSkeleton rows={4} cols={6} />}
 
           {!loadingPlannings && plannings.length === 0 && (
             <p className="text-muted-foreground">
@@ -322,12 +322,12 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
               <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Semaine</th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Début</th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Généré le</th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Dernière modif.</th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Statut</th>
-                    <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
+                    <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">Semaine</th>
+                    <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">Début</th>
+                    <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">Généré le</th>
+                    <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">Dernière modif.</th>
+                    <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">Statut</th>
+                    <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -399,6 +399,7 @@ export function DashboardPage({ onViewPlanning }: { onViewPlanning?: (id: string
                               onClick={(e) => { e.stopPropagation(); handleDelete(p) }}
                               className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                               title="Supprimer"
+                              aria-label="Supprimer"
                             >
                               <Trash2 size={16} />
                             </button>

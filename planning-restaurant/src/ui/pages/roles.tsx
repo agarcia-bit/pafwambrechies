@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useRoleStore } from '@/store/role-store'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useAuthStore } from '@/store/auth-store'
-import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
+import { Button, Input, Card, CardHeader, CardTitle, CardContent, TableSkeleton } from '@/ui/components'
 import { Plus, Trash2, AlertTriangle } from 'lucide-react'
 
 const PRESET_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#6b7280']
@@ -80,6 +80,7 @@ export function RolesPage() {
                     onClick={() => setNewRoleColor(c)}
                     className={`h-8 w-8 rounded-md border-2 ${newRoleColor === c ? 'border-foreground' : 'border-transparent'}`}
                     style={{ backgroundColor: c }}
+                    aria-label={`Couleur ${c}`}
                   />
                 ))}
               </div>
@@ -109,6 +110,7 @@ export function RolesPage() {
                   <button
                     onClick={() => { if (confirm(`Supprimer le rôle "${role.name}" ?`)) remove(role.id) }}
                     className="text-muted-foreground hover:text-destructive"
+                    aria-label={`Supprimer le rôle ${role.name}`}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -142,14 +144,14 @@ export function RolesPage() {
             <p className="text-sm text-muted-foreground">Un seul rôle par salarié. Cliquez pour attribuer ou changer.</p>
           </CardHeader>
           <CardContent>
-            {loading && <p className="text-muted-foreground">Chargement...</p>}
+            {loading && <TableSkeleton rows={4} cols={4} />}
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="px-4 py-2 text-left font-medium text-muted-foreground">Salarié</th>
+                    <th scope="col" className="px-4 py-2 text-left font-medium text-muted-foreground">Salarié</th>
                     {roles.map((role) => (
-                      <th key={role.id} className="px-4 py-2 text-center font-medium text-muted-foreground">
+                      <th key={role.id} scope="col" className="px-4 py-2 text-center font-medium text-muted-foreground">
                         <div className="flex items-center justify-center gap-1">
                           <div className="h-2 w-2 rounded-full" style={{ backgroundColor: role.color }} />
                           {role.name}
@@ -197,6 +199,7 @@ export function RolesPage() {
                                 }`}
                                 style={isSelected ? { backgroundColor: role.color, borderColor: role.color } : {}}
                                 title={isSelected ? `Retirer ${role.name}` : `Attribuer ${role.name}`}
+                                aria-label={isSelected ? `Retirer ${role.name}` : `Attribuer ${role.name}`}
                               />
                             </td>
                           )

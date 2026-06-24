@@ -6,3 +6,4 @@ export { Card, CardHeader, CardTitle, CardDescription, CardContent } from './car
 export { Select } from './select'
 export type { SelectProps } from './select'
 export { TimeInput } from './time-input'
+export { Skeleton, TableSkeleton, CardSkeleton } from './skeleton'

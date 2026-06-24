@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useShiftTemplateStore } from '@/store/shift-template-store'
 import { useAuthStore } from '@/store/auth-store'
-import { Button, Input, Select, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
+import { Button, Input, Select, Card, CardHeader, CardTitle, CardContent, TableSkeleton } from '@/ui/components'
 import { TimeInput } from '@/ui/components/time-input'
 import { freshQuery } from '@/infrastructure/supabase/fresh-query'
 import { DEFAULT_SHIFTS_HCR } from '@/domain/models/shift'
@@ -129,7 +129,7 @@ export function ShiftTemplatesPage() {
         </div>
       </div>
 
-      {loading && !loaded && <p className="text-muted-foreground">Chargement...</p>}
+      {loading && !loaded && <TableSkeleton rows={5} cols={7} />}
 
       {(['salle', 'cuisine'] as const).map((dept) => {
         const groups = groupedByDept[dept]
@@ -151,15 +151,15 @@ export function ShiftTemplatesPage() {
                       <table className="w-full border-collapse text-sm">
                         <thead>
                           <tr className="border-b border-border">
-                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">Code</th>
-                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">Libellé</th>
-                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">Type</th>
-                            <th className="px-3 py-2 text-center font-medium text-muted-foreground">Début</th>
-                            <th className="px-3 py-2 text-center font-medium text-muted-foreground">Fin</th>
-                            <th className="px-3 py-2 text-center font-medium text-muted-foreground">H.eff</th>
-                            <th className="px-3 py-2 text-center font-medium text-muted-foreground">Repas</th>
-                            <th className="px-3 py-2 text-center font-medium text-muted-foreground">Paniers</th>
-                            <th className="px-3 py-2 text-right font-medium text-muted-foreground">Actions</th>
+                            <th scope="col" className="px-3 py-2 text-left font-medium text-muted-foreground">Code</th>
+                            <th scope="col" className="px-3 py-2 text-left font-medium text-muted-foreground">Libellé</th>
+                            <th scope="col" className="px-3 py-2 text-left font-medium text-muted-foreground">Type</th>
+                            <th scope="col" className="px-3 py-2 text-center font-medium text-muted-foreground">Début</th>
+                            <th scope="col" className="px-3 py-2 text-center font-medium text-muted-foreground">Fin</th>
+                            <th scope="col" className="px-3 py-2 text-center font-medium text-muted-foreground">H.eff</th>
+                            <th scope="col" className="px-3 py-2 text-center font-medium text-muted-foreground">Repas</th>
+                            <th scope="col" className="px-3 py-2 text-center font-medium text-muted-foreground">Paniers</th>
+                            <th scope="col" className="px-3 py-2 text-right font-medium text-muted-foreground">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -175,8 +175,8 @@ export function ShiftTemplatesPage() {
                               <td className="px-3 py-2 text-center">{t.baskets}</td>
                               <td className="px-3 py-2 text-right">
                                 <div className="flex items-center justify-end gap-1">
-                                  <button onClick={() => openEdit(t)} className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Modifier"><Pencil size={14} /></button>
-                                  <button onClick={() => handleDelete(t)} className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Supprimer"><Trash2 size={14} /></button>
+                                  <button onClick={() => openEdit(t)} className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Modifier" aria-label="Modifier"><Pencil size={14} /></button>
+                                  <button onClick={() => handleDelete(t)} className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Supprimer" aria-label="Supprimer"><Trash2 size={14} /></button>
                                 </div>
                               </td>
                             </tr>

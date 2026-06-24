@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useRoleStore } from '@/store/role-store'
 import { useAuthStore } from '@/store/auth-store'
-import { Card, CardContent, CardHeader, CardTitle, Button } from '@/ui/components'
+import { Card, CardContent, CardHeader, CardTitle, Button, TableSkeleton } from '@/ui/components'
 import { EmployeeForm } from '@/ui/components/employee-form'
 import type { Employee } from '@/domain/models/employee'
 import { Plus, Pencil, Trash2, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown, X } from 'lucide-react'
@@ -146,7 +146,7 @@ export function EmployeesPage() {
         </button>
       </div>
 
-      {loading && <p className="text-muted-foreground">Chargement...</p>}
+      {loading && <TableSkeleton rows={6} cols={8} />}
 
       {/* Notification CDD expirés auto-désactivés */}
       {deactivatedNames.length > 0 && (
@@ -160,7 +160,7 @@ export function EmployeesPage() {
               {deactivatedNames.join(', ')}
             </p>
           </div>
-          <button onClick={() => setDeactivatedNames([])} className="text-muted-foreground hover:text-foreground">
+          <button onClick={() => setDeactivatedNames([])} className="text-muted-foreground hover:text-foreground" aria-label="Fermer">
             <X size={16} />
           </button>
         </div>
@@ -204,6 +204,7 @@ export function EmployeesPage() {
                 ] as [string, string, string][]).map(([key, label, align]) => (
                   <th
                     key={key}
+                    scope="col"
                     onClick={() => toggleSort(key)}
                     className={`px-4 py-3 text-${align} font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none`}
                   >
@@ -213,8 +214,8 @@ export function EmployeesPage() {
                     </span>
                   </th>
                 ))}
-                <th className="px-4 py-3 text-center font-medium text-muted-foreground">Actif</th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
+                <th scope="col" className="px-4 py-3 text-center font-medium text-muted-foreground">Actif</th>
+                <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -261,6 +262,7 @@ export function EmployeesPage() {
                         onClick={() => handleToggleActive(emp)}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${emp.active ? 'bg-success' : 'bg-border'}`}
                         title={emp.active ? 'Désactiver (ne sera pas inclus dans les plannings)' : 'Réactiver'}
+                        aria-label={emp.active ? 'Désactiver (ne sera pas inclus dans les plannings)' : 'Réactiver'}
                       >
                         <span
                           className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${emp.active ? 'translate-x-6' : 'translate-x-1'}`}
@@ -273,6 +275,7 @@ export function EmployeesPage() {
                           onClick={() => { setEditingEmployee(emp); setShowForm(true) }}
                           className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                           title="Modifier"
+                          aria-label="Modifier"
                         >
                           <Pencil size={16} />
                         </button>
@@ -280,6 +283,7 @@ export function EmployeesPage() {
                           onClick={() => handleDelete(emp)}
                           className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                           title="Supprimer définitivement"
+                          aria-label="Supprimer définitivement"
                         >
                           <Trash2 size={16} />
                         </button>

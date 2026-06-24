@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useMemo } from 'react'
 import { getStoredToken } from '@/lib/auth-token'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useRoleStore } from '@/store/role-store'
-import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
+import { Button, Input, Card, CardHeader, CardTitle, CardContent, Skeleton } from '@/ui/components'
 import { TimeInput } from '@/ui/components/time-input'
 import type { Unavailability, ManagerFixedSchedule, ConditionalAvailability } from '@/domain/models/constraint'
 import {
@@ -206,12 +206,12 @@ export function ConstraintsPage() {
                 <table className="w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border">
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Nom</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Département</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Rôle</th>
-                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">Contrat</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Contraintes</th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground"></th>
+                      <th scope="col" className="px-3 py-2 text-left font-medium text-muted-foreground">Nom</th>
+                      <th scope="col" className="px-3 py-2 text-left font-medium text-muted-foreground">Département</th>
+                      <th scope="col" className="px-3 py-2 text-left font-medium text-muted-foreground">Rôle</th>
+                      <th scope="col" className="px-3 py-2 text-center font-medium text-muted-foreground">Contrat</th>
+                      <th scope="col" className="px-3 py-2 text-left font-medium text-muted-foreground">Contraintes</th>
+                      <th scope="col" className="px-3 py-2 text-right font-medium text-muted-foreground"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -260,7 +260,13 @@ export function ConstraintsPage() {
         </Card>
       )}
 
-      {selectedEmployee && loading && <p className="text-muted-foreground">Chargement...</p>}
+      {selectedEmployee && loading && (
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-3/4" />
+        </div>
+      )}
 
       {selectedEmployee && !loading && loadError && (
         <div className="flex items-center justify-between rounded-lg border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive">
@@ -278,11 +284,11 @@ export function ConstraintsPage() {
               <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Jour</th>
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Horaire</th>
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Début</th>
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Fin</th>
-                    <th className="px-3 py-2"></th>
+                    <th scope="col" className="px-3 py-2 text-left font-medium text-muted-foreground">Jour</th>
+                    <th scope="col" className="px-3 py-2 text-left font-medium text-muted-foreground">Horaire</th>
+                    <th scope="col" className="px-3 py-2 text-left font-medium text-muted-foreground">Début</th>
+                    <th scope="col" className="px-3 py-2 text-left font-medium text-muted-foreground">Fin</th>
+                    <th scope="col" className="px-3 py-2"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -310,7 +316,7 @@ export function ConstraintsPage() {
                       <span className="text-sm">{u.dayOfWeek != null ? `Chaque ${DAY_NAMES[u.dayOfWeek]}` : ''}</span>
                       {u.label && <span className="ml-2 text-sm text-muted-foreground">— {u.label}</span>}
                     </div>
-                    <button onClick={() => handleDeleteUnavailability(u.id)} className="text-muted-foreground hover:text-destructive"><Trash2 size={14} /></button>
+                    <button onClick={() => handleDeleteUnavailability(u.id)} className="text-muted-foreground hover:text-destructive" aria-label="Supprimer"><Trash2 size={14} /></button>
                   </div>
                 ))}
               </div>
@@ -353,7 +359,7 @@ export function ConstraintsPage() {
                       <span className="text-blue-700">Créneaux autorisés : {ca.allowedShiftCodes.join(', ')}</span>
                       {ca.maxHours && <span className="ml-2 text-muted-foreground">(max {ca.maxHours}h)</span>}
                     </div>
-                    <button onClick={() => handleDeleteConditional(ca.id)} className="text-muted-foreground hover:text-destructive"><Trash2 size={14} /></button>
+                    <button onClick={() => handleDeleteConditional(ca.id)} className="text-muted-foreground hover:text-destructive" aria-label="Supprimer"><Trash2 size={14} /></button>
                   </div>
                 ))}
               </div>
@@ -448,7 +454,7 @@ function ManagerDayRow({
       </td>
       <td className="px-3 py-2 text-right">
         {!isClosed && (
-          <button onClick={() => onSave(templateId || null, startTime, endTime)} className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Enregistrer">
+          <button onClick={() => onSave(templateId || null, startTime, endTime)} className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Enregistrer" aria-label="Enregistrer">
             <Save size={14} />
           </button>
         )}
