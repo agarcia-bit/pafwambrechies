@@ -6,9 +6,49 @@
 /* ============================================================
    SUPABASE CLIENT
    ============================================================ */
-const SUPABASE_URL = 'https://ancwbfyjzaebxahtlqkm.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_jCDrtwqzqjbsq0NEIwUbPQ_EFeoFaDh';
+const PAF_CFG      = (typeof window !== 'undefined' && window.__PAF_CONFIG__) || {};
+const SUPABASE_URL = PAF_CFG.SUPABASE_URL      || 'https://ancwbfyjzaebxahtlqkm.supabase.co';
+const SUPABASE_KEY = PAF_CFG.SUPABASE_ANON_KEY || 'sb_publishable_jCDrtwqzqjbsq0NEIwUbPQ_EFeoFaDh';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ── Tenant branding — fetched at boot from public.get_public_branding() ─── */
+async function applyTenantBranding() {
+  try {
+    const { data, error } = await sb.rpc('get_public_branding');
+    if (error || !data) return;
+
+    const name    = (data.tenant_name          || '').trim();
+    const tagline = (data.tenant_tagline       || '').trim();
+    const color   = (data.tenant_primary_color || '').trim();
+    const logo    = (data.tenant_logo_url      || '').trim();
+    const bg      = (data.tenant_login_bg_url  || '').trim();
+
+    if (name) {
+      document.title = name;
+      document.querySelectorAll('.header-title').forEach(el => el.textContent = name);
+      document.querySelectorAll('.auth-logo img, .header-logo-img').forEach(el => {
+        if (el.getAttribute('alt') !== null) el.setAttribute('alt', name);
+      });
+    }
+    if (tagline) {
+      document.querySelectorAll('.header-sub').forEach(el => el.textContent = tagline);
+    }
+    if (color) {
+      document.documentElement.style.setProperty('--accent', color);
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color);
+    }
+    if (logo) {
+      document.querySelectorAll('.auth-logo img, .header-logo-img').forEach(el => {
+        el.src = logo;
+      });
+    }
+    if (bg) {
+      document.querySelectorAll('.auth-screen').forEach(el => {
+        el.style.backgroundImage = `url("${bg}")`;
+      });
+    }
+  } catch (_) { /* non-blocking */ }
+}
 
 let currentUser = null;
 let currentProfile = null; // { prenom, nom } depuis la table profiles
@@ -429,6 +469,10 @@ async function showApp() {
 }
 
 async function initAuth() {
+  // Fire and forget: apply tenant branding as soon as possible. Non-blocking
+  // so login/set-password paths aren't delayed if the RPC is slow or missing.
+  applyTenantBranding();
+
   // Detect invite/recovery token in hash (#type=invite) or query (?type=invite).
   const hashParams   = new URLSearchParams(window.location.hash.slice(1));
   const searchParams = new URLSearchParams(window.location.search);
@@ -1626,36 +1670,85 @@ async function loadAdminSub() {
   }
 }
 
+const SETTINGS_KEYS = [
+  'signup_code',
+  'tenant_name',
+  'tenant_tagline',
+  'tenant_primary_color',
+  'tenant_logo_url',
+  'tenant_login_bg_url',
+];
+
 async function renderAdminSettings(el) {
   const { data, error } = await sb.from('app_settings')
-    .select('value')
-    .eq('key', 'signup_code')
-    .maybeSingle();
+    .select('key, value')
+    .in('key', SETTINGS_KEYS);
   if (error) { el.innerHTML = '<div class="empty-state">Impossible de charger les réglages.</div>'; return; }
-  const current = data?.value || '';
+  const map = {};
+  (data || []).forEach(r => { map[r.key] = r.value || ''; });
+
   el.innerHTML = `
-    <div class="card">
+    <div class="card" style="margin-bottom:14px">
       <div style="font-weight:700;font-size:1rem;margin-bottom:6px">Code d'inscription</div>
       <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:12px">
         Les nouveaux adhérents en ont besoin pour créer leur compte depuis la page de connexion. Changez-le quand vous voulez révoquer les inscriptions avec l'ancien code.
       </p>
-      <form id="admin-signup-code-form">
+      <form data-settings-form>
         <div class="form-group">
           <label for="admin-signup-code">Code actuel</label>
-          <input type="text" id="admin-signup-code" value="${escHtml(current)}" autocomplete="off" />
+          <input type="text" id="admin-signup-code" data-key="signup_code" value="${escHtml(map.signup_code)}" autocomplete="off" />
         </div>
         <button type="submit" class="btn btn-primary">Enregistrer</button>
       </form>
     </div>
+
+    <div class="card">
+      <div style="font-weight:700;font-size:1rem;margin-bottom:6px">Identité de l'application</div>
+      <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:12px">
+        Nom de l'association, couleur, logo… Ce sont ces valeurs qui apparaissent dans l'en-tête, sur la page de connexion et dans l'onglet du navigateur.
+      </p>
+      <form data-settings-form>
+        <div class="form-group">
+          <label for="admin-tenant-name">Nom de l'association</label>
+          <input type="text" id="admin-tenant-name" data-key="tenant_name" value="${escHtml(map.tenant_name)}" placeholder="PAF Wambrechies" />
+        </div>
+        <div class="form-group">
+          <label for="admin-tenant-tagline">Sous-titre</label>
+          <input type="text" id="admin-tenant-tagline" data-key="tenant_tagline" value="${escHtml(map.tenant_tagline)}" placeholder="Espace adhérents" />
+        </div>
+        <div class="form-group">
+          <label for="admin-tenant-color">Couleur principale</label>
+          <input type="color" id="admin-tenant-color" data-key="tenant_primary_color" value="${escHtml(map.tenant_primary_color || '#2E3192')}" style="height:44px;padding:4px" />
+        </div>
+        <div class="form-group">
+          <label for="admin-tenant-logo">URL du logo <span class="form-hint">(carré, PNG/SVG)</span></label>
+          <input type="url" id="admin-tenant-logo" data-key="tenant_logo_url" value="${escHtml(map.tenant_logo_url)}" placeholder="https://…/logo.png" />
+        </div>
+        <div class="form-group">
+          <label for="admin-tenant-bg">URL de l'image de fond du login <span class="form-hint">(optionnel)</span></label>
+          <input type="url" id="admin-tenant-bg" data-key="tenant_login_bg_url" value="${escHtml(map.tenant_login_bg_url)}" placeholder="https://…/fond.jpg" />
+        </div>
+        <button type="submit" class="btn btn-primary">Enregistrer l'identité</button>
+      </form>
+    </div>
   `;
-  document.getElementById('admin-signup-code-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const value = document.getElementById('admin-signup-code').value.trim();
-    if (!value) { showToast('Le code ne peut pas être vide.', 'error'); return; }
-    const { error: upErr } = await sb.from('app_settings')
-      .upsert({ key: 'signup_code', value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-    if (upErr) { showToast('Erreur : ' + upErr.message, 'error'); return; }
-    showToast('Code d\'inscription mis à jour.', 'success');
+
+  el.querySelectorAll('form[data-settings-form]').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const rows = [...form.querySelectorAll('input[data-key]')].map(input => ({
+        key: input.dataset.key,
+        value: input.value.trim(),
+        updated_at: new Date().toISOString(),
+      }));
+      const empty = rows.find(r => r.key === 'signup_code' && !r.value);
+      if (empty) { showToast('Le code d\'inscription ne peut pas être vide.', 'error'); return; }
+      const { error: upErr } = await sb.from('app_settings')
+        .upsert(rows, { onConflict: 'key' });
+      if (upErr) { showToast('Erreur : ' + upErr.message, 'error'); return; }
+      showToast('Réglages enregistrés.', 'success');
+      applyTenantBranding();
+    });
   });
 }
 

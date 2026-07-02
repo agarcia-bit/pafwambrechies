@@ -1,0 +1,8 @@
+# Generated at build time by scripts/generate-config.js — contains per-tenant
+# Supabase URL / anon key sourced from Netlify env vars.
+js/config.js
+
+# Editor / OS noise
+.DS_Store
+.idea/
+.vscode/
