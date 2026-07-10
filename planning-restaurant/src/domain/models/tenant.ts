@@ -1,8 +1,10 @@
 export interface ServiceSlot {
   key: string        // identifiant stable (ex: 'midi', 'soir_1')
   label: string      // libellé affiché (ex: 'Midi 11-15')
-  startTime: number  // heure décimale de début (ex: 11)
-  endTime: number    // heure décimale de fin (ex: 15)
+  startTime: number  // heure décimale de début (ex: 11). Si startAtClosing: décalage vs fermeture (ex: 0)
+  endTime: number    // heure décimale de fin (ex: 15). Si endAtClosing: décalage vs fermeture (ex: 0 = à la fermeture, 1 = +1h)
+  startAtClosing?: boolean // si true, début = heure de fermeture du jour + startTime (décalage)
+  endAtClosing?: boolean   // si true, fin = heure de fermeture du jour + endTime (décalage)
 }
 
 export interface TenantRules {
@@ -44,12 +46,12 @@ export interface Tenant {
 }
 
 export const DEFAULT_SERVICE_SLOTS: ServiceSlot[] = [
-  { key: 'ouverture', label: 'Ouv. 9h30', startTime: 9.5, endTime: 10 },
+  { key: 'ouverture', label: 'Ouv. 9h30', startTime: 9.5, endTime: 9.5 },
   { key: 'matin', label: 'Matin 9-11', startTime: 9, endTime: 11 },
   { key: 'midi', label: 'Midi 11-15', startTime: 11, endTime: 15 },
   { key: 'aprem', label: 'A-midi 15-18', startTime: 15, endTime: 18 },
-  { key: 'soir', label: 'Soir 18-ferm.', startTime: 18, endTime: 23 },
-  { key: 'fermeture', label: 'Fermeture', startTime: 23, endTime: 24 },
+  { key: 'soir', label: 'Soir 18-ferm.', startTime: 18, endTime: 0, endAtClosing: true },
+  { key: 'fermeture', label: 'Fermeture', startTime: 0, endTime: 1, startAtClosing: true, endAtClosing: true },
 ]
 
 export const DEFAULT_TENANT_RULES: TenantRules = {

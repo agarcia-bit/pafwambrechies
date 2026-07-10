@@ -447,57 +447,93 @@ export function SettingsPage() {
               >+ Ajouter un créneau</Button>
             </div>
             <div className="flex flex-col gap-2">
-              {rules.planningServiceSlots.map((slot, idx) => (
-                <div key={slot.key} className="flex items-end gap-2 rounded-lg border border-border p-3">
-                  <div className="flex-1">
-                    <Input
-                      id={`slot-label-${idx}`}
-                      label="Libellé"
-                      value={slot.label}
-                      onChange={(e) => setRules((r) => ({
+              {rules.planningServiceSlots.map((slot, idx) => {
+                const patch = (changes: Partial<typeof slot>) => setRules((r) => ({
+                  ...r,
+                  planningServiceSlots: r.planningServiceSlots.map((s, i) => i === idx ? { ...s, ...changes } : s),
+                }))
+                return (
+                <div key={slot.key} className="rounded-lg border border-border p-3">
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <Input
+                        id={`slot-label-${idx}`}
+                        label="Libellé"
+                        value={slot.label}
+                        onChange={(e) => patch({ label: e.target.value })}
+                      />
+                    </div>
+                    <div className="w-28">
+                      {slot.startAtClosing ? (
+                        <Input
+                          id={`slot-start-off-${idx}`}
+                          label="Début (déc. h)"
+                          type="number"
+                          step={0.5}
+                          value={slot.startTime}
+                          onChange={(e) => patch({ startTime: Number(e.target.value) })}
+                        />
+                      ) : (
+                        <TimeInput label="Début" value={slot.startTime} onChange={(v) => patch({ startTime: v })} />
+                      )}
+                    </div>
+                    <div className="w-28">
+                      {slot.endAtClosing ? (
+                        <Input
+                          id={`slot-end-off-${idx}`}
+                          label="Fin (déc. h)"
+                          type="number"
+                          step={0.5}
+                          value={slot.endTime}
+                          onChange={(e) => patch({ endTime: Number(e.target.value) })}
+                        />
+                      ) : (
+                        <TimeInput label="Fin" value={slot.endTime} onChange={(v) => patch({ endTime: v })} />
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setRules((r) => ({
                         ...r,
-                        planningServiceSlots: r.planningServiceSlots.map((s, i) => i === idx ? { ...s, label: e.target.value } : s),
+                        planningServiceSlots: r.planningServiceSlots.filter((_, i) => i !== idx),
                       }))}
-                    />
+                      className="mb-1 rounded p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      title="Supprimer ce créneau"
+                      aria-label="Supprimer ce créneau"
+                    >
+                      <X size={16} />
+                    </button>
                   </div>
-                  <div className="w-28">
-                    <TimeInput
-                      label="Début"
-                      value={slot.startTime}
-                      onChange={(v) => setRules((r) => ({
-                        ...r,
-                        planningServiceSlots: r.planningServiceSlots.map((s, i) => i === idx ? { ...s, startTime: v } : s),
-                      }))}
-                    />
+                  <div className="mt-2 flex flex-wrap gap-4 pl-1">
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={!!slot.startAtClosing}
+                        onChange={(e) => patch({ startAtClosing: e.target.checked, startTime: e.target.checked ? 0 : 9 })}
+                        className="h-3.5 w-3.5 rounded border-border"
+                      />
+                      Début = fermeture du jour
+                    </label>
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={!!slot.endAtClosing}
+                        onChange={(e) => patch({ endAtClosing: e.target.checked, endTime: e.target.checked ? 0 : 18 })}
+                        className="h-3.5 w-3.5 rounded border-border"
+                      />
+                      Fin = fermeture du jour
+                    </label>
                   </div>
-                  <div className="w-28">
-                    <TimeInput
-                      label="Fin"
-                      value={slot.endTime}
-                      onChange={(v) => setRules((r) => ({
-                        ...r,
-                        planningServiceSlots: r.planningServiceSlots.map((s, i) => i === idx ? { ...s, endTime: v } : s),
-                      }))}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setRules((r) => ({
-                      ...r,
-                      planningServiceSlots: r.planningServiceSlots.filter((_, i) => i !== idx),
-                    }))}
-                    className="mb-1 rounded p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    title="Supprimer ce créneau"
-                    aria-label="Supprimer ce créneau"
-                  >
-                    <X size={16} />
-                  </button>
                 </div>
-              ))}
+                )
+              })}
               {rules.planningServiceSlots.length === 0 && (
                 <p className="text-sm text-muted-foreground italic">Aucun créneau — le tableau de décompte sera vide.</p>
               )}
             </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              « = fermeture du jour » adapte automatiquement le créneau à l'heure de fermeture réelle (23h en semaine, 21h le dimanche, selon tes réglages plus haut). Le décalage permet d'aller au-delà : ex. décalage +1 = 1h après la fermeture.
+            </p>
           </div>
 
           <div className="flex justify-end">

@@ -21,11 +21,21 @@ interface PlanningGridProps {
   weekDates?: string[]
   serviceSlots?: ServiceSlot[]
   showRoleBadges?: boolean
+  closingTimeWeek?: number
+  closingTimeSunday?: number
   onShiftChange?: (employeeId: string, dayOfWeek: number, newShiftId: string | null) => void
 }
 
-export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [], employeeRoles = [], unavailabilities = [], weekDates = [], serviceSlots, showRoleBadges = true, onShiftChange }: PlanningGridProps) {
+export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [], employeeRoles = [], unavailabilities = [], weekDates = [], serviceSlots, showRoleBadges = true, closingTimeWeek = 23, closingTimeSunday = 21, onShiftChange }: PlanningGridProps) {
   const activeSlots: ServiceSlot[] = (serviceSlots && serviceSlots.length > 0) ? serviceSlots : DEFAULT_SERVICE_SLOTS
+
+  // Résout les bornes d'un créneau pour un jour donné (gère "fin = fermeture du jour")
+  function resolveSlot(slot: ServiceSlot, dayOfWeek: number): { start: number; end: number } {
+    const dayClosing = dayOfWeek === 6 ? closingTimeSunday : closingTimeWeek
+    const start = slot.startAtClosing ? dayClosing + slot.startTime : slot.startTime
+    const end = slot.endAtClosing ? dayClosing + slot.endTime : slot.endTime
+    return { start, end }
+  }
   const [editingCell, setEditingCell] = useState<{ empId: string; day: number } | null>(null)
   const [selectedEmpId, setSelectedEmpId] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
@@ -102,13 +112,13 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summaries, sortKey, sortDir, employeeRoles, roles])
 
-  function countForSlot(dayEntries: { startTime: number; endTime: number; employeeId: string }[], slot: ServiceSlot) {
-    // Point-only slot (start == end) : présent = quelqu'un dont le shift couvre exactement ce point.
-    if (slot.endTime <= slot.startTime) {
-      return dayEntries.filter((e) => e.startTime <= slot.startTime && e.endTime > slot.startTime)
+  function countForSlot(dayEntries: { startTime: number; endTime: number; employeeId: string }[], start: number, end: number) {
+    // Point unique (start == end) : présent = quelqu'un dont le shift couvre ce point.
+    if (end <= start) {
+      return dayEntries.filter((e) => e.startTime <= start && e.endTime > start)
     }
     // Chevauchement classique : présent si son shift chevauche la fenêtre [start, end)
-    return dayEntries.filter((e) => e.startTime < slot.endTime && e.endTime > slot.startTime)
+    return dayEntries.filter((e) => e.startTime < end && e.endTime > start)
   }
 
   const serviceBreakdown = useMemo(() => {
@@ -119,7 +129,8 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
       const productivity = plannedHours > 0 && ds ? ds.forecastedRevenue / plannedHours : 0
 
       const bySlot = activeSlots.map((slot) => {
-        const present = countForSlot(dayEntries, slot)
+        const { start, end } = resolveSlot(slot, day)
+        const present = countForSlot(dayEntries, start, end)
         const byRole = new Map<string, number>()
         for (const e of present) {
           const badge = getRoleBadge(e.employeeId)
@@ -136,7 +147,7 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
       return { day, plannedHours, productivity, ca: ds?.forecastedRevenue ?? 0, bySlot }
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [report.planning.entries, report.dailySummaries, activeSlots])
+  }, [report.planning.entries, report.dailySummaries, activeSlots, closingTimeWeek, closingTimeSunday])
 
   return (
     <div className="flex flex-col gap-4">
