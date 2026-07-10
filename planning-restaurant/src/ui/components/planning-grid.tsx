@@ -3,18 +3,11 @@ import type { PlanningReport } from '@/domain/models/planning'
 import type { ShiftTemplate } from '@/domain/models/shift'
 import type { Employee } from '@/domain/models/employee'
 import type { Unavailability } from '@/domain/models/constraint'
+import type { ServiceSlot } from '@/domain/models/tenant'
+import { DEFAULT_SERVICE_SLOTS } from '@/domain/models/tenant'
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 
 const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-
-const SERVICE_SLOTS = [
-  { key: 'ouverture', label: 'Ouv. 9h30' },
-  { key: 'matin', label: 'Matin 9-11' },
-  { key: 'midi', label: 'Midi 11-15' },
-  { key: 'aprem', label: 'A-midi 15-18' },
-  { key: 'soir', label: 'Soir 18-ferm.' },
-  { key: 'fermeture', label: 'Fermeture' },
-] as const
 
 type SortKey = 'name' | 'role' | 'contract'
 
@@ -26,10 +19,13 @@ interface PlanningGridProps {
   employeeRoles?: { employeeId: string; roleId: string }[]
   unavailabilities?: Unavailability[]
   weekDates?: string[]
+  serviceSlots?: ServiceSlot[]
+  showRoleBadges?: boolean
   onShiftChange?: (employeeId: string, dayOfWeek: number, newShiftId: string | null) => void
 }
 
-export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [], employeeRoles = [], unavailabilities = [], weekDates = [], onShiftChange }: PlanningGridProps) {
+export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [], employeeRoles = [], unavailabilities = [], weekDates = [], serviceSlots, showRoleBadges = true, onShiftChange }: PlanningGridProps) {
+  const activeSlots: ServiceSlot[] = (serviceSlots && serviceSlots.length > 0) ? serviceSlots : DEFAULT_SERVICE_SLOTS
   const [editingCell, setEditingCell] = useState<{ empId: string; day: number } | null>(null)
   const [selectedEmpId, setSelectedEmpId] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
@@ -106,29 +102,24 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summaries, sortKey, sortDir, employeeRoles, roles])
 
-  function countForSlot(dayEntries: { startTime: number; endTime: number; employeeId: string }[], slotKey: string, closingTime: number) {
-    switch (slotKey) {
-      case 'ouverture': return dayEntries.filter((e) => e.startTime <= 9.5)
-      case 'matin': return dayEntries.filter((e) => e.startTime < 11 && e.endTime > 9)
-      case 'midi': return dayEntries.filter((e) => e.startTime < 15 && e.endTime > 11)
-      case 'aprem': return dayEntries.filter((e) => e.startTime < 18 && e.endTime > 15)
-      case 'soir': return dayEntries.filter((e) => e.startTime < closingTime && e.endTime > 18)
-      case 'fermeture': return dayEntries.filter((e) => e.endTime >= closingTime)
-      default: return []
+  function countForSlot(dayEntries: { startTime: number; endTime: number; employeeId: string }[], slot: ServiceSlot) {
+    // Point-only slot (start == end) : présent = quelqu'un dont le shift couvre exactement ce point.
+    if (slot.endTime <= slot.startTime) {
+      return dayEntries.filter((e) => e.startTime <= slot.startTime && e.endTime > slot.startTime)
     }
+    // Chevauchement classique : présent si son shift chevauche la fenêtre [start, end)
+    return dayEntries.filter((e) => e.startTime < slot.endTime && e.endTime > slot.startTime)
   }
 
   const serviceBreakdown = useMemo(() => {
     return [1, 2, 3, 4, 5, 6].map((day) => {
       const dayEntries = report.planning.entries.filter((e) => e.dayOfWeek === day)
-      const isSunday = day === 6
-      const closingTime = isSunday ? 21 : 23
       const plannedHours = dayEntries.reduce((sum, e) => sum + e.effectiveHours, 0)
       const ds = report.dailySummaries.find((s) => s.dayOfWeek === day)
       const productivity = plannedHours > 0 && ds ? ds.forecastedRevenue / plannedHours : 0
 
-      const bySlot = SERVICE_SLOTS.map((slot) => {
-        const present = countForSlot(dayEntries, slot.key, closingTime)
+      const bySlot = activeSlots.map((slot) => {
+        const present = countForSlot(dayEntries, slot)
         const byRole = new Map<string, number>()
         for (const e of present) {
           const badge = getRoleBadge(e.employeeId)
@@ -142,9 +133,10 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
         return { ...slot, total: present.length, roleBreakdown }
       })
 
-      return { day, plannedHours, productivity, ca: ds?.forecastedRevenue ?? 0, closingTime, bySlot }
+      return { day, plannedHours, productivity, ca: ds?.forecastedRevenue ?? 0, bySlot }
     })
-  }, [report.planning.entries, report.dailySummaries])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report.planning.entries, report.dailySummaries, activeSlots])
 
   return (
     <div className="flex flex-col gap-4">
@@ -291,7 +283,7 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
               <th scope="col" className="px-3 py-2 text-left font-medium sticky left-0 bg-muted z-10">Jour</th>
               <th scope="col" className="px-2 py-2 text-center font-medium">CA</th>
               <th scope="col" className="px-2 py-2 text-center font-medium">Prod.</th>
-              {SERVICE_SLOTS.map((slot) => (
+              {activeSlots.map((slot) => (
                 <th key={slot.key} scope="col" className="px-2 py-2 text-center font-medium min-w-[70px]">
                   <div className="leading-tight">{slot.label}</div>
                 </th>
@@ -320,7 +312,7 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
                     return (
                       <td key={slot.key} className={`px-2 py-2 text-center ${bg}`}>
                         <div className="font-bold text-sm leading-tight">{slot.total}</div>
-                        {slot.roleBreakdown.length > 0 && (
+                        {showRoleBadges && slot.roleBreakdown.length > 0 && (
                           <div className="mt-1 grid grid-cols-2 gap-x-1 gap-y-0 justify-items-center mx-auto" style={{ width: 'fit-content' }}>
                             {slot.roleBreakdown.map((r) => (
                               <span key={r.name} className="inline-flex items-center gap-0.5 text-[8px] leading-tight text-slate-600">
@@ -338,7 +330,7 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
             })}
           </tbody>
         </table>
-        {roles.length > 0 && (
+        {showRoleBadges && roles.length > 0 && (
           <div className="flex items-center gap-4 border-t border-border px-3 py-2">
             <span className="text-[10px] font-medium text-muted-foreground">Légende :</span>
             {roles.map((r) => (

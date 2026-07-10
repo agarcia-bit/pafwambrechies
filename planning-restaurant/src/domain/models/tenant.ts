@@ -1,3 +1,10 @@
+export interface ServiceSlot {
+  key: string        // identifiant stable (ex: 'midi', 'soir_1')
+  label: string      // libellé affiché (ex: 'Midi 11-15')
+  startTime: number  // heure décimale de début (ex: 11)
+  endTime: number    // heure décimale de fin (ex: 15)
+}
+
 export interface TenantRules {
   // Règles légales / contrats
   minRestHours: number          // repos min entre 2 jours travaillés (h)
@@ -15,6 +22,9 @@ export interface TenantRules {
   // Productivité (seuils indicateurs)
   productivityLowerThreshold: number // sous ce seuil: orange "délester"
   productivityUpperThreshold: number // au-dessus: rouge "renfort"
+  // Affichage du planning
+  planningShowRoleBadges: boolean    // afficher les pastilles rôle dans le décompte
+  planningServiceSlots: ServiceSlot[] // créneaux personnalisés du décompte
 }
 
 export interface Tenant {
@@ -33,6 +43,15 @@ export interface Tenant {
   createdAt: string
 }
 
+export const DEFAULT_SERVICE_SLOTS: ServiceSlot[] = [
+  { key: 'ouverture', label: 'Ouv. 9h30', startTime: 9.5, endTime: 10 },
+  { key: 'matin', label: 'Matin 9-11', startTime: 9, endTime: 11 },
+  { key: 'midi', label: 'Midi 11-15', startTime: 11, endTime: 15 },
+  { key: 'aprem', label: 'A-midi 15-18', startTime: 15, endTime: 18 },
+  { key: 'soir', label: 'Soir 18-ferm.', startTime: 18, endTime: 23 },
+  { key: 'fermeture', label: 'Fermeture', startTime: 23, endTime: 24 },
+]
+
 export const DEFAULT_TENANT_RULES: TenantRules = {
   minRestHours: 11,
   maxWorkingDays: 5,
@@ -46,6 +65,8 @@ export const DEFAULT_TENANT_RULES: TenantRules = {
   kitchenClosedSundayEvening: true,
   productivityLowerThreshold: 85,
   productivityUpperThreshold: 110,
+  planningShowRoleBadges: true,
+  planningServiceSlots: DEFAULT_SERVICE_SLOTS,
 }
 
 export const DEFAULT_TENANT_CONFIG = {

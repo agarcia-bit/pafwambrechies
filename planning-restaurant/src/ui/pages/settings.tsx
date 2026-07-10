@@ -401,6 +401,112 @@ export function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Affichage du planning */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><SettingsIcon size={18} /> Affichage du planning</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          {/* Toggle pastilles rôle */}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <label htmlFor="showRoleBadges" className="text-sm font-medium">Afficher les pastilles de rôle dans le décompte</label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Quand désactivé, le tableau de décompte n'affiche que le nombre total de personnes par créneau, sans détail par rôle.
+              </p>
+            </div>
+            <button
+              type="button"
+              id="showRoleBadges"
+              onClick={() => setRules((r) => ({ ...r, planningShowRoleBadges: !r.planningShowRoleBadges }))}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${rules.planningShowRoleBadges ? 'bg-success' : 'bg-border'}`}
+              aria-label="Afficher les pastilles de rôle"
+            >
+              <span className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${rules.planningShowRoleBadges ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+          </div>
+
+          {/* Créneaux de décompte */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <div>
+                <label className="text-sm font-medium">Créneaux du tableau de décompte</label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Chaque ligne est une colonne dans le tableau. Point unique : mettez la même heure de début et de fin (ex: 9h30 - 9h30).
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setRules((r) => ({ ...r, planningServiceSlots: [
+                  ...r.planningServiceSlots,
+                  { key: `slot_${Date.now()}`, label: 'Nouveau créneau', startTime: 12, endTime: 14 },
+                ]}))}
+              >+ Ajouter un créneau</Button>
+            </div>
+            <div className="flex flex-col gap-2">
+              {rules.planningServiceSlots.map((slot, idx) => (
+                <div key={slot.key} className="flex items-end gap-2 rounded-lg border border-border p-3">
+                  <div className="flex-1">
+                    <Input
+                      id={`slot-label-${idx}`}
+                      label="Libellé"
+                      value={slot.label}
+                      onChange={(e) => setRules((r) => ({
+                        ...r,
+                        planningServiceSlots: r.planningServiceSlots.map((s, i) => i === idx ? { ...s, label: e.target.value } : s),
+                      }))}
+                    />
+                  </div>
+                  <div className="w-28">
+                    <TimeInput
+                      label="Début"
+                      value={slot.startTime}
+                      onChange={(v) => setRules((r) => ({
+                        ...r,
+                        planningServiceSlots: r.planningServiceSlots.map((s, i) => i === idx ? { ...s, startTime: v } : s),
+                      }))}
+                    />
+                  </div>
+                  <div className="w-28">
+                    <TimeInput
+                      label="Fin"
+                      value={slot.endTime}
+                      onChange={(v) => setRules((r) => ({
+                        ...r,
+                        planningServiceSlots: r.planningServiceSlots.map((s, i) => i === idx ? { ...s, endTime: v } : s),
+                      }))}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setRules((r) => ({
+                      ...r,
+                      planningServiceSlots: r.planningServiceSlots.filter((_, i) => i !== idx),
+                    }))}
+                    className="mb-1 rounded p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    title="Supprimer ce créneau"
+                    aria-label="Supprimer ce créneau"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+              {rules.planningServiceSlots.length === 0 && (
+                <p className="text-sm text-muted-foreground italic">Aucun créneau — le tableau de décompte sera vide.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={handleSaveRulesOnly} disabled={saving}>
+              <Save size={14} className="mr-2" /> Enregistrer l'affichage
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

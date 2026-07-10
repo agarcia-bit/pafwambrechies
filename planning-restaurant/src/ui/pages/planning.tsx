@@ -1227,6 +1227,8 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           employeeRoles={employeeRoles}
           unavailabilities={unavailabilities}
           weekDates={weekDates}
+          serviceSlots={tenant?.rules.planningServiceSlots}
+          showRoleBadges={tenant?.rules.planningShowRoleBadges ?? true}
           onShiftChange={(employeeId, dayOfWeek, newShiftId) => {
             if (!report || !tenantId) return
             const entries = [...report.planning.entries]
