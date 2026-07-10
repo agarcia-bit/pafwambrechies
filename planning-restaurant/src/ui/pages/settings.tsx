@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/auth-store'
 import { useTenantStore } from '@/store/tenant-store'
 import { useEmployeeStore } from '@/store/employee-store'
 import type { TenantRules } from '@/domain/models/tenant'
-import { DEFAULT_TENANT_RULES } from '@/domain/models/tenant'
+import { DEFAULT_TENANT_RULES, DEFAULT_SERVICE_SLOTS } from '@/domain/models/tenant'
 import { uploadTenantLogo } from '@/infrastructure/supabase/repositories/tenant-repo'
 import { Save, CheckCircle, Settings as SettingsIcon, Utensils, Users, ChefHat, Upload, Image as ImageIcon, X } from 'lucide-react'
 
@@ -429,22 +429,30 @@ export function SettingsPage() {
 
           {/* Créneaux de décompte */}
           <div>
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex items-start justify-between gap-3">
               <div>
                 <label className="text-sm font-medium">Créneaux du tableau de décompte</label>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Chaque ligne est une colonne dans le tableau. Point unique : mettez la même heure de début et de fin (ex: 9h30 - 9h30).
                 </p>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setRules((r) => ({ ...r, planningServiceSlots: [
-                  ...r.planningServiceSlots,
-                  { key: `slot_${Date.now()}`, label: 'Nouveau créneau', startTime: 12, endTime: 14 },
-                ]}))}
-              >+ Ajouter un créneau</Button>
+              <div className="flex shrink-0 gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setRules((r) => ({ ...r, planningServiceSlots: DEFAULT_SERVICE_SLOTS.map((s) => ({ ...s })) }))}
+                >Réinitialiser</Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setRules((r) => ({ ...r, planningServiceSlots: [
+                    ...r.planningServiceSlots,
+                    { key: `slot_${Date.now()}`, label: 'Nouveau créneau', startTime: 12, endTime: 14 },
+                  ]}))}
+                >+ Ajouter</Button>
+              </div>
             </div>
             <div className="flex flex-col gap-2">
               {rules.planningServiceSlots.map((slot, idx) => {
@@ -467,9 +475,9 @@ export function SettingsPage() {
                       {slot.startAtClosing ? (
                         <Input
                           id={`slot-start-off-${idx}`}
-                          label="Début (déc. h)"
+                          label="Début (ferm. ±h)"
                           type="number"
-                          step={0.5}
+                          step={1}
                           value={slot.startTime}
                           onChange={(e) => patch({ startTime: Number(e.target.value) })}
                         />
@@ -481,9 +489,9 @@ export function SettingsPage() {
                       {slot.endAtClosing ? (
                         <Input
                           id={`slot-end-off-${idx}`}
-                          label="Fin (déc. h)"
+                          label="Fin (ferm. ±h)"
                           type="number"
-                          step={0.5}
+                          step={1}
                           value={slot.endTime}
                           onChange={(e) => patch({ endTime: Number(e.target.value) })}
                         />
@@ -532,7 +540,7 @@ export function SettingsPage() {
               )}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              « = fermeture du jour » adapte automatiquement le créneau à l'heure de fermeture réelle (23h en semaine, 21h le dimanche, selon tes réglages plus haut). Le décalage permet d'aller au-delà : ex. décalage +1 = 1h après la fermeture.
+              « = fermeture du jour » adapte automatiquement le créneau à l'heure de fermeture réelle ({formatDecimalHour(closingTimeWeek)} en semaine, {formatDecimalHour(closingTimeSunday)} le dimanche, selon tes réglages plus haut). Le décalage est en heures par rapport à la fermeture : <strong>0</strong> = pile à la fermeture, <strong>-1</strong> = 1h avant, <strong>+1</strong> = 1h après. Ex. « Fermeture (dernière heure) » = début -1, fin 0.
             </p>
           </div>
 
@@ -545,4 +553,10 @@ export function SettingsPage() {
       </Card>
     </div>
   )
+}
+
+function formatDecimalHour(t: number): string {
+  const h = Math.floor(t)
+  const m = Math.round((t - h) * 60)
+  return `${h}h${m > 0 ? String(m).padStart(2, '0') : ''}`
 }

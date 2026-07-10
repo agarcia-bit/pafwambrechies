@@ -115,9 +115,9 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
   function countForSlot(dayEntries: { startTime: number; endTime: number; employeeId: string }[], start: number, end: number) {
     // Point unique (start == end) : présent = quelqu'un dont le shift couvre ce point.
     if (end <= start) {
-      return dayEntries.filter((e) => e.startTime <= start && e.endTime > start)
+      return dayEntries.filter((e) => e.startTime <= start && e.endTime >= start)
     }
-    // Chevauchement classique : présent si son shift chevauche la fenêtre [start, end)
+    // Chevauchement : présent si son shift chevauche la fenêtre [start, end)
     return dayEntries.filter((e) => e.startTime < end && e.endTime > start)
   }
 

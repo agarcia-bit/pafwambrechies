@@ -51,7 +51,7 @@ export const DEFAULT_SERVICE_SLOTS: ServiceSlot[] = [
   { key: 'midi', label: 'Midi 11-15', startTime: 11, endTime: 15 },
   { key: 'aprem', label: 'A-midi 15-18', startTime: 15, endTime: 18 },
   { key: 'soir', label: 'Soir 18-ferm.', startTime: 18, endTime: 0, endAtClosing: true },
-  { key: 'fermeture', label: 'Fermeture', startTime: 0, endTime: 1, startAtClosing: true, endAtClosing: true },
+  { key: 'fermeture', label: 'Fermeture (dern. h)', startTime: -1, endTime: 0, startAtClosing: true, endAtClosing: true },
 ]
 
 export const DEFAULT_TENANT_RULES: TenantRules = {
