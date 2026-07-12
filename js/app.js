@@ -37,9 +37,17 @@ async function applyTenantBranding() {
       document.querySelectorAll('.auth-logo img, .header-logo-img').forEach(el => {
         if (el.getAttribute('alt') !== null) el.setAttribute('alt', name);
       });
+      // Auth screen footer line — replaces "Application réservée aux adhérents PAF Wambrechies".
+      document.querySelectorAll('.auth-footer').forEach(el => {
+        el.textContent = 'Application réservée aux adhérents ' + name;
+      });
     }
     if (tagline) {
       document.querySelectorAll('.header-sub').forEach(el => el.textContent = tagline);
+      // Login screen sub-heading (only the auth-screen, not signup / set-password
+      // whose auth-sub carries a contextual instruction, not the brand tagline).
+      const authSub = document.querySelector('#auth-screen .auth-sub');
+      if (authSub) authSub.textContent = tagline;
     }
     if (color) {
       document.documentElement.style.setProperty('--accent', color);
