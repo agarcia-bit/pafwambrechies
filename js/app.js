@@ -25,11 +25,12 @@ async function applyTenantBranding() {
     const { data, error } = await sb.rpc('get_public_branding', { p_slug: TENANT_SLUG });
     if (error || !data) return;
 
-    const name    = (data.tenant_name          || '').trim();
-    const tagline = (data.tenant_tagline       || '').trim();
-    const color   = (data.tenant_primary_color || '').trim();
-    const logo    = (data.tenant_logo_url      || '').trim();
-    const bg      = (data.tenant_login_bg_url  || '').trim();
+    const name      = (data.tenant_name            || '').trim();
+    const tagline   = (data.tenant_tagline         || '').trim();
+    const color     = (data.tenant_primary_color   || '').trim();
+    const secondary = (data.tenant_secondary_color || '').trim();
+    const logo      = (data.tenant_logo_url        || '').trim();
+    const bg        = (data.tenant_login_bg_url    || '').trim();
 
     if (name) {
       document.title = name;
@@ -50,8 +51,11 @@ async function applyTenantBranding() {
       if (authSub) authSub.textContent = tagline;
     }
     if (color) {
-      document.documentElement.style.setProperty('--accent', color);
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color);
+      document.documentElement.style.setProperty('--primary', color);
+    }
+    if (secondary) {
+      document.documentElement.style.setProperty('--accent', secondary);
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', secondary);
     }
     if (logo) {
       document.querySelectorAll('.auth-logo img, .header-logo-img').forEach(el => {
@@ -1691,6 +1695,7 @@ const SETTINGS_KEYS = [
   'tenant_name',
   'tenant_tagline',
   'tenant_primary_color',
+  'tenant_secondary_color',
   'tenant_logo_url',
   'tenant_login_bg_url',
 ];
@@ -1733,8 +1738,12 @@ async function renderAdminSettings(el) {
           <input type="text" id="admin-tenant-tagline" data-key="tenant_tagline" value="${escHtml(map.tenant_tagline)}" placeholder="Espace adhérents" />
         </div>
         <div class="form-group">
-          <label for="admin-tenant-color">Couleur principale</label>
+          <label for="admin-tenant-color">Couleur principale <span class="form-hint">(boutons, onglets)</span></label>
           <input type="color" id="admin-tenant-color" data-key="tenant_primary_color" value="${escHtml(map.tenant_primary_color || '#2E3192')}" style="height:44px;padding:4px" />
+        </div>
+        <div class="form-group">
+          <label for="admin-tenant-color2">Couleur secondaire <span class="form-hint">(en-tête, accents)</span></label>
+          <input type="color" id="admin-tenant-color2" data-key="tenant_secondary_color" value="${escHtml(map.tenant_secondary_color || '#E84528')}" style="height:44px;padding:4px" />
         </div>
         <div class="form-group">
           <label for="admin-tenant-logo">URL du logo <span class="form-hint">(carré, PNG/SVG)</span></label>

@@ -1,10 +1,15 @@
 /* ── CSS Custom Properties ──────────────────────────────────────────────── */
 :root {
-  --primary:        #2E3192;  /* PAF navy */
-  --primary-dark:   #1E2070;
-  --primary-light:  #EAEBF8;
-  --accent:         #E84528;  /* PAF orange-red */
-  --accent-light:   #FDEEE9;
+  /* Tenant-driven palette. --primary and --accent are overwritten at runtime
+     by applyTenantBranding() from the tenant's tenant_primary_color and
+     tenant_secondary_color settings; the -dark and -light variants derive
+     from them via color-mix() so hover and tinted states stay in sync
+     without extra config. */
+  --primary:        #2E3192;  /* PAF navy — default */
+  --primary-dark:   color-mix(in srgb, var(--primary), black 20%);
+  --primary-light:  color-mix(in srgb, var(--primary), white 88%);
+  --accent:         #E84528;  /* PAF orange-red — default */
+  --accent-light:   color-mix(in srgb, var(--accent), white 90%);
   --paf-blue:       #4ABDE8;  /* PAF sky blue */
   --paf-gold:       #F5A020;  /* PAF gold */
   --success:        #16A34A;
@@ -50,14 +55,16 @@ body {
   left: 0;
   right: 0;
   z-index: 100;
-  background: linear-gradient(135deg, #E84528 0%, #C43520 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent), black 15%) 100%);
   height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
   padding-top: env(safe-area-inset-top, 0px);
-  box-shadow: 0 2px 12px rgba(232,69,40,.45);
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--accent), transparent 55%);
   border-bottom: 3px solid transparent;
   background-clip: padding-box, border-box;
   background-origin: padding-box, border-box;
-  background-image: linear-gradient(135deg, #E84528 0%, #C43520 100%), linear-gradient(90deg, #2E3192, #E84528, #4ABDE8, #F5A020);
+  background-image:
+    linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent), black 15%) 100%),
+    linear-gradient(90deg, var(--primary), var(--accent), #4ABDE8, #F5A020);
   overflow: hidden;
   -webkit-transform: translateZ(0);
 }
@@ -596,8 +603,8 @@ body {
   transition: background .15s, color .15s; -webkit-tap-highlight-color: transparent;
 }
 .idea-like-btn:hover, .idea-comment-toggle:hover { background: #F0F4F8; }
-.idea-like-btn.liked { color: #E84528; }
-.idea-like-btn.liked svg { fill: #E84528; stroke: #E84528; }
+.idea-like-btn.liked { color: var(--accent); }
+.idea-like-btn.liked svg { fill: var(--accent); stroke: var(--accent); }
 .idea-comments { margin-top: 10px; padding-top: 8px; border-top: 1px solid #E5E7EB; }
 .comment { padding: 5px 0; font-size: .84rem; display: flex; align-items: flex-start; gap: 6px; }
 .comment-author { font-weight: 700; color: #1F2937; flex-shrink: 0; }
@@ -614,10 +621,10 @@ body {
   flex: 1; padding: 8px 12px; border: 1.5px solid #E5E7EB;
   border-radius: 20px; font-size: .85rem; outline: none; font-family: inherit;
 }
-.comment-input:focus { border-color: #2E3192; }
+.comment-input:focus { border-color: var(--primary); }
 .comment-submit {
   width: 36px; height: 36px; border-radius: 50%;
-  background: #E84528; color: white; border: none; flex-shrink: 0;
+  background: var(--accent); color: white; border: none; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
 
