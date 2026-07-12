@@ -14,19 +14,19 @@
 const fs   = require('fs');
 const path = require('path');
 
-const DEFAULT_URL = 'https://ancwbfyjzaebxahtlqkm.supabase.co';
-const DEFAULT_KEY = 'sb_publishable_jCDrtwqzqjbsq0NEIwUbPQ_EFeoFaDh';
+const DEFAULT_URL   = 'https://ancwbfyjzaebxahtlqkm.supabase.co';
+const DEFAULT_KEY   = 'sb_publishable_jCDrtwqzqjbsq0NEIwUbPQ_EFeoFaDh';
+const DEFAULT_SLUG  = 'paf-wambrechies';
 
-const url = process.env.SUPABASE_URL      || DEFAULT_URL;
-const key = process.env.SUPABASE_ANON_KEY || DEFAULT_KEY;
-
-const usingDefaults =
-  url === DEFAULT_URL || key === DEFAULT_KEY;
+const url  = process.env.SUPABASE_URL      || DEFAULT_URL;
+const key  = process.env.SUPABASE_ANON_KEY || DEFAULT_KEY;
+const slug = process.env.TENANT_SLUG       || DEFAULT_SLUG;
 
 const body = `/* Generated at build time by scripts/generate-config.js. Do not edit by hand. */
 window.__PAF_CONFIG__ = {
   SUPABASE_URL: ${JSON.stringify(url)},
-  SUPABASE_ANON_KEY: ${JSON.stringify(key)}
+  SUPABASE_ANON_KEY: ${JSON.stringify(key)},
+  TENANT_SLUG: ${JSON.stringify(slug)}
 };
 `;
 
@@ -34,8 +34,4 @@ const out = path.join(__dirname, '..', 'js', 'config.js');
 fs.writeFileSync(out, body);
 
 console.log('[generate-config] Wrote', out);
-if (usingDefaults) {
-  console.log('[generate-config] Note: using PAF Wambrechies defaults (env vars not fully set).');
-} else {
-  console.log('[generate-config] Loaded SUPABASE_URL from env:', url);
-}
+console.log('[generate-config] TENANT_SLUG =', slug, slug === DEFAULT_SLUG ? '(default)' : '(from env)');

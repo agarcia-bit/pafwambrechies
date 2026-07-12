@@ -1,98 +1,107 @@
 # Créer un nouveau tenant (nouvelle asso cliente)
 
-Compte cette procédure environ **20 à 30 minutes** au total. Elle suit toujours la
-même séquence : nouveau projet Supabase → SQL de bootstrap → clone du site
-Netlify → variables d'environnement → configuration finale depuis l'admin.
+Compte cette procédure environ **5 à 10 minutes** par nouveau tenant. Toutes les
+assos partagent la même base Supabase — chaque tenant est cloisonné par un
+`tenant_id` posé automatiquement partout via RLS. Il te faut donc juste :
 
-Aucune modification de code n'est nécessaire.
+1. Créer une ligne dans la table `tenants` côté Supabase.
+2. Créer un site Netlify avec la variable d'environnement `TENANT_SLUG`.
+3. Créer ton premier compte admin sur cette instance.
 
-## 1) Créer le projet Supabase (~5 min)
+Aucune modification de code.
 
-1. Dashboard Supabase → **New project** dans l'organisation qui facture.
-2. Nom : `paf-<ville>` (ex : `paf-halluin`).
-3. Région : Frankfurt / Paris.
-4. Choisir un mot de passe de base fort et le stocker dans ton gestionnaire.
-5. Une fois le projet prêt, note dans un coin :
-   - **Project URL** (Settings → API → Project URL)
-   - **anon public key** (Settings → API → Project API keys → `anon`)
+## 1) Créer la ligne du tenant (~1 min)
 
-## 2) Exécuter les SQL de bootstrap dans l'ordre (~5 min)
+Dans Supabase → **SQL Editor** → **New query**, colle et adapte :
 
-Dans **SQL Editor → New query**, coller et exécuter chaque fichier suivant, dans
-cet ordre, un par un :
+```sql
+insert into public.tenants (slug, name)
+values ('halluin', 'PAF Halluin');
 
-1. `supabase/schema.sql` — tables principales + RLS de base
-2. `supabase/actus_interactions.sql` — likes + commentaires actus
-3. `supabase/storage_annuaire.sql` — bucket photos annuaire
-4. `supabase/admin_policies.sql` — fonction `is_admin()` + policies admin
-5. `supabase/profiles_autocreate.sql` — trigger de création automatique de profil
-6. `supabase/comments_admin_delete.sql` — modération commentaires
-7. `supabase/signup_code.sql` — table `app_settings` + code d'inscription initial
-8. `supabase/tenant_branding.sql` — clés de branding + `get_public_branding()`
+insert into public.app_settings (tenant_id, key, value)
+select id, k, v
+from public.tenants,
+  (values
+    ('signup_code',           'HALLUIN2026'),
+    ('tenant_name',            'PAF Halluin'),
+    ('tenant_tagline',         'Espace adhérents'),
+    ('tenant_primary_color',   '#2E3192'),
+    ('tenant_logo_url',        ''),
+    ('tenant_login_bg_url',    '')
+  ) as s(k, v)
+where slug = 'halluin'
+on conflict (tenant_id, key) do nothing;
+```
 
-Chacun est idempotent : si tu le relances par erreur, ça ne casse rien.
+Le `slug` doit être court, en minuscules, sans espaces (ex. `halluin`,
+`marcq`, `bondues`). C'est lui qui identifie le tenant dans l'app.
 
-## 3) Désactiver la confirmation email (~1 min)
+## 2) Créer le site Netlify (~3 min)
 
-Dashboard Supabase → **Authentication → Sign In / Providers → Email** →
-décocher **Confirm email**. Sans ça, les nouveaux inscrits doivent confirmer
-leur email avant de pouvoir se connecter.
-
-## 4) Cloner le site Netlify (~5 min)
-
-Deux options :
-
-**A. Nouveau site depuis le même repo** (recommandé)
 1. Netlify → **Add new site → Import an existing project → GitHub** →
    sélectionner `agarcia-bit/pafwambrechies`.
-2. Branch to deploy : `main`.
-3. Build command : `node scripts/generate-config.js` (déjà dans `netlify.toml`).
-4. Publish directory : `.` (déjà dans `netlify.toml`).
-5. Nommer le site : ex. `paf-halluin.netlify.app`.
+2. Branch : `main`. Build command et publish directory : déjà configurés
+   dans `netlify.toml`.
+3. Nommer le site : ex. `paf-halluin.netlify.app`.
+4. Une fois créé → **Site settings → Environment variables** :
 
-**B. Fork du repo si le client veut un dépôt à lui**
-Fork GitHub puis pointer un nouveau site Netlify dessus.
+| Clé            | Valeur    |
+|----------------|-----------|
+| `TENANT_SLUG`  | `halluin` |
 
-## 5) Renseigner les variables d'environnement (~2 min)
+Pas besoin de renseigner `SUPABASE_URL` ni `SUPABASE_ANON_KEY` — ils sont
+partagés et hérités des valeurs par défaut du build script.
 
-Dans **Site settings → Environment variables** du nouveau site Netlify :
+5. **Deploys → Trigger deploy → Deploy site** pour reconstruire avec le
+   nouveau `TENANT_SLUG`.
 
-| Clé                  | Valeur                                             |
-|----------------------|----------------------------------------------------|
-| `SUPABASE_URL`       | Project URL du nouveau projet Supabase             |
-| `SUPABASE_ANON_KEY`  | anon public key du nouveau projet Supabase         |
+## 3) Créer le premier admin de ce tenant (~3 min)
 
-Puis **Deploys → Trigger deploy → Deploy site** pour reconstruire avec les nouvelles valeurs.
+1. Ouvre `paf-halluin.netlify.app` dans un navigateur privé (pour ne pas
+   te mélanger avec ta session PAF Wambrechies).
+2. Clique **Créer mon compte** → renseigne tes coordonnées + le code
+   d'inscription que tu as mis dans le SQL (`HALLUIN2026` dans l'exemple).
+3. Une fois inscrit, va dans Supabase → **Table Editor → profiles** :
+   - Filtrer par email ou par `tenant_id`
+   - Passer `role` de `adherent` à `admin`
+4. Retourne dans l'app, déconnexion / reconnexion → tu vois l'onglet Admin.
 
-## 6) Configurer le branding depuis l'app (~5 min)
+## 4) Personnaliser depuis Admin → Réglages (~2 min)
 
-1. Ouvre le nouveau site (`paf-<ville>.netlify.app`).
-2. Crée-toi un compte via **Créer mon compte** (le code par défaut est `PAF2026`).
-3. Dans Supabase → Table Editor → `profiles`, mets ton `role` à `admin`.
-4. Reconnecte-toi dans l'app.
-5. Va dans l'onglet **Admin → Réglages** et renseigne :
-   - Nom de l'association
-   - Sous-titre
-   - Couleur principale
-   - URL du logo (à héberger dans le bucket Supabase Storage ou ailleurs)
-   - URL de l'image de fond du login (optionnel)
-   - Code d'inscription à communiquer aux futurs adhérents
+Dans l'onglet **Admin → Réglages** de ta nouvelle instance :
+- Nom de l'association
+- Sous-titre
+- Couleur principale
+- URL du logo (à héberger n'importe où d'accessible en HTTPS)
+- URL de l'image de fond du login (optionnel)
+- Code d'inscription
 
-Le nom apparaît dans l'onglet du navigateur, l'en-tête, et sur le login. La
-couleur s'applique partout via la variable `--accent`.
+L'appliquette applique tout immédiatement (nom dans l'onglet du navigateur,
+couleur des boutons, logo dans l'en-tête, etc.).
 
-## 7) Communiquer le code au client (~1 min)
+## 5) Communiquer au client
 
-Dans WhatsApp / email : « L'appli est prête à `https://paf-<ville>.netlify.app`.
+WhatsApp / email : « L'appli est prête à `https://paf-halluin.netlify.app`.
 Pour créer votre compte, cliquez sur *Créer mon compte* et utilisez le code
-`XXXX`. »
+`HALLUIN2026`. »
 
 ## Facultatif — Domaine custom
 
 Netlify → Domain settings → Add custom domain. Compter 12€/an refacturés au
-client si on lui prend son propre nom de domaine.
+client si tu prends un nom de domaine pour lui.
 
 ## Facultatif — Publication Play Store / App Store
 
-Cf. procédure séparée (à venir). Le tenant est déjà utilisable comme PWA
-installable "Ajouter à l'écran d'accueil" sans passer par les stores.
+Compte séparé, procédure à documenter à part. Le tenant est déjà utilisable
+comme PWA installable "Ajouter à l'écran d'accueil" sans passer par les
+stores.
+
+## Architecture rappel
+
+- **1 Supabase** partagé (`ancwbfyjzaebxahtlqkm.supabase.co`).
+- **N Netlify sites**, un par tenant, tous pointant sur le même code.
+- Le tenant est identifié par la variable d'environnement `TENANT_SLUG`
+  au build time, lue au boot par `applyTenantBranding()` et propagée
+  dans chaque écriture DB via `withTenant()`.
+- Les policies RLS de Postgres garantissent qu'un tenant ne peut ni lire
+  ni écrire dans les données d'un autre.
