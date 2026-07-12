@@ -73,6 +73,7 @@ async function applyTenantBranding() {
 let currentUser = null;
 let currentProfile = null; // { prenom, nom } depuis la table profiles
 let isAdmin = false;
+let isBureauOrAdmin = false;
 let appInitialized = false;
 
 /* ============================================================
@@ -475,15 +476,21 @@ async function loadProfile() {
   const { data } = await sb.from('profiles').select('prenom, nom, role, tenant_id').eq('id', currentUser.id).single();
   currentProfile = data || null;
   isAdmin = data?.role === 'admin';
+  isBureauOrAdmin = data?.role === 'admin' || data?.role === 'bureau';
 }
 
 async function showApp() {
   document.getElementById('auth-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   await loadProfile();
+  const bottomNav = document.querySelector('.bottom-nav');
+  if (isBureauOrAdmin) {
+    document.getElementById('nav-bureau').classList.remove('hidden');
+    bottomNav.classList.add('bureau-mode');
+  }
   if (isAdmin) {
     document.getElementById('nav-admin').classList.remove('hidden');
-    document.querySelector('.bottom-nav').classList.add('admin-mode');
+    bottomNav.classList.add('admin-mode');
   }
   initApp();
 }
@@ -641,6 +648,344 @@ async function logout() {
 window.logout = logout;
 
 /* ============================================================
+   BUREAU — Pilotage (actions + taches, gated bureau|admin)
+   ============================================================ */
+const BUREAU_STATUTS_ACTION = ['À faire', 'En cours', 'Terminé', 'Bloqué'];
+const BUREAU_STATUTS_TACHE  = ['À faire', 'En cours', 'Terminé'];
+const BUREAU_PRIORITES      = ['Haute', 'Moyenne', 'Basse'];
+
+let bureauSub          = 'dashboard';
+let bureauActions      = [];
+let bureauTaches       = [];
+let bureauMembers      = [];   // profiles of same tenant with role bureau|admin
+let bureauShowArchived = false;
+let bureauShowDone     = false; // "Todo liste équipe" toggle
+
+window.showBureauSub = function(sub) {
+  bureauSub = sub;
+  document.querySelectorAll('.bureau-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.sub === sub)
+  );
+  renderBureau();
+};
+
+async function loadBureauSub() {
+  const el = document.getElementById('bureau-content');
+  if (!el) return;
+  el.innerHTML = '<div class="loading">Chargement…</div>';
+
+  const tenantId = currentProfile?.tenant_id;
+  if (!tenantId) { el.innerHTML = '<div class="empty-state">Profil incomplet.</div>'; return; }
+
+  const [actionsRes, tachesRes, membersRes] = await Promise.all([
+    sb.from('actions').select('*').order('date_action', { ascending: true }),
+    sb.from('taches').select('*'),
+    sb.from('profiles').select('id, prenom, nom, role').in('role', ['bureau', 'admin']).order('prenom')
+  ]);
+  bureauActions = actionsRes.data || [];
+  bureauTaches  = tachesRes.data  || [];
+  bureauMembers = membersRes.data || [];
+
+  renderBureau();
+}
+
+function bureauMemberLabel(id) {
+  if (!id) return 'Non assigné';
+  const m = bureauMembers.find(x => x.id === id);
+  if (!m) return 'Inconnu';
+  return [m.prenom, m.nom].filter(Boolean).join(' ') || m.prenom || 'Membre';
+}
+
+function bureauMemberInitials(id) {
+  if (!id) return '?';
+  const m = bureauMembers.find(x => x.id === id);
+  if (!m) return '?';
+  const first = (m.prenom || m.nom || '?').trim().charAt(0);
+  return first.toUpperCase() || '?';
+}
+
+function bureauMemberOptions(selectedId) {
+  const opts = ['<option value="">— Non assigné —</option>'];
+  bureauMembers.forEach(m => {
+    const label = escHtml([m.prenom, m.nom].filter(Boolean).join(' ') || m.prenom || 'Membre');
+    opts.push(`<option value="${m.id}" ${m.id === selectedId ? 'selected' : ''}>${label}</option>`);
+  });
+  return opts.join('');
+}
+
+function bureauStatutOptions(list, current) {
+  return list.map(s => `<option value="${escHtml(s)}" ${s === current ? 'selected' : ''}>${escHtml(s)}</option>`).join('');
+}
+
+function bureauFormatDate(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
+}
+
+function bureauIsOverdue(iso, statut) {
+  if (!iso || statut === 'Terminé') return false;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return new Date(iso) < today;
+}
+
+function tachesForAction(actionId) {
+  return bureauTaches
+    .filter(t => t.action_id === actionId)
+    .sort((a, b) => {
+      const ea = a.echeance || '9999-12-31';
+      const eb = b.echeance || '9999-12-31';
+      return ea.localeCompare(eb);
+    });
+}
+
+/* ── Render dispatcher ─────────────────────────────────────────────── */
+function renderBureau() {
+  if (bureauSub === 'dashboard')     renderBureauDashboard();
+  else if (bureauSub === 'actions')  renderBureauActions();
+  else if (bureauSub === 'equipe')   renderBureauEquipe();
+}
+
+/* ── 1. Dashboard "À venir" ─────────────────────────────────────────── */
+function renderBureauDashboard() {
+  const el = document.getElementById('bureau-content');
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const list = bureauActions
+    .filter(a => a.statut !== 'Terminé' && a.date_action >= todayISO)
+    .sort((a, b) => a.date_action.localeCompare(b.date_action))
+    .slice(0, 5);
+
+  if (!list.length) {
+    el.innerHTML = '<div class="empty-state">Aucune action à venir. Créez-en une dans l\'onglet Actions.</div>';
+    return;
+  }
+
+  el.innerHTML = list.map(a => {
+    const openTaches = tachesForAction(a.id).filter(t => t.statut !== 'Terminé');
+    return `
+      <div class="bureau-card">
+        <div class="bureau-card-head">
+          <span class="bureau-date">${bureauFormatDate(a.date_action)}</span>
+          <span class="bureau-emoji">${escHtml(a.emoji || '')}</span>
+          <span class="bureau-titre">${escHtml(a.titre)}</span>
+          <span class="bureau-pastille" title="${escHtml(bureauMemberLabel(a.referent))}">${escHtml(bureauMemberInitials(a.referent))}</span>
+          <span class="bureau-statut bureau-statut-${a.statut.toLowerCase().replace(/\W/g,'')}">${escHtml(a.statut)}</span>
+        </div>
+        ${openTaches.length ? `
+          <ul class="bureau-taches-mini">
+            ${openTaches.map(t => `
+              <li class="${bureauIsOverdue(t.echeance, t.statut) ? 'overdue' : ''}">
+                <span class="tache-libelle">${escHtml(t.libelle)}</span>
+                <span class="tache-meta">${bureauFormatDate(t.echeance)} · ${escHtml(bureauMemberLabel(t.responsable))}</span>
+              </li>`).join('')}
+          </ul>` : ''}
+      </div>`;
+  }).join('');
+}
+
+/* ── 2. Actions — liste éditable avec tâches imbriquées ─────────────── */
+function renderBureauActions() {
+  const el = document.getElementById('bureau-content');
+  const filtered = bureauActions
+    .filter(a => bureauShowArchived ? a.statut === 'Terminé' : a.statut !== 'Terminé')
+    .sort((a, b) => a.date_action.localeCompare(b.date_action));
+
+  el.innerHTML = `
+    <div class="bureau-toolbar">
+      <button class="btn-new-idea" onclick="bureauNewAction()">+ Nouvelle action</button>
+      <div class="bureau-toggle">
+        <button class="chip ${!bureauShowArchived ? 'active' : ''}" onclick="bureauSetArchived(false)">En cours</button>
+        <button class="chip ${bureauShowArchived  ? 'active' : ''}" onclick="bureauSetArchived(true)">Terminées</button>
+      </div>
+    </div>
+    ${filtered.length ? filtered.map(a => renderActionRow(a)).join('')
+                     : '<div class="empty-state">Aucune action ' + (bureauShowArchived ? 'terminée' : 'en cours') + '.</div>'}
+  `;
+}
+
+function renderActionRow(a) {
+  const taches = tachesForAction(a.id);
+  return `
+    <div class="bureau-action-row" data-action-id="${a.id}">
+      <div class="bureau-action-head">
+        <input type="text" class="ba-emoji" value="${escHtml(a.emoji || '')}" placeholder="🎉" maxlength="4" onchange="bureauUpdateAction(${a.id}, 'emoji', this.value.trim() || null)" />
+        <input type="text" class="ba-titre" value="${escHtml(a.titre)}" placeholder="Titre" onchange="bureauUpdateAction(${a.id}, 'titre', this.value.trim())" />
+        <input type="date" class="ba-date" value="${escHtml(a.date_action)}" onchange="bureauUpdateAction(${a.id}, 'date_action', this.value)" />
+        <select class="ba-referent" onchange="bureauUpdateAction(${a.id}, 'referent', this.value || null)">${bureauMemberOptions(a.referent)}</select>
+        <select class="ba-statut" onchange="bureauUpdateAction(${a.id}, 'statut', this.value)">${bureauStatutOptions(BUREAU_STATUTS_ACTION, a.statut)}</select>
+        <input type="number" class="ba-budget" value="${a.budget != null ? a.budget : ''}" placeholder="€" onchange="bureauUpdateAction(${a.id}, 'budget', this.value === '' ? null : parseInt(this.value, 10))" />
+        <button class="ba-del" onclick="bureauDeleteAction(${a.id})" aria-label="Supprimer l'action">🗑️</button>
+      </div>
+      <div class="bureau-taches-list">
+        ${taches.map(t => renderTacheRow(t, a)).join('')}
+        <button class="ba-add-tache" onclick="bureauNewTache(${a.id})">+ Nouvelle tâche</button>
+      </div>
+    </div>`;
+}
+
+function renderTacheRow(t, action) {
+  const done = t.statut === 'Terminé';
+  const overdue = bureauIsOverdue(t.echeance, t.statut);
+  return `
+    <div class="bureau-tache-row ${done ? 'done' : ''} ${overdue ? 'overdue' : ''}" data-tache-id="${t.id}">
+      <input type="checkbox" ${done ? 'checked' : ''} onchange="bureauToggleTacheDone(${t.id}, this.checked)" />
+      <input type="text" class="bt-libelle" value="${escHtml(t.libelle)}" onchange="bureauUpdateTache(${t.id}, 'libelle', this.value.trim())" />
+      <select class="bt-responsable" onchange="bureauUpdateTache(${t.id}, 'responsable', this.value || null)">${bureauMemberOptions(t.responsable)}</select>
+      <input type="date" class="bt-echeance" value="${escHtml(t.echeance || '')}" onchange="bureauUpdateTache(${t.id}, 'echeance', this.value || null)" />
+      <select class="bt-priorite" onchange="bureauUpdateTache(${t.id}, 'priorite', this.value)">${bureauStatutOptions(BUREAU_PRIORITES, t.priorite)}</select>
+      <button class="bt-del" onclick="bureauDeleteTache(${t.id})" aria-label="Supprimer la tâche">🗑️</button>
+    </div>`;
+}
+
+/* ── 3. Todo liste équipe ──────────────────────────────────────────── */
+function renderBureauEquipe() {
+  const el = document.getElementById('bureau-content');
+  const groups = [];
+  bureauMembers.forEach(m => {
+    const actions = bureauActions.filter(a => a.referent === m.id);
+    const taches  = bureauTaches.filter(t => t.responsable === m.id);
+    groups.push({ member: m, actions, taches });
+  });
+  // "Non assigné"
+  groups.push({
+    member: null,
+    actions: bureauActions.filter(a => !a.referent),
+    taches:  bureauTaches.filter(t => !t.responsable),
+  });
+
+  const filterDone = (rows) => rows.filter(r => bureauShowDone ? true : r.statut !== 'Terminé');
+
+  el.innerHTML = `
+    <div class="bureau-toolbar">
+      <button class="chip ${bureauShowDone ? 'active' : ''}" onclick="bureauSetShowDone(!bureauShowDone)">
+        ${bureauShowDone ? 'Masquer les terminés' : 'Afficher les terminés'}
+      </button>
+    </div>
+    ${groups.map(g => {
+      const actions = filterDone(g.actions).sort((a, b) => a.date_action.localeCompare(b.date_action));
+      const taches  = filterDone(g.taches).sort((a, b) => (a.echeance || '9999').localeCompare(b.echeance || '9999'));
+      if (!actions.length && !taches.length) return '';
+      const label = g.member ? escHtml(bureauMemberLabel(g.member.id)) : 'Non assigné';
+      return `
+        <div class="bureau-card bureau-equipe-card">
+          <div class="bureau-equipe-head">
+            <span class="bureau-pastille">${g.member ? escHtml(bureauMemberInitials(g.member.id)) : '?'}</span>
+            <strong>${label}</strong>
+          </div>
+          ${actions.length ? `<div class="bureau-equipe-sub">Actions référentes</div>
+            <ul class="bureau-taches-mini">
+              ${actions.map(a => `
+                <li class="${bureauIsOverdue(a.date_action, a.statut) ? 'overdue' : ''}">
+                  <span class="tache-libelle">${escHtml(a.emoji || '')} ${escHtml(a.titre)}</span>
+                  <span class="tache-meta">${bureauFormatDate(a.date_action)} · ${escHtml(a.statut)}</span>
+                </li>`).join('')}
+            </ul>` : ''}
+          ${taches.length ? `<div class="bureau-equipe-sub">Tâches assignées</div>
+            <ul class="bureau-taches-mini">
+              ${taches.map(t => `
+                <li class="${bureauIsOverdue(t.echeance, t.statut) ? 'overdue' : ''}">
+                  <span class="tache-libelle">${escHtml(t.libelle)}</span>
+                  <span class="tache-meta">${bureauFormatDate(t.echeance)} · ${escHtml(t.statut)}</span>
+                </li>`).join('')}
+            </ul>` : ''}
+        </div>`;
+    }).join('') || '<div class="empty-state">Aucune action ni tâche.</div>'}
+  `;
+}
+
+/* ── Handlers ──────────────────────────────────────────────────────── */
+window.bureauSetArchived = function(archived) {
+  bureauShowArchived = archived;
+  renderBureau();
+};
+window.bureauSetShowDone = function(show) {
+  bureauShowDone = show;
+  renderBureau();
+};
+
+window.bureauNewAction = async function() {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, error } = await sb.from('actions').insert(withTenant({
+    titre: 'Nouvelle action',
+    date_action: today,
+    statut: 'À faire'
+  })).select().single();
+  if (error) { showToast('Erreur : ' + error.message, 'error'); return; }
+  bureauActions.push(data);
+  renderBureau();
+};
+
+window.bureauUpdateAction = async function(id, field, value) {
+  const idx = bureauActions.findIndex(a => a.id === id);
+  if (idx === -1) return;
+  const prev = bureauActions[idx][field];
+  bureauActions[idx] = { ...bureauActions[idx], [field]: value };
+  const { error } = await sb.from('actions').update({ [field]: value }).eq('id', id);
+  if (error) {
+    bureauActions[idx][field] = prev;
+    showToast('Erreur : ' + error.message, 'error');
+    renderBureau();
+    return;
+  }
+  // Referent inheritance: taches without responsable follow the new referent.
+  if (field === 'referent') {
+    bureauTaches.forEach(t => {
+      if (t.action_id === id && !t.responsable) t.responsable = value;
+    });
+  }
+  if (field === 'statut') renderBureau();
+};
+
+window.bureauDeleteAction = async function(id) {
+  if (!confirm('Supprimer cette action et toutes ses tâches ?')) return;
+  const { error } = await sb.from('actions').delete().eq('id', id);
+  if (error) { showToast('Erreur : ' + error.message, 'error'); return; }
+  bureauActions = bureauActions.filter(a => a.id !== id);
+  bureauTaches  = bureauTaches.filter(t => t.action_id !== id);
+  renderBureau();
+};
+
+window.bureauNewTache = async function(actionId) {
+  const parent = bureauActions.find(a => a.id === actionId);
+  const payload = withTenant({
+    action_id: actionId,
+    libelle: 'Nouvelle tâche',
+    statut: 'À faire',
+    priorite: 'Moyenne',
+    responsable: parent?.referent || null,
+  });
+  const { data, error } = await sb.from('taches').insert(payload).select().single();
+  if (error) { showToast('Erreur : ' + error.message, 'error'); return; }
+  bureauTaches.push(data);
+  renderBureau();
+};
+
+window.bureauUpdateTache = async function(id, field, value) {
+  const idx = bureauTaches.findIndex(t => t.id === id);
+  if (idx === -1) return;
+  const prev = bureauTaches[idx][field];
+  bureauTaches[idx] = { ...bureauTaches[idx], [field]: value };
+  const { error } = await sb.from('taches').update({ [field]: value }).eq('id', id);
+  if (error) {
+    bureauTaches[idx][field] = prev;
+    showToast('Erreur : ' + error.message, 'error');
+    renderBureau();
+  }
+};
+
+window.bureauToggleTacheDone = async function(id, done) {
+  await window.bureauUpdateTache(id, 'statut', done ? 'Terminé' : 'À faire');
+  renderBureau();
+};
+
+window.bureauDeleteTache = async function(id) {
+  const { error } = await sb.from('taches').delete().eq('id', id);
+  if (error) { showToast('Erreur : ' + error.message, 'error'); return; }
+  bureauTaches = bureauTaches.filter(t => t.id !== id);
+  renderBureau();
+};
+
+/* ============================================================
    NAVIGATION
    ============================================================ */
 function showSection(id) {
@@ -667,6 +1012,7 @@ function showSection(id) {
     });
   }
   else if (id === 'admin' && isAdmin) loadAdminSub();
+  else if (id === 'bureau' && isBureauOrAdmin) loadBureauSub();
 }
 
 document.querySelectorAll('.nav-item').forEach(btn => {
