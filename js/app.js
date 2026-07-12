@@ -9,12 +9,20 @@
 const PAF_CFG      = (typeof window !== 'undefined' && window.__PAF_CONFIG__) || {};
 const SUPABASE_URL = PAF_CFG.SUPABASE_URL      || 'https://ancwbfyjzaebxahtlqkm.supabase.co';
 const SUPABASE_KEY = PAF_CFG.SUPABASE_ANON_KEY || 'sb_publishable_jCDrtwqzqjbsq0NEIwUbPQ_EFeoFaDh';
+const TENANT_SLUG  = PAF_CFG.TENANT_SLUG       || 'paf-wambrechies';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* Helper used by every write path: shallow-clones the payload and stamps
+   the current user's tenant_id on it. RLS on Supabase double-checks the
+   value, but adding it client-side keeps the intent explicit. */
+function withTenant(payload) {
+  return { ...payload, tenant_id: currentProfile?.tenant_id };
+}
 
 /* ── Tenant branding — fetched at boot from public.get_public_branding() ─── */
 async function applyTenantBranding() {
   try {
-    const { data, error } = await sb.rpc('get_public_branding');
+    const { data, error } = await sb.rpc('get_public_branding', { p_slug: TENANT_SLUG });
     if (error || !data) return;
 
     const name    = (data.tenant_name          || '').trim();
@@ -322,7 +330,7 @@ function bindSignupForm() {
     btn.disabled = true;
     btn.textContent = 'Création…';
 
-    const { data: ok, error: rpcErr } = await sb.rpc('validate_signup_code', { p_code: code });
+    const { data: ok, error: rpcErr } = await sb.rpc('validate_signup_code', { p_slug: TENANT_SLUG, p_code: code });
     if (rpcErr || !ok) {
       errorEl.textContent = 'Code d\'accès invalide. Contactez un administrateur de la PAF.';
       errorEl.classList.remove('hidden');
@@ -334,7 +342,7 @@ function bindSignupForm() {
     const { data, error } = await sb.auth.signUp({
       email,
       password: pwd,
-      options: { data: { prenom, nom } }
+      options: { data: { prenom, nom, tenant_slug: TENANT_SLUG } }
     });
     if (error) {
       let msg = 'Erreur : ' + error.message;
@@ -452,7 +460,7 @@ async function showSetPasswordScreen() {
 
 async function loadProfile() {
   if (!currentUser) return;
-  const { data } = await sb.from('profiles').select('prenom, nom, role').eq('id', currentUser.id).single();
+  const { data } = await sb.from('profiles').select('prenom, nom, role, tenant_id').eq('id', currentUser.id).single();
   currentProfile = data || null;
   isAdmin = data?.role === 'admin';
 }
@@ -838,7 +846,7 @@ async function toggleActuLike(actuId) {
   if (isLiked) {
     await sb.from('actus_likes').delete().eq('actu_id', actuId).eq('user_id', currentUser.id);
   } else {
-    await sb.from('actus_likes').insert({ actu_id: actuId, user_id: currentUser.id });
+    await sb.from('actus_likes').insert(withTenant({ actu_id: actuId, user_id: currentUser.id }));
   }
 }
 window.toggleActuLike = toggleActuLike;
@@ -851,7 +859,7 @@ async function addActuComment(e, actuId) {
   if (!texte) return;
   const prenom = [currentProfile?.prenom, currentProfile?.nom].filter(Boolean).join(' ') || currentUser.email?.split('@')[0] || 'Anonyme';
   const { data: inserted, error } = await sb.from('actus_commentaires')
-    .insert({ actu_id: actuId, user_id: currentUser.id, prenom, texte })
+    .insert(withTenant({ actu_id: actuId, user_id: currentUser.id, prenom, texte }))
     .select('id, user_id, prenom, texte')
     .single();
   if (error || !inserted) return;
@@ -1225,7 +1233,7 @@ async function toggleLike(ideeId) {
   } else {
     const { error } = await sb
       .from('idees_likes')
-      .insert({ idee_id: ideeId, user_id: currentUser.id });
+      .insert(withTenant({ idee_id: ideeId, user_id: currentUser.id }));
     if (error) {
       if (btn) btn.classList.toggle('liked', false);
       if (countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent, 10) - 1);
@@ -1251,7 +1259,7 @@ async function addComment(e, ideeId) {
   const prenom = [currentProfile?.prenom, currentProfile?.nom].filter(Boolean).join(' - ') || currentUser.email?.split('@')[0] || 'Anonyme';
 
   const { data: inserted, error } = await sb.from('idees_commentaires')
-    .insert({ idee_id: ideeId, user_id: currentUser.id, prenom, texte })
+    .insert(withTenant({ idee_id: ideeId, user_id: currentUser.id, prenom, texte }))
     .select('id, user_id, prenom, texte')
     .single();
 
@@ -1344,13 +1352,13 @@ function initIdees() {
     const prenom = [currentProfile?.prenom, currentProfile?.nom].filter(Boolean).join(' - ')
                    || currentUser.email?.split('@')[0] || 'Anonyme';
 
-    const { error } = await sb.from('idees').insert({
+    const { error } = await sb.from('idees').insert(withTenant({
       user_id: currentUser.id,
       prenom,
       categorie,
       titre,
       texte
-    });
+    }));
 
     if (error) { showToast('Erreur lors de l\'enregistrement de l\'idée.', 'error'); return; }
 
@@ -1602,12 +1610,12 @@ async function subscribeToPush() {
     });
     if (!sub || !currentUser) return;
     const json = sub.toJSON();
-    await sb.from('push_subscriptions').upsert({
+    await sb.from('push_subscriptions').upsert(withTenant({
       user_id:  currentUser.id,
       endpoint: json.endpoint,
       p256dh:   json.keys?.p256dh  || null,
       auth:     json.keys?.auth    || null
-    }, { onConflict: 'user_id,endpoint' });
+    }), { onConflict: 'user_id,endpoint' });
   } catch (_) { /* push not supported or VAPID not configured */ }
 }
 
@@ -1736,7 +1744,10 @@ async function renderAdminSettings(el) {
   el.querySelectorAll('form[data-settings-form]').forEach(form => {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      const tenantId = currentProfile?.tenant_id;
+      if (!tenantId) { showToast('Impossible de récupérer le tenant courant.', 'error'); return; }
       const rows = [...form.querySelectorAll('input[data-key]')].map(input => ({
+        tenant_id: tenantId,
         key: input.dataset.key,
         value: input.value.trim(),
         updated_at: new Date().toISOString(),
@@ -1744,7 +1755,7 @@ async function renderAdminSettings(el) {
       const empty = rows.find(r => r.key === 'signup_code' && !r.value);
       if (empty) { showToast('Le code d\'inscription ne peut pas être vide.', 'error'); return; }
       const { error: upErr } = await sb.from('app_settings')
-        .upsert(rows, { onConflict: 'key' });
+        .upsert(rows, { onConflict: 'tenant_id,key' });
       if (upErr) { showToast('Erreur : ' + upErr.message, 'error'); return; }
       showToast('Réglages enregistrés.', 'success');
       applyTenantBranding();
@@ -1798,7 +1809,7 @@ async function renderAdminActus(el) {
     };
     const { error } = editId
       ? await sb.from('actus').update(payload).eq('id', editId)
-      : await sb.from('actus').insert(payload);
+      : await sb.from('actus').insert(withTenant(payload));
     if (error) { showToast('Erreur.', 'error'); return; }
     showToast(editId ? 'Actu mise à jour !' : 'Actu ajoutée !', 'success');
     loadAdminSub();
@@ -1862,7 +1873,7 @@ async function renderAdminOffres(el) {
     };
     const { error } = editId
       ? await sb.from('offres').update(payload).eq('id', editId)
-      : await sb.from('offres').insert(payload);
+      : await sb.from('offres').insert(withTenant(payload));
     if (error) { showToast('Erreur.', 'error'); return; }
     showToast(editId ? 'Offre mise à jour !' : 'Offre ajoutée !', 'success');
     loadAdminSub();
@@ -1934,7 +1945,7 @@ async function renderAdminEvents(el) {
     };
     const { error } = editId
       ? await sb.from('evenements').update(payload).eq('id', editId)
-      : await sb.from('evenements').insert(payload);
+      : await sb.from('evenements').insert(withTenant(payload));
     if (error) { showToast('Erreur.', 'error'); return; }
     showToast(editId ? 'Événement mis à jour !' : 'Événement ajouté !', 'success');
     loadAdminSub();
@@ -2037,7 +2048,7 @@ async function renderAdminAnnuaire(el) {
 
     const { error } = editId
       ? await sb.from('annuaire').update(payload).eq('id', editId)
-      : await sb.from('annuaire').insert({ ...payload, photo_url });
+      : await sb.from('annuaire').insert(withTenant({ ...payload, photo_url }));
     submitBtn.disabled = false; submitBtn.textContent = 'Enregistrer';
     if (error) { showToast('Erreur.', 'error'); return; }
     showToast(editId ? 'Commerçant mis à jour !' : 'Commerçant ajouté !', 'success');
@@ -2144,7 +2155,7 @@ async function renderAdminLiens(el) {
     };
     const { error } = editId
       ? await sb.from('liens').update(payload).eq('id', editId)
-      : await sb.from('liens').insert(payload);
+      : await sb.from('liens').insert(withTenant(payload));
     if (error) { showToast('Erreur.', 'error'); return; }
     showToast(editId ? 'Lien mis à jour !' : 'Lien ajouté !', 'success');
     await loadAdminSub();
