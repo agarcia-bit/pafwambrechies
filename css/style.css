@@ -640,7 +640,139 @@ body {
 .add-to-cal-btn:hover { background: var(--primary-light); opacity: .85; }
 
 /* ── Admin ────────────────────────────────────────────────────────────────── */
-.bottom-nav.admin-mode { grid-template-columns: repeat(7, 1fr); }
+.bottom-nav.bureau-mode { grid-template-columns: repeat(7, 1fr); }
+.bottom-nav.admin-mode  { grid-template-columns: repeat(7, 1fr); }
+.bottom-nav.bureau-mode.admin-mode { grid-template-columns: repeat(8, 1fr); }
+.bureau-tab {
+  flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+  font-size: .8rem; font-weight: 600; font-family: inherit;
+  border: 1.5px solid var(--border); background: var(--card); color: var(--text-muted);
+  cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.bureau-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* ── Bureau content ───────────────────────────────────────────────────── */
+.bureau-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.bureau-toggle { display: flex; gap: 6px; }
+
+.bureau-card {
+  background: var(--card); border-radius: var(--radius-sm);
+  border: 1px solid var(--border); padding: 12px; margin-bottom: 10px;
+}
+.bureau-card-head {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: .9rem;
+}
+.bureau-date { font-weight: 700; color: var(--primary); font-size: .82rem; }
+.bureau-emoji { font-size: 1.2rem; }
+.bureau-titre { flex: 1; font-weight: 700; color: var(--text); min-width: 140px; }
+.bureau-pastille {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--primary-light); color: var(--primary);
+  font-size: .75rem; font-weight: 700; flex-shrink: 0;
+}
+.bureau-statut {
+  font-size: .72rem; font-weight: 700; padding: 3px 8px; border-radius: 12px;
+  background: var(--border); color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.bureau-statut-àfaire   { background: color-mix(in srgb, var(--text-muted), white 75%); color: var(--text-muted); }
+.bureau-statut-encours  { background: color-mix(in srgb, var(--primary),   white 80%); color: var(--primary-dark); }
+.bureau-statut-terminé  { background: color-mix(in srgb, var(--success),   white 80%); color: var(--success); }
+.bureau-statut-bloqué   { background: color-mix(in srgb, var(--danger),    white 80%); color: var(--danger); }
+
+.bureau-taches-mini { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.bureau-taches-mini li {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  font-size: .82rem; padding: 4px 8px; border-radius: 6px; background: var(--bg);
+}
+.bureau-taches-mini li .tache-libelle { color: var(--text); flex: 1; }
+.bureau-taches-mini li .tache-meta { color: var(--text-muted); font-size: .74rem; }
+.bureau-taches-mini li.overdue      { background: color-mix(in srgb, var(--danger), white 90%); }
+.bureau-taches-mini li.overdue .tache-libelle,
+.bureau-taches-mini li.overdue .tache-meta { color: var(--danger); font-weight: 600; }
+
+/* ── Actions inline editor ──────────────────────────────────────────── */
+.bureau-action-row {
+  background: var(--card); border-radius: var(--radius-sm);
+  border: 1px solid var(--border); margin-bottom: 10px; overflow: hidden;
+}
+.bureau-action-head {
+  display: grid;
+  grid-template-columns: 44px 1fr 130px 140px 130px 90px 34px;
+  gap: 6px; align-items: center; padding: 10px;
+}
+.bureau-action-head input, .bureau-action-head select {
+  height: 34px; padding: 4px 8px; border: 1.5px solid var(--border);
+  border-radius: 6px; font-size: .84rem; font-family: inherit;
+  background: var(--card); color: var(--text); min-width: 0;
+}
+.bureau-action-head input:focus, .bureau-action-head select:focus {
+  border-color: var(--primary); outline: none;
+}
+.bureau-action-head .ba-emoji { text-align: center; font-size: 1rem; }
+.bureau-action-head .ba-del {
+  background: none; border: none; cursor: pointer; font-size: 1rem;
+  padding: 0; color: var(--text-muted); border-radius: 6px;
+}
+.bureau-action-head .ba-del:hover { color: var(--danger); }
+
+.bureau-taches-list {
+  background: var(--bg); padding: 8px 10px; border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.bureau-tache-row {
+  display: grid;
+  grid-template-columns: 24px 1fr 140px 130px 100px 30px;
+  gap: 6px; align-items: center; padding: 6px 4px; border-radius: 6px;
+}
+.bureau-tache-row.done { opacity: .55; }
+.bureau-tache-row.done .bt-libelle { text-decoration: line-through; }
+.bureau-tache-row.overdue { background: color-mix(in srgb, var(--danger), white 90%); }
+.bureau-tache-row input, .bureau-tache-row select {
+  height: 30px; padding: 3px 6px; border: 1px solid var(--border);
+  border-radius: 5px; font-size: .8rem; font-family: inherit;
+  background: var(--card); color: var(--text); min-width: 0;
+}
+.bureau-tache-row .bt-del {
+  background: none; border: none; cursor: pointer; padding: 0;
+  font-size: .95rem; color: var(--text-muted);
+}
+.bureau-tache-row .bt-del:hover { color: var(--danger); }
+.ba-add-tache {
+  background: none; border: 1.5px dashed var(--border); color: var(--text-muted);
+  padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: .8rem;
+  font-family: inherit; align-self: flex-start; margin-top: 4px;
+}
+.ba-add-tache:hover { color: var(--primary); border-color: var(--primary); }
+
+/* ── Equipe ───────────────────────────────────────────────────────────── */
+.bureau-equipe-card { margin-bottom: 12px; }
+.bureau-equipe-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.bureau-equipe-sub {
+  font-size: .74rem; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--text-muted); font-weight: 700; margin-top: 8px; margin-bottom: 4px;
+}
+
+@media (max-width: 640px) {
+  .bureau-action-head { grid-template-columns: 44px 1fr 34px; grid-template-areas: 'emoji titre del' 'date date date' 'referent referent statut' 'budget budget budget'; }
+  .bureau-action-head .ba-emoji { grid-area: emoji; }
+  .bureau-action-head .ba-titre { grid-area: titre; }
+  .bureau-action-head .ba-date  { grid-area: date; }
+  .bureau-action-head .ba-referent { grid-area: referent; }
+  .bureau-action-head .ba-statut   { grid-area: statut; }
+  .bureau-action-head .ba-budget   { grid-area: budget; }
+  .bureau-action-head .ba-del      { grid-area: del; }
+  .bureau-tache-row { grid-template-columns: 24px 1fr 30px; grid-template-areas: 'check libelle del' 'resp resp resp' 'ech ech prio'; }
+  .bureau-tache-row input[type=checkbox] { grid-area: check; }
+  .bureau-tache-row .bt-libelle { grid-area: libelle; }
+  .bureau-tache-row .bt-responsable { grid-area: resp; }
+  .bureau-tache-row .bt-echeance { grid-area: ech; }
+  .bureau-tache-row .bt-priorite { grid-area: prio; }
+  .bureau-tache-row .bt-del { grid-area: del; }
+}
 .admin-tabs {
   display: flex; gap: 6px; overflow-x: auto;
   padding-bottom: 8px; margin-bottom: 12px; scrollbar-width: none;

@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="css/style.css?v=41" />
+  <link rel="stylesheet" href="css/style.css?v=42" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
   <title>PAF Wambrechies</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -258,6 +258,20 @@
         <div id="liens-list" class="card-list"></div>
       </section>
 
+      <!-- Bureau -->
+      <section id="section-bureau" class="section" aria-label="Pilotage bureau">
+        <div class="section-header">
+          <h1 class="section-title">Pilotage bureau</h1>
+          <p class="section-desc">Actions et tâches du bureau</p>
+        </div>
+        <div class="admin-tabs">
+          <button class="bureau-tab active" data-sub="dashboard" onclick="showBureauSub('dashboard')">À venir</button>
+          <button class="bureau-tab"        data-sub="actions"   onclick="showBureauSub('actions')">Actions</button>
+          <button class="bureau-tab"        data-sub="equipe"    onclick="showBureauSub('equipe')">Todo liste équipe</button>
+        </div>
+        <div id="bureau-content"></div>
+      </section>
+
       <!-- Admin -->
       <section id="section-admin" class="section" aria-label="Administration">
         <div class="section-header">
@@ -337,6 +351,15 @@
         </svg>
         <span>Liens</span>
       </button>
+      <button id="nav-bureau" class="nav-item hidden" data-section="bureau" aria-label="Pilotage bureau">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="14" rx="2"/>
+          <path d="M8 20h8"/>
+          <path d="M12 18v2"/>
+          <path d="M7 9h10M7 13h6"/>
+        </svg>
+        <span>Bureau</span>
+      </button>
       <button id="nav-admin" class="nav-item hidden" data-section="admin" aria-label="Administration">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="3"/>
@@ -384,7 +407,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
   <script src="js/config.js"></script>
-  <script src="js/app.js?v=17"></script>
+  <script src="js/app.js?v=18"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
