@@ -644,13 +644,18 @@ body {
 .bottom-nav.admin-mode  { grid-template-columns: repeat(7, 1fr); }
 .bottom-nav.bureau-mode.admin-mode { grid-template-columns: repeat(8, 1fr); }
 .bureau-tab {
-  flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
-  font-size: .8rem; font-weight: 600; font-family: inherit;
+  flex-shrink: 0; padding: 7px 16px; border-radius: 20px;
+  font-size: .82rem; font-weight: 700; font-family: inherit;
   border: 1.5px solid var(--border); background: var(--card); color: var(--text-muted);
-  cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+  cursor: pointer; transition: background .15s, border-color .15s, color .15s, transform .1s;
   -webkit-tap-highlight-color: transparent;
 }
-.bureau-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.bureau-tab:hover { color: var(--primary); border-color: color-mix(in srgb, var(--primary), white 60%); }
+.bureau-tab.active {
+  background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary), var(--accent) 30%));
+  border-color: var(--primary); color: #fff;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary), transparent 70%);
+}
 
 /* ── Bureau content ───────────────────────────────────────────────────── */
 .bureau-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
@@ -659,29 +664,56 @@ body {
 .bureau-card {
   background: var(--card); border-radius: var(--radius-sm);
   border: 1px solid var(--border); padding: 12px; margin-bottom: 10px;
+  border-left: 4px solid var(--accent);
+  box-shadow: var(--shadow-sm);
+  transition: transform .1s, box-shadow .15s;
 }
+.bureau-card:hover { box-shadow: var(--shadow); }
 .bureau-card-head {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   font-size: .9rem;
 }
-.bureau-date { font-weight: 700; color: var(--primary); font-size: .82rem; }
-.bureau-emoji { font-size: 1.2rem; }
-.bureau-titre { flex: 1; font-weight: 700; color: var(--text); min-width: 140px; }
+.bureau-date {
+  font-weight: 700; font-size: .78rem; padding: 4px 10px; border-radius: 8px;
+  background: color-mix(in srgb, var(--accent), white 82%);
+  color: color-mix(in srgb, var(--accent), black 20%);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.bureau-emoji { font-size: 1.4rem; line-height: 1; }
+.bureau-titre { flex: 1; font-weight: 700; color: var(--text); min-width: 140px; font-size: .95rem; }
 .bureau-pastille {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 26px; height: 26px; border-radius: 50%;
-  background: var(--primary-light); color: var(--primary);
-  font-size: .75rem; font-weight: 700; flex-shrink: 0;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary), var(--accent) 40%));
+  color: #fff;
+  font-size: .78rem; font-weight: 800; flex-shrink: 0;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--primary), transparent 60%);
 }
 .bureau-statut {
-  font-size: .72rem; font-weight: 700; padding: 3px 8px; border-radius: 12px;
-  background: var(--border); color: var(--text-muted); text-transform: uppercase;
-  letter-spacing: .04em;
+  font-size: .7rem; font-weight: 800; padding: 4px 10px; border-radius: 10px;
+  text-transform: uppercase; letter-spacing: .05em;
+  border: 1.5px solid transparent;
 }
-.bureau-statut-àfaire   { background: color-mix(in srgb, var(--text-muted), white 75%); color: var(--text-muted); }
-.bureau-statut-encours  { background: color-mix(in srgb, var(--primary),   white 80%); color: var(--primary-dark); }
-.bureau-statut-terminé  { background: color-mix(in srgb, var(--success),   white 80%); color: var(--success); }
-.bureau-statut-bloqué   { background: color-mix(in srgb, var(--danger),    white 80%); color: var(--danger); }
+.bureau-statut-àfaire  {
+  background: color-mix(in srgb, var(--text-muted), white 88%);
+  color: var(--text-muted);
+  border-color: color-mix(in srgb, var(--text-muted), white 70%);
+}
+.bureau-statut-encours {
+  background: color-mix(in srgb, var(--primary), white 85%);
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary), white 60%);
+}
+.bureau-statut-terminé {
+  background: color-mix(in srgb, var(--success), white 82%);
+  color: color-mix(in srgb, var(--success), black 15%);
+  border-color: color-mix(in srgb, var(--success), white 55%);
+}
+.bureau-statut-bloqué  {
+  background: color-mix(in srgb, var(--danger), white 82%);
+  color: color-mix(in srgb, var(--danger), black 10%);
+  border-color: color-mix(in srgb, var(--danger), white 55%);
+}
 
 .bureau-taches-mini { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 6px; }
 .bureau-taches-mini li {
@@ -697,12 +729,15 @@ body {
 /* ── Actions inline editor ──────────────────────────────────────────── */
 .bureau-action-row {
   background: var(--card); border-radius: var(--radius-sm);
-  border: 1px solid var(--border); margin-bottom: 10px; overflow: hidden;
+  border: 1px solid var(--border); margin-bottom: 12px; overflow: hidden;
+  border-left: 4px solid var(--primary);
+  box-shadow: var(--shadow-sm);
 }
 .bureau-action-head {
   display: grid;
   grid-template-columns: 44px 1fr 130px 140px 130px 90px 34px;
   gap: 6px; align-items: center; padding: 10px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary), transparent 94%) 0%, transparent 50%);
 }
 .bureau-action-head input, .bureau-action-head select {
   height: 34px; padding: 4px 8px; border: 1.5px solid var(--border);
