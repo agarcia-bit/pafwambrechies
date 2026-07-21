@@ -1,7 +1,7 @@
 // Service Worker - PAF Wambrechies
 // Cache-first strategy for all static assets + Push notifications
 
-const CACHE_NAME = 'paf-wambrechies-v9';
+const CACHE_NAME = 'paf-wambrechies-v10';
 const IMAGE_CACHE_NAME = 'paf-images-v1';
 
 const ASSETS_TO_CACHE = [
@@ -10,9 +10,10 @@ const ASSETS_TO_CACHE = [
   '/manifest.json',
   '/css/style.css',
   '/js/app.js',
-  '/icons/icon.svg',
+  '/icons/icon.png',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
+  '/icons/icon-512-maskable.png',
   '/images/login-bg.png'
 ];
 
@@ -125,8 +126,8 @@ self.addEventListener('push', event => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'PAF Wambrechies', {
       body:  data.body || '',
-      icon:  '/icons/icon.svg',
-      badge: '/icons/icon.svg',
+      icon:  '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
       data:  { url: data.url || '/' }
     })
   );

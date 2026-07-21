@@ -29,6 +29,15 @@
   [headers.values]
     Cache-Control = "no-cache"
 
+# Digital Asset Links for Google Play Trusted Web Activity (TWA).
+# Chrome fetches this once to verify the app really owns the domain, which
+# is what makes the URL bar disappear inside the wrapped app.
+[[headers]]
+  for = "/.well-known/assetlinks.json"
+  [headers.values]
+    Content-Type  = "application/json"
+    Cache-Control = "no-cache"
+
 [[headers]]
   for = "/css/*"
   [headers.values]
