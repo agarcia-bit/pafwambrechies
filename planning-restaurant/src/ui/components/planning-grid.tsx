@@ -122,8 +122,10 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
   }
 
   const serviceBreakdown = useMemo(() => {
+    // Ne compter que les salariés réellement affichés dans le planning (une ligne = une personne)
+    const shownIds = new Set(summaries.map((s) => s.employeeId))
     return [1, 2, 3, 4, 5, 6].map((day) => {
-      const dayEntries = report.planning.entries.filter((e) => e.dayOfWeek === day)
+      const dayEntries = report.planning.entries.filter((e) => e.dayOfWeek === day && shownIds.has(e.employeeId))
       const plannedHours = dayEntries.reduce((sum, e) => sum + e.effectiveHours, 0)
       const ds = report.dailySummaries.find((s) => s.dayOfWeek === day)
       const productivity = plannedHours > 0 && ds ? ds.forecastedRevenue / plannedHours : 0
@@ -131,9 +133,11 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
       const bySlot = activeSlots.map((slot) => {
         const { start, end } = resolveSlot(slot, day)
         const present = countForSlot(dayEntries, start, end)
+        // Dédup par salarié : on compte des personnes, pas des entrées (évite les doublons)
+        const uniqueEmpIds = Array.from(new Set(present.map((e) => e.employeeId)))
         const byRole = new Map<string, number>()
-        for (const e of present) {
-          const badge = getRoleBadge(e.employeeId)
+        for (const empId of uniqueEmpIds) {
+          const badge = getRoleBadge(empId)
           const name = badge?.name ?? 'Autre'
           byRole.set(name, (byRole.get(name) ?? 0) + 1)
         }
@@ -141,13 +145,13 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
           const r = roles.find((r) => r.name === name)
           return { name, count, color: r?.color ?? '#94a3b8' }
         })
-        return { ...slot, total: present.length, roleBreakdown }
+        return { ...slot, total: uniqueEmpIds.length, roleBreakdown }
       })
 
       return { day, plannedHours, productivity, ca: ds?.forecastedRevenue ?? 0, bySlot }
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [report.planning.entries, report.dailySummaries, activeSlots, closingTimeWeek, closingTimeSunday])
+  }, [report.planning.entries, report.dailySummaries, summaries, activeSlots, closingTimeWeek, closingTimeSunday])
 
   return (
     <div className="flex flex-col gap-4">
