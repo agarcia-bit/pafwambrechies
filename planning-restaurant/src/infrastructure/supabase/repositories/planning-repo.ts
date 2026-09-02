@@ -53,62 +53,49 @@ export async function savePlanningWithEntries(
   const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
   const token = getStoredToken()
 
-  const headers = {
-    apikey: apiKey,
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-    Prefer: 'return=representation',
-  }
-
-  // Upsert planning — match sur (tenant_id, week_start_date, department)
-  // pour qu'un nouveau planning écrase l'ancien de la même semaine
-  const upsertRes = await fetch(`${supabaseUrl}/rest/v1/plannings?on_conflict=tenant_id,week_start_date,department`, {
+  // Sauvegarde atomique via RPC : l'upsert du planning, la suppression des
+  // anciennes entrées et l'insertion des nouvelles se font dans UNE seule
+  // transaction. Un échec en cours de route ne peut plus laisser le planning
+  // avec zéro entrée. La RPC préserve aussi `status` et `created_by`, donc une
+  // sauvegarde automatique ne dévalide plus un planning validé.
+  const res = await fetch(`${supabaseUrl}/rest/v1/rpc/save_planning_with_entries`, {
     method: 'POST',
-    headers: { ...headers, Prefer: 'return=representation,resolution=merge-duplicates' },
+    headers: {
+      apikey: apiKey,
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({
-      tenant_id: planning.tenantId,
-      week_start_date: planning.weekStartDate,
-      week_number: planning.weekNumber,
-      status: planning.status,
-      created_by: planning.createdBy || null,
-      department: planning.department ?? 'salle',
+      p_tenant_id: planning.tenantId,
+      p_week_start_date: planning.weekStartDate,
+      p_week_number: planning.weekNumber,
+      p_department: planning.department ?? 'salle',
+      p_created_by: planning.createdBy || null,
+      p_entries: entries.map((e) => ({
+        id: e.id,
+        employee_id: e.employeeId,
+        role_id: e.roleId || null,
+        date: e.date,
+        day_of_week: e.dayOfWeek,
+        shift_template_id: e.shiftTemplateId,
+        start_time: e.startTime,
+        end_time: e.endTime,
+        effective_hours: e.effectiveHours,
+        meals: e.meals,
+        baskets: e.baskets,
+      })),
     }),
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(20000),
   })
-  if (!upsertRes.ok) throw new Error(`Save planning: ${upsertRes.status}`)
-  const [saved] = await upsertRes.json()
-
-  // Delete old entries (utilise saved.id car l'upsert peut avoir matché un planning existant)
-  await fetch(
-    `${supabaseUrl}/rest/v1/planning_entries?planning_id=eq.${saved.id}`,
-    { method: 'DELETE', headers, signal: AbortSignal.timeout(10000) },
-  )
-
-  // Insert new entries
-  if (entries.length > 0) {
-    const rows = entries.map((e) => ({
-      id: e.id,
-      planning_id: saved.id,
-      employee_id: e.employeeId,
-      role_id: e.roleId || null,
-      date: e.date,
-      day_of_week: e.dayOfWeek,
-      shift_template_id: e.shiftTemplateId,
-      start_time: e.startTime,
-      end_time: e.endTime,
-      effective_hours: e.effectiveHours,
-      meals: e.meals,
-      baskets: e.baskets,
-    }))
-    const insertRes = await fetch(`${supabaseUrl}/rest/v1/planning_entries`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(rows),
-      signal: AbortSignal.timeout(15000),
-    })
-    if (!insertRes.ok) throw new Error(`Save entries: ${insertRes.status}`)
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`Save planning: ${res.status}${detail ? ` — ${detail}` : ''}`)
   }
-
+  // PostgREST renvoie un objet pour un RETURNS composite ; on tolère aussi la
+  // forme tableau pour ne dépendre d'aucun détail de sérialisation.
+  const payload = await res.json()
+  const saved = Array.isArray(payload) ? payload[0] : payload
+  if (!saved) throw new Error('Save planning: réponse vide')
   return mapPlanning(saved)
 }
 

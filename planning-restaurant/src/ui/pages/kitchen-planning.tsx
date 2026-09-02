@@ -15,7 +15,7 @@ import type { SolverShiftAssignment } from '@/infrastructure/api/solver-api'
 import { fetchUnavailabilities } from '@/infrastructure/supabase/repositories/constraint-repo'
 import type { Unavailability } from '@/domain/models/constraint'
 import { getWeeklyBounds } from '@/domain/models/employee'
-import { Calendar, Play, ChevronLeft, ChevronRight, Plus, X, Save, CheckCircle, FolderOpen } from 'lucide-react'
+import { Calendar, Play, ChevronLeft, ChevronRight, Plus, X, Save, CheckCircle, FolderOpen, AlertTriangle } from 'lucide-react'
 import { savePlanningWithEntries, fetchPlanningForWeek, fetchPlannings, fetchPlanningEntries } from '@/infrastructure/supabase/repositories/planning-repo'
 import type { SavedPlanning } from '@/infrastructure/supabase/repositories/planning-repo'
 import type { PlanningEntry } from '@/domain/models/planning'
@@ -85,6 +85,9 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
   const [solverInfo, setSolverInfo] = useState('')
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  // Numéro de la dernière sauvegarde programmée (voir l'effet d'auto-save)
+  const saveSeqRef = useRef(0)
   const [editingCell, setEditingCell] = useState<{ empId: string; day: number } | null>(null)
   const [planningId] = useState(crypto.randomUUID())
   const [savedPlanningMeta, setSavedPlanningMeta] = useState<SavedPlanning | null>(null)
@@ -271,6 +274,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
       meals: 0,
       baskets: 0,
     }))
+    const seq = ++saveSeqRef.current
     const timer = setTimeout(() => {
       savePlanningWithEntries({
         id: planningId,
@@ -281,11 +285,14 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
         createdBy: user?.id ?? '',
         department: 'cuisine',
       }, planningEntries)
-        .then(() => setSaved(true))
-        .catch((e: unknown) => console.warn('[kitchen]', e))
-        .finally(() => setSaving(false))
+        .then(() => { if (seq === saveSeqRef.current) { setSaved(true); setSaveError(null) } })
+        .catch((e: unknown) => {
+          if (seq === saveSeqRef.current) setSaveError((e as Error).message || 'Échec de la sauvegarde')
+          console.warn('[kitchen]', e)
+        })
+        .finally(() => { if (seq === saveSeqRef.current) setSaving(false) })
     }, 2000)
-    return () => { clearTimeout(timer); setSaving(false) }
+    return () => { clearTimeout(timer) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries, saved])
 
@@ -617,9 +624,14 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
 
         {entries.length > 0 && (
           <span className={`flex items-center gap-1 rounded-md px-4 py-2.5 text-xs font-medium ${
-            saving ? 'bg-slate-100 text-slate-500' : saved ? 'bg-success/10 text-success' : 'bg-slate-50 text-slate-400'
+            saveError ? 'bg-destructive/10 text-destructive'
+            : saving ? 'bg-slate-100 text-slate-500'
+            : saved ? 'bg-success/10 text-success'
+            : 'bg-slate-50 text-slate-400'
           }`}>
-            {saving ? (
+            {saveError ? (
+              <><AlertTriangle size={14} /> Non sauvegardé</>
+            ) : saving ? (
               <><Save size={14} className="animate-pulse" /> Sauvegarde...</>
             ) : saved ? (
               <><CheckCircle size={14} /> Sauvegardé</>
@@ -627,6 +639,18 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
           </span>
         )}
       </div>
+
+      {saveError && (
+        <div className="flex items-start gap-3 rounded-lg border border-destructive/50 bg-destructive/5 p-4">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-destructive" />
+          <div className="flex-1 text-sm">
+            <p className="font-medium text-destructive">Vos modifications n'ont pas été enregistrées</p>
+            <p className="text-muted-foreground">
+              {saveError} — ne fermez pas la page, une nouvelle tentative a lieu à chaque modification.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Loading */}
       {generating && (
