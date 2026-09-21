@@ -44,6 +44,18 @@ supabase/
 - **Tables** : tenants, profiles, employees, roles, employee_roles, shift_templates, unavailabilities, conditional_availabilities, manager_fixed_schedules, daily_forecasts, daily_requirements, plannings, planning_entries
 - **RLS** : isolation multi-tenant via `public.get_tenant_id()`
 - **Trigger** : `handle_new_user` crée automatiquement un profil à l'inscription
+- **Trigger** : `prevent_profile_privilege_escalation` interdit de modifier son propre `role`/`tenant_id`
+- **RPC** : `save_planning_with_entries(...)` — sauvegarde atomique d'un planning
+  et de ses entrées (upsert + delete + insert en une transaction), et préserve
+  `status`/`created_by` pour ne pas dévalider un planning validé
+
+### Règle : toute évolution de schéma passe par une migration
+Ne jamais modifier le schéma de production directement (SQL editor, dashboard).
+La base avait dérivé de 8 colonnes, d'une contrainte d'unicité et de plusieurs
+policies non versionnées, rendant `supabase db reset` inutilisable et toute
+restauration après incident impossible (rattrapé par la migration 009).
+Chaque changement = un fichier dans `supabase/migrations/`, idempotent quand il
+rattrape l'existant (`IF NOT EXISTS`, `DROP ... IF EXISTS` puis `CREATE`).
 
 ## Backend CP-SAT (Render)
 - **URL** : https://planning-restaurant-solver.onrender.com
