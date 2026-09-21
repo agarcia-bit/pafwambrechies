@@ -1201,7 +1201,11 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           </span>
         )}
         {report && (
-          <Button size="lg" variant="secondary" onClick={() => exportPlanningToExcel(report)}>
+          <Button size="lg" variant="secondary" onClick={() => exportPlanningToExcel(
+            report,
+            tenant?.rules.productivityLowerThreshold,
+            tenant?.rules.productivityUpperThreshold,
+          )}>
             <Download size={16} className="mr-2" /> Exporter Excel
           </Button>
         )}
@@ -1272,8 +1276,10 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           weekDates={weekDates}
           serviceSlots={tenant?.rules.planningServiceSlots}
           showRoleBadges={tenant?.rules.planningShowRoleBadges ?? true}
-          closingTimeWeek={tenant?.closingTimeWeek ?? 23}
-          closingTimeSunday={tenant?.closingTimeSunday ?? 21}
+          closingTimeWeek={tenant?.closingTimeWeek ?? DEFAULT_TENANT_CONFIG.closingTimeWeek}
+          closingTimeSunday={tenant?.closingTimeSunday ?? DEFAULT_TENANT_CONFIG.closingTimeSunday}
+          productivityLowerThreshold={tenant?.rules.productivityLowerThreshold}
+          productivityUpperThreshold={tenant?.rules.productivityUpperThreshold}
           onShiftChange={(employeeId, dayOfWeek, newShiftId) => {
             if (!report || !tenantId) return
             const entries = [...report.planning.entries]

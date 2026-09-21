@@ -803,6 +803,13 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                   const soirCount = (d: number) => entries.filter((e) => e.dayOfWeek === d && e.period === 'soir').length
                   const midiTotal = days.reduce((s, d) => s + midiCount(d), 0)
                   const soirTotal = days.reduce((s, d) => s + soirCount(d), 0)
+                  // Compte des PERSONNES distinctes : en cuisine les coupures
+                  // (midi + soir le même jour) produisent deux entrées pour un
+                  // seul cuisinier. Additionner midi et soir le comptait deux
+                  // fois — 3 cuisiniers en coupure affichaient 6.
+                  const peopleCount = (d: number) =>
+                    new Set(entries.filter((e) => e.dayOfWeek === d).map((e) => e.employeeId)).size
+                  const peopleTotal = new Set(entries.map((e) => e.employeeId)).size
                   return (
                     <>
                       <tr className="border-b border-border">
@@ -836,13 +843,16 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                         <td className="px-2 py-2 text-center font-bold">{soirTotal}</td>
                       </tr>
                       <tr className="bg-muted/40">
-                        <td className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Total</td>
+                        <td className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                            title="Nombre de cuisiniers distincts (une coupure midi + soir compte pour une personne)">
+                          Total personnes
+                        </td>
                         {days.map((d) => (
                           <td key={d} className="px-2 py-2 text-center font-bold">
-                            {midiCount(d) + soirCount(d)}
+                            {peopleCount(d)}
                           </td>
                         ))}
-                        <td className="px-2 py-2 text-center font-bold">{midiTotal + soirTotal}</td>
+                        <td className="px-2 py-2 text-center font-bold">{peopleTotal}</td>
                       </tr>
                     </>
                   )

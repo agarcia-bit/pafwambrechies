@@ -5,6 +5,13 @@ export interface ServiceSlot {
   endTime: number    // heure décimale de fin (ex: 15). Si endAtClosing: décalage vs fermeture (ex: 0 = à la fermeture, 1 = +1h)
   startAtClosing?: boolean // si true, début = heure de fermeture du jour + startTime (décalage)
   endAtClosing?: boolean   // si true, fin = heure de fermeture du jour + endTime (décalage)
+  // Si true, ne compte QUE les personnes dont le shift se termine à la fin du
+  // créneau (endTime >= fin), et non toutes celles qui le chevauchent.
+  // C'est la définition employée partout ailleurs pour « à la fermeture »
+  // (hcr-convention.ts, closingStaff, minClosingWeekday/Weekend). Sans elle, six
+  // personnes finissant à 23h30 affichaient 6 dans la colonne Fermeture alors
+  // que personne ne fermait réellement.
+  countClosers?: boolean
 }
 
 export interface TenantRules {
@@ -51,7 +58,7 @@ export const DEFAULT_SERVICE_SLOTS: ServiceSlot[] = [
   { key: 'midi', label: 'Midi 11-15', startTime: 11, endTime: 15 },
   { key: 'aprem', label: 'A-midi 15-18', startTime: 15, endTime: 18 },
   { key: 'soir', label: 'Soir 18-ferm.', startTime: 18, endTime: 0, endAtClosing: true },
-  { key: 'fermeture', label: 'Fermeture (dern. h)', startTime: -1, endTime: 0, startAtClosing: true, endAtClosing: true },
+  { key: 'fermeture', label: 'Fermeture', startTime: -1, endTime: 0, startAtClosing: true, endAtClosing: true, countClosers: true },
 ]
 
 export const DEFAULT_TENANT_RULES: TenantRules = {

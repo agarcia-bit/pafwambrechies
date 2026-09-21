@@ -12,7 +12,14 @@ const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 
  * Génère un fichier Excel du planning au format attendu.
  * Télécharge automatiquement le fichier.
  */
-export async function exportPlanningToExcel(report: PlanningReport): Promise<void> {
+export async function exportPlanningToExcel(
+  report: PlanningReport,
+  // Seuils repris des réglages du tenant. Ils étaient codés en dur à 80/100
+  // ici alors que l'interface utilise 85/110 : le même jour pouvait être vert
+  // à l'écran et rouge dans le fichier exporté.
+  productivityLowerThreshold = 85,
+  productivityUpperThreshold = 110,
+): Promise<void> {
   const wb = new ExcelJS.Workbook()
   const ws = wb.addWorksheet('Planning')
 
@@ -25,20 +32,13 @@ export async function exportPlanningToExcel(report: PlanningReport): Promise<voi
 
   // --- Ligne 4 : en-têtes colonnes ---
   const headerRow = 4
-  const headers = ['Contrat', 'Salarié']
-  const dayCols: { day: number; startCol: number }[] = []
-  let col = 3 // colonne C = index 3
-
-  for (let d = 0; d <= 6; d++) {
-    dayCols.push({ day: d, startCol: col + 1 })
-    headers.push('Début', 'Fin', 'Heures')
-    col += 3
-  }
-  headers.push('Total', 'Contrat', '', 'Repas', '', 'Paniers')
-
-  // Write headers
+  // ExcelJS ignore l'index 0 de row.values : l'index i tombe donc en colonne
+  // i+1. Les libellés de jour doivent commencer à l'index 2 pour atterrir en
+  // colonne C, là où le corps du tableau écrit les données du jour 0
+  // (getCell(3)). Il y avait un '' de trop : chaque jour était titré au-dessus
+  // de la colonne du jour suivant.
   const hRow = ws.getRow(headerRow)
-  hRow.values = ['', '', ...['', ...DAY_NAMES.flatMap((d) => [d, '', '']), 'Total', 'Contrat', '', 'Nb Repas', '', 'Nb Paniers']]
+  hRow.values = ['', '', ...DAY_NAMES.flatMap((d) => [d, '', '']), 'Total', 'Contrat', '', 'Nb Repas', '', 'Nb Paniers']
   hRow.font = { bold: true, size: 9, color: { argb: HEADER_FG } }
   hRow.eachCell((cell) => {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_BG } }
@@ -205,7 +205,8 @@ export async function exportPlanningToExcel(report: PlanningReport): Promise<voi
     prodRow.getCell(col).font = {
       bold: true,
       color: {
-        argb: ds.productivity >= 80 && ds.productivity <= 100 ? '16A34A' : 'DC2626',
+        argb: ds.productivity >= productivityLowerThreshold
+           && ds.productivity <= productivityUpperThreshold ? '16A34A' : 'DC2626',
       },
     }
   }

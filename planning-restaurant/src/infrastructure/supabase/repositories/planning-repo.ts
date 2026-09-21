@@ -148,10 +148,39 @@ export interface MonthlyHours {
   totalHours: number
 }
 
-export async function fetchMonthlyHours(year: number): Promise<MonthlyHours[]> {
+/**
+ * Heures planifiées par mois, pour un département donné.
+ *
+ * Le filtre sur le département est indispensable : la carte « Suivi annuel :
+ * Productivité Salle » agrégeait en réalité TOUTES les entrées, cuisine
+ * comprise, ce qui gonflait le dénominateur et faussait la courbe sur laquelle
+ * se prennent les décisions d'effectif.
+ */
+export async function fetchMonthlyHours(
+  year: number,
+  department: string = 'salle',
+): Promise<MonthlyHours[]> {
+  // En deux temps plutôt qu'une jointure imbriquée : on récupère d'abord les
+  // plannings du département, puis leurs entrées. C'est un aller-retour de
+  // plus, mais le comportement est identique quel que soit le paramétrage des
+  // relations côté PostgREST.
+  // Fenêtre élargie d'une semaine de part et d'autre : une semaine démarrant
+  // fin décembre porte des entrées en janvier. Les entrées restent filtrées
+  // sur l'année exacte plus bas.
+  const planningRows = await freshQuery((c) =>
+    c.from('plannings')
+      .select('id')
+      .eq('department', department)
+      .gte('week_start_date', `${year - 1}-12-25`)
+      .lte('week_start_date', `${year}-12-31`),
+  )
+  const ids = ((planningRows as { id: string }[]) ?? []).map((p) => p.id)
+  if (ids.length === 0) return []
+
   const data = await freshQuery((c) =>
     c.from('planning_entries')
       .select('date, effective_hours')
+      .in('planning_id', ids)
       .gte('date', `${year}-01-01`)
       .lte('date', `${year}-12-31`),
   )

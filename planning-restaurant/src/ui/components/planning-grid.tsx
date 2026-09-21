@@ -23,10 +23,21 @@ interface PlanningGridProps {
   showRoleBadges?: boolean
   closingTimeWeek?: number
   closingTimeSunday?: number
+  productivityLowerThreshold?: number
+  productivityUpperThreshold?: number
   onShiftChange?: (employeeId: string, dayOfWeek: number, newShiftId: string | null) => void
 }
 
-export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [], employeeRoles = [], unavailabilities = [], weekDates = [], serviceSlots, showRoleBadges = true, closingTimeWeek = 23, closingTimeSunday = 21, onShiftChange }: PlanningGridProps) {
+export function PlanningGrid({
+  report, shiftTemplates, employees = [], roles = [], employeeRoles = [],
+  unavailabilities = [], weekDates = [], serviceSlots, showRoleBadges = true,
+  // 24 et non 23 : c'est la valeur de DEFAULT_TENANT_CONFIG, utilisée partout
+  // ailleurs. Le 23 précédent décalait tous les créneaux « = fermeture » d'une
+  // heure quand le tenant n'était pas encore chargé.
+  closingTimeWeek = 24, closingTimeSunday = 21,
+  productivityLowerThreshold = 85, productivityUpperThreshold = 110,
+  onShiftChange,
+}: PlanningGridProps) {
   const activeSlots: ServiceSlot[] = (serviceSlots && serviceSlots.length > 0) ? serviceSlots : DEFAULT_SERVICE_SLOTS
 
   // Résout les bornes d'un créneau pour un jour donné (gère "fin = fermeture du jour")
@@ -112,7 +123,18 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summaries, sortKey, sortDir, employeeRoles, roles])
 
-  function countForSlot(dayEntries: { startTime: number; endTime: number; employeeId: string }[], start: number, end: number) {
+  function countForSlot(
+    dayEntries: { startTime: number; endTime: number; employeeId: string }[],
+    start: number,
+    end: number,
+    countClosers?: boolean,
+  ) {
+    // « Ceux qui ferment » : même définition que hcr-convention.ts et que la
+    // contrainte minClosing du solveur, pour que la colonne affiche le chiffre
+    // sur lequel le planning est réellement validé.
+    if (countClosers) {
+      return dayEntries.filter((e) => e.endTime >= end)
+    }
     // Point unique (start == end) : présent = quelqu'un dont le shift couvre ce point.
     if (end <= start) {
       return dayEntries.filter((e) => e.startTime <= start && e.endTime >= start)
@@ -132,7 +154,7 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
 
       const bySlot = activeSlots.map((slot) => {
         const { start, end } = resolveSlot(slot, day)
-        const present = countForSlot(dayEntries, start, end)
+        const present = countForSlot(dayEntries, start, end, slot.countClosers)
         // Dédup par salarié : on compte des personnes, pas des entrées (évite les doublons)
         const uniqueEmpIds = Array.from(new Set(present.map((e) => e.employeeId)))
         const byRole = new Map<string, number>()
@@ -307,7 +329,8 @@ export function PlanningGrid({ report, shiftTemplates, employees = [], roles = [
           </thead>
           <tbody>
             {serviceBreakdown.map(({ day, productivity, ca, bySlot }) => {
-              const prodOk = productivity >= 85 && productivity <= 110
+              const prodOk = productivity >= productivityLowerThreshold
+                          && productivity <= productivityUpperThreshold
               const isDaySelected = selectedDay === day
               return (
                 <tr key={day}

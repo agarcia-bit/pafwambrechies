@@ -550,6 +550,15 @@ export function SettingsPage() {
                       />
                       Fin = fermeture du jour
                     </label>
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={!!slot.countClosers}
+                        onChange={(e) => patch({ countClosers: e.target.checked })}
+                        className="h-3.5 w-3.5 rounded border-border"
+                      />
+                      Compter seulement ceux qui terminent à la fin
+                    </label>
                   </div>
                 </div>
                 )
@@ -559,7 +568,10 @@ export function SettingsPage() {
               )}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              « = fermeture du jour » adapte automatiquement le créneau à l'heure de fermeture réelle ({formatDecimalHour(closingTimeWeek)} en semaine, {formatDecimalHour(closingTimeSunday)} le dimanche, selon tes réglages plus haut). Le décalage est en heures par rapport à la fermeture : <strong>0</strong> = pile à la fermeture, <strong>-1</strong> = 1h avant, <strong>+1</strong> = 1h après. Ex. « Fermeture (dernière heure) » = début -1, fin 0.
+              « = fermeture du jour » adapte automatiquement le créneau à l'heure de fermeture réelle ({formatDecimalHour(closingTimeWeek)} en semaine, {formatDecimalHour(closingTimeSunday)} le dimanche, selon tes réglages plus haut). Le décalage est en heures par rapport à la fermeture : <strong>0</strong> = pile à la fermeture, <strong>-1</strong> = 1h avant, <strong>+1</strong> = 1h après.
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              « Compter seulement ceux qui terminent à la fin » change le sens de la colonne : au lieu de toutes les personnes présentes pendant le créneau, elle ne compte que celles dont le service se termine à la fin (ou après). C'est la définition utilisée pour valider le planning — à laisser cochée sur le créneau Fermeture, sinon six personnes finissant à 23h30 s'afficheraient comme fermant le restaurant.
             </p>
           </div>
 
