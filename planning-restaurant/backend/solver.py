@@ -27,6 +27,12 @@ PENALTY_FERMETURE = 50
 PENALTY_VARIETY = 5
 PENALTY_HOUR_DIFF = 2
 PENALTY_LEVEL_OPENING = 3
+# Durée d'un service de référence, en dixièmes d'heure (10 h). Sert à chiffrer
+# ce que « vaut » une personne manquante face à la pénalité de productivité.
+SHIFT_HOURS_TENTHS = 100
+# Le sous-effectif en productivité est pénalisé deux fois plus que le
+# sur-effectif ; les minima d'effectif doivent tenir compte de ce facteur.
+PENALTY_UNDER_FACTOR = 2
 
 
 def solve_planning(req: SolverRequest) -> SolverResponse:
@@ -208,6 +214,37 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
 
     penalties = []
 
+    # CA prévisionnel par jour — calculé ici car il sert à deux endroits :
+    # la pénalité de productivité (plus bas) et la pondération des effectifs
+    # minimum (juste après).
+    day_forecasts = {f.day_of_week: f.forecasted_revenue for f in req.day_forecasts}
+    for ov in req.event_overrides:
+        if ov.day_of_week in day_forecasts:
+            day_forecasts[ov.day_of_week] *= (1 + ov.revenue_multiplier_percent / 100)
+
+    def day_weight(day: int) -> int:
+        """Poids du jour dans la pénalité de productivité (CA / 1000)."""
+        return max(1, int(day_forecasts.get(day, 0) / 1000))
+
+    def staffing_penalty(day: int, base: int) -> int:
+        """
+        Coût d'une personne manquante sur un effectif minimum configuré.
+
+        Les minima de fermeture et de service sont des règles saisies par le
+        gérant : l'optimiseur ne doit pas pouvoir les « racheter ». Or la
+        pénalité de productivité vaut (écart en dixièmes d'heure × CA/1000),
+        doublée en sous-effectif, quand un manquement ne coûtait que 50 points
+        fixes. Mesuré sur des données réelles : le samedi à 13 900 € finissait
+        avec 1 personne à la fermeture au lieu de 6, parce que le solveur
+        préférait un service de 10 h finissant à 23 h à un service de 6 h
+        fermant à minuit.
+
+        On aligne donc le coût d'un manquement sur celui d'un service entier
+        (10 h, soit 100 dixièmes) au poids du jour, en tenant compte du
+        facteur 2 appliqué au sous-effectif.
+        """
+        return max(base, day_weight(day) * SHIFT_HOURS_TENTHS * PENALTY_UNDER_FACTOR)
+
     # Préfère bas niveaux à l'ouverture
     for k, var in x.items():
         emp_id, day, shift_id = k
@@ -232,7 +269,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
         if closing_vars and needed > 0:
             shortfall = model.new_int_var(0, needed, f"close_short_{day}")
             model.add(sum(closing_vars) + shortfall >= needed)
-            penalties.append(shortfall * PENALTY_CLOSING)
+            penalties.append(shortfall * staffing_penalty(day, PENALTY_CLOSING))
             user_visible_shortfalls.append(shortfall)
 
     # Continuous coverage ≥2
@@ -270,7 +307,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
         if midi_vars and needed > 0:
             sf = model.new_int_var(0, needed, f"midi_short_{day}")
             model.add(sum(midi_vars) + sf >= needed)
-            penalties.append(sf * PENALTY_MIDI)
+            penalties.append(sf * staffing_penalty(day, PENALTY_MIDI))
 
     for day_str, min_count in req.min_staff_soir.items():
         if min_count <= 0: continue
@@ -285,7 +322,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
         if soir_vars and needed > 0:
             sf = model.new_int_var(0, needed, f"soir_short_{day}")
             model.add(sum(soir_vars) + sf >= needed)
-            penalties.append(sf * PENALTY_SOIR)
+            penalties.append(sf * staffing_penalty(day, PENALTY_SOIR))
 
     for day_str, min_count in req.min_staff_fermeture.items():
         if min_count <= 0: continue
@@ -300,7 +337,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
         if ferm_vars and needed > 0:
             sf = model.new_int_var(0, needed, f"ferm_short_{day}")
             model.add(sum(ferm_vars) + sf >= needed)
-            penalties.append(sf * PENALTY_FERMETURE)
+            penalties.append(sf * staffing_penalty(day, PENALTY_FERMETURE))
 
     # Shift variety
     for emp in non_managers:
@@ -326,11 +363,7 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
             model.add(target - total <= diff)
             penalties.append(diff * PENALTY_HOUR_DIFF)
 
-    # Productivity balance
-    day_forecasts = {f.day_of_week: f.forecasted_revenue for f in req.day_forecasts}
-    for ov in req.event_overrides:
-        if ov.day_of_week in day_forecasts:
-            day_forecasts[ov.day_of_week] *= (1 + ov.revenue_multiplier_percent / 100)
+    # Productivity balance (day_forecasts est calcule plus haut)
     for day in working_days:
         ca = day_forecasts.get(day, 0)
         if ca <= 0 or req.productivity_target <= 0: continue
@@ -343,9 +376,9 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
             under = model.new_int_var(0, 5000, f"prod_under_{day}")
             model.add(day_total - target_hours_10 <= over)
             model.add(target_hours_10 - day_total <= under)
-            w = max(1, int(ca / 1000))
+            w = day_weight(day)
             penalties.append(over * w)
-            penalties.append(under * w * 2)
+            penalties.append(under * w * PENALTY_UNDER_FACTOR)
 
     if penalties:
         model.minimize(sum(penalties))
