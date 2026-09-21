@@ -34,8 +34,14 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
     model = cp_model.CpModel()
 
     working_days = [1, 2, 3, 4, 5, 6]
-    non_managers = [e for e in req.employees if not e.is_manager]
-    salle_employees = [e for e in non_managers if e.department == "salle"]
+    # Filtre défensif sur le département : /solve ne doit planifier que la
+    # salle. Sans ce filtre, un appelant envoyant tout l'effectif faisait
+    # entrer les cuisiniers dans le modèle avec leurs contraintes d'heures
+    # contractuelles ; vérifié sur les données réelles, la semaine entière
+    # devenait INFEASIBLE, sans rien indiquer sur la cause.
+    non_managers = [e for e in req.employees
+                    if not e.is_manager and e.department == "salle"]
+    salle_employees = non_managers
     managers = [e for e in req.employees if e.is_manager]
 
     def shifts_for_day(day: int, department: str = "salle") -> list:
