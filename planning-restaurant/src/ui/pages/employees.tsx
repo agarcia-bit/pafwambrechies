@@ -49,6 +49,7 @@ export function EmployeesPage() {
   }
 
   const [deactivatedNames, setDeactivatedNames] = useState<string[]>([])
+  const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
     load().then(() => {
@@ -98,27 +99,45 @@ export function EmployeesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization
   }, [employees, activeEmployees, inactiveEmployees, activeTab, sortKey, sortDir, roles, employeeRoles])
 
-  function handleAdd(data: Omit<Employee, 'id' | 'createdAt'>) {
-    add(data)
+  // Le store capture les erreurs dans son état au lieu de les propager :
+  // sans cette relecture, le formulaire se fermait et le salarié
+  // n'apparaissait jamais, sans le moindre message.
+  function storeError(): string | null {
+    return useEmployeeStore.getState().error
+  }
+
+  async function handleAdd(data: Omit<Employee, 'id' | 'createdAt'>) {
+    setActionError(null)
+    await add(data)
+    const err = storeError()
+    if (err) { setActionError(`Ajout impossible : ${err}`); return }
     setShowForm(false)
   }
 
-  function handleEdit(data: Omit<Employee, 'id' | 'createdAt'>) {
+  async function handleEdit(data: Omit<Employee, 'id' | 'createdAt'>) {
+    setActionError(null)
     if (editingEmployee) {
-      update(editingEmployee.id, data)
+      await update(editingEmployee.id, data)
+      const err = storeError()
+      if (err) { setActionError(`Modification impossible : ${err}`); return }
     }
     setEditingEmployee(undefined)
     setShowForm(false)
   }
 
-  function handleToggleActive(emp: Employee) {
-    update(emp.id, { active: !emp.active })
+  async function handleToggleActive(emp: Employee) {
+    setActionError(null)
+    await update(emp.id, { active: !emp.active })
+    const err = storeError()
+    if (err) setActionError(`Changement de statut impossible : ${err}`)
   }
 
-  function handleDelete(emp: Employee) {
-    if (confirm(`Supprimer définitivement ${emp.firstName} ${emp.lastName} ?`)) {
-      remove(emp.id)
-    }
+  async function handleDelete(emp: Employee) {
+    if (!confirm(`Supprimer définitivement ${emp.firstName} ${emp.lastName} ?`)) return
+    setActionError(null)
+    await remove(emp.id)
+    const err = storeError()
+    if (err) setActionError(`Suppression impossible : ${err}`)
   }
 
   return (
@@ -147,6 +166,16 @@ export function EmployeesPage() {
       </div>
 
       {loading && <TableSkeleton rows={6} cols={8} />}
+
+      {actionError && (
+        <div className="flex items-start gap-3 rounded-lg border border-destructive/50 bg-destructive/5 p-4">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-destructive" />
+          <p className="flex-1 text-sm text-destructive">{actionError}</p>
+          <button onClick={() => setActionError(null)} className="text-muted-foreground hover:text-foreground" aria-label="Fermer">
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {/* Notification CDD expirés auto-désactivés */}
       {deactivatedNames.length > 0 && (

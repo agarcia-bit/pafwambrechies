@@ -7,7 +7,7 @@ import { useEmployeeStore } from '@/store/employee-store'
 import type { TenantRules } from '@/domain/models/tenant'
 import { DEFAULT_TENANT_RULES, DEFAULT_SERVICE_SLOTS } from '@/domain/models/tenant'
 import { uploadTenantLogo } from '@/infrastructure/supabase/repositories/tenant-repo'
-import { Save, CheckCircle, Settings as SettingsIcon, Utensils, Users, ChefHat, Upload, Image as ImageIcon, X } from 'lucide-react'
+import { Save, CheckCircle, Settings as SettingsIcon, Utensils, Users, ChefHat, Upload, Image as ImageIcon, X, AlertTriangle } from 'lucide-react'
 
 const DAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 
@@ -27,6 +27,7 @@ export function SettingsPage() {
   const [productivityTarget, setProductivityTarget] = useState(95)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     if (tenantId) load(tenantId)
@@ -51,6 +52,7 @@ export function SettingsPage() {
     if (!tenantId) return
     setSaving(true)
     setSaved(false)
+    setSaveError(null)
     try {
       await update(tenantId, {
         name: restaurantName,
@@ -61,6 +63,10 @@ export function SettingsPage() {
         productivityTarget,
         rules,
       })
+      // Le store capture l'erreur dans son état au lieu de la propager :
+      // sans cette relecture, « Enregistré ✓ » s'affichait même en cas d'échec.
+      const err = useTenantStore.getState().error
+      if (err) { setSaveError(err); return }
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } finally {
@@ -103,8 +109,11 @@ export function SettingsPage() {
     if (!tenantId) return
     setSaving(true)
     setSaved(false)
+    setSaveError(null)
     try {
       await updateRules(tenantId, rules)
+      const err = useTenantStore.getState().error
+      if (err) { setSaveError(err); return }
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } finally {
@@ -130,6 +139,16 @@ export function SettingsPage() {
           {saved ? 'Enregistré' : saving ? 'Enregistrement…' : 'Enregistrer'}
         </Button>
       </div>
+
+      {saveError && (
+        <div className="flex items-start gap-3 rounded-lg border border-destructive/50 bg-destructive/5 p-4">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-destructive" />
+          <div className="flex-1 text-sm">
+            <p className="font-medium text-destructive">Les paramètres n'ont pas été enregistrés</p>
+            <p className="text-muted-foreground">{saveError}</p>
+          </div>
+        </div>
+      )}
 
       {/* Restaurant */}
       <Card>

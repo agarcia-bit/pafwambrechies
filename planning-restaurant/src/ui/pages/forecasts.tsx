@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useForecastStore } from '@/store/forecast-store'
 import { useAuthStore } from '@/store/auth-store'
 import { Button, Card, CardHeader, CardTitle, CardContent } from '@/ui/components'
-import { Save } from 'lucide-react'
+import { Save, AlertTriangle } from 'lucide-react'
 
 const MONTH_NAMES = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -19,6 +19,7 @@ export function ForecastsPage() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1) // 1-12
   const [overrides, setOverrides] = useState<Record<string, number>>({})
   const [dirty, setDirty] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     load()
@@ -56,7 +57,13 @@ export function ForecastsPage() {
       dayOfWeek: day,
       forecastedRevenue: values[String(day)] ?? 0,
     }))
+    setSaveError(null)
     await save(rows)
+    // Le store capture l'erreur au lieu de la propager. Sans cette relecture,
+    // dirty passait à false après un échec : le bouton se désactivait et le
+    // gérant générait ensuite un planning sur un CA jamais enregistré.
+    const err = useForecastStore.getState().error
+    if (err) { setSaveError(err); return }
     setDirty(false)
   }
 
@@ -70,6 +77,16 @@ export function ForecastsPage() {
           <Save size={16} className="mr-2" /> Enregistrer
         </Button>
       </div>
+
+      {saveError && (
+        <div className="flex items-start gap-3 rounded-lg border border-destructive/50 bg-destructive/5 p-4">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-destructive" />
+          <div className="flex-1 text-sm">
+            <p className="font-medium text-destructive">Le CA prévisionnel n'a pas été enregistré</p>
+            <p className="text-muted-foreground">{saveError} — réessayez avant de générer un planning.</p>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>

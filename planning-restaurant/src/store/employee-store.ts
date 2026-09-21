@@ -49,6 +49,10 @@ export const useEmployeeStore = create<EmployeeState>((set) => ({
   },
 
   update: async (id, updates) => {
+    // Pas de `loading: true` ici : cela ferait clignoter toute la page en
+    // « Chargement… » au moindre changement de statut. On remet en revanche
+    // `error` à null, sinon une erreur antérieure ferait croire à un échec.
+    set({ error: null })
     try {
       const updated = await updateEmployee(id, updates)
       set((state) => ({
