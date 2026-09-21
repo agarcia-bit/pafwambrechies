@@ -15,6 +15,9 @@ from ortools.sat.python import cp_model
 from models import SolverRequest, SolverResponse, ShiftAssignment
 
 SOLVER_TIMEOUT_SECONDS = 10.0
+# Budget total toutes tentatives confondues (voir solver.py) : évite qu'une
+# requête cumule 30 s de résolution par-dessus le démarrage à froid de Render.
+SOLVER_TOTAL_BUDGET_SECONDS = 20.0
 SOLVER_MAX_ATTEMPTS = 3
 SOLVER_NUM_WORKERS = 4
 SOLVER_SEED_MULTIPLIER = 42
@@ -24,11 +27,11 @@ PENALTY_HOUR_DIFF = 2
 
 
 def _add_days(iso_date: str, days: int) -> str:
-    try:
-        d = date.fromisoformat(iso_date) + timedelta(days=days)
-        return d.isoformat()
-    except (ValueError, TypeError):
-        return ""
+    # Date validée en amont par validate_request (main.py). Échec bruyant
+    # volontaire : renvoyer "" ferait disparaître toutes les indisponibilités
+    # ponctuelles sans aucun signal.
+    d = date.fromisoformat(iso_date) + timedelta(days=days)
+    return d.isoformat()
 
 
 def solve_kitchen(req: SolverRequest) -> SolverResponse:
@@ -47,11 +50,18 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
     shift_map = {s.id: s for s in kitchen_shifts}
 
     def shifts_for_day(day: int) -> list:
+        # Aligné sur la salle (solver.py) : un créneau "samedi uniquement" ne
+        # doit apparaître que le samedi. L'ancienne condition `day < 6` le
+        # plaçait du mardi au vendredi ; la grille l'affichait, mais le
+        # validateur et le menu de modification le refusaient pour ce jour,
+        # si bien que rouvrir la cellule supprimait le shift en silence.
         result = []
         for s in kitchen_shifts:
             if day == 6 and s.applicability == "sunday":
                 result.append(s)
-            elif day < 6 and s.applicability in ("tue_sat", "sat_only"):
+            elif day == 5 and s.applicability in ("tue_sat", "sat_only"):
+                result.append(s)
+            elif 1 <= day < 5 and s.applicability == "tue_sat":
                 result.append(s)
         return result
 
@@ -183,7 +193,13 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
 
         if hour_terms:
             total = sum(v * h for v, h in hour_terms)
-            min_h = int(emp.weekly_hours * 10)
+            # Min heures ajusté au prorata des jours réellement disponibles,
+            # comme en salle (solver.py §6). Sans cet ajustement, un cuisinier
+            # 39h posant un seul jour rendait TOUTE la semaine cuisine
+            # infaisable, sans indiquer qui était en cause.
+            avail = kitchen_available_days(emp.id)
+            ratio = avail / len(working_days) if working_days else 1
+            min_h = int(emp.weekly_hours * ratio * 10)
             max_h = int((emp.weekly_hours + emp.modulation_range) * 10)
             model.add(total >= min_h)
             model.add(total <= max_h)
@@ -234,11 +250,12 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
     # (capé par le nb réel de cuisiniers dispos ce jour-là)
     for day in working_days:
         midi_day_vars = [x_midi[k] for k in x_midi if k[1] == day]
-        available_count = sum(
-            1 for emp in kitchen_employees
-            if day not in fixed_unavail.get(emp.id, set())
-        )
-        min_required = min(req.min_kitchen_midi, available_count)
+        # Cape par le nombre de cuisiniers ayant réellement une variable midi
+        # ce jour-là. Compter ceux simplement absents de fixed_unavail ignorait
+        # les restrictions horaires (ex: "dispo à partir de 18h"), et exigeait
+        # plus de monde au midi qu'il n'en existe → semaine infaisable.
+        emps_with_midi = {k[0] for k in x_midi if k[1] == day}
+        min_required = min(req.min_kitchen_midi, len(emps_with_midi))
         if midi_day_vars and min_required > 0:
             model.add(sum(midi_day_vars) >= min_required)
 
@@ -319,25 +336,25 @@ def solve_kitchen(req: SolverRequest) -> SolverResponse:
     if penalties:
         model.minimize(sum(penalties))
 
-    # --- Solve (multi-tentatives comme salle) ---
-    solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = SOLVER_TIMEOUT_SECONDS
-    solver.parameters.num_workers = SOLVER_NUM_WORKERS
+    # --- Solve (multi-tentatives, dans la limite du budget total) ---
     best_status = None
     best_objective = float('inf')
-    best_solver = solver
+    best_solver = None
     for attempt in range(SOLVER_MAX_ATTEMPTS):
+        remaining = SOLVER_TOTAL_BUDGET_SECONDS - (time.time() - start_time)
+        if attempt > 0 and remaining < 2.0:
+            break
+        solver = cp_model.CpSolver()
+        solver.parameters.max_time_in_seconds = max(1.0, min(SOLVER_TIMEOUT_SECONDS, remaining))
+        solver.parameters.num_workers = SOLVER_NUM_WORKERS
         if attempt > 0:
-            solver = cp_model.CpSolver()
-            solver.parameters.max_time_in_seconds = SOLVER_TIMEOUT_SECONDS
-            solver.parameters.num_workers = SOLVER_NUM_WORKERS
             solver.parameters.random_seed = attempt * SOLVER_SEED_MULTIPLIER
         status = solver.solve(model)
         if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             if best_status is None: best_status = status
             continue
         obj = solver.objective_value
-        if best_status is None or obj < best_objective:
+        if best_solver is None or obj < best_objective:
             best_objective = obj
             best_solver = solver
             best_status = status

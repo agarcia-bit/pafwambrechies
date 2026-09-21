@@ -1,5 +1,6 @@
 """FastAPI server for planning solver."""
 import logging
+from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from models import SolverRequest, SolverResponse
@@ -28,6 +29,21 @@ app.add_middleware(
 
 
 def validate_request(req: SolverRequest):
+    # week_start_date sert à convertir les indisponibilités ponctuelles (qui
+    # portent une date) en jours de la semaine. Si elle est invalide, la
+    # conversion ne matche jamais et TOUTES les indispos ponctuelles sont
+    # ignorées : l'API renvoyait alors un planning "réussi" plaçant des
+    # salariés sur leurs jours d'absence déclarés. On refuse en amont.
+    # strptime et non date.fromisoformat : depuis Python 3.11, fromisoformat
+    # accepte aussi les dates ISO "semaine" ("2026-W10"), que le reste du code
+    # ne sait pas comparer aux specific_date au format AAAA-MM-JJ.
+    try:
+        datetime.strptime(req.week_start_date, "%Y-%m-%d")
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=400,
+            detail="week_start_date doit être une date ISO valide (AAAA-MM-JJ)",
+        )
     if not req.employees:
         raise HTTPException(status_code=400, detail="Aucun salarié fourni")
     if not req.shift_templates:
