@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useEmployeeStore } from '@/store/employee-store'
 import { useShiftTemplateStore } from '@/store/shift-template-store'
 import { useForecastStore } from '@/store/forecast-store'
@@ -15,12 +15,26 @@ import type { SolverShiftAssignment } from '@/infrastructure/api/solver-api'
 import { fetchUnavailabilities } from '@/infrastructure/supabase/repositories/constraint-repo'
 import type { Unavailability } from '@/domain/models/constraint'
 import { getWeeklyBounds } from '@/domain/models/employee'
-import { Calendar, Play, ChevronLeft, ChevronRight, Plus, X, Save, CheckCircle, FolderOpen, AlertTriangle } from 'lucide-react'
+import { validatePlanning } from '@/domain/rules/validation'
+import { DEFAULT_TENANT_CONFIG } from '@/domain/models/tenant'
+import { Calendar, Play, ChevronLeft, ChevronRight, Plus, X, Save, CheckCircle, FolderOpen, AlertTriangle, Download } from 'lucide-react'
 import { savePlanningWithEntries, fetchPlanningForWeek, fetchPlannings, fetchPlanningEntries } from '@/infrastructure/supabase/repositories/planning-repo'
+import { exportKitchenPlanningToExcel } from '@/infrastructure/export/excel-export'
 import type { SavedPlanning } from '@/infrastructure/supabase/repositories/planning-repo'
 import type { PlanningEntry } from '@/domain/models/planning'
 
 const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+
+// Heure de bascule midi → soir. Un seul seuil partagé : le classement des
+// entrées utilisait `< 16` tandis que les listes déroulantes filtraient le
+// soir sur `>= 17`. Un créneau démarrant entre 16h et 16h59 était donc classé
+// « soir » sans figurer dans aucune liste : la cellule affichait « OFF soir »
+// alors qu'une entrée existait, et la rouvrir supprimait le service.
+const SOIR_START_HOUR = 16
+
+function periodOf(startTime: number): 'midi' | 'soir' {
+  return startTime < SOIR_START_HOUR ? 'midi' : 'soir'
+}
 
 function getNextMonday(): Date {
   const d = new Date()
@@ -148,7 +162,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
           startTime: e.startTime,
           endTime: e.endTime,
           effectiveHours: e.effectiveHours,
-          period: e.startTime < 16 ? 'midi' as const : 'soir' as const,
+          period: periodOf(e.startTime),
         }))
         setEntries(mapped)
         setSaved(true)
@@ -171,6 +185,13 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
 
   async function handleGenerate() {
     if (!tenantId) return
+    // Même garde-fou que la salle : générer écrase le planning enregistré de
+    // la semaine. Sans cette confirmation, un clic effaçait le travail déjà
+    // validé sans prévenir.
+    if (savedPlanningMeta && !confirm(
+      `Un planning cuisine est déjà enregistré pour la semaine ${weekNumber}.\n\n`
+      + 'Générer va le remplacer entièrement. Continuer ?',
+    )) return
     setGenerating(true)
     setTimeout(() => generateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100)
     setEntries([])
@@ -258,7 +279,12 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
 
   // Auto-save debounce: sauvegarde automatique 2s après chaque modification
   useEffect(() => {
-    if (entries.length === 0 || !tenantId || saved) return
+    if (!tenantId || saved) return
+    // Une semaine vidée doit être enregistrée si un planning existe en base :
+    // sinon supprimer le dernier service ne partait jamais, les anciennes
+    // entrées restaient stockées et réapparaissaient au rechargement.
+    // En revanche, rien à faire pour une semaine vide jamais enregistrée.
+    if (entries.length === 0 && !savedPlanningMeta) return
     setSaving(true)
     const planningEntries: PlanningEntry[] = entries.map((e) => ({
       id: crypto.randomUUID(),
@@ -294,7 +320,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
     }, 2000)
     return () => { clearTimeout(timer) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entries, saved])
+  }, [entries, saved, savedPlanningMeta])
 
   // Calculate totals per employee
   const empTotals = kitchenEmployees.map((emp) => {
@@ -304,16 +330,72 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
     return { emp, empEntries, totalHours, bounds }
   })
 
+  // Contrôle légal HCR — la cuisine n'en avait aucun, alors que les services
+  // coupés sont précisément le cas où le repos entre deux journées se dégrade.
+  // Les règles de couverture sont désactivées (propres à la salle) et le repos
+  // est signalé en avertissement, le solveur cuisine le traitant en souple.
+  const violations = useMemo(() => {
+    if (entries.length === 0) return []
+    const planningEntries: PlanningEntry[] = entries.map((e, i) => ({
+      id: `v${i}`,
+      planningId,
+      employeeId: e.employeeId,
+      roleId: null as unknown as string,
+      date: addDays(weekStartISO, e.dayOfWeek),
+      dayOfWeek: e.dayOfWeek,
+      shiftTemplateId: e.shiftTemplateId,
+      startTime: e.startTime,
+      endTime: e.endTime,
+      effectiveHours: e.effectiveHours,
+      meals: 0,
+      baskets: 0,
+    }))
+    return validatePlanning({
+      entries: planningEntries,
+      employees: kitchenEmployees,
+      managerIds: [],
+      shiftTemplates: templates.filter((t) => t.department === 'cuisine'),
+      closingTimeWeek: tenant?.closingTimeWeek ?? DEFAULT_TENANT_CONFIG.closingTimeWeek,
+      closingTimeSunday: tenant?.closingTimeSunday ?? DEFAULT_TENANT_CONFIG.closingTimeSunday,
+      coverageRules: false,
+      restSeverity: 'warning',
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries, kitchenEmployees, templates, tenant, weekStartISO])
+
+  const blockingViolations = violations.filter((v) => v.severity === 'blocking')
+  const warningViolations = violations.filter((v) => v.severity === 'warning')
+
+  // Indisponibilité déclarée pour ce salarié ce jour-là. Sans ce contrôle, la
+  // grille laissait affecter un service à quelqu'un d'absent : seul le solveur
+  // le savait, et une modification manuelle passait au travers.
+  function isConstrained(empId: string, dayOfWeek: number): 'off' | 'partial' | false {
+    const date = addDays(weekStartISO, dayOfWeek)
+    for (const u of unavailabilities) {
+      if (u.employeeId !== empId) continue
+      if (u.type === 'fixed' && u.dayOfWeek === dayOfWeek) return 'off'
+      if (u.type === 'punctual' && u.specificDate === date) {
+        if (u.availableFrom == null && u.availableUntil == null) return 'off'
+        return 'partial'
+      }
+    }
+    return false
+  }
+
   // Shifts cuisine disponibles pour un jour donné, filtré par période
   function getKitchenShiftsForDay(day: number, period: 'midi' | 'soir') {
     const isSunday = day === 6
     return templates
       .filter((t) => t.department === 'cuisine')
       .filter((t) => {
+        // Aligné sur la salle et sur le solveur : « samedi uniquement » ne doit
+        // être proposé que le samedi. L'ancienne règle le proposait du mardi au
+        // dimanche.
         if (isSunday) return t.applicability === 'sunday'
-        return t.applicability === 'tue_sat' || t.applicability === 'sat_only'
+        if (day === 5) return t.applicability === 'tue_sat' || t.applicability === 'sat_only'
+        return t.applicability === 'tue_sat'
       })
-      .filter((t) => (period === 'midi' ? t.startTime < 16 : t.startTime >= 17))
+      .filter((t) => (period === 'midi' ? t.startTime < SOIR_START_HOUR : t.startTime >= SOIR_START_HOUR))
       .sort((a, b) => a.startTime - b.startTime || a.endTime - b.endTime)
   }
 
@@ -602,7 +684,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                   startTime: e.startTime,
                   endTime: e.endTime,
                   effectiveHours: e.effectiveHours,
-                  period: e.startTime < 16 ? 'midi' as const : 'soir' as const,
+                  period: periodOf(e.startTime),
                 }))
                 setEntries(mapped)
                 setSaved(true)
@@ -637,6 +719,22 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
               <><CheckCircle size={14} /> Sauvegardé</>
             ) : null}
           </span>
+        )}
+
+        {entries.length > 0 && (
+          <Button size="lg" variant="secondary" onClick={() => exportKitchenPlanningToExcel(
+            weekNumber,
+            weekStartISO,
+            kitchenEmployees.map((e) => ({
+              id: e.id,
+              firstName: e.firstName,
+              lastName: e.lastName,
+              contractHours: e.weeklyHours,
+            })),
+            entries,
+          )}>
+            <Download size={16} className="mr-2" /> Exporter Excel
+          </Button>
         )}
       </div>
 
@@ -674,12 +772,15 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
       {/* Grille planning cuisine */}
       {entries.length > 0 && !generating && (
         <>
-          <div className="rounded-lg border border-border">
-            <table className="w-full table-fixed border-collapse text-sm">
+          {/* overflow-x-auto : sans lui, les 6 colonnes de jours (chacune avec
+              un badge midi et un badge soir) étaient écrasées sur mobile au
+              lieu de défiler. */}
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full min-w-[720px] table-fixed border-collapse text-sm">
               <thead>
                 <tr className="bg-amber-700 text-white">
-                  <th className="w-12 bg-amber-700 px-1 py-2 text-center text-[10px]">Contrat</th>
-                  <th className="w-20 bg-amber-700 px-2 py-2 text-left text-xs">Cuisinier</th>
+                  <th scope="col" className="w-12 bg-amber-700 px-1 py-2 text-center text-[10px]">Contrat</th>
+                  <th scope="col" className="w-28 bg-amber-700 px-2 py-2 text-left text-xs">Cuisinier</th>
                   {DAY_NAMES.slice(1).map((day, i) => (
                     <th key={i + 1} className="px-1 py-3 text-center text-xs">
                       {day}
@@ -694,8 +795,11 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                     <td className="bg-background px-1 py-2 text-center font-mono text-[11px]">
                       {emp.weeklyHours}
                     </td>
-                    <td className="bg-background px-2 py-2 text-xs font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
-                      {emp.firstName}
+                    {/* Nom de famille inclus : deux cuisiniers portant le même
+                        prénom étaient impossibles à distinguer. */}
+                    <td className="bg-background px-2 py-2 text-xs font-semibold whitespace-nowrap overflow-hidden text-ellipsis"
+                        title={`${emp.firstName} ${emp.lastName}`.trim()}>
+                      {`${emp.firstName} ${emp.lastName}`.trim()}
                     </td>
                     {[1, 2, 3, 4, 5, 6].map((d) => {
                       const dayEntries = empEntries.filter((e) => e.dayOfWeek === d)
@@ -706,10 +810,24 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
                       const midiShifts = getKitchenShiftsForDay(d, 'midi')
                       const soirShifts = getKitchenShiftsForDay(d, 'soir')
                       const showSoir = !(tenant?.rules.kitchenClosedSundayEvening && d === 6)
+                      const constraint = isConstrained(emp.id, d)
+                      const locked = constraint === 'off'
+                      const bg = locked ? 'bg-orange-100'
+                        : constraint === 'partial' ? 'bg-amber-100'
+                        : isOff && !isEditing ? 'bg-red-100'
+                        : 'bg-amber-50/60'
 
                       return (
-                        <td key={d} className={`px-0.5 py-1 text-center align-top ${isOff && !isEditing ? 'bg-red-100' : 'bg-amber-50/60'}`}>
-                          {isEditing ? (
+                        <td key={d} className={`px-0.5 py-1 text-center align-top ${bg}`}>
+                          {locked ? (
+                            <span className="inline-flex items-center gap-1 text-orange-700 font-medium text-xs cursor-not-allowed"
+                                  title="Indisponible (contrainte déclarée)">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                              </svg>
+                              OFF
+                            </span>
+                          ) : isEditing ? (
                             <div className="flex flex-col gap-0.5">
                               <select
                                 autoFocus
@@ -860,6 +978,45 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
               </tbody>
             </table>
           </div>
+
+          {blockingViolations.length > 0 && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4">
+              <h3 className="mb-2 font-bold text-destructive">
+                Ajustement manuel nécessaire ({blockingViolations.length})
+              </h3>
+              <ul className="space-y-1">
+                {blockingViolations.map((v, i) => (
+                  <li key={i} className="text-sm text-destructive">[{v.rule}] {v.message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {warningViolations.length > 0 && (
+            <div className="rounded-lg border border-warning/50 bg-warning/5 p-4">
+              <h3 className="mb-2 font-bold text-warning">
+                Points de vigilance ({warningViolations.length})
+              </h3>
+              <ul className="space-y-1">
+                {warningViolations.map((v, i) => (
+                  <li key={i} className="text-sm text-muted-foreground">{v.message}</li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Les services coupés réduisent mécaniquement le repos entre un soir et le midi suivant. À arbitrer au cas par cas, cela n'empêche pas de valider le planning.
+              </p>
+            </div>
+          )}
+
+          {entries.length > 0 && (
+            <div className={`rounded-lg p-4 text-center font-bold ${
+              blockingViolations.length === 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
+            }`}>
+              {blockingViolations.length === 0
+                ? 'PLANNING VALIDE'
+                : 'Apporter les modifications manuelles demandées pour obtenir le planning valide'}
+            </div>
+          )}
 
           {solverInfo && (
             <div className="rounded-lg border border-success/50 bg-success/5 p-3 text-sm text-success">

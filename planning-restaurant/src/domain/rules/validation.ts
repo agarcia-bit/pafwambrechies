@@ -21,6 +21,21 @@ interface ValidationContext {
   shiftTemplates: ShiftTemplate[]
   closingTimeWeek: number
   closingTimeSunday: number
+  /**
+   * Appliquer les règles de couverture (continue ≥2, fermeture, ouverture).
+   * À désactiver pour la cuisine : ces règles sont propres à la salle, les
+   * appliquer produirait une violation par jour et par créneau sans fondement.
+   */
+  coverageRules?: boolean
+  /**
+   * Gravité des manquements au repos de 11h.
+   * En cuisine les services coupés (midi + soir) rendent structurellement
+   * impossible un repos de 11h entre un soir et le midi suivant ; le solveur
+   * le traite d'ailleurs en contrainte souple. On le signale donc en
+   * avertissement plutôt qu'en blocage, sinon aucun planning cuisine ne
+   * pourrait jamais être déclaré valide.
+   */
+  restSeverity?: 'blocking' | 'warning'
 }
 
 /**
@@ -100,7 +115,7 @@ export function validatePlanning(ctx: ValidationContext): RuleViolation[] {
         if (restCheck) {
           violations.push({
             rule: 'rest_between_shifts',
-            severity: 'blocking',
+            severity: ctx.restSeverity ?? 'blocking',
             employeeId: emp.id,
             dayOfWeek: next.dayOfWeek,
             message: `${emp.firstName} ${emp.lastName}: ${restCheck}`,
@@ -109,6 +124,9 @@ export function validatePlanning(ctx: ValidationContext): RuleViolation[] {
       }
     }
   }
+
+  // 6/7/8. Règles de couverture — salle uniquement (voir ValidationContext)
+  if (ctx.coverageRules === false) return violations
 
   // 6. Couverture continue par jour
   for (let day = 1; day <= 6; day++) {

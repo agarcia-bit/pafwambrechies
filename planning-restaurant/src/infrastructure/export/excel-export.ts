@@ -246,3 +246,145 @@ function formatDate(iso: string): string {
   const d = new Date(iso)
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
+
+// ---------------------------------------------------------------------------
+// Export cuisine
+// ---------------------------------------------------------------------------
+
+export interface KitchenExportEntry {
+  employeeId: string
+  dayOfWeek: number
+  startTime: number
+  endTime: number
+  effectiveHours: number
+  period: 'midi' | 'soir'
+}
+
+export interface KitchenExportEmployee {
+  id: string
+  firstName: string
+  lastName: string
+  contractHours: number
+}
+
+/**
+ * Génère le planning cuisine au format Excel.
+ *
+ * La cuisine ne peut pas réutiliser la feuille de la salle : les services y
+ * sont coupés (midi ET soir le même jour), alors que la mise en page salle
+ * n'offre qu'un seul créneau par jour. Chaque jour occupe donc deux colonnes,
+ * Midi et Soir.
+ */
+export async function exportKitchenPlanningToExcel(
+  weekNumber: number,
+  weekStartDate: string,
+  employees: KitchenExportEmployee[],
+  entries: KitchenExportEntry[],
+): Promise<void> {
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet(`Cuisine S${weekNumber}`)
+
+  ws.getCell('B1').value = 'PLANNING CUISINE'
+  ws.getCell('B1').font = { bold: true, size: 14 }
+  ws.getCell('B2').value = `Semaine ${weekNumber} — à partir du ${formatDate(weekStartDate)}`
+  ws.getCell('B2').font = { bold: true, size: 11 }
+
+  // Ligne 4 : jour (fusionné sur 2 colonnes) ; ligne 5 : Midi / Soir.
+  // Colonne A = contrat, B = salarié, puis 2 colonnes par jour à partir de C.
+  const firstDayCol = 3
+  const dayHeader = ws.getRow(4)
+  const subHeader = ws.getRow(5)
+  dayHeader.getCell(1).value = 'Contrat'
+  dayHeader.getCell(2).value = 'Salarié'
+
+  for (let d = 0; d <= 6; d++) {
+    const c = firstDayCol + d * 2
+    dayHeader.getCell(c).value = DAY_NAMES[d]
+    ws.mergeCells(4, c, 4, c + 1)
+    subHeader.getCell(c).value = 'Midi'
+    subHeader.getCell(c + 1).value = 'Soir'
+  }
+  const totalCol = firstDayCol + 7 * 2
+  dayHeader.getCell(totalCol).value = 'Total'
+  ws.mergeCells(4, totalCol, 5, totalCol)
+
+  for (const row of [dayHeader, subHeader]) {
+    row.font = { bold: true, size: 9, color: { argb: HEADER_FG } }
+    row.eachCell((cell) => {
+      setFill(cell, HEADER_BG)
+      cell.alignment = { horizontal: 'center', vertical: 'middle' }
+      cell.border = thinBorder()
+    })
+  }
+
+  // Corps
+  let rowIdx = 6
+  for (const emp of employees) {
+    const r = ws.getRow(rowIdx)
+    r.getCell(1).value = emp.contractHours
+    r.getCell(1).alignment = { horizontal: 'center' }
+    r.getCell(1).border = thinBorder()
+    r.getCell(2).value = `${emp.firstName} ${emp.lastName}`.trim()
+    r.getCell(2).border = thinBorder()
+
+    for (let d = 0; d <= 6; d++) {
+      const c = firstDayCol + d * 2
+      for (const [offset, period] of [[0, 'midi'], [1, 'soir']] as const) {
+        const cell = r.getCell(c + offset)
+        const entry = entries.find(
+          (e) => e.employeeId === emp.id && e.dayOfWeek === d && e.period === period,
+        )
+        if (entry) {
+          cell.value = `${entry.startTime}→${entry.endTime}`
+          setFill(cell, ORANGE)
+        } else {
+          setFill(cell, YELLOW)
+        }
+        cell.alignment = { horizontal: 'center' }
+        cell.font = { size: 9 }
+        cell.border = thinBorder()
+      }
+    }
+
+    const total = entries
+      .filter((e) => e.employeeId === emp.id)
+      .reduce((s, e) => s + e.effectiveHours, 0)
+    const totalCell = r.getCell(totalCol)
+    totalCell.value = Math.round(total * 10) / 10
+    totalCell.numFmt = '0.0'
+    totalCell.font = { bold: true }
+    totalCell.alignment = { horizontal: 'center' }
+    totalCell.border = thinBorder()
+    rowIdx++
+  }
+
+  // Ligne « personnes par jour » : des personnes distinctes, pas des services,
+  // sinon une coupure midi + soir compterait deux fois.
+  const countRow = ws.getRow(rowIdx + 1)
+  countRow.getCell(2).value = 'Personnes présentes'
+  countRow.getCell(2).font = { bold: true }
+  for (let d = 0; d <= 6; d++) {
+    const c = firstDayCol + d * 2
+    const n = new Set(entries.filter((e) => e.dayOfWeek === d).map((e) => e.employeeId)).size
+    countRow.getCell(c).value = n
+    ws.mergeCells(countRow.number, c, countRow.number, c + 1)
+    countRow.getCell(c).alignment = { horizontal: 'center' }
+    countRow.getCell(c).font = { bold: true }
+    countRow.getCell(c).border = thinBorder()
+  }
+
+  ws.getColumn(1).width = 8
+  ws.getColumn(2).width = 22
+  for (let c = firstDayCol; c <= totalCol; c++) ws.getColumn(c).width = 11
+
+  const buffer = await wb.xlsx.writeBuffer()
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `planning_cuisine_S${weekNumber}_${weekStartDate}.xlsx`
+  a.click()
+  URL.revokeObjectURL(url)
+}
