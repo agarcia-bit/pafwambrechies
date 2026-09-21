@@ -97,6 +97,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
   const [solverInfo, setSolverInfo] = useState('')
+  const [solverWarnings, setSolverWarnings] = useState<string[]>([])
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -178,7 +179,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
     const cached = getKitchenEntries(formatISO(d))
     setEntriesLocal(cached)
     setSaved(false)
-    setSolverInfo('')
+    setSolverInfo(''); setSolverWarnings([])
   }
 
   const generateRef = useRef<HTMLDivElement>(null)
@@ -197,7 +198,7 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
     setEntries([])
     setSaved(false)
     setError('')
-    setSolverInfo('')
+    setSolverInfo(''); setSolverWarnings([])
 
     try {
       const solverReq = {
@@ -264,10 +265,15 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
           startTime: e.start_time,
           endTime: e.end_time,
           effectiveHours: e.effective_hours,
-          period: e.start_time < 16 ? 'midi' as const : 'soir' as const,
+          period: periodOf(e.start_time),
         }))
         setEntries(mapped)
-        setSolverInfo(`Résolu par CP-SAT en ${result.solve_time_ms}ms (${result.status})`)
+        // Plus de statut technique (OPTIMAL / FEASIBLE + millisecondes) : il
+        // n'apprend rien au gérant et inquiétait à tort, le solveur ne pouvant
+        // de toute façon jamais prouver l'optimalité sur ce modèle. Seuls les
+        // avertissements réellement actionnables sont remontés, et dans un
+        // bandeau distinct du vert « planning chargé ».
+        setSolverWarnings(result.warnings)
       }
     } catch (e) {
       setError((e as Error).message)
@@ -1015,6 +1021,15 @@ export function KitchenPlanningPage({ loadPlanningId }: { loadPlanningId?: strin
               {blockingViolations.length === 0
                 ? 'PLANNING VALIDE'
                 : 'Apporter les modifications manuelles demandées pour obtenir le planning valide'}
+            </div>
+          )}
+
+          {solverWarnings.length > 0 && (
+            <div className="flex items-start gap-3 rounded-lg border border-warning/50 bg-warning/5 p-4">
+              <AlertTriangle size={18} className="mt-0.5 shrink-0 text-warning" />
+              <ul className="flex-1 space-y-1 text-sm text-muted-foreground">
+                {solverWarnings.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
             </div>
           )}
 

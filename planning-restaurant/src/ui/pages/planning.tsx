@@ -91,6 +91,10 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  // Avertissements du solveur appelant une action. Ils étaient jusqu'ici
+  // stockés dans report.warnings, qu'aucune vue n'affichait : un manquement
+  // d'effectif n'était donc jamais signalé au gérant.
+  const [solverWarnings, setSolverWarnings] = useState<string[]>([])
   // Numéro de la dernière sauvegarde programmée (voir l'effet d'auto-save)
   const saveSeqRef = useRef(0)
   const [error, setError] = useState('')
@@ -405,6 +409,7 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
     setReport(null) // Hide previous planning during generation
     setSaved(false)
     setError('')
+    setSolverWarnings([])
 
     let result: PlanningReport | null = null
 
@@ -549,8 +554,12 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
           closingTimeSunday: 21,
         })
 
+        // Plus de préfixe technique (« Résolu par CP-SAT en Xms (FEASIBLE) ») :
+        // le statut n'apprend rien au gérant et inquiétait à tort, CP-SAT ne
+        // pouvant de toute façon jamais prouver l'optimalité sur ce modèle.
+        // Ne restent que les avertissements appelant une action.
         const warnings = [...solverResult.warnings]
-        warnings.unshift(`Résolu par CP-SAT en ${solverResult.solve_time_ms}ms (${solverResult.status})`)
+        setSolverWarnings(solverResult.warnings)
 
         result = {
           planning: {
@@ -1249,6 +1258,15 @@ export function PlanningPage({ loadPlanningId }: { loadPlanningId?: string | nul
               {saveError} — ne fermez pas la page, une nouvelle tentative a lieu à chaque modification.
             </p>
           </div>
+        </div>
+      )}
+
+      {report && solverWarnings.length > 0 && (
+        <div className="flex items-start gap-3 rounded-lg border border-warning/50 bg-warning/5 p-4">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-warning" />
+          <ul className="flex-1 space-y-1 text-sm text-muted-foreground">
+            {solverWarnings.map((w, i) => <li key={i}>{w}</li>)}
+          </ul>
         </div>
       )}
 
