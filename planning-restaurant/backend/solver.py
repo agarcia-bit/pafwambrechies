@@ -8,12 +8,20 @@ from models import SolverRequest, SolverResponse, ShiftAssignment
 HALF_HOURS = [h / 2 for h in range(19, 49)]
 
 # --- Solver parameters ---
-SOLVER_TIMEOUT_SECONDS = 10.0
+# Plafond d'une tentative. Doit rester inférieur au budget total pour qu'une
+# seconde tentative (autre graine aléatoire) reste possible si la première
+# laisse des manquements. À 10 s, relever le budget total n'avait aucun effet :
+# chaque résolution s'arrêtait au bout de 10 s sans pouvoir prouver l'optimalité.
+SOLVER_TIMEOUT_SECONDS = 15.0
 # Budget total (toutes tentatives confondues). Sans plafond, 3 tentatives de
-# 10 s s'enchaînaient systématiquement dès que la solution restait FEASIBLE ;
-# ajouté au démarrage à froid de Render (~50 s), la requête dépassait 80 s et
-# mourait côté client avant de recevoir le planning.
-SOLVER_TOTAL_BUDGET_SECONDS = 20.0
+# 10 s s'enchaînaient systématiquement dès que la solution restait FEASIBLE.
+# 30 s : depuis que les effectifs minimum ne sont plus rachetables, les
+# coefficients sont plus élevés et l'optimalité demande plus de temps à être
+# prouvée — à 20 s le solveur rendait FEASIBLE alors qu'il tenait la solution.
+# Sans risque côté client : les appels /solve n'ont pas de timeout, et le
+# démarrage à froid de Render est absorbé en amont par la sonde /health, qui
+# conditionne l'activation du bouton Générer.
+SOLVER_TOTAL_BUDGET_SECONDS = 30.0
 SOLVER_MAX_ATTEMPTS = 3
 SOLVER_NUM_WORKERS = 4
 SOLVER_SEED_MULTIPLIER = 42
@@ -437,9 +445,22 @@ def solve_planning(req: SolverRequest) -> SolverResponse:
     warnings = []
     status_str = "OPTIMAL" if status == cp_model.OPTIMAL else "FEASIBLE"
     if status == cp_model.FEASIBLE:
-        warnings.append(
-            f"Solution faisable mais pas optimale (budget {SOLVER_TOTAL_BUDGET_SECONDS:.0f}s atteint)"
-        )
+        # Distinction utile au gérant : un planning qui respecte déjà tous les
+        # effectifs minimum n'a rien d'inquiétant, même sans preuve
+        # d'optimalité. Annoncer « budget atteint » dans ce cas était trompeur,
+        # puisque le solveur s'arrête justement parce qu'il n'a plus de
+        # manquement à combler.
+        if best_shortfalls == 0:
+            warnings.append(
+                "Planning conforme : tous les effectifs minimum sont respectés. "
+                "L'optimisation fine (productivité, variété) n'a pas été poussée "
+                "à son terme."
+            )
+        else:
+            warnings.append(
+                f"Solution faisable mais incomplète : {int(best_shortfalls)} manquement(s) "
+                f"d'effectif subsistent après {SOLVER_TOTAL_BUDGET_SECONDS:.0f}s de calcul."
+            )
     return SolverResponse(success=True, entries=entries, status=status_str, solve_time_ms=solve_time, warnings=warnings)
 
 

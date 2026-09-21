@@ -15,9 +15,10 @@ from ortools.sat.python import cp_model
 from models import SolverRequest, SolverResponse, ShiftAssignment
 
 SOLVER_TIMEOUT_SECONDS = 10.0
-# Budget total toutes tentatives confondues (voir solver.py) : évite qu'une
-# requête cumule 30 s de résolution par-dessus le démarrage à froid de Render.
-SOLVER_TOTAL_BUDGET_SECONDS = 20.0
+# Budget total toutes tentatives confondues, aligné sur la salle (voir
+# solver.py). En pratique la cuisine résout en une fraction de seconde : ce
+# plafond n'est jamais atteint, il n'est là que par cohérence.
+SOLVER_TOTAL_BUDGET_SECONDS = 30.0
 SOLVER_MAX_ATTEMPTS = 3
 SOLVER_NUM_WORKERS = 4
 SOLVER_SEED_MULTIPLIER = 42
