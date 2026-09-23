@@ -135,3 +135,18 @@ export function countUsersPerTenant(users: AdminUser[]): Record<string, number> 
   }
   return counts
 }
+
+/**
+ * Change le tenant consulté par le super administrateur courant.
+ *
+ * Le tenant actif est stocké en base et non côté client : les policies RLS
+ * s'appuient dessus via get_tenant_id(), il doit donc leur être opposable.
+ * Un simple état React ne filtrerait rien — la base continuerait de renvoyer
+ * les données du tenant de rattachement.
+ *
+ * Passer null revient au tenant de rattachement du compte.
+ */
+export async function setActiveTenant(tenantId: string | null): Promise<void> {
+  const { error } = await supabase.rpc('set_active_tenant', { p_tenant_id: tenantId })
+  if (error) throw new Error(error.message)
+}
