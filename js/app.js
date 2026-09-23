@@ -90,6 +90,7 @@ function openCropper(file) {
       const img = document.getElementById('crop-image');
       img.src = e.target.result;
       document.getElementById('crop-modal').classList.remove('hidden');
+      pushModalState('crop');
       if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
       cropperInstance = new Cropper(img, {
         aspectRatio: 4 / 3,
@@ -112,6 +113,7 @@ window.confirmCrop = function() {
     cropperInstance.destroy(); cropperInstance = null;
     cropResolve(blob);
     cropResolve = null;
+    popModalState();
   }, 'image/jpeg', 0.85);
 };
 
@@ -119,7 +121,43 @@ window.cancelCrop = function() {
   document.getElementById('crop-modal').classList.add('hidden');
   if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
   if (cropResolve) { cropResolve(null); cropResolve = null; }
+  popModalState();
 };
+
+/* ============================================================
+   CONTEXTE D'EXÉCUTION (app installée vs navigateur)
+   ============================================================ */
+// True for the Play Store app (Trusted Web Activity) and for home-screen
+// installs. The TWA's first load carries an android-app:// referrer; the flag
+// is kept in sessionStorage because reloads lose the referrer.
+const IS_INSTALLED_APP = (() => {
+  try {
+    if (document.referrer.startsWith('android-app://')) sessionStorage.setItem('paf_installed_app', '1');
+    if (sessionStorage.getItem('paf_installed_app') === '1') return true;
+  } catch (_) { /* storage blocked */ }
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+})();
+
+// Set when a new service worker takes over inside the installed app.
+let appUpdatePending = false;
+
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+// Apple Maps on iOS, Google Maps elsewhere: the Android app previously sent
+// users to maps.apple.com, which only renders a degraded web page on Android.
+function mapsUrl(address) {
+  const q = encodeURIComponent(address);
+  return IS_IOS ? `https://maps.apple.com/?q=${q}` : `https://www.google.com/maps/search/?api=1&query=${q}`;
+}
+
+// URLs typed by admins ("www.site.fr", "linkedin.com/in/x") lack a scheme and
+// would resolve as paths inside the app.
+function externalUrl(url) {
+  const u = String(url || '').trim();
+  if (!u) return '';
+  return /^(https?:|mailto:|tel:)/i.test(u) ? u : 'https://' + u.replace(/^\/+/, '');
+}
 
 /* ============================================================
    OFFLINE / MISE À JOUR
@@ -219,7 +257,15 @@ if ('serviceWorker' in navigator) {
       indicator.style.transform = '';
     }
     if (dist > 80) {
-      window.location.reload();
+      // In the installed app a full page reload flashes a white screen and
+      // resets the tab, which feels broken; refreshing the data is enough.
+      // A pending app update is the exception: reload to apply it.
+      if (IS_INSTALLED_APP && !appUpdatePending) {
+        reloadAllSections();
+        showToast('Actualisé', 'success');
+      } else {
+        window.location.reload();
+      }
     }
     startY = 0;
   }, { passive: true });
@@ -249,9 +295,25 @@ if ('serviceWorker' in navigator) {
   // arriving via an invitation link).
   const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (hadController) showUpdateBanner();
+    if (!hadController) return;
+    // A "reload" banner looks out of place in a store app: apply the update
+    // silently instead (see the visibilitychange handler below).
+    if (IS_INSTALLED_APP) appUpdatePending = true;
+    else showUpdateBanner();
   });
 }
+
+// Installed app: apply a pending update when the user comes back after more
+// than a minute away, so a quick app switch (e.g. copying something) never
+// wipes a comment or form being typed.
+let hiddenSince = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    hiddenSince = Date.now();
+  } else if (appUpdatePending && hiddenSince && Date.now() - hiddenSince > 60 * 1000) {
+    window.location.reload();
+  }
+});
 
 /* ============================================================
    HELPERS
@@ -988,7 +1050,50 @@ window.bureauDeleteTache = async function(id) {
 /* ============================================================
    NAVIGATION
    ============================================================ */
-function showSection(id) {
+/* Android back button support. Following the Android convention, the history
+   holds at most [home tab, current tab, open overlay]: back closes the overlay,
+   then returns to the home tab, then leaves the app. Without this, switching
+   tabs never touched history and back closed the app from anywhere. */
+const HOME_SECTION = 'actus';
+let currentSection = null;
+
+function syncSectionHistory(id) {
+  const st = history.state;
+  const onOtherTab = !!(st && st.section && st.section !== HOME_SECTION);
+  if (id === HOME_SECTION) {
+    // Going home from another tab: drop the tab entry instead of stacking a
+    // second home entry (which would make back need two presses to exit).
+    if (onOtherTab) history.back();
+    else history.replaceState({ section: HOME_SECTION }, '');
+  } else if (onOtherTab) {
+    history.replaceState({ section: id }, '');
+  } else {
+    history.pushState({ section: id }, '');
+  }
+}
+
+function pushModalState(name) {
+  history.pushState({ ...(history.state || {}), modal: name }, '');
+}
+
+// Called by every close path (button, backdrop, back button). When triggered
+// by the back button the modal entry is already gone, so this is a no-op.
+function popModalState() {
+  if (history.state && history.state.modal) history.back();
+}
+
+window.addEventListener('popstate', (e) => {
+  if (document.getElementById('app').classList.contains('hidden')) return;
+  if (!document.getElementById('crop-modal').classList.contains('hidden')) window.cancelCrop();
+  if (!document.getElementById('merchant-modal').classList.contains('hidden')) closeMerchantModal();
+  if (!document.getElementById('offre-modal').classList.contains('hidden')) window.closeOffreModal();
+  const target = (e.state && e.state.section) || HOME_SECTION;
+  if (target !== currentSection) showSection(target, { fromHistory: true });
+});
+
+function showSection(id, { fromHistory = false } = {}) {
+  if (!fromHistory) syncSectionHistory(id);
+  currentSection = id;
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
 
@@ -1316,19 +1421,21 @@ function openMerchantModal(id) {
       ${contact ? `<p class="modal-contact-name">${escHtml(contact)}</p>` : ''}
       ${m.description ? `<p class="modal-desc">${escHtml(m.description)}</p>` : ''}
       <div class="modal-contacts">
-        ${m.adresse   ? `<a class="modal-contact modal-contact-link" href="https://maps.apple.com/?q=${encodeURIComponent(m.adresse)}" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escHtml(m.adresse)}</a>` : ''}
+        ${m.adresse   ? `<a class="modal-contact modal-contact-link" href="${escHtml(mapsUrl(m.adresse))}" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escHtml(m.adresse)}</a>` : ''}
         ${m.telephone ? `<a class="modal-contact modal-contact-link" href="tel:${escHtml(m.telephone.replace(/\s/g,''))}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${escHtml(m.telephone)}</a>` : ''}
         ${m.email     ? `<a class="modal-contact modal-contact-link" href="mailto:${escHtml(m.email)}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${escHtml(m.email)}</a>` : ''}
-        ${m.linkedin  ? `<a class="modal-contact modal-contact-link" href="${escHtml(m.linkedin)}" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>LinkedIn</a>` : ''}
-        ${m.instagram ? (() => { const ig = m.instagram.trim(); const url = ig.startsWith('http') ? ig : `https://www.instagram.com/${ig.replace('@','')}/`; return `<a class="modal-contact modal-contact-link" href="${escHtml(url)}" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>${escHtml(ig)}</a>`; })() : ''}
+        ${m.linkedin  ? `<a class="modal-contact modal-contact-link" href="${escHtml(externalUrl(m.linkedin))}" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>LinkedIn</a>` : ''}
+        ${m.instagram ? (() => { const ig = m.instagram.trim(); const url = /instagram\.com/i.test(ig) ? externalUrl(ig) : `https://www.instagram.com/${ig.replace('@','')}/`; return `<a class="modal-contact modal-contact-link" href="${escHtml(url)}" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>${escHtml(ig)}</a>`; })() : ''}
       </div>
     </div>`;
   document.getElementById('merchant-modal').classList.remove('hidden');
+  pushModalState('merchant');
 }
 window.openMerchantModal = openMerchantModal;
 
 function closeMerchantModal() {
   document.getElementById('merchant-modal').classList.add('hidden');
+  popModalState();
 }
 window.closeMerchantModal = closeMerchantModal;
 
@@ -1423,9 +1530,11 @@ window.openOffreModal = function(id) {
       </div>
     </div>`;
   document.getElementById('offre-modal').classList.remove('hidden');
+  pushModalState('offre');
 };
 window.closeOffreModal = function() {
   document.getElementById('offre-modal').classList.add('hidden');
+  popModalState();
 };
 
 async function loadOffresPage(reset = false) {
@@ -2468,7 +2577,7 @@ async function loadLiens() {
     return;
   }
   container.innerHTML = data.map(l => `
-    <a href="${escHtml(l.url)}" target="_blank" rel="noopener" class="lien-card card">
+    <a href="${escHtml(externalUrl(l.url))}" target="_blank" rel="noopener" class="lien-card card">
       <div class="lien-icon">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
       </div>
