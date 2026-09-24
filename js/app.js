@@ -417,7 +417,9 @@ function bindSignupForm() {
     const { data, error } = await sb.auth.signUp({
       email,
       password: pwd,
-      options: { data: { prenom, nom, tenant_slug: TENANT_SLUG } }
+      // The code is re-checked server-side by the handle_new_user trigger,
+      // so a crafted signUp call can't join a tenant without it.
+      options: { data: { prenom, nom, tenant_slug: TENANT_SLUG, signup_code: code } }
     });
     if (error) {
       let msg = 'Erreur : ' + error.message;
