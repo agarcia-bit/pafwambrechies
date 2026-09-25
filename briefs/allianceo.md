@@ -37,7 +37,7 @@ Fait et appliqué sur Supabase :
   - Testée de bout en bout sur le tenant `demo` (faux destinataires, actu de test supprimée).
   - Secret optionnel `EXPO_ACCESS_TOKEN`, à poser si on active la « enhanced push security » d'Expo.
 
-## Étape 2 — app Expo (dossier `app/`) : en cours
+## Étape 2 — app Expo (dossier `app/`) : écrite, reste le test sur téléphone
 Expo SDK 57, Expo Router, onglets natifs (Liquid Glass sur iOS 26), React Query.
 Mode d'emploi et organisation du code : `app/README.md`.
 
@@ -69,12 +69,24 @@ Fait (2e PR) — Admin, dans Plus › Gestion, visible des seuls admins (routes 
 Vérifié en base (transaction annulée) : écritures admin acceptées, adhérent refusé, code déjà
 pris par une autre asso refusé. Pas encore testé : l'envoi de photo depuis un téléphone.
 
+Fait (3e PR) — Pilotage bureau, dans Plus › Gestion, pour les membres du bureau et les admins :
+- « À venir » (5 prochaines actions et leurs tâches ouvertes), « Actions » (en cours /
+  terminées, tâches imbriquées, cases à cocher instantanées), « Équipe » (une carte par
+  personne + « Non assigné », terminés masqués par défaut), comme dans `briefs/pilotage-bureau.md` ;
+- nouvelle tâche confiée par défaut au référent de l'action ; changement de référent : le
+  trigger existant le transmet aux tâches sans responsable (l'écran le signale) ;
+- backend : `supabase/bureau_members.sql` (migration `bureau_members`, appliquée) ; la RLS de
+  `profiles` ne montrait à un membre du bureau non admin que son propre profil, la fonction
+  renvoie le bureau de son asso (vide pour un adhérent). Même fichier : `search_path` fixé sur
+  le trigger `propagate_action_referent` (alerte des conseillers Supabase).
+Vérifié en base (transaction annulée) : liste du bureau pour un membre non admin, héritage du
+référent, suppression en cascade, adhérent sans accès.
+
 Reste à faire :
-1. Bureau (3e PR) : À venir, Actions, Todo liste équipe (`briefs/pilotage-bureau.md`).
-   Attention : la RLS de `profiles` ne laisse un membre du bureau (non admin) voir que son
-   propre profil, donc la liste des référents serait vide pour lui (même limite dans la PWA).
+1. Tester l'app entière sur iPhone (Expo Go), avec un compte adhérent et un compte admin.
 2. Compte existant sans profil (ex. compte Immopilot) : l'app affiche « Aucune association ».
    Si besoin, ajouter une RPC pour rejoindre une asso avec un code depuis ce compte.
+3. La PWA pourrait aussi utiliser `bureau_members()` (elle lit `profiles` directement).
 
 Côté Andy pour tester sur iPhone :
 - `cd app && npm install && npx expo start`, puis scanner le QR code avec Expo Go ;

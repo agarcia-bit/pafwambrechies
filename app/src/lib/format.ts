@@ -36,6 +36,13 @@ export function formatDay(iso: string): string {
   return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
+/** "25 sept." (with the year when it is not the current one) */
+export function formatDayShort(iso: string): string {
+  const date = parseDay(iso);
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}${sameYear ? '' : ` ${date.getFullYear()}`}`;
+}
+
 /** Vendredi 25 septembre 2026 */
 export function formatDayLong(iso: string): string {
   const day = WEEKDAYS[parseDay(iso).getDay()];

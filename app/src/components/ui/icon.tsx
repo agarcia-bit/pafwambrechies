@@ -39,6 +39,9 @@ const ICONS = {
   refresh: { ios: 'arrow.triangle.2.circlepath', android: 'autorenew' },
   shield: { ios: 'checkmark.shield', android: 'admin_panel_settings' },
   palette: { ios: 'paintpalette', android: 'palette' },
+  circle: { ios: 'circle', android: 'radio_button_unchecked' },
+  checkCircle: { ios: 'checkmark.circle.fill', android: 'check_circle' },
+  clipboard: { ios: 'list.bullet.clipboard', android: 'assignment' },
 } satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol }>;
 
 export type IconName = keyof typeof ICONS;
