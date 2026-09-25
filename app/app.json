@@ -46,7 +46,16 @@
         {
           "calendarPermission": "Allianceo ajoute les événements de votre association à votre agenda."
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allianceo utilise vos photos pour illustrer les fiches de l’annuaire.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

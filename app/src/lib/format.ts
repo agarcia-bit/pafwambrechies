@@ -14,11 +14,20 @@ export function parseDay(iso: string): Date {
   return new Date(y, m - 1, d);
 }
 
+/** Local calendar day of a Date as "YYYY-MM-DD". */
+export function isoDay(date: Date): string {
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${m}-${d}`;
+}
+
 export function todayISO(): string {
-  const now = new Date();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${now.getFullYear()}-${m}-${d}`;
+  return isoDay(new Date());
+}
+
+/** "HH:MM" of a Date. */
+export function hourMinute(date: Date): string {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
 /** 25 septembre 2026 */

@@ -33,6 +33,12 @@ const ICONS = {
   info: { ios: 'info.circle', android: 'info' },
   hand: { ios: 'hand.raised', android: 'badge' },
   check: { ios: 'checkmark', android: 'check' },
+  gear: { ios: 'gearshape', android: 'settings' },
+  photo: { ios: 'photo', android: 'image' },
+  share: { ios: 'square.and.arrow.up', android: 'share' },
+  refresh: { ios: 'arrow.triangle.2.circlepath', android: 'autorenew' },
+  shield: { ios: 'checkmark.shield', android: 'admin_panel_settings' },
+  palette: { ios: 'paintpalette', android: 'palette' },
 } satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol }>;
 
 export type IconName = keyof typeof ICONS;
