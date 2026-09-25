@@ -57,10 +57,23 @@ Vérifié : TypeScript, lint, `expo-doctor`, bundles iOS et Android, écrans non
 le navigateur (connexion, code inconnu, aperçu de l'asso, redirection sans session).
 Pas encore testé : les écrans connectés sur un vrai téléphone (Expo Go).
 
+Fait (2e PR) — Admin, dans Plus › Gestion, visible des seuls admins (routes protégées) :
+- actus, offres, agenda, annuaire, liens : liste + formulaire commun (création, modification,
+  suppression), décrits dans `app/src/lib/admin.ts` ;
+- annuaire : photo choisie dans la galerie, recadrée au centre en 4:3 (800×600) comme la PWA,
+  envoyée dans le bucket `annuaire-photos` ;
+- idées : suppression (modération) ; réglages : code d'accès (bouton « Générer » : code
+  aléatoire de 8 caractères, bouton « Partager »), nom, sous-titre, couleur, logo, et les deux
+  réglages propres à la PWA ;
+- publier une actu envoie la notification : le formulaire le rappelle.
+Vérifié en base (transaction annulée) : écritures admin acceptées, adhérent refusé, code déjà
+pris par une autre asso refusé. Pas encore testé : l'envoi de photo depuis un téléphone.
+
 Reste à faire :
-1. Admin (2e PR) : actus, offres, agenda, annuaire (avec photo), idées, liens, réglages.
-2. Bureau (3e PR) : À venir, Actions, Todo liste équipe (`briefs/pilotage-bureau.md`).
-3. Compte existant sans profil (ex. compte Immopilot) : l'app affiche « Aucune association ».
+1. Bureau (3e PR) : À venir, Actions, Todo liste équipe (`briefs/pilotage-bureau.md`).
+   Attention : la RLS de `profiles` ne laisse un membre du bureau (non admin) voir que son
+   propre profil, donc la liste des référents serait vide pour lui (même limite dans la PWA).
+2. Compte existant sans profil (ex. compte Immopilot) : l'app affiche « Aucune association ».
    Si besoin, ajouter une RPC pour rejoindre une asso avec un code depuis ce compte.
 
 Côté Andy pour tester sur iPhone :
