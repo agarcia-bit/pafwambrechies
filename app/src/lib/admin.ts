@@ -252,7 +252,7 @@ export function findCollection(key: string | undefined): Collection | undefined 
 }
 
 // An update or delete that RLS filters out returns no error, only no rows.
-class NotAllowedError extends Error {}
+export class NotAllowedError extends Error {}
 
 export function adminErrorMessage(error: unknown): string {
   if (error instanceof NotAllowedError || (error as { code?: string })?.code === '42501') {

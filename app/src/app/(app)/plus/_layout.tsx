@@ -3,7 +3,7 @@ import { Stack } from 'expo-router';
 import { useMember } from '@/lib/session';
 
 export default function PlusLayout() {
-  const { isAdmin } = useMember();
+  const { isAdmin, isBureau } = useMember();
   return (
     <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
       <Stack.Screen name="index" options={{ title: 'Plus', headerLargeTitleEnabled: true }} />
@@ -19,6 +19,12 @@ export default function PlusLayout() {
         <Stack.Screen name="admin/[collection]/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="admin/idees" options={{ title: 'Idées', headerLargeTitleEnabled: true }} />
         <Stack.Screen name="admin/reglages" options={{ title: 'Réglages', headerLargeTitleEnabled: true }} />
+      </Stack.Protected>
+      <Stack.Protected guard={isBureau}>
+        <Stack.Screen name="bureau/index" options={{ title: 'Pilotage bureau', headerLargeTitleEnabled: true }} />
+        <Stack.Screen name="bureau/action/[id]" options={{ title: 'Action' }} />
+        <Stack.Screen name="bureau/action/nouvelle" options={{ title: 'Nouvelle action', presentation: 'modal' }} />
+        <Stack.Screen name="bureau/tache" options={{ presentation: 'modal' }} />
       </Stack.Protected>
     </Stack>
   );

@@ -54,11 +54,14 @@ export function ChoiceField({
   options,
   value,
   onChange,
+  format = (option) => option,
 }: {
   label: string;
   options: readonly string[];
   value: string;
   onChange: (value: string) => void;
+  /** Label of an option when it is not the value itself (e.g. a member id). */
+  format?: (option: string) => string;
 }) {
   const { colors } = useTheme();
   return (
@@ -75,7 +78,7 @@ export function ChoiceField({
               onPress={() => onChange(option)}
               style={[styles.choice, { backgroundColor: selected ? colors.primary : colors.fill }]}>
               <Text variant="subhead" style={{ color: selected ? colors.onPrimary : colors.text, fontWeight: '600' }}>
-                {option}
+                {format(option)}
               </Text>
             </Pressable>
           );

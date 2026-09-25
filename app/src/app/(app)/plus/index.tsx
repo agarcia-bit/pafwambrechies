@@ -7,7 +7,7 @@ import { fullName } from '@/lib/format';
 import { useMember } from '@/lib/session';
 
 export default function PlusScreen() {
-  const { profile, isAdmin } = useMember();
+  const { profile, isAdmin, isBureau } = useMember();
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
       <AssociationBanner />
@@ -15,14 +15,22 @@ export default function PlusScreen() {
         <ListRow icon="lightbulb" title="Boîte à idées" onPress={() => router.push('/plus/idees')} />
         <ListRow icon="link" title="Liens utiles" onPress={() => router.push('/plus/liens')} />
       </ListSection>
-      {isAdmin && (
+      {isBureau && (
         <ListSection title="Gestion">
           <ListRow
-            icon="shield"
-            title="Administration"
-            subtitle="Actus, offres, agenda, annuaire, réglages"
-            onPress={() => router.push('/plus/admin')}
+            icon="clipboard"
+            title="Pilotage bureau"
+            subtitle="Actions et tâches du bureau"
+            onPress={() => router.push('/plus/bureau')}
           />
+          {isAdmin && (
+            <ListRow
+              icon="shield"
+              title="Administration"
+              subtitle="Actus, offres, agenda, annuaire, réglages"
+              onPress={() => router.push('/plus/admin')}
+            />
+          )}
         </ListSection>
       )}
       <ListSection>
