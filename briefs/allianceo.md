@@ -37,12 +37,39 @@ Fait et appliqué sur Supabase :
   - Testée de bout en bout sur le tenant `demo` (faux destinataires, actu de test supprimée).
   - Secret optionnel `EXPO_ACCESS_TOKEN`, à poser si on active la « enhanced push security » d'Expo.
 
-## Étape 2 — app Expo (dossier `app/`)
-Écrans : connexion, inscription par code (affiche l'asso trouvée), mot de passe oublié,
-6 onglets (Actus, Annuaire, Offres, Idées, Agenda, Liens), Admin, Bureau, Mon compte
-(déconnexion, notifications, **supprimer mon compte**). Branding via `get_my_branding()`.
-Notifications : `register_device_token(token, platform)` après connexion,
-`unregister_device_token(token)` à la déconnexion ; au tap, ouvrir l'actu `data.actu_id`.
+## Étape 2 — app Expo (dossier `app/`) : en cours
+Expo SDK 57, Expo Router, onglets natifs (Liquid Glass sur iOS 26), React Query.
+Mode d'emploi et organisation du code : `app/README.md`.
+
+Fait (1re PR) :
+- connexion (écran neutre Allianceo), inscription par code (l'asso trouvée s'affiche dans
+  ses couleurs), mot de passe oublié (lien `allianceo://nouveau-mot-de-passe`, flux PKCE) ;
+- 5 onglets, pas 6 (maximum Apple sur iPhone, limite Android) : Actus, Annuaire, Offres,
+  Agenda, Plus (Idées, Liens, Mon compte). J'aime et commentaires sur les actus et les idées ;
+- Mon compte : notifications, déconnexion (locale seulement, le login est partagé avec
+  Immopilot), suppression du compte (`delete_my_account()`) ;
+- notifications : téléphone enregistré après connexion (`register_device_token`), retiré à
+  la déconnexion ; le tap ouvre l'actu (`data.actu_id`) ;
+- « Ajouter à mon agenda » : feuille système, sans permission à partir d'iOS 17 ;
+- différence voulue avec la PWA : les offres expirées ne sont plus affichées.
+
+Vérifié : TypeScript, lint, `expo-doctor`, bundles iOS et Android, écrans non connectés dans
+le navigateur (connexion, code inconnu, aperçu de l'asso, redirection sans session).
+Pas encore testé : les écrans connectés sur un vrai téléphone (Expo Go).
+
+Reste à faire :
+1. Admin (2e PR) : actus, offres, agenda, annuaire (avec photo), idées, liens, réglages.
+2. Bureau (3e PR) : À venir, Actions, Todo liste équipe (`briefs/pilotage-bureau.md`).
+3. Compte existant sans profil (ex. compte Immopilot) : l'app affiche « Aucune association ».
+   Si besoin, ajouter une RPC pour rejoindre une asso avec un code depuis ce compte.
+
+Côté Andy pour tester sur iPhone :
+- `cd app && npm install && npx expo start`, puis scanner le QR code avec Expo Go ;
+- notifications : `npx eas-cli@latest init` (crée le projet EAS et son `projectId`) ; pour
+  Android il faudra aussi un projet Firebase (FCM) déclaré dans EAS ;
+- mot de passe oublié : ajouter `allianceo://**` aux Redirect URLs de Supabase Auth
+  (pour Expo Go, ajouter aussi l'adresse `exp://…` affichée par `expo start`, le temps des tests) ;
+- logo : renseigner `tenant_logo_url` dans les réglages de l'asso (sinon l'initiale s'affiche).
 
 ## Étape 3 — stores
 EAS Build, TestFlight, fiches App Store Connect / Play Console, reprendre politique de
