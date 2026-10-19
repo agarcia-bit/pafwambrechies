@@ -45,7 +45,7 @@ export function ChipBar<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  band: { paddingTop: 2, paddingBottom: 14 },
+  band: {},
   bar: { gap: 8, paddingHorizontal: 16, paddingVertical: 4 },
   chip: { height: 34, borderRadius: 17, paddingHorizontal: 14, justifyContent: 'center' },
 });

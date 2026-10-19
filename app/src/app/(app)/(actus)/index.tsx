@@ -4,17 +4,20 @@ import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'r
 import { PushOffer } from '@/components/association';
 import { PendingPolls } from '@/components/pending-polls';
 import { UpcomingEvents } from '@/components/upcoming-events';
+import { BrandBand } from '@/components/brand-band';
 import { ActuCard } from '@/components/cards';
 import { ChipBar } from '@/components/ui/chip-bar';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { ACTU_CATEGORIES } from '@/lib/categories';
 import { useActus } from '@/lib/data';
+import { useMember } from '@/lib/session';
 
 type Category = (typeof ACTU_CATEGORIES)[number];
 
 export default function ActusScreen() {
   const [category, setCategory] = useState<Category>('Tous');
+  const { branding } = useMember();
   const actus = useActus(category);
   const { refreshing, onRefresh } = usePullToRefresh(actus.refetch);
   const items = actus.data?.pages.flat() ?? [];
@@ -24,12 +27,14 @@ export default function ActusScreen() {
       data={items}
       keyExtractor={(item) => String(item.id)}
       renderItem={({ item, index }) => <ActuCard actu={item} index={index} />}
-      contentInsetAdjustmentBehavior="automatic"
+      contentInsetAdjustmentBehavior="never"
       contentContainerStyle={styles.content}
       ItemSeparatorComponent={Gap}
       ListHeaderComponent={
         <View style={styles.header}>
-          <ChipBar onBand options={ACTU_CATEGORIES} value={category} onChange={setCategory} />
+          <BrandBand title={(branding?.tenant_name ?? branding?.name ?? 'Actus').toUpperCase()}>
+            <ChipBar onBand options={ACTU_CATEGORIES} value={category} onChange={setCategory} />
+          </BrandBand>
           <PendingPolls />
           <PushOffer />
           {(category === 'Tous' || category === 'Événement') && <UpcomingEvents />}
