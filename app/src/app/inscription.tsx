@@ -40,7 +40,7 @@ export default function InscriptionScreen() {
 
   if (association) {
     return (
-      <BrandScope color={association.tenant_primary_color}>
+      <BrandScope color={association.tenant_primary_color} banner={association.tenant_secondary_color}>
         <AccountForm code={code.trim()} association={association} onChangeCode={() => setAssociation(null)} />
       </BrandScope>
     );

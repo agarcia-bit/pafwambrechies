@@ -1,3 +1,4 @@
+import { StatusBar } from 'expo-status-bar';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { StyleSheet, View } from 'react-native';
 
@@ -29,6 +30,7 @@ export default function AppLayout() {
   return (
     <>
       <NotificationObserver />
+      <StatusBar style="light" />
       <PollGate />
       <NativeTabs tintColor={colors.primary}>
         <NativeTabs.Trigger name="(actus)">

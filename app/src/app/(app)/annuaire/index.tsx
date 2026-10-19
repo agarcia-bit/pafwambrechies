@@ -66,7 +66,7 @@ export default function AnnuaireScreen() {
               />
             )}
             {categories.annuaire.length > 0 && (
-              <ChipBar options={['Tous', ...categories.annuaire]} value={category} onChange={setCategory} />
+              <ChipBar onBand options={['Tous', ...categories.annuaire]} value={category} onChange={setCategory} />
             )}
           </View>
         }
@@ -116,7 +116,7 @@ function Gap() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingTop: 8, paddingBottom: 32 },
+  content: { paddingTop: 0, paddingBottom: 32 },
   header: { gap: 12, marginBottom: 16 },
   webSearch: { marginHorizontal: 16, height: 40, borderRadius: 10, paddingHorizontal: 12, fontSize: 16 },
   row: { marginHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12 },

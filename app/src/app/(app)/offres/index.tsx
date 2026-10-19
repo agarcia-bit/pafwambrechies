@@ -30,12 +30,12 @@ export default function OffresScreen() {
       ItemSeparatorComponent={Gap}
       ListHeaderComponent={
         <View style={styles.header}>
+          {categories.offres.length > 0 && (
+            <ChipBar onBand options={['Tous', ...categories.offres]} value={category} onChange={setCategory} />
+          )}
           <Text tone="secondary" style={styles.intro}>
             Les bons plans réservés aux adhérents.
           </Text>
-          {categories.offres.length > 0 && (
-            <ChipBar options={['Tous', ...categories.offres]} value={category} onChange={setCategory} />
-          )}
         </View>
       }
       ListEmptyComponent={
@@ -77,7 +77,7 @@ function Gap() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingTop: 8, paddingBottom: 32 },
+  content: { paddingTop: 0, paddingBottom: 32 },
   header: { gap: 12, marginBottom: 16 },
   intro: { marginHorizontal: 16 },
   card: { marginHorizontal: 16, gap: 6 },

@@ -1,13 +1,16 @@
 import { Stack } from 'expo-router';
 
+import { useBrandHeader } from '@/theme';
+
 import { useMember } from '@/lib/session';
 import { useTenantConfig } from '@/lib/tenant-config';
 
 export default function PlusLayout() {
+  const header = useBrandHeader();
   const { isAdmin, isBureau } = useMember();
   const { modules } = useTenantConfig();
   return (
-    <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
+    <Stack screenOptions={header}>
       <Stack.Screen name="index" options={{ title: 'Plus', headerLargeTitleEnabled: true }} />
       <Stack.Protected guard={modules.idees}>
         <Stack.Screen name="idees/index" options={{ title: 'Boîte à idées', headerLargeTitleEnabled: true }} />

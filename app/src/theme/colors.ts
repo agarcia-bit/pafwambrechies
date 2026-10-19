@@ -9,6 +9,8 @@ export type Palette = {
   onPrimary: string;
   /** Light tint of `primary` for selected states and icon backgrounds. */
   primarySoft: string;
+  /** Header band color: the secondary brand color, dark enough for white text. */
+  banner: string;
   background: string;
   card: string;
   text: string;
@@ -21,7 +23,7 @@ export type Palette = {
 };
 
 // iOS system colors (grouped backgrounds), used on every platform.
-const BASE: Record<Scheme, Omit<Palette, 'primary' | 'onPrimary' | 'primarySoft'>> = {
+const BASE: Record<Scheme, Omit<Palette, 'primary' | 'onPrimary' | 'primarySoft' | 'banner'>> = {
   light: {
     background: '#F2F2F7',
     card: '#FFFFFF',
@@ -78,7 +80,7 @@ function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-export function makePalette(scheme: Scheme, brandColor?: string | null): Palette {
+export function makePalette(scheme: Scheme, brandColor?: string | null, bannerColor?: string | null): Palette {
   const base = BASE[scheme];
   let primary = brandColor && parseHex(brandColor) ? toHex(parseHex(brandColor)!) : ALLIANCEO_COLOR;
   // Brand colors are usually chosen for a white page: a navy is unreadable in
@@ -86,8 +88,14 @@ export function makePalette(scheme: Scheme, brandColor?: string | null): Palette
   for (let i = 0; i < 12 && contrast(primary, base.card) < 4.5; i++) {
     primary = mix(primary, base.text, 0.12);
   }
+  // The band carries white text: darken until it reaches 4.5:1 (and a bit more in dark mode).
+  const bannerSource = bannerColor && parseHex(bannerColor) ? bannerColor : brandColor && parseHex(brandColor) ? brandColor : ALLIANCEO_COLOR;
+  let banner = toHex(parseHex(bannerSource)!);
+  for (let i = 0; i < 20 && contrast(banner, '#FFFFFF') < 4.5; i++) banner = mix(banner, '#000000', 0.08);
+  if (scheme === 'dark') banner = mix(banner, '#000000', 0.3);
   return {
     ...base,
+    banner,
     primary,
     // White labels like iOS, unless the color is too light (3:1 suits the bold button text).
     onPrimary: contrast('#FFFFFF', primary) >= 3 ? '#FFFFFF' : '#000000',

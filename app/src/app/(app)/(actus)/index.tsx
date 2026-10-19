@@ -29,9 +29,9 @@ export default function ActusScreen() {
       ItemSeparatorComponent={Gap}
       ListHeaderComponent={
         <View style={styles.header}>
+          <ChipBar onBand options={ACTU_CATEGORIES} value={category} onChange={setCategory} />
           <PendingPolls />
           <PushOffer />
-          <ChipBar options={ACTU_CATEGORIES} value={category} onChange={setCategory} />
           {(category === 'Tous' || category === 'Événement') && <UpcomingEvents />}
         </View>
       }
@@ -59,7 +59,7 @@ function Gap() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingTop: 8, paddingBottom: 32 },
+  content: { paddingTop: 0, paddingBottom: 32 },
   header: { gap: 16, marginBottom: 16 },
   gap: { height: 12 },
   more: { marginTop: 16 },
