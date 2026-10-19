@@ -103,6 +103,8 @@ Avant le lancement : codes d'accès aléatoires (pas du type nom + année), car
 `resolve_signup_code` est appelable sans compte et un code devinable ouvre l'annuaire.
 
 ## Côté Andy (en parallèle)
-- Numéro D-U-N-S pour Agalumy, puis inscription Apple Developer (organisation, 99 $/an).
+- Inscription Apple Developer (organisation Agalumy, 99 $/an) : demande d'enrôlement
+  envoyée, en attente de validation par Apple (le numéro D-U-N-S est dans les notes d'Andy,
+  pas dans ce dépôt public).
 - Compte Expo (expo.dev).
 - Logo / icône Allianceo.
