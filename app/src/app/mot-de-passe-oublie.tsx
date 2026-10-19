@@ -1,6 +1,5 @@
-import * as Linking from 'expo-linking';
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { FormScreen } from '@/components/form-screen';
 import { Button } from '@/components/ui/button';
@@ -9,14 +8,28 @@ import { TextField } from '@/components/ui/text-field';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { supabase } from '@/lib/supabase';
 
+// Supabase limits password emails to one per minute for the same address.
+const RESEND_DELAY_SECONDS = 60;
+
+// Step 1: the member asks for a code by email. Step 2: they type it, which signs
+// them in and opens the "new password" screen (PASSWORD_RECOVERY, see session.tsx).
+// A code needs no deep link or redirect URL, and works the same in Expo Go.
 export default function MotDePasseOublieScreen() {
   const params = useLocalSearchParams<{ email?: string }>();
   const [email, setEmail] = useState(params.email ?? '');
+  const [code, setCode] = useState('');
+  const [sentTo, setSentTo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [wait, setWait] = useState(0);
 
-  async function sendLink() {
+  useEffect(() => {
+    if (wait <= 0) return;
+    const timer = setTimeout(() => setWait(wait - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [wait]);
+
+  async function sendCode() {
     const address = email.trim();
     if (!address) {
       setError('Saisissez votre email.');
@@ -24,30 +37,71 @@ export default function MotDePasseOublieScreen() {
     }
     setLoading(true);
     setError(null);
-    // The link opens the app, which exchanges its code for a session (see useRecoveryLinks).
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(address, {
-      redirectTo: Linking.createURL('/nouveau-mot-de-passe'),
-    });
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(address);
     setLoading(false);
-    if (resetError) setError(authErrorMessage(resetError));
-    else setSentTo(address);
+    if (resetError) {
+      setError(authErrorMessage(resetError));
+      return;
+    }
+    setSentTo(address);
+    setCode('');
+    setWait(RESEND_DELAY_SECONDS);
+  }
+
+  async function checkCode() {
+    const token = code.replace(/\s/g, '');
+    if (!sentTo || !token) {
+      setError('Saisissez le code reçu par email.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    // On success the member is signed in and the root layout shows the new password screen.
+    const { error: verifyError } = await supabase.auth.verifyOtp({ email: sentTo, token, type: 'recovery' });
+    setLoading(false);
+    if (verifyError) setError(authErrorMessage(verifyError, 'code'));
   }
 
   if (sentTo) {
     return (
       <FormScreen>
-        <Text variant="title">Vérifiez vos emails</Text>
-        <Text>
-          Si un compte existe pour {sentTo}, vous allez recevoir un lien pour choisir un nouveau mot de passe.
-          Ouvrez-le sur ce téléphone.
+        <Text variant="title">Saisissez le code</Text>
+        <Text tone="secondary">
+          Si un compte existe pour {sentTo}, vous avez reçu un email avec un code. Recopiez-le ici. Pensez à
+          regarder dans les courriers indésirables.
         </Text>
+        <TextField
+          label="Code reçu par email"
+          value={code}
+          onChangeText={setCode}
+          placeholder="123456"
+          keyboardType="number-pad"
+          autoComplete="one-time-code"
+          textContentType="oneTimeCode"
+          maxLength={10}
+          returnKeyType="done"
+          onSubmitEditing={checkCode}
+        />
+        {error && (
+          <Text tone="danger" accessibilityLiveRegion="polite">
+            {error}
+          </Text>
+        )}
+        <Button title="Valider" onPress={checkCode} loading={loading} />
+        <Button
+          title={wait > 0 ? `Renvoyer le code (${wait} s)` : 'Renvoyer le code'}
+          variant="plain"
+          disabled={wait > 0}
+          onPress={sendCode}
+        />
+        <Button title="Changer d’adresse email" variant="plain" onPress={() => setSentTo(null)} />
       </FormScreen>
     );
   }
 
   return (
     <FormScreen>
-      <Text tone="secondary">Nous vous envoyons un lien pour choisir un nouveau mot de passe.</Text>
+      <Text tone="secondary">Nous vous envoyons un code par email pour choisir un nouveau mot de passe.</Text>
       <TextField
         label="Email"
         value={email}
@@ -59,10 +113,10 @@ export default function MotDePasseOublieScreen() {
         keyboardType="email-address"
         textContentType="username"
         returnKeyType="send"
-        onSubmitEditing={sendLink}
+        onSubmitEditing={sendCode}
       />
       {error && <Text tone="danger">{error}</Text>}
-      <Button title="Envoyer le lien" onPress={sendLink} loading={loading} />
+      <Button title="Envoyer le code" onPress={sendCode} loading={loading} />
     </FormScreen>
   );
 }
