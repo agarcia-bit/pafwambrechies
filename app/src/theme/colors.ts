@@ -25,12 +25,12 @@ export type Palette = {
 // iOS system colors (grouped backgrounds), used on every platform.
 const BASE: Record<Scheme, Omit<Palette, 'primary' | 'onPrimary' | 'primarySoft' | 'banner'>> = {
   light: {
-    background: '#F2F2F7',
+    background: '#E6E6EC',
     card: '#FFFFFF',
     text: '#000000',
     textSecondary: '#6C6C70',
-    separator: '#D1D1D6',
-    fill: '#E9E9EE',
+    separator: '#C6C6CC',
+    fill: '#DADAE1',
     danger: '#FF3B30',
     success: '#34C759',
   },
