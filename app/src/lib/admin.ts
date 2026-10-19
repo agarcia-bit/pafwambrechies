@@ -2,10 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRandomBytes } from 'expo-crypto';
 
 import type { IconName } from '@/components/ui/icon';
-import { ACTU_CATEGORIES, ANNUAIRE_CATEGORIES, OFFRE_CATEGORIES } from '@/lib/categories';
+import { ACTU_CATEGORIES } from '@/lib/categories';
 import { formatDay, fullName, todayISO } from '@/lib/format';
 import { uploadDirectoryPhoto, type PickedPhoto } from '@/lib/photos';
 import { useMember } from '@/lib/session';
+import { DEFAULT_CATEGORY, parseList, useTenantConfig, type ModuleKey, type TenantConfig } from '@/lib/tenant-config';
 import { supabase } from '@/lib/supabase';
 
 // Admin screens edit the association's content. Writes are restricted to
@@ -101,21 +102,21 @@ const offres: Collection = {
   // No end date first, then the latest; expired offers end up at the bottom.
   order: [{ column: 'expiration', ascending: false, nullsFirst: true }],
   fields: [
-    { key: 'commercant', label: 'Commerçant', type: 'text', required: true },
+    { key: 'commercant', label: 'Proposé par', type: 'text', required: true },
     { key: 'titre', label: 'Titre de l’offre', type: 'text', required: true },
     { key: 'description', label: 'Description', type: 'multiline' },
     { key: 'expiration', label: 'Date limite', type: 'date' },
     { key: 'tag', label: 'Étiquette', type: 'text', placeholder: '-10 %, Offert…' },
-    { key: 'categorie', label: 'Catégorie', type: 'choice', required: true, options: OFFRE_CATEGORIES.slice(1) },
+    { key: 'categorie', label: 'Catégorie', type: 'choice', required: true, options: [] },
   ],
-  defaults: () => ({ commercant: '', titre: '', description: '', expiration: '', tag: '', categorie: 'Particulier' }),
+  defaults: () => ({ commercant: '', titre: '', description: '', expiration: '', tag: '', categorie: DEFAULT_CATEGORY }),
   toValues: (r) => ({
     commercant: str(r.commercant),
     titre: str(r.titre),
     description: str(r.description),
     expiration: str(r.expiration),
     tag: str(r.tag),
-    categorie: str(r.categorie) || 'Particulier',
+    categorie: str(r.categorie) || DEFAULT_CATEGORY,
   }),
   toPayload: (v) => ({
     commercant: v.commercant.trim(),
@@ -182,18 +183,18 @@ const annuaire: Collection = {
   key: 'annuaire',
   icon: 'people',
   title: 'Annuaire',
-  newTitle: 'Nouveau commerçant',
+  newTitle: 'Nouvelle fiche',
   editTitle: 'Modifier la fiche',
-  addLabel: 'Ajouter un commerçant',
-  empty: 'Aucun commerçant.',
+  addLabel: 'Ajouter une fiche',
+  empty: 'Aucune fiche.',
   memberQueries: ['annuaire'],
   order: [{ column: 'nom_entreprise', ascending: true }],
   fields: [
     { key: 'photo_url', label: 'Photo', type: 'photo' },
-    { key: 'nom_entreprise', label: 'Nom de l’entreprise', type: 'text', required: true },
+    { key: 'nom_entreprise', label: 'Nom', type: 'text', required: true },
     { key: 'prenom_contact', label: 'Prénom du contact', type: 'text' },
     { key: 'nom_contact', label: 'Nom du contact', type: 'text' },
-    { key: 'categorie', label: 'Catégorie', type: 'choice', required: true, options: ANNUAIRE_CATEGORIES.slice(1) },
+    { key: 'categorie', label: 'Catégorie', type: 'choice', required: true, options: [] },
     { key: 'adresse', label: 'Adresse', type: 'text' },
     { key: 'telephone', label: 'Téléphone', type: 'phone' },
     { key: 'email', label: 'Email', type: 'email' },
@@ -201,7 +202,7 @@ const annuaire: Collection = {
     { key: 'instagram', label: 'Instagram', type: 'text', placeholder: '@compte' },
     { key: 'description', label: 'Description', type: 'multiline' },
   ],
-  defaults: () => ({ categorie: 'Commerçant' }),
+  defaults: () => ({ categorie: DEFAULT_CATEGORY }),
   toValues: (r) =>
     Object.fromEntries(annuaire.fields.map((f) => [f.key, str(r[f.key])])) as FormValues,
   toPayload: (v) => ({
@@ -249,6 +250,39 @@ export const COLLECTIONS = { actus, offres, evenements, annuaire, liens } satisf
 
 export function findCollection(key: string | undefined): Collection | undefined {
   return key && key in COLLECTIONS ? COLLECTIONS[key as Collection['key']] : undefined;
+}
+
+/** Section of the app each collection belongs to (it can be switched off per association). */
+export const COLLECTION_MODULE: Record<Collection['key'], ModuleKey | null> = {
+  actus: null,
+  offres: 'offres',
+  evenements: 'agenda',
+  annuaire: 'annuaire',
+  liens: 'liens',
+};
+
+/**
+ * The collection as the association names it, with its own categories. With no
+ * categories configured the field disappears and rows get DEFAULT_CATEGORY.
+ */
+export function withConfig(c: Collection, config: TenantConfig): Collection {
+  if (c.key !== 'annuaire' && c.key !== 'offres') return c;
+  const categories = config.categories[c.key];
+  const fields = c.fields.flatMap((f) => {
+    if (f.key !== 'categorie') return [f];
+    return categories.length ? [{ ...f, options: categories }] : [];
+  });
+  const defaults = () => ({ ...c.defaults(), categorie: categories[0] ?? DEFAULT_CATEGORY });
+  return c.key === 'annuaire'
+    ? { ...c, title: config.labels.annuaire, fields, defaults }
+    : { ...c, title: config.labels.offres, fields, defaults };
+}
+
+/** A collection by route key, named and filtered for the signed-in member's association. */
+export function useCollection(key: string | undefined): Collection | undefined {
+  const config = useTenantConfig();
+  const c = findCollection(key);
+  return c ? withConfig(c, config) : undefined;
 }
 
 // An update or delete that RLS filters out returns no error, only no rows.
@@ -352,8 +386,23 @@ export const SETTING_KEYS = [
   'tenant_secondary_color',
   'tenant_logo_url',
   'tenant_login_bg_url',
+  'module_annuaire',
+  'module_offres',
+  'module_agenda',
+  'module_idees',
+  'module_liens',
+  'label_annuaire',
+  'label_offres',
+  'label_nom',
+  'annuaire_categories',
+  'offres_categories',
 ] as const;
 export type Settings = Record<(typeof SETTING_KEYS)[number], string>;
+
+/** Category lists are stored cleaned up ("a, b,,a" becomes "a,b"). */
+function normalizeSetting(key: (typeof SETTING_KEYS)[number], value: string): string {
+  return key === 'annuaire_categories' || key === 'offres_categories' ? parseList(value).join(',') : value.trim();
+}
 
 export function useSettings() {
   return useQuery({
@@ -378,7 +427,7 @@ export function useSaveSettings() {
       const rows = SETTING_KEYS.map((key) => ({
         tenant_id: profile.tenant_id,
         key,
-        value: settings[key].trim(),
+        value: normalizeSetting(key, settings[key]),
         updated_at: updatedAt,
       }));
       const { error } = await supabase.from('app_settings').upsert(rows, { onConflict: 'tenant_id,key' });

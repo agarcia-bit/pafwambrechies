@@ -82,6 +82,16 @@ Fait (3e PR) — Pilotage bureau, dans Plus › Gestion, pour les membres du bur
 Vérifié en base (transaction annulée) : liste du bureau pour un membre non admin, héritage du
 référent, suppression en cascade, adhérent sans accès.
 
+Fait (adaptation à tous types d'associations) :
+- chaque asso règle depuis Plus › Administration › Réglages : les sections visibles (annuaire,
+  offres, agenda, idées, liens), le nom de l'annuaire et des offres, leurs catégories, et le
+  libellé du champ « nom » à l'inscription (`supabase/tenant_app_config.sql`, migration
+  `tenant_app_config`, clés dans `app_settings` renvoyées avec le branding) ;
+- sans réglage : toutes les sections, mots neutres (Annuaire, Offres, Nom), aucune catégorie
+  (valeur stockée « Général ») ; la PAF garde ses mots et ses catégories, écrits explicitement ;
+- les écrans masqués sont aussi protégés contre l'accès direct (routes gardées).
+Pas encore testé sur téléphone : le masquage des onglets et les écrans Admin correspondants.
+
 Reste à faire :
 1. Tester l'app entière sur iPhone (Expo Go), avec un compte adhérent et un compte admin.
 2. Compte existant sans profil (ex. compte Immopilot) : l'app affiche « Aucune association ».

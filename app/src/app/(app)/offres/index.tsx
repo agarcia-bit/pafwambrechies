@@ -8,16 +8,15 @@ import { ChipBar } from '@/components/ui/chip-bar';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
-import { OFFRE_CATEGORIES } from '@/lib/categories';
 import { useOffres } from '@/lib/data';
 import { offerValidity } from '@/lib/format';
+import { useTenantConfig } from '@/lib/tenant-config';
 import type { Offre } from '@/lib/types';
-
-type Category = (typeof OFFRE_CATEGORIES)[number];
 
 export default function OffresScreen() {
   const offres = useOffres();
-  const [category, setCategory] = useState<Category>('Tous');
+  const { categories } = useTenantConfig();
+  const [category, setCategory] = useState('Tous');
   const { refreshing, onRefresh } = usePullToRefresh(offres.refetch);
   const items = (offres.data ?? []).filter((o) => category === 'Tous' || o.categorie === category);
 
@@ -34,7 +33,9 @@ export default function OffresScreen() {
           <Text tone="secondary" style={styles.intro}>
             Les bons plans réservés aux adhérents.
           </Text>
-          <ChipBar options={OFFRE_CATEGORIES} value={category} onChange={setCategory} />
+          {categories.offres.length > 0 && (
+            <ChipBar options={['Tous', ...categories.offres]} value={category} onChange={setCategory} />
+          )}
         </View>
       }
       ListEmptyComponent={

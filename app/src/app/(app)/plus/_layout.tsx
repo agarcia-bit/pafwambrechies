@@ -1,16 +1,22 @@
 import { Stack } from 'expo-router';
 
 import { useMember } from '@/lib/session';
+import { useTenantConfig } from '@/lib/tenant-config';
 
 export default function PlusLayout() {
   const { isAdmin, isBureau } = useMember();
+  const { modules } = useTenantConfig();
   return (
     <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
       <Stack.Screen name="index" options={{ title: 'Plus', headerLargeTitleEnabled: true }} />
-      <Stack.Screen name="idees/index" options={{ title: 'Boîte à idées', headerLargeTitleEnabled: true }} />
-      <Stack.Screen name="idees/[id]" options={{ title: '' }} />
-      <Stack.Screen name="idees/nouvelle" options={{ title: 'Nouvelle idée', presentation: 'modal' }} />
-      <Stack.Screen name="liens" options={{ title: 'Liens utiles', headerLargeTitleEnabled: true }} />
+      <Stack.Protected guard={modules.idees}>
+        <Stack.Screen name="idees/index" options={{ title: 'Boîte à idées', headerLargeTitleEnabled: true }} />
+        <Stack.Screen name="idees/[id]" options={{ title: '' }} />
+        <Stack.Screen name="idees/nouvelle" options={{ title: 'Nouvelle idée', presentation: 'modal' }} />
+      </Stack.Protected>
+      <Stack.Protected guard={modules.liens}>
+        <Stack.Screen name="liens" options={{ title: 'Liens utiles', headerLargeTitleEnabled: true }} />
+      </Stack.Protected>
       <Stack.Screen name="compte" options={{ title: 'Mon compte', headerLargeTitleEnabled: true }} />
       {/* The RLS policies enforce it server-side; this hides the screens from other members. */}
       <Stack.Protected guard={isAdmin}>

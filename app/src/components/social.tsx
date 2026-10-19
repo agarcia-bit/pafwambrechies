@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, Share, StyleSheet, TextInput, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } from 'react-native-reanimated';
 
 import { Avatar } from '@/components/ui/avatar';
 import { Icon } from '@/components/ui/icon';
@@ -20,6 +21,8 @@ export function LikeButton({ kind, id, liked, count }: { kind: SocialKind; id: n
   const pressed = toggle.isPending ? toggle.variables : undefined;
   const shownLiked = pressed ? !pressed.liked : liked;
   const shownCount = pressed ? pressed.count + (pressed.liked ? -1 : 1) : count;
+  const scale = useSharedValue(1);
+  const heart = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
 
   return (
     <Pressable
@@ -30,13 +33,32 @@ export function LikeButton({ kind, id, liked, count }: { kind: SocialKind; id: n
       hitSlop={10}
       onPress={() => {
         if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        // The heart pops when a like is added.
+        if (!liked) scale.set(withSequence(withSpring(1.5, { damping: 5, stiffness: 400 }), withSpring(1)));
         toggle.mutate({ liked, count }, { onError: () => showMessage('Action impossible', 'Vérifiez votre connexion.') });
       }}
       style={styles.action}>
-      <Icon name={shownLiked ? 'heartFill' : 'heart'} size={19} color={shownLiked ? LIKED_COLOR : colors.textSecondary} />
-      <Text variant="subhead" tone="secondary">
+      <Animated.View style={heart}>
+        <Icon name={shownLiked ? 'heartFill' : 'heart'} size={21} color={shownLiked ? LIKED_COLOR : colors.textSecondary} />
+      </Animated.View>
+      <Text variant="subhead" style={{ color: shownLiked ? LIKED_COLOR : colors.textSecondary, fontWeight: '600' }}>
         {shownCount}
       </Text>
+    </Pressable>
+  );
+}
+
+/** Opens the system share sheet with the post's text. */
+export function ShareButton({ message }: { message: string }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Partager"
+      hitSlop={10}
+      onPress={() => Share.share({ message }).catch(() => showMessage('Partage impossible'))}
+      style={styles.action}>
+      <Icon name="share" size={20} color={colors.textSecondary} />
     </Pressable>
   );
 }

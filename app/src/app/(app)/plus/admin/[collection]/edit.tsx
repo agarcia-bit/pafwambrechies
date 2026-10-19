@@ -9,8 +9,8 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import {
   adminErrorMessage,
-  findCollection,
   useAdminList,
+  useCollection,
   useDeleteItem,
   useSaveItem,
   type Collection,
@@ -23,7 +23,7 @@ import { pickDirectoryPhoto, type PickedPhoto } from '@/lib/photos';
 // Creates an item (no id) or edits one (id), for any admin collection.
 export default function AdminEditScreen() {
   const { collection, id } = useLocalSearchParams<{ collection: string; id?: string }>();
-  const c = findCollection(collection);
+  const c = useCollection(collection);
   if (!c) return <EmptyState title="Section inconnue" />;
   if (!id) return <EditForm collection={c} />;
   return <ExistingItem collection={c} id={Number(id)} />;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
-import { AssociationBanner, PushOffer } from '@/components/association';
+import { PushOffer } from '@/components/association';
 import { ActuCard } from '@/components/cards';
 import { ChipBar } from '@/components/ui/chip-bar';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -27,7 +27,6 @@ export default function ActusScreen() {
       ItemSeparatorComponent={Gap}
       ListHeaderComponent={
         <View style={styles.header}>
-          <AssociationBanner />
           <PushOffer />
           <ChipBar options={ACTU_CATEGORIES} value={category} onChange={setCategory} />
         </View>

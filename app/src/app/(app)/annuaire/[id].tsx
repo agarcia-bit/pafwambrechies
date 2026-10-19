@@ -9,6 +9,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { useAnnuaire } from '@/lib/data';
 import { fullName } from '@/lib/format';
+import { useTenantConfig } from '@/lib/tenant-config';
 import { externalUrl, instagramUrl, mapsUrl, openLink, phoneUrl } from '@/lib/links';
 import { useTheme } from '@/theme';
 
@@ -16,6 +17,7 @@ export default function CommercantScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const annuaire = useAnnuaire();
   const { colors } = useTheme();
+  const { categories } = useTenantConfig();
   const m = annuaire.data?.find((item) => item.id === Number(id));
 
   if (annuaire.isPending) return <LoadingState />;
@@ -45,7 +47,7 @@ export default function CommercantScreen() {
         <Avatar name={name} size={80} />
       )}
       <View style={styles.head}>
-        <Badge label={m.categorie} />
+        {categories.annuaire.length > 0 && <Badge label={m.categorie} />}
         <Text variant="title" selectable>
           {name}
         </Text>

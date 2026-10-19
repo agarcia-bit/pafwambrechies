@@ -10,18 +10,17 @@ import { Icon } from '@/components/ui/icon';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
-import { ANNUAIRE_CATEGORIES } from '@/lib/categories';
 import { useAnnuaire } from '@/lib/data';
 import { fullName, searchable } from '@/lib/format';
+import { useTenantConfig } from '@/lib/tenant-config';
 import type { Commercant } from '@/lib/types';
 import { useTheme } from '@/theme';
-
-type Category = (typeof ANNUAIRE_CATEGORIES)[number];
 
 export default function AnnuaireScreen() {
   const annuaire = useAnnuaire();
   const { colors } = useTheme();
-  const [category, setCategory] = useState<Category>('Tous');
+  const { categories } = useTenantConfig();
+  const [category, setCategory] = useState('Tous');
   const [search, setSearch] = useState('');
   const { refreshing, onRefresh } = usePullToRefresh(annuaire.refetch);
 
@@ -66,7 +65,9 @@ export default function AnnuaireScreen() {
                 style={[styles.webSearch, { backgroundColor: colors.fill, color: colors.text }]}
               />
             )}
-            <ChipBar options={ANNUAIRE_CATEGORIES} value={category} onChange={setCategory} />
+            {categories.annuaire.length > 0 && (
+              <ChipBar options={['Tous', ...categories.annuaire]} value={category} onChange={setCategory} />
+            )}
           </View>
         }
         ListEmptyComponent={
@@ -86,6 +87,7 @@ export default function AnnuaireScreen() {
 
 function MerchantRow({ merchant: m }: { merchant: Commercant }) {
   const { colors } = useTheme();
+  const { categories } = useTenantConfig();
   const contact = fullName(m.prenom_contact, m.nom_contact);
   return (
     <PressableCard
@@ -102,7 +104,7 @@ function MerchantRow({ merchant: m }: { merchant: Commercant }) {
             {contact}
           </Text>
         )}
-        <Badge label={m.categorie} />
+        {categories.annuaire.length > 0 && <Badge label={m.categorie} />}
       </View>
       <Icon name="chevron" size={14} color={colors.textSecondary} />
     </PressableCard>

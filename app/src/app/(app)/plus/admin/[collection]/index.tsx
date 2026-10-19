@@ -9,12 +9,12 @@ import { Icon } from '@/components/ui/icon';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
-import { findCollection, useAdminList, type Collection, type Row } from '@/lib/admin';
+import { useAdminList, useCollection, type Collection, type Row } from '@/lib/admin';
 import { useTheme } from '@/theme';
 
 export default function AdminListScreen() {
   const { collection } = useLocalSearchParams<{ collection: string }>();
-  const c = findCollection(collection);
+  const c = useCollection(collection);
   if (!c) return <EmptyState title="Section inconnue" />;
   return <AdminList collection={c} />;
 }

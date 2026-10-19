@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/lib/session';
+import { tenantConfig } from '@/lib/tenant-config';
 import { useTheme } from '@/theme';
 
 // Five tabs at most (Apple's guideline, and Android's limit): the less used
@@ -22,6 +23,7 @@ export default function AppLayout() {
     );
   }
   if (!membership.profile) return <NoMembership />;
+  const { modules, labels } = tenantConfig(membership.branding);
 
   return (
     <>
@@ -31,15 +33,15 @@ export default function AppLayout() {
           <NativeTabs.Trigger.Label>Actus</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf={{ default: 'newspaper', selected: 'newspaper.fill' }} md="newspaper" />
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="annuaire">
-          <NativeTabs.Trigger.Label>Annuaire</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger name="annuaire" hidden={!modules.annuaire}>
+          <NativeTabs.Trigger.Label>{labels.annuaire}</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf={{ default: 'person.2', selected: 'person.2.fill' }} md="groups" />
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="offres">
-          <NativeTabs.Trigger.Label>Offres</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger name="offres" hidden={!modules.offres}>
+          <NativeTabs.Trigger.Label>{labels.offres}</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf={{ default: 'tag', selected: 'tag.fill' }} md="sell" />
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="agenda">
+        <NativeTabs.Trigger name="agenda" hidden={!modules.agenda}>
           <NativeTabs.Trigger.Label>Agenda</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="calendar" md="calendar_month" />
         </NativeTabs.Trigger>
