@@ -4,7 +4,7 @@ import { getRandomBytes } from 'expo-crypto';
 import type { IconName } from '@/components/ui/icon';
 import { ACTU_CATEGORIES } from '@/lib/categories';
 import { formatDay, fullName, todayISO } from '@/lib/format';
-import { uploadDirectoryPhoto, type PickedPhoto } from '@/lib/photos';
+import { uploadPhoto, type PickedPhoto } from '@/lib/photos';
 import { useMember } from '@/lib/session';
 import { DEFAULT_CATEGORY, parseList, useTenantConfig, type ModuleKey, type TenantConfig } from '@/lib/tenant-config';
 import { supabase } from '@/lib/supabase';
@@ -43,6 +43,8 @@ export type Collection = {
   toValues: (row: Row) => FormValues;
   toPayload: (values: FormValues) => Record<string, unknown>;
   describe: (row: Row) => { title: string; subtitle: string; image?: string | null; flag?: string };
+  /** Column holding the item's photo and the storage bucket it is uploaded to. */
+  photo?: { key: string; bucket: string; width: number; /** Cut to 4:3 (the directory shows 4:3); posts keep their own format. */ crop: boolean };
   /** Shown under the form when creating. */
   createHint?: string;
   /** Recomputes dependent fields after a change. */
@@ -76,17 +78,30 @@ const actus: Collection = {
     { key: 'titre', label: 'Titre', type: 'text', required: true },
     { key: 'categorie', label: 'Catégorie', type: 'choice', required: true, options: ACTU_CATEGORIES.slice(1) },
     { key: 'contenu', label: 'Contenu', type: 'multiline' },
+    { key: 'image_url', label: 'Photo', type: 'photo' },
   ],
-  defaults: () => ({ titre: '', categorie: 'Actu Asso', contenu: '', date: todayISO() }),
-  toValues: (r) => ({ titre: str(r.titre), categorie: str(r.categorie), contenu: str(r.contenu), date: str(r.date) }),
+  photo: { key: 'image_url', bucket: 'actus-photos', width: 1200, crop: false },
+  defaults: () => ({ titre: '', categorie: 'Actu Asso', contenu: '', date: todayISO(), image_url: '' }),
+  toValues: (r) => ({
+    titre: str(r.titre),
+    categorie: str(r.categorie),
+    contenu: str(r.contenu),
+    date: str(r.date),
+    image_url: str(r.image_url),
+  }),
   // The date stays the publication day, as in the web app.
   toPayload: (v) => ({
     titre: v.titre.trim(),
     categorie: v.categorie,
     contenu: orNull(v.contenu),
     date: v.date || todayISO(),
+    image_url: orNull(v.image_url),
   }),
-  describe: (r) => ({ title: str(r.titre), subtitle: `${formatDay(str(r.date))} · ${str(r.categorie)}` }),
+  describe: (r) => ({
+    title: str(r.titre),
+    subtitle: `${formatDay(str(r.date))} · ${str(r.categorie)}`,
+    image: r.image_url ? str(r.image_url) : undefined,
+  }),
   createHint: 'Les adhérents qui ont activé les notifications seront prévenus dès la publication.',
 };
 
@@ -189,6 +204,7 @@ const annuaire: Collection = {
   empty: 'Aucune fiche.',
   memberQueries: ['annuaire'],
   order: [{ column: 'nom_entreprise', ascending: true }],
+  photo: { key: 'photo_url', bucket: 'annuaire-photos', width: 800, crop: true },
   fields: [
     { key: 'photo_url', label: 'Photo', type: 'photo' },
     { key: 'nom_entreprise', label: 'Nom', type: 'text', required: true },
@@ -320,7 +336,7 @@ export function useSaveItem(c: Collection) {
   return useMutation({
     mutationFn: async ({ id, values, photo }: { id?: number; values: FormValues; photo?: PickedPhoto | null }) => {
       const payload = c.toPayload(values);
-      if (photo) payload.photo_url = await uploadDirectoryPhoto(photo);
+      if (photo && c.photo) payload[c.photo.key] = await uploadPhoto(photo, c.photo.bucket);
       if (id) {
         const { data, error } = await supabase.from(c.key).update(payload).eq('id', id).select('id');
         if (error) throw error;

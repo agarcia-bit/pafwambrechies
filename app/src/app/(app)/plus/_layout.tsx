@@ -25,6 +25,9 @@ export default function PlusLayout() {
         <Stack.Screen name="admin/[collection]/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="admin/idees" options={{ title: 'Idées', headerLargeTitleEnabled: true }} />
         <Stack.Screen name="admin/reglages" options={{ title: 'Réglages', headerLargeTitleEnabled: true }} />
+        <Stack.Screen name="admin/sondages/index" options={{ title: 'Sondages', headerLargeTitleEnabled: true }} />
+        <Stack.Screen name="admin/sondages/nouveau" options={{ title: 'Nouveau sondage', presentation: 'modal' }} />
+        <Stack.Screen name="admin/sondages/[id]" options={{ title: 'Résultats' }} />
       </Stack.Protected>
       <Stack.Protected guard={isBureau}>
         <Stack.Screen name="bureau/index" options={{ title: 'Pilotage bureau', headerLargeTitleEnabled: true }} />

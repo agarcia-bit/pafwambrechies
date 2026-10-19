@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { PushOffer } from '@/components/association';
+import { PendingPolls } from '@/components/pending-polls';
+import { UpcomingEvents } from '@/components/upcoming-events';
 import { ActuCard } from '@/components/cards';
 import { ChipBar } from '@/components/ui/chip-bar';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -27,8 +29,10 @@ export default function ActusScreen() {
       ItemSeparatorComponent={Gap}
       ListHeaderComponent={
         <View style={styles.header}>
+          <PendingPolls />
           <PushOffer />
           <ChipBar options={ACTU_CATEGORIES} value={category} onChange={setCategory} />
+          {(category === 'Tous' || category === 'Événement') && <UpcomingEvents />}
         </View>
       }
       ListEmptyComponent={

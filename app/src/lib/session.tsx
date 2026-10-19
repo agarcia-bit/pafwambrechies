@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createContext, use, useEffect, useState, type PropsWithChildren } from 'react';
 
 import { forgetPush, syncPush } from '@/lib/notifications';
+import { cancelAllReminders } from '@/lib/poll-reminders';
 import { queryClient } from '@/lib/query';
 import { supabase } from '@/lib/supabase';
 import type { Branding, Profile } from '@/lib/types';
@@ -94,6 +95,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
   async function signOut() {
     await forgetPush().catch(() => {});
+    await cancelAllReminders(membershipQuery.data?.profile?.id).catch(() => {});
     // 'local': the login is shared with other apps, their sessions stay open.
     await supabase.auth.signOut({ scope: 'local' });
   }

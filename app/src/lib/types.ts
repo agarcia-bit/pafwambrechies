@@ -45,6 +45,7 @@ export type Actu = {
   categorie: string;
   excerpt: string | null;
   contenu: string | null;
+  image_url: string | null;
   actus_likes: Count;
   actus_commentaires: Count;
   my_like: MyLike;

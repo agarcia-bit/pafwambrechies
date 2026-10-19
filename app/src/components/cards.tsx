@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { CategoryBand } from '@/components/actu-visual';
+import { ActuThumb, CategoryBand } from '@/components/actu-visual';
 import { Entrance } from '@/components/entrance';
 import { CommentCount, LikeButton, ShareButton } from '@/components/social';
 import { Avatar } from '@/components/ui/avatar';
@@ -15,6 +15,18 @@ import type { Actu, Idee } from '@/lib/types';
 export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
   const { colors } = useTheme();
   const preview = (actu.excerpt || actu.contenu || '').trim();
+  const text = (
+    <View style={styles.postText}>
+      <Text variant="title" style={styles.postTitle} numberOfLines={actu.image_url ? 3 : undefined}>
+        {actu.titre}
+      </Text>
+      {!!preview && (
+        <Text tone="secondary" numberOfLines={3}>
+          {preview}
+        </Text>
+      )}
+    </View>
+  );
   return (
     <Entrance index={index}>
       <PressableCard
@@ -23,13 +35,13 @@ export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
         onPress={() => router.push({ pathname: '/actu/[id]', params: { id: String(actu.id) } })}>
         <CategoryBand category={actu.categorie} date={actu.date} />
         <View style={styles.postBody}>
-          <Text variant="title" style={styles.postTitle}>
-            {actu.titre}
-          </Text>
-          {!!preview && (
-            <Text tone="secondary" numberOfLines={3}>
-              {preview}
-            </Text>
+          {actu.image_url ? (
+            <View style={styles.withThumb}>
+              <ActuThumb uri={actu.image_url} />
+              {text}
+            </View>
+          ) : (
+            text
           )}
           <View style={[styles.footer, { borderTopColor: colors.separator }]}>
             <LikeButton
@@ -97,6 +109,9 @@ const styles = StyleSheet.create({
   // Posts bleed their picture to the card's edges, so the padding moves to the body.
   postCard: { marginHorizontal: 16, padding: 0 },
   postBody: { gap: 12, padding: 16 },
+  // Photo thumbnail on the left, title and extract beside it.
+  withThumb: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  postText: { flex: 1, gap: 8 },
   author: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   shrink: { flex: 1 },
   postTitle: { fontSize: 20, lineHeight: 26 },

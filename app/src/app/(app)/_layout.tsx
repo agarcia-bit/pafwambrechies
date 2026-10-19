@@ -2,6 +2,7 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { StyleSheet, View } from 'react-native';
 
 import { NotificationObserver } from '@/components/notification-observer';
+import { PollGate } from '@/components/poll-gate';
 import { Button } from '@/components/ui/button';
 import { ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
@@ -28,6 +29,7 @@ export default function AppLayout() {
   return (
     <>
       <NotificationObserver />
+      <PollGate />
       <NativeTabs tintColor={colors.primary}>
         <NativeTabs.Trigger name="(actus)">
           <NativeTabs.Trigger.Label>Actus</NativeTabs.Trigger.Label>

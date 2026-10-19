@@ -1,6 +1,7 @@
-// Notifies the members of the association that published a new actu:
-// web push (PAF PWA) and Expo push (Allianceo native app, iOS + Android).
-// Called by the on_new_actu database webhook with the service_role key.
+// Notifies the members of an association when it publishes a new actu or launches
+// a new poll (the payload's table tells which): web push (PAF PWA) and Expo push
+// (Allianceo native app, iOS + Android).
+// Called by the on_new_actu / on_new_sondage database webhooks with the service_role key.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "https://esm.sh/web-push@3.6.7"; // npm:web-push crashes the edge runtime
 
@@ -20,7 +21,7 @@ const sb = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
-type Notification = { title: string; body: string; actuId: number };
+type Notification = { title: string; body: string; data: Record<string, number> };
 type Outcome = { sent: number; failed: number; removed: number };
 
 // verify_jwt only checks the signature, so the public anon key passes it too.
@@ -94,7 +95,7 @@ async function sendExpoPush(tenantId: string, n: Notification): Promise<Outcome>
           title: n.title,
           body: n.body,
           sound: "default",
-          data: { actu_id: n.actuId },
+          data: n.data,
         }))),
       });
       const json = await res.json();
@@ -122,24 +123,35 @@ async function sendExpoPush(tenantId: string, n: Notification): Promise<Outcome>
   return outcome;
 }
 
+const truncate = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+
 Deno.serve(async (req) => {
   if (!isServiceRole(req)) return new Response("Forbidden", { status: 403 });
   try {
-    const actu = (await req.json()).record;
-    if (!actu?.tenant_id) return new Response("No record", { status: 400 });
+    const payload = await req.json();
+    const record = payload.record;
+    if (!record?.tenant_id) return new Response("No record", { status: 400 });
 
-    const { data: branding } = await sb.rpc("branding_for_tenant", { p_tenant: actu.tenant_id });
-    const notification: Notification = {
-      title: actu.titre || "Nouvelle actualité",
-      body: `Nouvelle publication sur ${branding?.tenant_name || branding?.name || "votre association"}`,
-      actuId: actu.id,
-    };
+    const { data: branding } = await sb.rpc("branding_for_tenant", { p_tenant: record.tenant_id });
+    const notification: Notification = payload.table === "sondages"
+      ? {
+        title: "Nouveau sondage",
+        body: truncate(String(record.question ?? ""), 140),
+        data: { sondage_id: record.id },
+      }
+      : {
+        title: record.titre || "Nouvelle actualité",
+        body: `Nouvelle publication sur ${branding?.tenant_name || branding?.name || "votre association"}`,
+        data: { actu_id: record.id },
+      };
 
+    // Polls only exist in the Allianceo app: the PAF web app has nothing to open.
+    const noWeb: Outcome = { sent: 0, failed: 0, removed: 0 };
     const [web, expo] = await Promise.all([
-      sendWebPush(actu.tenant_id, notification),
-      sendExpoPush(actu.tenant_id, notification),
+      payload.table === "sondages" ? noWeb : sendWebPush(record.tenant_id, notification),
+      sendExpoPush(record.tenant_id, notification),
     ]);
-    console.log(`[notify-new-actu] ${branding?.slug}: web ${JSON.stringify(web)}, expo ${JSON.stringify(expo)}`);
+    console.log(`[notify-new-actu] ${payload.table} ${branding?.slug}: web ${JSON.stringify(web)}, expo ${JSON.stringify(expo)}`);
     return Response.json({ web, expo });
   } catch (err) {
     console.error("[notify-new-actu] Error:", err);

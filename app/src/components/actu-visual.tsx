@@ -1,10 +1,12 @@
-import { Image } from 'expo-image';
+import { Image, type ImageLoadEventData } from 'expo-image';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ACTU_HUES } from '@/lib/categories';
 import { dayParts, formatDay } from '@/lib/format';
+import { photoRatio } from '@/lib/photos';
 import { useTheme } from '@/theme';
 import { mix } from '@/theme/colors';
 
@@ -23,12 +25,16 @@ export function useCategoryHue(category: string): string {
 }
 
 /** Date as the iPhone Calendar icon: month in red on top, day number below. */
-function DateTile({ date }: { date: string }) {
+export function DateTile({ date, onCard }: { date: string; /** On a white card instead of a colored band. */ onCard?: boolean }) {
+  const { colors } = useTheme();
   const { day, month } = dayParts(date);
   return (
-    <View style={styles.tile} accessible accessibilityLabel={formatDay(date)}>
+    <View
+      style={[styles.tile, onCard && { backgroundColor: colors.fill }]}
+      accessible
+      accessibilityLabel={formatDay(date)}>
       <Text style={styles.tileMonth}>{month.replace('.', '').toUpperCase()}</Text>
-      <Text style={styles.tileDay}>{day}</Text>
+      <Text style={[styles.tileDay, onCard && { color: colors.text }]}>{day}</Text>
     </View>
   );
 }
@@ -47,26 +53,83 @@ export function CategoryBand({ category, date }: { category: string; date?: stri
   );
 }
 
-/** The post's photo (nothing when it has none). */
-export function ActuPhoto({
-  uri,
-  tall,
-  radius = 0,
-}: {
-  uri: string;
-  /** Larger format (first post of the feed, post screen). */
-  tall?: boolean;
-  radius?: number;
-}) {
+// Formats shown as they are on the post screen: from 3:4 (portrait) to 1.91:1; beyond, a little is cut.
+const MIN_RATIO = 0.75;
+const MAX_RATIO = 1.91;
+
+/**
+ * The post's photo on the post screen, entire and never cut (the format is in the file name,
+ * or read on load), at most 3:4 tall: a narrower photo is shown whole, centered, on a blurred
+ * copy of itself.
+ */
+export function ActuPhoto({ uri, radius = 0 }: { uri: string; radius?: number }) {
   const { colors } = useTheme();
+  const known = photoRatio(uri);
+  const [loaded, setLoaded] = useState<number | null>(null);
+  const natural = known ?? loaded ?? 4 / 3;
+  const frame = Math.min(MAX_RATIO, Math.max(MIN_RATIO, natural));
+  const letterboxed = natural < frame - 0.01;
+  const onLoad = (event: ImageLoadEventData) => {
+    if (known == null && event.source.height > 0) setLoaded(event.source.width / event.source.height);
+  };
+
   return (
-    <Image
-      source={{ uri }}
-      style={[styles.photo, { aspectRatio: tall ? 3 / 2 : 16 / 9, borderRadius: radius, backgroundColor: colors.fill }]}
-      contentFit="cover"
-      transition={200}
-      accessibilityIgnoresInvertColors
-    />
+    <View style={[styles.photo, { aspectRatio: frame, borderRadius: radius, backgroundColor: colors.fill }]}>
+      {letterboxed && (
+        <Image
+          source={{ uri }}
+          blurRadius={40}
+          contentFit="cover"
+          style={StyleSheet.absoluteFill}
+          accessibilityIgnoresInvertColors
+        />
+      )}
+      <Image
+        source={{ uri }}
+        onLoad={onLoad}
+        contentFit={letterboxed ? 'contain' : 'cover'}
+        transition={200}
+        style={StyleSheet.absoluteFill}
+        accessibilityLabel="Photo de l’actu"
+        accessibilityIgnoresInvertColors
+      />
+    </View>
+  );
+}
+
+/**
+ * Square thumbnail of a post's photo, next to its text in the feed. The whole photo is
+ * always visible: unless it is square, it sits centered on a blurred copy of itself.
+ */
+export function ActuThumb({ uri, size = 104, radius = 14 }: { uri: string; size?: number; radius?: number }) {
+  const { colors } = useTheme();
+  const known = photoRatio(uri);
+  const [loaded, setLoaded] = useState<number | null>(null);
+  const natural = known ?? loaded ?? 1;
+  const letterboxed = Math.abs(natural - 1) > 0.02;
+  return (
+    <View style={[styles.thumb, { width: size, height: size, borderRadius: radius, backgroundColor: colors.fill }]}>
+      {letterboxed && (
+        <Image
+          source={{ uri }}
+          blurRadius={30}
+          contentFit="cover"
+          style={StyleSheet.absoluteFill}
+          accessibilityIgnoresInvertColors
+        />
+      )}
+      <Image
+        source={{ uri }}
+        onLoad={(event) => {
+          if (known == null && event.source.height > 0) setLoaded(event.source.width / event.source.height);
+        }}
+        contentFit={letterboxed ? 'contain' : 'cover'}
+        transition={200}
+        style={StyleSheet.absoluteFill}
+        accessibilityLabel="Photo de l’actu"
+        accessibilityIgnoresInvertColors
+      />
+    </View>
   );
 }
 
@@ -85,5 +148,6 @@ const styles = StyleSheet.create({
   },
   tileMonth: { fontSize: 9, lineHeight: 11, fontWeight: '800', color: '#FF3B30', letterSpacing: 0.3 },
   tileDay: { fontSize: 18, lineHeight: 21, fontWeight: '600', color: '#000000' },
-  photo: { width: '100%' },
+  photo: { width: '100%', overflow: 'hidden' },
+  thumb: { overflow: 'hidden' },
 });

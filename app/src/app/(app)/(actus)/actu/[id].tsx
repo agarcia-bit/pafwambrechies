@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { CommentCount, CommentsSection, LikeButton } from '@/components/social';
+import { ActuPhoto } from '@/components/actu-visual';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { LinkedText } from '@/components/ui/linked-text';
@@ -31,6 +32,7 @@ export default function ActuScreen() {
       keyboardDismissMode="interactive"
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={styles.content}>
+      {!!a.image_url && <ActuPhoto uri={a.image_url} radius={16} />}
       <View style={styles.meta}>
         <Badge label={a.categorie} hue={ACTU_HUES[a.categorie]} />
         <Text variant="footnote" tone="secondary">

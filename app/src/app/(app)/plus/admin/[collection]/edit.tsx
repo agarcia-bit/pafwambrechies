@@ -18,7 +18,7 @@ import {
   type Row,
 } from '@/lib/admin';
 import { confirmAction, showMessage } from '@/lib/confirm';
-import { pickDirectoryPhoto, type PickedPhoto } from '@/lib/photos';
+import { pickPhoto, type PickedPhoto } from '@/lib/photos';
 
 // Creates an item (no id) or edits one (id), for any admin collection.
 export default function AdminEditScreen() {
@@ -53,10 +53,10 @@ function EditForm({ collection: c, row }: { collection: Collection; row?: Row })
     });
   }
 
-  async function pickPhoto() {
+  async function choosePhoto() {
     setPicking(true);
     try {
-      const picked = await pickDirectoryPhoto();
+      const picked = await pickPhoto({ outputWidth: c.photo?.width, crop: c.photo?.crop });
       if (picked) setPhoto(picked);
     } catch {
       showMessage('Photo illisible', 'Choisissez une autre photo.');
@@ -104,7 +104,8 @@ function EditForm({ collection: c, row }: { collection: Collection; row?: Row })
               label={field.label}
               uri={photo?.uri ?? (values[field.key] || null)}
               loading={picking}
-              onPick={pickPhoto}
+              whole={c.photo?.crop === false}
+              onPick={choosePhoto}
               onRemove={() => {
                 setPhoto(null);
                 update(field.key, '');

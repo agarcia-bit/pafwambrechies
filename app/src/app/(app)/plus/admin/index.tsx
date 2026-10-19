@@ -21,6 +21,7 @@ export default function AdminScreen() {
             onPress={() => router.push({ pathname: '/plus/admin/[collection]', params: { collection: c.key } })}
           />
         ))}
+        <ListRow icon="poll" title="Sondages" onPress={() => router.push('/plus/admin/sondages')} />
       </ListSection>
       {config.modules.idees && (
         <ListSection title="Modération">
