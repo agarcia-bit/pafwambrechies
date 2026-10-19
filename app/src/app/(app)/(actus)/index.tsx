@@ -13,6 +13,7 @@ import { ACTU_CATEGORIES } from '@/lib/categories';
 import { useActus } from '@/lib/data';
 import { useMember } from '@/lib/session';
 import { useTheme } from '@/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Category = (typeof ACTU_CATEGORIES)[number];
 
@@ -20,13 +21,14 @@ export default function ActusScreen() {
   const [category, setCategory] = useState<Category>('Tous');
   const { branding } = useMember();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const actus = useActus(category);
   const { refreshing, onRefresh } = usePullToRefresh(actus.refetch);
   const items = actus.data?.pages.flat() ?? [];
 
   return (
     <FlatList
-      style={{ backgroundColor: colors.background }}
+      style={{ backgroundColor: colors.background, marginTop: -insets.top }}
       data={items}
       keyExtractor={(item) => String(item.id)}
       renderItem={({ item, index }) => <ActuCard actu={item} index={index} />}
