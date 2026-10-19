@@ -11,7 +11,7 @@ export function BrandBand({ title, children }: PropsWithChildren<{ title: string
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.band, { backgroundColor: colors.banner, paddingTop: insets.top + 12 }]}>
-      <Text variant="title1" style={styles.title} numberOfLines={1} adjustsFontSizeToFit>
+      <Text variant="largeTitle" style={styles.title} numberOfLines={1} adjustsFontSizeToFit>
         {title}
       </Text>
       {children}
