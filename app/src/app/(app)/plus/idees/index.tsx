@@ -29,7 +29,7 @@ export default function IdeesScreen() {
       <FlatList
         data={items}
         keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => <IdeeCard idee={item} />}
+        renderItem={({ item, index }) => <IdeeCard idee={item} index={index} />}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}
         ItemSeparatorComponent={Gap}

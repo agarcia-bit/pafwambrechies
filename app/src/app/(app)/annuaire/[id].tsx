@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ListRow, ListSection } from '@/components/ui/list';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { LinkedText } from '@/components/ui/linked-text';
 import { Text } from '@/components/ui/text';
 import { useAnnuaire } from '@/lib/data';
 import { fullName } from '@/lib/format';
@@ -53,7 +54,7 @@ export default function CommercantScreen() {
         </Text>
         {!!contact && !!m.nom_entreprise && <Text tone="secondary">{contact}</Text>}
       </View>
-      {!!m.description && <Text selectable>{m.description}</Text>}
+      {!!m.description && <LinkedText>{m.description}</LinkedText>}
       {hasContacts && (
         <ListSection>
           {m.adresse && (

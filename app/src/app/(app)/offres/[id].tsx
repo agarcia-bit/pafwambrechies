@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { OfferTag } from '@/components/offer-tag';
 import { ListRow, ListSection } from '@/components/ui/list';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { LinkedText } from '@/components/ui/linked-text';
 import { Text } from '@/components/ui/text';
 import { useAnnuaire, useOffres } from '@/lib/data';
 import { offerValidity, searchable } from '@/lib/format';
@@ -37,7 +38,7 @@ export default function OffreScreen() {
         </Text>
         <Text tone="secondary">{o.commercant}</Text>
       </View>
-      {!!o.description && <Text selectable>{o.description}</Text>}
+      {!!o.description && <LinkedText>{o.description}</LinkedText>}
       <ListSection>
         <ListRow icon="calendar" title={offerValidity(o.expiration)} />
         {modules.annuaire && merchant && (

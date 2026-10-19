@@ -5,6 +5,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } 
 
 import { Avatar } from '@/components/ui/avatar';
 import { Icon } from '@/components/ui/icon';
+import { LinkedText } from '@/components/ui/linked-text';
 import { Text } from '@/components/ui/text';
 import { confirmAction, showMessage } from '@/lib/confirm';
 import { useCommentMutations, useComments, useToggleLike, type SocialKind } from '@/lib/data';
@@ -121,9 +122,7 @@ export function CommentsSection({
                   {formatRelative(c.created_at)}
                 </Text>
               </Text>
-              <Text variant="callout" selectable>
-                {c.texte}
-              </Text>
+              <LinkedText variant="callout">{c.texte}</LinkedText>
             </View>
             {(c.user_id === profile.id || isAdmin) && (
               <Pressable

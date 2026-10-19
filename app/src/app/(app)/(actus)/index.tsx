@@ -21,7 +21,7 @@ export default function ActusScreen() {
     <FlatList
       data={items}
       keyExtractor={(item) => String(item.id)}
-      renderItem={({ item }) => <ActuCard actu={item} />}
+      renderItem={({ item, index }) => <ActuCard actu={item} index={index} />}
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={styles.content}
       ItemSeparatorComponent={Gap}
