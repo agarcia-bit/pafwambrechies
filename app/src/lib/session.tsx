@@ -35,11 +35,17 @@ export function useSession(): SessionContextValue {
 }
 
 /** Profile and branding of the member, for screens that are only reachable once they are loaded. */
-export function useMember(): { profile: Profile; branding: Branding | null; isAdmin: boolean } {
+export function useMember(): { profile: Profile; branding: Branding | null; isAdmin: boolean; isBureau: boolean } {
   const { membership } = useSession();
   const profile = membership?.profile;
   if (!profile) throw new Error('useMember used before the membership was loaded');
-  return { profile, branding: membership.branding, isAdmin: profile.role === 'admin' };
+  return {
+    profile,
+    branding: membership.branding,
+    isAdmin: profile.role === 'admin',
+    // Admins also run the bureau space, as in the web app.
+    isBureau: profile.role === 'bureau' || profile.role === 'admin',
+  };
 }
 
 async function fetchMembership(userId: string): Promise<Membership> {

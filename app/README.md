@@ -25,8 +25,9 @@ Avant de livrer : `npx tsc --noEmit`, `npx expo lint`, `npx expo-doctor`.
 - `src/app/` : les écrans (Expo Router, un fichier = une route)
   - `connexion`, `inscription`, `mot-de-passe-oublie`, `nouveau-mot-de-passe`
   - `(app)/` : l'app connectée, 5 onglets natifs : `(actus)`, `annuaire`, `offres`,
-    `agenda`, `plus` (idées, liens, mon compte)
-- `src/lib/` : Supabase, session, requêtes (React Query), notifications, formats
+    `agenda`, `plus` (idées, liens, mon compte, et selon le rôle `bureau/` et `admin/`)
+- `src/lib/` : Supabase, session, requêtes (React Query), notifications, formats ;
+  `admin.ts` décrit chaque contenu administrable, `bureau.ts` les actions et tâches
 - `src/components/` : composants partagés (`ui/` pour les briques de base)
 - `src/theme/` : couleurs clair / sombre, teintées par la couleur de l'association
 
