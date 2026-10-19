@@ -1,9 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { useQuery } from '@tanstack/react-query';
-import * as Linking from 'expo-linking';
-import { createContext, use, useEffect, useRef, useState, type PropsWithChildren } from 'react';
+import { createContext, use, useEffect, useState, type PropsWithChildren } from 'react';
 
-import { showMessage } from '@/lib/confirm';
 import { forgetPush, syncPush } from '@/lib/notifications';
 import { queryClient } from '@/lib/query';
 import { supabase } from '@/lib/supabase';
@@ -82,8 +80,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
     return () => data.subscription.unsubscribe();
   }, []);
 
-  useRecoveryLinks();
-
   const membershipQuery = useQuery({
     queryKey: ['membership', userId],
     queryFn: () => fetchMembership(userId!),
@@ -117,37 +113,4 @@ export function SessionProvider({ children }: PropsWithChildren) {
       {children}
     </SessionContext>
   );
-}
-
-// Password reset emails link back to allianceo://nouveau-mot-de-passe with a
-// one-time code (PKCE) or a token hash; exchanging it signs the member in and
-// fires PASSWORD_RECOVERY, which shows the new password screen.
-function useRecoveryLinks() {
-  const url = Linking.useLinkingURL();
-  const handled = useRef(new Set<string>());
-
-  useEffect(() => {
-    if (!url || handled.current.has(url)) return;
-    const { path, queryParams } = Linking.parse(url);
-    if (!path?.endsWith('nouveau-mot-de-passe')) return;
-    handled.current.add(url);
-
-    const fragment = new URLSearchParams(url.split('#')[1] ?? '');
-    const param = (key: string) => {
-      const value = queryParams?.[key];
-      return typeof value === 'string' ? value : (fragment.get(key) ?? undefined);
-    };
-    const expired = () =>
-      showMessage('Lien expiré', "Ce lien n'est plus valable. Faites une nouvelle demande de mot de passe.");
-
-    const code = param('code');
-    const tokenHash = param('token_hash');
-    if (param('error') || param('error_code')) {
-      expired();
-    } else if (code) {
-      supabase.auth.exchangeCodeForSession(code).then(({ error }) => error && expired());
-    } else if (tokenHash) {
-      supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' }).then(({ error }) => error && expired());
-    }
-  }, [url]);
 }

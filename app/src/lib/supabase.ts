@@ -11,8 +11,6 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
-    // Password reset links come back into the app with a one-time code.
-    flowType: 'pkce',
   },
 });
 

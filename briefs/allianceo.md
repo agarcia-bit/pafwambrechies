@@ -43,7 +43,7 @@ Mode d'emploi et organisation du code : `app/README.md`.
 
 Fait (1re PR) :
 - connexion (écran neutre Allianceo), inscription par code (l'asso trouvée s'affiche dans
-  ses couleurs), mot de passe oublié (lien `allianceo://nouveau-mot-de-passe`, flux PKCE) ;
+  ses couleurs), mot de passe oublié (code à 6 chiffres reçu par email, sans lien ni adresse de retour) ;
 - 5 onglets, pas 6 (maximum Apple sur iPhone, limite Android) : Actus, Annuaire, Offres,
   Agenda, Plus (Idées, Liens, Mon compte). J'aime et commentaires sur les actus et les idées ;
 - Mon compte : notifications, déconnexion (locale seulement, le login est partagé avec
@@ -92,8 +92,10 @@ Côté Andy pour tester sur iPhone :
 - `cd app && npm install && npx expo start`, puis scanner le QR code avec Expo Go ;
 - notifications : `npx eas-cli@latest init` (crée le projet EAS et son `projectId`) ; pour
   Android il faudra aussi un projet Firebase (FCM) déclaré dans EAS ;
-- mot de passe oublié : ajouter `allianceo://**` aux Redirect URLs de Supabase Auth
-  (pour Expo Go, ajouter aussi l'adresse `exp://…` affichée par `expo start`, le temps des tests) ;
+- mot de passe oublié : coller le modèle d'email « Reset password » (Supabase › Authentication
+  › Email Templates) qui contient `{{ .Token }}`. L'ancien modèle était cassé (variables
+  échappées, aucun lien valable). Le modèle est commun à PAF, Immopilot (Kadastria) et
+  Allianceo ; l'expéditeur « Kadastria » et l'objet sont à rendre neutres avant le lancement ;
 - logo : renseigner `tenant_logo_url` dans les réglages de l'asso (sinon l'initiale s'affiche).
 
 ## Étape 3 — stores

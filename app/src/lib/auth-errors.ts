@@ -1,9 +1,16 @@
 import { isAuthApiError, isAuthRetryableFetchError, type AuthError } from '@supabase/supabase-js';
 
-/** French message for a Supabase Auth error shown on the login and signup screens. */
-export function authErrorMessage(error: AuthError): string {
+/**
+ * French message for a Supabase Auth error shown on the auth screens.
+ * `context: 'code'` is for the email code step, where an unknown, mistyped or
+ * expired code all come back as the same error.
+ */
+export function authErrorMessage(error: AuthError, context?: 'code'): string {
   if (isAuthRetryableFetchError(error)) return 'Pas de connexion internet. Réessayez.';
   if (!isAuthApiError(error)) return 'Une erreur est survenue. Réessayez.';
+  if (context === 'code' && ['otp_expired', 'validation_failed', 'bad_json'].includes(error.code ?? '')) {
+    return 'Code incorrect ou expiré. Vérifiez-le, ou demandez un nouveau code.';
+  }
   switch (error.code) {
     case 'invalid_credentials':
       return 'Email ou mot de passe incorrect.';
