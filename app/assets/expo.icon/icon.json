@@ -1,32 +1,28 @@
 {
   "fill" : {
-    "automatic-gradient" : "extended-srgb:0.00000,0.47843,1.00000,1.00000"
+    "linear-gradient" : [
+      "extended-srgb:0.07843,0.72157,0.65098,1.00000",
+      "extended-srgb:0.04314,0.37255,0.34510,1.00000"
+    ],
+    "orientation" : {
+      "start" : { "x" : 0, "y" : 0 },
+      "stop" : { "x" : 1, "y" : 1 }
+    }
   },
   "groups" : [
     {
       "layers" : [
         {
-          "image-name" : "expo-symbol 2.svg",
-          "name" : "expo-symbol 2",
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
-              1.1008400065293245e-05,
-              -16.046875
-            ]
-          }
-        },
-        {
-          "image-name" : "grid.png",
-          "name" : "grid"
+          "image-name" : "allianceo-mark.svg",
+          "name" : "allianceo-mark"
         }
       ],
       "shadow" : {
         "kind" : "neutral",
-        "opacity" : 0.5
+        "opacity" : 0.4
       },
       "translucency" : {
-        "enabled" : true,
+        "enabled" : false,
         "value" : 0.5
       }
     }
