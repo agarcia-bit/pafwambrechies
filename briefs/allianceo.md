@@ -153,3 +153,9 @@ Avant le lancement : codes d'accès aléatoires (pas du type nom + année), car
   pas dans ce dépôt public).
 - Compte Expo (expo.dev).
 - Logo / icône Allianceo.
+
+## Rôles (bureau / admin)
+
+- `adherent`: member. `bureau`: manages the content (actus, offres, agenda, annuaire, liens, sondages, comment/idea moderation, photos) and the "Pilotage bureau". `admin`: all of that plus members/roles (Plus › Administration › Membres) and association settings (Réglages, signup code).
+- `supabase/bureau_content_members.sql` (to run in the SQL Editor): content policies widened to `is_bureau_or_admin()`, `set_member_role()` (admin only, not on oneself), `member_names()` (poll results for bureau), and a security fix: a trigger forbids changing one's own `role` (any member could make themselves admin through the API) and the "Users insert own profile" policy is dropped.
+- The PWA still shows its admin screens to admins only; bureau rights apply server-side.

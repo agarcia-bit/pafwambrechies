@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { ActuThumb, CategoryBand } from '@/components/actu-visual';
+import { ActuPhoto, PostMeta } from '@/components/actu-visual';
 import { Entrance } from '@/components/entrance';
 import { CommentCount, LikeButton, ShareButton } from '@/components/social';
 import { Avatar } from '@/components/ui/avatar';
@@ -17,7 +17,8 @@ export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
   const preview = (actu.excerpt || actu.contenu || '').trim();
   const text = (
     <View style={styles.postText}>
-      <Text variant="title" style={styles.postTitle} numberOfLines={actu.image_url ? 3 : undefined}>
+      <PostMeta category={actu.categorie} date={actu.date} />
+      <Text variant="title" style={styles.postTitle} numberOfLines={3}>
         {actu.titre}
       </Text>
       {!!preview && (
@@ -33,16 +34,9 @@ export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
         style={styles.postCard}
         accessibilityLabel={actu.titre}
         onPress={() => router.push({ pathname: '/actu/[id]', params: { id: String(actu.id) } })}>
-        <CategoryBand category={actu.categorie} date={actu.date} />
         <View style={styles.postBody}>
-          {actu.image_url ? (
-            <View style={styles.withThumb}>
-              <ActuThumb uri={actu.image_url} />
-              {text}
-            </View>
-          ) : (
-            text
-          )}
+          {text}
+          {!!actu.image_url && <ActuPhoto uri={actu.image_url} radius={12} minRatio={1.78} />}
           <View style={[styles.footer, { borderTopColor: colors.separator }]}>
             <LikeButton
               kind="actu"
@@ -52,6 +46,9 @@ export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
             />
             <CommentCount count={actu.actus_commentaires[0]?.count ?? 0} />
             <View style={styles.spacer} />
+            <Text variant="subhead" tone="primary" style={styles.more}>
+              Lire la suite ›
+            </Text>
             <ShareButton message={preview ? `${actu.titre}\n\n${preview}` : actu.titre} />
           </View>
         </View>
@@ -106,11 +103,8 @@ export function IdeeCard({ idee, index = 99 }: { idee: Idee; index?: number }) {
 
 const styles = StyleSheet.create({
   card: { marginHorizontal: 16, gap: 12, padding: 16 },
-  // Posts bleed their picture to the card's edges, so the padding moves to the body.
   postCard: { marginHorizontal: 16, padding: 0 },
   postBody: { gap: 12, padding: 16 },
-  // Photo thumbnail on the left, title and extract beside it.
-  withThumb: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   postText: { flex: 1, gap: 8 },
   author: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   shrink: { flex: 1 },
@@ -122,5 +116,6 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
+  more: { fontWeight: '600' },
   spacer: { flex: 1 },
 });

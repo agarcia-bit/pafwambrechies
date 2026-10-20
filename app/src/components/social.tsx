@@ -85,7 +85,7 @@ export function CommentsSection({
   parentId: number;
   onInputFocus?: () => void;
 }) {
-  const { profile, isAdmin } = useMember();
+  const { profile, isBureau } = useMember();
   const { colors } = useTheme();
   const comments = useComments(kind, parentId);
   const { add, remove } = useCommentMutations(kind, parentId);
@@ -124,7 +124,7 @@ export function CommentsSection({
               </Text>
               <LinkedText variant="callout">{c.texte}</LinkedText>
             </View>
-            {(c.user_id === profile.id || isAdmin) && (
+            {(c.user_id === profile.id || isBureau) && (
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Supprimer ce commentaire"

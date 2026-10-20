@@ -2,21 +2,12 @@ import { Image, type ImageLoadEventData } from 'expo-image';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Icon, type IconName } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ACTU_HUES } from '@/lib/categories';
 import { dayParts, formatDay } from '@/lib/format';
 import { photoRatio } from '@/lib/photos';
 import { useTheme } from '@/theme';
-import { mix } from '@/theme/colors';
-
-const CATEGORY_ICONS: Record<string, IconName> = {
-  'Actu Asso': 'newspaper',
-  'Infos pratiques': 'info',
-  'Événement': 'calendar',
-  Membres: 'people',
-  Partenaire: 'tag',
-};
+import { tint } from '@/theme/colors';
 
 /** Color of a post's category; "Actu Asso" takes the association's own color. */
 export function useCategoryHue(category: string): string {
@@ -25,30 +16,40 @@ export function useCategoryHue(category: string): string {
 }
 
 /** Date as the iPhone Calendar icon: month in red on top, day number below. */
-export function DateTile({ date, onCard }: { date: string; /** On a white card instead of a colored band. */ onCard?: boolean }) {
+export function DateTile({
+  date,
+  onCard,
+  large,
+}: {
+  date: string;
+  /** On a white card instead of a colored band. */
+  onCard?: boolean;
+  large?: boolean;
+}) {
   const { colors } = useTheme();
   const { day, month } = dayParts(date);
   return (
     <View
-      style={[styles.tile, onCard && { backgroundColor: colors.fill }]}
+      style={[styles.tile, large && styles.tileLarge, onCard && { backgroundColor: colors.fill }]}
       accessible
       accessibilityLabel={formatDay(date)}>
-      <Text style={styles.tileMonth}>{month.replace('.', '').toUpperCase()}</Text>
-      <Text style={[styles.tileDay, onCard && { color: colors.text }]}>{day}</Text>
+      <Text style={[styles.tileMonth, large && styles.tileMonthLarge]}>{month.replace('.', '').toUpperCase()}</Text>
+      <Text style={[styles.tileDay, large && styles.tileDayLarge, onCard && { color: colors.text }]}>{day}</Text>
     </View>
   );
 }
 
-/** Slim colored band on top of a post: its category with an icon, and its date as a calendar tile. */
-export function CategoryBand({ category, date }: { category: string; date?: string }) {
+/** First line of a post: a dot and the category in its color, and the date as a calendar tile on the right. */
+export function PostMeta({ category, date }: { category: string; date?: string }) {
+  const { scheme } = useTheme();
   const hue = useCategoryHue(category);
   return (
-    <View style={[styles.band, { backgroundColor: mix(hue, '#000000', 0.15) }]}>
-      <Icon name={CATEGORY_ICONS[category] ?? 'newspaper'} size={20} color="rgba(255,255,255,0.95)" />
-      <Text variant="subhead" style={[styles.bandLabel, styles.bandGrow]} numberOfLines={1}>
-        {category}
+    <View style={styles.meta}>
+      <View style={[styles.dot, { backgroundColor: hue }]} />
+      <Text variant="footnote" style={[styles.metaCategory, { color: tint(scheme, hue).color }]} numberOfLines={1}>
+        {category.toUpperCase()}
       </Text>
-      {!!date && <DateTile date={date} />}
+      {!!date && <DateTile date={date} onCard />}
     </View>
   );
 }
@@ -62,12 +63,21 @@ const MAX_RATIO = 1.91;
  * or read on load), at most 3:4 tall: a narrower photo is shown whole, centered, on a blurred
  * copy of itself.
  */
-export function ActuPhoto({ uri, radius = 0 }: { uri: string; radius?: number }) {
+export function ActuPhoto({
+  uri,
+  radius = 0,
+  minRatio = MIN_RATIO,
+}: {
+  uri: string;
+  radius?: number;
+  /** Narrowest frame: a taller photo sits whole on a blurred copy of itself (shorter in the feed). */
+  minRatio?: number;
+}) {
   const { colors } = useTheme();
   const known = photoRatio(uri);
   const [loaded, setLoaded] = useState<number | null>(null);
   const natural = known ?? loaded ?? 4 / 3;
-  const frame = Math.min(MAX_RATIO, Math.max(MIN_RATIO, natural));
+  const frame = Math.min(MAX_RATIO, Math.max(minRatio, natural));
   const letterboxed = natural < frame - 0.01;
   const onLoad = (event: ImageLoadEventData) => {
     if (known == null && event.source.height > 0) setLoaded(event.source.width / event.source.height);
@@ -134,9 +144,9 @@ export function ActuThumb({ uri, size = 104, radius = 14 }: { uri: string; size?
 }
 
 const styles = StyleSheet.create({
-  band: { height: 48, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16 },
-  bandLabel: { color: '#FFFFFF', fontWeight: '600' },
-  bandGrow: { flex: 1 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  metaCategory: { fontWeight: '700', letterSpacing: 0.3, flex: 1 },
   tile: {
     width: 36,
     height: 38,
@@ -146,6 +156,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 0,
   },
+  tileLarge: { width: 56, height: 62, borderRadius: 12 },
+  tileMonthLarge: { fontSize: 11, lineHeight: 13 },
+  tileDayLarge: { fontSize: 26, lineHeight: 30 },
   tileMonth: { fontSize: 9, lineHeight: 11, fontWeight: '800', color: '#FF3B30', letterSpacing: 0.3 },
   tileDay: { fontSize: 18, lineHeight: 21, fontWeight: '600', color: '#000000' },
   photo: { width: '100%', overflow: 'hidden' },
