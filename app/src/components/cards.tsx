@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { ActuThumb, DateTile, PostMeta } from '@/components/actu-visual';
+import { ActuPhoto, PostMeta } from '@/components/actu-visual';
 import { Entrance } from '@/components/entrance';
 import { CommentCount, LikeButton, ShareButton } from '@/components/social';
 import { Avatar } from '@/components/ui/avatar';
@@ -17,9 +17,8 @@ export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
   const preview = (actu.excerpt || actu.contenu || '').trim();
   const text = (
     <View style={styles.postText}>
-      {/* With a photo, the date sits on the photo instead. */}
-      <PostMeta category={actu.categorie} date={actu.image_url ? undefined : actu.date} />
-      <Text variant="title" style={styles.postTitle} numberOfLines={actu.image_url ? 4 : undefined}>
+      <PostMeta category={actu.categorie} date={actu.date} />
+      <Text variant="title" style={styles.postTitle} numberOfLines={3}>
         {actu.titre}
       </Text>
       {!!preview && (
@@ -36,19 +35,8 @@ export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
         accessibilityLabel={actu.titre}
         onPress={() => router.push({ pathname: '/actu/[id]', params: { id: String(actu.id) } })}>
         <View style={styles.postBody}>
-          {actu.image_url ? (
-            <View style={styles.withThumb}>
-              {text}
-              <View>
-                <ActuThumb uri={actu.image_url} size={104} />
-                <View style={styles.thumbDate}>
-                  <DateTile date={actu.date} />
-                </View>
-              </View>
-            </View>
-          ) : (
-            text
-          )}
+          {text}
+          {!!actu.image_url && <ActuPhoto uri={actu.image_url} radius={12} minRatio={1.2} />}
           <View style={[styles.footer, { borderTopColor: colors.separator }]}>
             <LikeButton
               kind="actu"
@@ -114,18 +102,6 @@ const styles = StyleSheet.create({
   card: { marginHorizontal: 16, gap: 12, padding: 16 },
   postCard: { marginHorizontal: 16, padding: 0 },
   postBody: { gap: 12, padding: 16 },
-  // Text on the left, photo thumbnail on the right.
-  thumbDate: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-  },
-  withThumb: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   postText: { flex: 1, gap: 8 },
   author: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   shrink: { flex: 1 },

@@ -63,12 +63,21 @@ const MAX_RATIO = 1.91;
  * or read on load), at most 3:4 tall: a narrower photo is shown whole, centered, on a blurred
  * copy of itself.
  */
-export function ActuPhoto({ uri, radius = 0 }: { uri: string; radius?: number }) {
+export function ActuPhoto({
+  uri,
+  radius = 0,
+  minRatio = MIN_RATIO,
+}: {
+  uri: string;
+  radius?: number;
+  /** Narrowest frame: a taller photo sits whole on a blurred copy of itself (shorter in the feed). */
+  minRatio?: number;
+}) {
   const { colors } = useTheme();
   const known = photoRatio(uri);
   const [loaded, setLoaded] = useState<number | null>(null);
   const natural = known ?? loaded ?? 4 / 3;
-  const frame = Math.min(MAX_RATIO, Math.max(MIN_RATIO, natural));
+  const frame = Math.min(MAX_RATIO, Math.max(minRatio, natural));
   const letterboxed = natural < frame - 0.01;
   const onLoad = (event: ImageLoadEventData) => {
     if (known == null && event.source.height > 0) setLoaded(event.source.width / event.source.height);
