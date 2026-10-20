@@ -10,7 +10,7 @@ import type { Branding, Profile } from '@/lib/types';
 
 // A signed-in account without a profile is not an association member
 // (the login is shared with other apps on the same Supabase project).
-export type Membership = { profile: Profile | null; branding: Branding | null };
+export type Membership = { profile: Profile | null; branding: Branding | null; isPlatformAdmin: boolean };
 
 type SessionContextValue = {
   session: Session | null;
@@ -34,13 +34,21 @@ export function useSession(): SessionContextValue {
 }
 
 /** Profile and branding of the member, for screens that are only reachable once they are loaded. */
-export function useMember(): { profile: Profile; branding: Branding | null; isAdmin: boolean; isBureau: boolean } {
+export function useMember(): {
+  profile: Profile;
+  branding: Branding | null;
+  isAdmin: boolean;
+  isBureau: boolean;
+  /** The owner of the platform: administers every association and can switch between them. */
+  isPlatformAdmin: boolean;
+} {
   const { membership } = useSession();
   const profile = membership?.profile;
   if (!profile) throw new Error('useMember used before the membership was loaded');
   return {
     profile,
     branding: membership.branding,
+    isPlatformAdmin: membership.isPlatformAdmin,
     isAdmin: profile.role === 'admin',
     // Admins also run the bureau space, as in the web app.
     isBureau: profile.role === 'bureau' || profile.role === 'admin',
@@ -48,13 +56,22 @@ export function useMember(): { profile: Profile; branding: Branding | null; isAd
 }
 
 async function fetchMembership(userId: string): Promise<Membership> {
-  const [profile, branding] = await Promise.all([
+  const [profile, branding, context] = await Promise.all([
     supabase.from('profiles').select('id, email, prenom, nom, role, tenant_id').eq('id', userId).maybeSingle(),
     supabase.rpc('get_my_branding'),
+    // The association the account currently looks at (differs from the profile's for the platform
+    // owner who switched). Unavailable before supabase/platform_admin.sql: the profile is used.
+    supabase.rpc('my_context'),
   ]);
   if (profile.error) throw profile.error;
   if (branding.error) throw branding.error;
-  return { profile: profile.data as Profile | null, branding: branding.data as Branding | null };
+  const ctx = context.error ? null : (context.data as { tenant_id: string; role: Profile['role']; is_platform_admin: boolean } | null);
+  const own = profile.data as Profile | null;
+  return {
+    profile: own && ctx ? { ...own, tenant_id: ctx.tenant_id ?? own.tenant_id, role: ctx.role ?? own.role } : own,
+    branding: branding.data as Branding | null,
+    isPlatformAdmin: !!ctx?.is_platform_admin,
+  };
 }
 
 export function SessionProvider({ children }: PropsWithChildren) {
