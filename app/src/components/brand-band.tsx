@@ -23,7 +23,7 @@ export function BrandBand({ title, greeting, children }: PropsWithChildren<{ tit
           </Animated.View>
         )}
       <Text variant="largeTitle" style={styles.title} numberOfLines={1} adjustsFontSizeToFit>
-        {title}
+        {title.toUpperCase()}
       </Text>
       </View>
       {children}
@@ -35,5 +35,5 @@ const styles = StyleSheet.create({
   band: { paddingBottom: 14, gap: 12 },
   titles: { gap: 2, paddingHorizontal: 16 },
   greeting: { color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
-  title: { color: '#FFFFFF', fontWeight: '800', letterSpacing: 0.3 },
+  title: { color: '#FFFFFF', fontWeight: '800', letterSpacing: 0.8 },
 });
