@@ -11,18 +11,22 @@ import { useTheme } from '@/theme';
 /** With `fadeOnly`, the blocks of the screen fade in without rising (the agenda). */
 const FadeOnlyContext = createContext(false);
 
-/** Close button of the full-screen screens (white on the hero, grey on a plain screen). */
-export function CloseButton({ onHero = true }: { onHero?: boolean }) {
+/** "Retour" button of the full-screen screens, top left (white on the hero, grey on a plain screen). */
+export function BackButton({ onHero = true }: { onHero?: boolean }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const color = onHero ? '#FFFFFF' : colors.text;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Fermer"
+      accessibilityLabel="Retour"
       hitSlop={10}
       onPress={() => router.back()}
-      style={[styles.close, { top: insets.top + 8, backgroundColor: onHero ? 'rgba(255,255,255,0.22)' : colors.fill }]}>
-      <Icon name="close" size={18} color={onHero ? '#FFFFFF' : undefined} />
+      style={[styles.back, { top: insets.top + 8, backgroundColor: onHero ? 'rgba(255,255,255,0.22)' : colors.fill }]}>
+      <Icon name="chevronLeft" size={16} color={color} />
+      <Text variant="subhead" style={[styles.backText, { color }]}>
+        Retour
+      </Text>
     </Pressable>
   );
 }
@@ -32,7 +36,7 @@ export function DetailStatus({ children }: { children: ReactNode }) {
   return (
     <View style={styles.flex}>
       {children}
-      <CloseButton onHero={false} />
+      <BackButton onHero={false} />
     </View>
   );
 }
@@ -69,7 +73,7 @@ export function FullScreenDetail({
   return (
     <View style={styles.flex}>
       <ScrollView contentInsetAdjustmentBehavior="never" contentContainerStyle={styles.content}>
-        <View style={[styles.hero, { backgroundColor: color, paddingTop: insets.top + 8 }]}>
+        <View style={[styles.hero, { backgroundColor: color, paddingTop: insets.top + 52 }]}>
           <Animated.View entering={fadeOnly ? FadeIn.duration(180) : FadeInDown.delay(150).duration(450)} style={styles.heroMeta}>
             {!!label && (
               <Text variant="footnote" style={styles.heroLabel} numberOfLines={1}>
@@ -98,7 +102,7 @@ export function FullScreenDetail({
           </View>
         </FadeOnlyContext>
       </ScrollView>
-      <CloseButton />
+      <BackButton />
     </View>
   );
 }
@@ -163,7 +167,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { flexGrow: 1 },
   hero: { paddingHorizontal: 20, paddingBottom: 40, gap: 10 },
-  heroMeta: { flexDirection: 'row', alignItems: 'center', height: 36, marginRight: 52 },
+  heroMeta: { flexDirection: 'row', alignItems: 'center', height: 24 },
   heroLabel: { color: 'rgba(255,255,255,0.95)', fontWeight: '700', letterSpacing: 0.4 },
   heroTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   heroTitle: { color: '#FFFFFF', fontWeight: '800', fontSize: 26, lineHeight: 32 },
@@ -174,13 +178,16 @@ const styles = StyleSheet.create({
   detail: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 10 },
   detailIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   hint: { fontWeight: '600' },
-  close: {
+  back: {
     position: 'absolute',
-    right: 16,
-    width: 36,
+    left: 16,
     height: 36,
     borderRadius: 18,
+    paddingLeft: 10,
+    paddingRight: 14,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
   },
+  backText: { fontWeight: '600' },
 });
