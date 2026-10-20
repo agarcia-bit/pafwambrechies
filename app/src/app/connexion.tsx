@@ -36,6 +36,7 @@ export default function ConnexionScreen() {
     <FormScreen
       fullScreen
       style={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12, gap: 12 }}>
+      <View style={styles.middle}>
       <View style={styles.brand}>
         <Image source={require('../../assets/images/icon.png')} style={styles.logo} accessibilityLabel="Logo Allianceo" />
         <Text variant="largeTitle">Allianceo</Text>
@@ -78,6 +79,8 @@ export default function ConnexionScreen() {
         onPress={() => router.push({ pathname: '/mot-de-passe-oublie', params: { email: email.trim() } })}
       />
 
+      </View>
+
       <View style={styles.signup}>
         <Text tone="secondary" style={styles.center}>
           Première fois ? Votre association vous a communiqué un code d’accès.
@@ -89,8 +92,10 @@ export default function ConnexionScreen() {
 }
 
 const styles = StyleSheet.create({
-  brand: { alignItems: 'center', gap: 6, marginTop: 24, marginBottom: 12 },
+  // Logo, fields and buttons are centered in the free space; the sign-up block stays at the bottom.
+  middle: { flex: 1, justifyContent: 'center', gap: 12 },
+  brand: { alignItems: 'center', gap: 6, marginBottom: 12 },
   logo: { width: 76, height: 76, borderRadius: 19, marginBottom: 6 },
   center: { textAlign: 'center' },
-  signup: { marginTop: 'auto', paddingTop: 12, gap: 10 },
+  signup: { paddingTop: 12, gap: 10 },
 });
