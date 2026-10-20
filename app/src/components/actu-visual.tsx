@@ -2,21 +2,12 @@ import { Image, type ImageLoadEventData } from 'expo-image';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Icon, type IconName } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ACTU_HUES } from '@/lib/categories';
 import { dayParts, formatDay } from '@/lib/format';
 import { photoRatio } from '@/lib/photos';
 import { useTheme } from '@/theme';
-import { mix } from '@/theme/colors';
-
-const CATEGORY_ICONS: Record<string, IconName> = {
-  'Actu Asso': 'newspaper',
-  'Infos pratiques': 'info',
-  'Événement': 'calendar',
-  Membres: 'people',
-  Partenaire: 'tag',
-};
+import { tint } from '@/theme/colors';
 
 /** Color of a post's category; "Actu Asso" takes the association's own color. */
 export function useCategoryHue(category: string): string {
@@ -48,14 +39,19 @@ export function DateTile({
   );
 }
 
-/** Slim colored band on top of a post: its category with an icon. */
-export function CategoryBand({ category }: { category: string }) {
+/** First line of a post: a dot and the category in its color, then the date. */
+export function PostMeta({ category, date }: { category: string; date: string }) {
+  const { scheme } = useTheme();
   const hue = useCategoryHue(category);
+  const { day, month } = dayParts(date);
   return (
-    <View style={[styles.band, { backgroundColor: mix(hue, '#000000', 0.15) }]}>
-      <Icon name={CATEGORY_ICONS[category] ?? 'newspaper'} size={20} color="rgba(255,255,255,0.95)" />
-      <Text variant="subhead" style={[styles.bandLabel, styles.bandGrow]} numberOfLines={1}>
-        {category}
+    <View style={styles.meta} accessible accessibilityLabel={`${category}, ${formatDay(date)}`}>
+      <View style={[styles.dot, { backgroundColor: hue }]} />
+      <Text variant="footnote" style={[styles.metaCategory, { color: tint(scheme, hue).color }]} numberOfLines={1}>
+        {category.toUpperCase()}
+      </Text>
+      <Text variant="footnote" tone="secondary">
+        · {day} {month}
       </Text>
     </View>
   );
@@ -142,9 +138,9 @@ export function ActuThumb({ uri, size = 104, radius = 14 }: { uri: string; size?
 }
 
 const styles = StyleSheet.create({
-  band: { height: 48, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16 },
-  bandLabel: { color: '#FFFFFF', fontWeight: '600' },
-  bandGrow: { flex: 1 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  metaCategory: { fontWeight: '700', letterSpacing: 0.3, flexShrink: 1 },
   tile: {
     width: 36,
     height: 38,

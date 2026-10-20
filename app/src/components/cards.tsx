@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { ActuThumb, CategoryBand, DateTile } from '@/components/actu-visual';
+import { ActuThumb, PostMeta } from '@/components/actu-visual';
 import { Entrance } from '@/components/entrance';
 import { CommentCount, LikeButton, ShareButton } from '@/components/social';
 import { Avatar } from '@/components/ui/avatar';
@@ -17,7 +17,8 @@ export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
   const preview = (actu.excerpt || actu.contenu || '').trim();
   const text = (
     <View style={styles.postText}>
-      <Text variant="title" style={styles.postTitle} numberOfLines={actu.image_url ? 3 : undefined}>
+      <PostMeta category={actu.categorie} date={actu.date} />
+      <Text variant="title" style={styles.postTitle} numberOfLines={actu.image_url ? 4 : undefined}>
         {actu.titre}
       </Text>
       {!!preview && (
@@ -33,23 +34,14 @@ export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
         style={styles.postCard}
         accessibilityLabel={actu.titre}
         onPress={() => router.push({ pathname: '/actu/[id]', params: { id: String(actu.id) } })}>
-        <CategoryBand category={actu.categorie} />
         <View style={styles.postBody}>
           {actu.image_url ? (
             <View style={styles.withThumb}>
-              <View>
-                <ActuThumb uri={actu.image_url} />
-                <View style={styles.thumbDate}>
-                  <DateTile date={actu.date} />
-                </View>
-              </View>
               {text}
+              <ActuThumb uri={actu.image_url} size={88} />
             </View>
           ) : (
-            <View style={styles.withThumb}>
-              <DateTile date={actu.date} onCard large />
-              {text}
-            </View>
+            text
           )}
           <View style={[styles.footer, { borderTopColor: colors.separator }]}>
             <LikeButton
@@ -114,20 +106,9 @@ export function IdeeCard({ idee, index = 99 }: { idee: Idee; index?: number }) {
 
 const styles = StyleSheet.create({
   card: { marginHorizontal: 16, gap: 12, padding: 16 },
-  // Posts bleed their picture to the card's edges, so the padding moves to the body.
   postCard: { marginHorizontal: 16, padding: 0 },
   postBody: { gap: 12, padding: 16 },
-  // Photo thumbnail on the left, title and extract beside it.
-  thumbDate: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-  },
+  // Text on the left, photo thumbnail on the right.
   withThumb: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   postText: { flex: 1, gap: 8 },
   author: { flexDirection: 'row', alignItems: 'center', gap: 12 },
