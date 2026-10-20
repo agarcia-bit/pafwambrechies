@@ -7,7 +7,7 @@ import { useTenantConfig } from '@/lib/tenant-config';
 
 export default function PlusLayout() {
   const header = useBrandHeader();
-  const { isAdmin, isBureau } = useMember();
+  const { isAdmin, isBureau, isPlatformAdmin } = useMember();
   const { modules } = useTenantConfig();
   return (
     <Stack screenOptions={header}>
@@ -26,6 +26,9 @@ export default function PlusLayout() {
       </Stack.Protected>
       <Stack.Protected guard={modules.annuaire}>
         <Stack.Screen name="ma-fiche" options={{ title: 'Ma fiche', presentation: 'modal' }} />
+      </Stack.Protected>
+      <Stack.Protected guard={isPlatformAdmin}>
+        <Stack.Screen name="associations" options={{ title: 'Associations' }} />
       </Stack.Protected>
       <Stack.Screen name="regles" options={{ title: 'Règles de la communauté' }} />
       <Stack.Screen name="bloques" options={{ title: 'Membres bloqués' }} />

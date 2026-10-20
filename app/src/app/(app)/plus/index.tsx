@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { BrandBand } from '@/components/brand-band';
-import { AssociationBanner } from '@/components/association';
+import { AssociationBanner, associationName } from '@/components/association';
 import { ListRow, ListSection } from '@/components/ui/list';
 import { fullName } from '@/lib/format';
 import { useMember } from '@/lib/session';
@@ -10,7 +10,7 @@ import { useTenantConfig } from '@/lib/tenant-config';
 import { useBandListStyle } from '@/theme';
 
 export default function PlusScreen() {
-  const { profile, isBureau } = useMember();
+  const { profile, isBureau, isPlatformAdmin, branding } = useMember();
   const { modules } = useTenantConfig();
   const bandStyle = useBandListStyle();
   return (
@@ -18,6 +18,16 @@ export default function PlusScreen() {
       <BrandBand title="Plus" />
       <View style={styles.content}>
       <AssociationBanner />
+      {isPlatformAdmin && (
+        <ListSection title="Plateforme">
+          <ListRow
+            icon="people"
+            title="Changer d’association"
+            value={associationName(branding)}
+            onPress={() => router.push('/plus/associations')}
+          />
+        </ListSection>
+      )}
       {(modules.idees || modules.liens) && (
         <ListSection title="Communauté">
           {modules.idees && <ListRow icon="lightbulb" title="Boîte à idées" onPress={() => router.push('/plus/idees')} />}
