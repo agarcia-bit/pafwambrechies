@@ -5,6 +5,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { CommentCount, CommentsSection, LikeButton } from '@/components/social';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { LinkedText } from '@/components/ui/linked-text';
 import { Text } from '@/components/ui/text';
 import { useIdee } from '@/lib/data';
 import { formatRelative } from '@/lib/format';
@@ -40,7 +41,7 @@ export default function IdeeScreen() {
           {i.titre}
         </Text>
       )}
-      <Text selectable>{i.texte}</Text>
+      <LinkedText>{i.texte}</LinkedText>
       <View style={styles.actions}>
         <LikeButton kind="idee" id={i.id} liked={i.my_like.length > 0} count={i.idees_likes[0]?.count ?? 0} />
         <CommentCount count={i.idees_commentaires[0]?.count ?? 0} />

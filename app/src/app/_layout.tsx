@@ -31,7 +31,8 @@ function RootNavigator() {
   if (isLoading) return null;
 
   return (
-    <AppThemeProvider brandColor={membership?.branding?.tenant_primary_color}>
+    <AppThemeProvider brandColor={membership?.branding?.tenant_primary_color}
+      bannerColor={membership?.branding?.tenant_secondary_color}>
       <Stack screenOptions={{ headerShown: false, headerBackButtonDisplayMode: 'minimal' }}>
         <Stack.Protected guard={!!session && !recovery}>
           <Stack.Screen name="(app)" />

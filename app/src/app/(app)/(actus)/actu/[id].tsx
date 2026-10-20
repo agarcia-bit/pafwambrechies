@@ -3,8 +3,10 @@ import { useRef } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { CommentCount, CommentsSection, LikeButton } from '@/components/social';
+import { ActuPhoto } from '@/components/actu-visual';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { LinkedText } from '@/components/ui/linked-text';
 import { Text } from '@/components/ui/text';
 import { ACTU_HUES } from '@/lib/categories';
 import { useActu } from '@/lib/data';
@@ -30,6 +32,7 @@ export default function ActuScreen() {
       keyboardDismissMode="interactive"
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={styles.content}>
+      {!!a.image_url && <ActuPhoto uri={a.image_url} radius={16} />}
       <View style={styles.meta}>
         <Badge label={a.categorie} hue={ACTU_HUES[a.categorie]} />
         <Text variant="footnote" tone="secondary">
@@ -39,7 +42,7 @@ export default function ActuScreen() {
       <Text variant="title" selectable>
         {a.titre}
       </Text>
-      {!!a.contenu && <Text selectable>{a.contenu}</Text>}
+      {!!a.contenu && <LinkedText>{a.contenu}</LinkedText>}
       <View style={styles.actions}>
         <LikeButton kind="actu" id={a.id} liked={a.my_like.length > 0} count={a.actus_likes[0]?.count ?? 0} />
         <CommentCount count={a.actus_commentaires[0]?.count ?? 0} />

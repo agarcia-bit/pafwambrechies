@@ -1,78 +1,126 @@
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { CommentCount, LikeButton } from '@/components/social';
+import { ActuThumb, CategoryBand } from '@/components/actu-visual';
+import { Entrance } from '@/components/entrance';
+import { CommentCount, LikeButton, ShareButton } from '@/components/social';
+import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { PressableCard } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
-import { ACTU_HUES } from '@/lib/categories';
-import { formatDay, formatRelative } from '@/lib/format';
+import { formatRelative } from '@/lib/format';
+import { useTheme } from '@/theme';
 import type { Actu, Idee } from '@/lib/types';
 
-export function ActuCard({ actu }: { actu: Actu }) {
+export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
+  const { colors } = useTheme();
   const preview = (actu.excerpt || actu.contenu || '').trim();
-  return (
-    <PressableCard
-      style={styles.card}
-      accessibilityLabel={actu.titre}
-      onPress={() => router.push({ pathname: '/actu/[id]', params: { id: String(actu.id) } })}>
-      <View style={styles.meta}>
-        <Badge label={actu.categorie} hue={ACTU_HUES[actu.categorie]} />
-        <Text variant="footnote" tone="secondary">
-          {formatDay(actu.date)}
-        </Text>
-      </View>
-      <Text variant="headline">{actu.titre}</Text>
+  const text = (
+    <View style={styles.postText}>
+      <Text variant="title" style={styles.postTitle} numberOfLines={actu.image_url ? 3 : undefined}>
+        {actu.titre}
+      </Text>
       {!!preview && (
-        <Text variant="subhead" tone="secondary" numberOfLines={3}>
+        <Text tone="secondary" numberOfLines={3}>
           {preview}
         </Text>
       )}
-      <View style={styles.footer}>
-        <LikeButton
-          kind="actu"
-          id={actu.id}
-          liked={actu.my_like.length > 0}
-          count={actu.actus_likes[0]?.count ?? 0}
-        />
-        <CommentCount count={actu.actus_commentaires[0]?.count ?? 0} />
-      </View>
-    </PressableCard>
+    </View>
+  );
+  return (
+    <Entrance index={index}>
+      <PressableCard
+        style={styles.postCard}
+        accessibilityLabel={actu.titre}
+        onPress={() => router.push({ pathname: '/actu/[id]', params: { id: String(actu.id) } })}>
+        <CategoryBand category={actu.categorie} date={actu.date} />
+        <View style={styles.postBody}>
+          {actu.image_url ? (
+            <View style={styles.withThumb}>
+              <ActuThumb uri={actu.image_url} />
+              {text}
+            </View>
+          ) : (
+            text
+          )}
+          <View style={[styles.footer, { borderTopColor: colors.separator }]}>
+            <LikeButton
+              kind="actu"
+              id={actu.id}
+              liked={actu.my_like.length > 0}
+              count={actu.actus_likes[0]?.count ?? 0}
+            />
+            <CommentCount count={actu.actus_commentaires[0]?.count ?? 0} />
+            <View style={styles.spacer} />
+            <ShareButton message={preview ? `${actu.titre}\n\n${preview}` : actu.titre} />
+          </View>
+        </View>
+      </PressableCard>
+    </Entrance>
   );
 }
 
-export function IdeeCard({ idee }: { idee: Idee }) {
+export function IdeeCard({ idee, index = 99 }: { idee: Idee; index?: number }) {
+  const { colors } = useTheme();
   return (
-    <PressableCard
-      style={styles.card}
-      accessibilityLabel={idee.titre || idee.texte}
-      onPress={() => router.push({ pathname: '/plus/idees/[id]', params: { id: String(idee.id) } })}>
-      <View style={styles.meta}>
-        <Badge label={idee.categorie} />
-        <Text variant="footnote" tone="secondary" numberOfLines={1} style={styles.shrink}>
-          {idee.prenom || 'Anonyme'} · {formatRelative(idee.created_at)}
+    <Entrance index={index}>
+      <PressableCard
+        style={styles.card}
+        accessibilityLabel={idee.titre || idee.texte}
+        onPress={() => router.push({ pathname: '/plus/idees/[id]', params: { id: String(idee.id) } })}>
+        <View style={styles.author}>
+          <Avatar name={idee.prenom} size={40} round />
+          <View style={styles.shrink}>
+            <Text variant="headline" numberOfLines={1}>
+              {idee.prenom || 'Anonyme'}
+            </Text>
+            <Text variant="footnote" tone="secondary">
+              {formatRelative(idee.created_at)}
+            </Text>
+          </View>
+          <Badge label={idee.categorie} />
+        </View>
+        {!!idee.titre && (
+          <Text variant="title" style={styles.postTitle}>
+            {idee.titre}
+          </Text>
+        )}
+        <Text tone="secondary" numberOfLines={4}>
+          {idee.texte}
         </Text>
-      </View>
-      {!!idee.titre && <Text variant="headline">{idee.titre}</Text>}
-      <Text variant="subhead" tone="secondary" numberOfLines={3}>
-        {idee.texte}
-      </Text>
-      <View style={styles.footer}>
-        <LikeButton
-          kind="idee"
-          id={idee.id}
-          liked={idee.my_like.length > 0}
-          count={idee.idees_likes[0]?.count ?? 0}
-        />
-        <CommentCount count={idee.idees_commentaires[0]?.count ?? 0} />
-      </View>
-    </PressableCard>
+        <View style={[styles.footer, { borderTopColor: colors.separator }]}>
+          <LikeButton
+            kind="idee"
+            id={idee.id}
+            liked={idee.my_like.length > 0}
+            count={idee.idees_likes[0]?.count ?? 0}
+          />
+          <CommentCount count={idee.idees_commentaires[0]?.count ?? 0} />
+          <View style={styles.spacer} />
+          <ShareButton message={idee.titre ? `${idee.titre}\n\n${idee.texte}` : idee.texte} />
+        </View>
+      </PressableCard>
+    </Entrance>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { marginHorizontal: 16, gap: 8 },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  shrink: { flexShrink: 1 },
-  footer: { flexDirection: 'row', gap: 20, marginTop: 4 },
+  card: { marginHorizontal: 16, gap: 12, padding: 16 },
+  // Posts bleed their picture to the card's edges, so the padding moves to the body.
+  postCard: { marginHorizontal: 16, padding: 0 },
+  postBody: { gap: 12, padding: 16 },
+  // Photo thumbnail on the left, title and extract beside it.
+  withThumb: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  postText: { flex: 1, gap: 8 },
+  author: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  shrink: { flex: 1 },
+  postTitle: { fontSize: 20, lineHeight: 26 },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 22,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  spacer: { flex: 1 },
 });

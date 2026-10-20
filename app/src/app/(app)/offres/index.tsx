@@ -2,39 +2,46 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
+import { BrandBand } from '@/components/brand-band';
 import { OfferTag } from '@/components/offer-tag';
 import { PressableCard } from '@/components/ui/card';
 import { ChipBar } from '@/components/ui/chip-bar';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
-import { OFFRE_CATEGORIES } from '@/lib/categories';
 import { useOffres } from '@/lib/data';
 import { offerValidity } from '@/lib/format';
+import { useTenantConfig } from '@/lib/tenant-config';
 import type { Offre } from '@/lib/types';
-
-type Category = (typeof OFFRE_CATEGORIES)[number];
+import { useBandListStyle } from '@/theme';
 
 export default function OffresScreen() {
   const offres = useOffres();
-  const [category, setCategory] = useState<Category>('Tous');
+  const { categories, labels } = useTenantConfig();
+  const bandStyle = useBandListStyle();
+  const [category, setCategory] = useState('Tous');
   const { refreshing, onRefresh } = usePullToRefresh(offres.refetch);
   const items = (offres.data ?? []).filter((o) => category === 'Tous' || o.categorie === category);
 
   return (
     <FlatList
+      style={bandStyle}
       data={items}
       keyExtractor={(o) => String(o.id)}
       renderItem={({ item }) => <OffreCard offre={item} />}
-      contentInsetAdjustmentBehavior="automatic"
+      contentInsetAdjustmentBehavior="never"
       contentContainerStyle={styles.content}
       ItemSeparatorComponent={Gap}
       ListHeaderComponent={
         <View style={styles.header}>
+          <BrandBand title={labels.offres}>
+            {categories.offres.length > 0 && (
+              <ChipBar onBand options={['Tous', ...categories.offres]} value={category} onChange={setCategory} />
+            )}
+          </BrandBand>
           <Text tone="secondary" style={styles.intro}>
             Les bons plans réservés aux adhérents.
           </Text>
-          <ChipBar options={OFFRE_CATEGORIES} value={category} onChange={setCategory} />
         </View>
       }
       ListEmptyComponent={
@@ -76,7 +83,7 @@ function Gap() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingTop: 8, paddingBottom: 32 },
+  content: { paddingTop: 0, paddingBottom: 32 },
   header: { gap: 12, marginBottom: 16 },
   intro: { marginHorizontal: 16 },
   card: { marginHorizontal: 16, gap: 6 },

@@ -1,4 +1,5 @@
-// Same lists as the PAF web app (values are stored as-is in the database).
+// Actu categories are the same for every association (values are stored as-is).
+// Directory and offer categories are set per association, see tenant-config.ts.
 
 export const ACTU_CATEGORIES = ['Tous', 'Actu Asso', 'Infos pratiques', 'Événement', 'Membres'] as const;
 export const ACTU_HUES: Record<string, string> = {
@@ -8,10 +9,6 @@ export const ACTU_HUES: Record<string, string> = {
   Partenaire: '#9333EA',
   Membres: '#DB2777',
 };
-
-export const ANNUAIRE_CATEGORIES = ['Tous', 'Commerçant', 'Restauration', 'Services'] as const;
-
-export const OFFRE_CATEGORIES = ['Tous', 'Particulier', 'Professionnel'] as const;
 
 export const IDEE_CATEGORIES = [
   'Réseautage',

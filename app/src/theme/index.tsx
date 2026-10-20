@@ -1,6 +1,7 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { createContext, use, type PropsWithChildren } from 'react';
 import { useColorScheme } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { makePalette, type Palette, type Scheme } from '@/theme/colors';
 
@@ -19,9 +20,13 @@ function useScheme(): Scheme {
 }
 
 /** App-wide theme: navigation colors and our palette, tinted with the association color. */
-export function AppThemeProvider({ brandColor, children }: PropsWithChildren<{ brandColor?: string | null }>) {
+export function AppThemeProvider({
+  brandColor,
+  bannerColor,
+  children,
+}: PropsWithChildren<{ brandColor?: string | null; bannerColor?: string | null }>) {
   const scheme = useScheme();
-  const colors = makePalette(scheme, brandColor);
+  const colors = makePalette(scheme, brandColor, bannerColor);
   const nav = scheme === 'dark' ? DarkTheme : DefaultTheme;
   return (
     <ThemeContext value={{ colors, scheme }}>
@@ -44,7 +49,28 @@ export function AppThemeProvider({ brandColor, children }: PropsWithChildren<{ b
 }
 
 /** Tints a part of a screen with another association's color (signup preview). */
-export function BrandScope({ color, children }: PropsWithChildren<{ color?: string | null }>) {
+export function BrandScope({ color, banner, children }: PropsWithChildren<{ color?: string | null; banner?: string | null }>) {
   const scheme = useScheme();
   return <ThemeContext value={{ colors: makePalette(scheme, color), scheme }}>{children}</ThemeContext>;
+}
+
+/** Header options giving every screen the association's colored band with white titles. */
+export function useBrandHeader() {
+  const { colors } = useTheme();
+  return {
+    headerBackButtonDisplayMode: 'minimal' as const,
+    headerTintColor: '#FFFFFF',
+    headerStyle: { backgroundColor: colors.banner },
+    headerTitleStyle: { color: '#FFFFFF' },
+    headerLargeStyle: { backgroundColor: colors.banner },
+    headerLargeTitleStyle: { color: '#FFFFFF' },
+    headerShadowVisible: false,
+  };
+}
+
+/** Style for a screen whose list starts with a BrandBand: the list reaches up under the status bar. */
+export function useBandListStyle() {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  return { backgroundColor: colors.background, marginTop: -insets.top };
 }

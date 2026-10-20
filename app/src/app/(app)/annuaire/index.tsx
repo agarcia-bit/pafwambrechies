@@ -1,7 +1,8 @@
-import { router, Stack } from 'expo-router';
+import { router } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Platform, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
 
+import { BrandBand } from '@/components/brand-band';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { PressableCard } from '@/components/ui/card';
@@ -10,18 +11,17 @@ import { Icon } from '@/components/ui/icon';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
-import { ANNUAIRE_CATEGORIES } from '@/lib/categories';
 import { useAnnuaire } from '@/lib/data';
 import { fullName, searchable } from '@/lib/format';
+import { useTenantConfig } from '@/lib/tenant-config';
 import type { Commercant } from '@/lib/types';
-import { useTheme } from '@/theme';
-
-type Category = (typeof ANNUAIRE_CATEGORIES)[number];
+import { useBandListStyle, useTheme } from '@/theme';
 
 export default function AnnuaireScreen() {
   const annuaire = useAnnuaire();
-  const { colors } = useTheme();
-  const [category, setCategory] = useState<Category>('Tous');
+  const bandStyle = useBandListStyle();
+  const { categories, labels } = useTenantConfig();
+  const [category, setCategory] = useState('Tous');
   const [search, setSearch] = useState('');
   const { refreshing, onRefresh } = usePullToRefresh(annuaire.refetch);
 
@@ -37,36 +37,33 @@ export default function AnnuaireScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerSearchBarOptions: {
-            placeholder: 'Rechercher',
-            onChangeText: (e) => setSearch(e.nativeEvent.text),
-            onCancelButtonPress: () => setSearch(''),
-          },
-        }}
-      />
       <FlatList
+        style={bandStyle}
         data={items}
         keyExtractor={(m) => String(m.id)}
         renderItem={({ item }) => <MerchantRow merchant={item} />}
-        contentInsetAdjustmentBehavior="automatic"
+        contentInsetAdjustmentBehavior="never"
         keyboardDismissMode="on-drag"
         contentContainerStyle={styles.content}
         ItemSeparatorComponent={Gap}
         ListHeaderComponent={
           <View style={styles.header}>
-            {Platform.OS === 'web' && (
-              // The native header search bar does not exist on web.
+            <BrandBand title={labels.annuaire}>
               <TextInput
                 value={search}
                 onChangeText={setSearch}
                 placeholder="Rechercher"
-                placeholderTextColor={colors.textSecondary}
-                style={[styles.webSearch, { backgroundColor: colors.fill, color: colors.text }]}
+                placeholderTextColor="rgba(255,255,255,0.75)"
+                selectionColor="#FFFFFF"
+                autoCorrect={false}
+                clearButtonMode="while-editing"
+                returnKeyType="search"
+                style={styles.search}
               />
-            )}
-            <ChipBar options={ANNUAIRE_CATEGORIES} value={category} onChange={setCategory} />
+              {categories.annuaire.length > 0 && (
+                <ChipBar onBand options={['Tous', ...categories.annuaire]} value={category} onChange={setCategory} />
+              )}
+            </BrandBand>
           </View>
         }
         ListEmptyComponent={
@@ -86,6 +83,7 @@ export default function AnnuaireScreen() {
 
 function MerchantRow({ merchant: m }: { merchant: Commercant }) {
   const { colors } = useTheme();
+  const { categories } = useTenantConfig();
   const contact = fullName(m.prenom_contact, m.nom_contact);
   return (
     <PressableCard
@@ -102,7 +100,7 @@ function MerchantRow({ merchant: m }: { merchant: Commercant }) {
             {contact}
           </Text>
         )}
-        <Badge label={m.categorie} />
+        {categories.annuaire.length > 0 && <Badge label={m.categorie} />}
       </View>
       <Icon name="chevron" size={14} color={colors.textSecondary} />
     </PressableCard>
@@ -114,9 +112,17 @@ function Gap() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingTop: 8, paddingBottom: 32 },
+  content: { paddingTop: 0, paddingBottom: 32 },
   header: { gap: 12, marginBottom: 16 },
-  webSearch: { marginHorizontal: 16, height: 40, borderRadius: 10, paddingHorizontal: 12, fontSize: 16 },
+  search: {
+    marginHorizontal: 16,
+    height: 40,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    color: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
   row: { marginHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12 },
   rowText: { flex: 1, gap: 4 },
   gap: { height: 8 },

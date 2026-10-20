@@ -1,20 +1,29 @@
 import { router } from 'expo-router';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { BrandBand } from '@/components/brand-band';
 import { AssociationBanner } from '@/components/association';
 import { ListRow, ListSection } from '@/components/ui/list';
 import { fullName } from '@/lib/format';
 import { useMember } from '@/lib/session';
+import { useTenantConfig } from '@/lib/tenant-config';
+import { useBandListStyle } from '@/theme';
 
 export default function PlusScreen() {
   const { profile, isAdmin, isBureau } = useMember();
+  const { modules } = useTenantConfig();
+  const bandStyle = useBandListStyle();
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
+    <ScrollView style={bandStyle} contentInsetAdjustmentBehavior="never">
+      <BrandBand title="Plus" />
+      <View style={styles.content}>
       <AssociationBanner />
-      <ListSection title="Communauté">
-        <ListRow icon="lightbulb" title="Boîte à idées" onPress={() => router.push('/plus/idees')} />
-        <ListRow icon="link" title="Liens utiles" onPress={() => router.push('/plus/liens')} />
-      </ListSection>
+      {(modules.idees || modules.liens) && (
+        <ListSection title="Communauté">
+          {modules.idees && <ListRow icon="lightbulb" title="Boîte à idées" onPress={() => router.push('/plus/idees')} />}
+          {modules.liens && <ListRow icon="link" title="Liens utiles" onPress={() => router.push('/plus/liens')} />}
+        </ListSection>
+      )}
       {isBureau && (
         <ListSection title="Gestion">
           <ListRow
@@ -41,10 +50,11 @@ export default function PlusScreen() {
           onPress={() => router.push('/plus/compte')}
         />
       </ListSection>
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16, gap: 24, paddingBottom: 40 },
+  content: { padding: 16, paddingTop: 20, gap: 24, paddingBottom: 40 },
 });

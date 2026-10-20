@@ -64,7 +64,7 @@ export default function CompteScreen() {
     const ok = await confirmAction({
       title: 'Supprimer mon compte ?',
       message:
-        'Votre profil, vos idées, vos commentaires et vos « j’aime » seront définitivement supprimés. Cette action est irréversible.',
+        'Votre profil, vos idées, vos commentaires, vos « j’aime » et vos réponses aux sondages seront définitivement supprimés. Cette action est irréversible.',
       confirmLabel: 'Supprimer',
       destructive: true,
     });
@@ -118,7 +118,7 @@ export default function CompteScreen() {
         <ListRow icon="logout" title="Se déconnecter" destructive onPress={confirmSignOut} />
       </ListSection>
 
-      <ListSection footer="Supprime votre compte et vos contributions (idées, commentaires, « j’aime »).">
+      <ListSection footer="Supprime votre compte et vos contributions (idées, commentaires, « j’aime », réponses aux sondages).">
         <ListRow
           icon="trash"
           title={deleting ? 'Suppression…' : 'Supprimer mon compte'}

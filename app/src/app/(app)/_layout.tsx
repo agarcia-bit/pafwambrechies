@@ -1,11 +1,15 @@
+import { StatusBar } from 'expo-status-bar';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NotificationObserver } from '@/components/notification-observer';
+import { PollGate } from '@/components/poll-gate';
 import { Button } from '@/components/ui/button';
 import { ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/lib/session';
+import { tenantConfig } from '@/lib/tenant-config';
 import { useTheme } from '@/theme';
 
 // Five tabs at most (Apple's guideline, and Android's limit): the less used
@@ -13,6 +17,7 @@ import { useTheme } from '@/theme';
 export default function AppLayout() {
   const { membership, membershipError, reloadMembership } = useSession();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   if (!membership) {
     return (
@@ -22,24 +27,27 @@ export default function AppLayout() {
     );
   }
   if (!membership.profile) return <NoMembership />;
+  const { modules, labels } = tenantConfig(membership.branding);
 
   return (
     <>
       <NotificationObserver />
+      <StatusBar style="light" />
+      <PollGate />
       <NativeTabs tintColor={colors.primary}>
         <NativeTabs.Trigger name="(actus)">
           <NativeTabs.Trigger.Label>Actus</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf={{ default: 'newspaper', selected: 'newspaper.fill' }} md="newspaper" />
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="annuaire">
-          <NativeTabs.Trigger.Label>Annuaire</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger name="annuaire" hidden={!modules.annuaire}>
+          <NativeTabs.Trigger.Label>{labels.annuaire}</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf={{ default: 'person.2', selected: 'person.2.fill' }} md="groups" />
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="offres">
-          <NativeTabs.Trigger.Label>Offres</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger name="offres" hidden={!modules.offres}>
+          <NativeTabs.Trigger.Label>{labels.offres}</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf={{ default: 'tag', selected: 'tag.fill' }} md="sell" />
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="agenda">
+        <NativeTabs.Trigger name="agenda" hidden={!modules.agenda}>
           <NativeTabs.Trigger.Label>Agenda</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="calendar" md="calendar_month" />
         </NativeTabs.Trigger>
@@ -48,6 +56,8 @@ export default function AppLayout() {
           <NativeTabs.Trigger.Icon sf={{ default: 'ellipsis.circle', selected: 'ellipsis.circle.fill' }} md="more_horiz" />
         </NativeTabs.Trigger>
       </NativeTabs>
+      {/* Keeps the white clock and battery readable whatever scrolls under the status bar. */}
+      <View pointerEvents="none" style={[styles.statusCover, { height: insets.top, backgroundColor: colors.banner }]} />
     </>
   );
 }
@@ -71,6 +81,7 @@ function NoMembership() {
 }
 
 const styles = StyleSheet.create({
+  statusCover: { position: 'absolute', top: 0, left: 0, right: 0 },
   screen: { flex: 1 },
   centered: { justifyContent: 'center', padding: 32, gap: 16 },
   center: { textAlign: 'center' },

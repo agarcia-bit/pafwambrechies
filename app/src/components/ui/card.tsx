@@ -7,7 +7,7 @@ export function Card({ style, ...props }: ViewProps) {
   return <View style={[styles.card, { backgroundColor: colors.card }, style]} {...props} />;
 }
 
-/** A card that opens something: dims while pressed. */
+/** A card that opens something: shrinks slightly and dims while pressed. */
 export function PressableCard({
   onPress,
   style,
@@ -25,7 +25,11 @@ export function PressableCard({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
-      style={({ pressed }) => [styles.card, { backgroundColor: colors.card, opacity: pressed ? 0.75 : 1 }, style]}>
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: colors.card, opacity: pressed ? 0.85 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] },
+        style,
+      ]}>
       {children}
     </Pressable>
   );

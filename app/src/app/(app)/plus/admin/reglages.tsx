@@ -1,19 +1,29 @@
 import { useState } from 'react';
-import { Share, StyleSheet, View } from 'react-native';
+import { Share, StyleSheet, Switch, View } from 'react-native';
 
 import { associationName } from '@/components/association';
 import { ColorField } from '@/components/form-fields';
 import { FormScreen } from '@/components/form-screen';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { ListRow, ListSection } from '@/components/ui/list';
 import { ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
 import { adminErrorMessage, generateSignupCode, useSaveSettings, useSettings, type Settings } from '@/lib/admin';
 import { showMessage } from '@/lib/confirm';
 import { useMember } from '@/lib/session';
+import { useTheme } from '@/theme';
 
 const HEX = /^#[0-9a-f]{6}$/i;
+
+const SECTIONS = [
+  { key: 'module_annuaire', title: 'Annuaire', icon: 'people' },
+  { key: 'module_offres', title: 'Offres', icon: 'tag' },
+  { key: 'module_agenda', title: 'Agenda', icon: 'calendar' },
+  { key: 'module_idees', title: 'Boîte à idées', icon: 'lightbulb' },
+  { key: 'module_liens', title: 'Liens utiles', icon: 'link' },
+] as const;
 
 export default function ReglagesScreen() {
   const settings = useSettings();
@@ -24,6 +34,7 @@ export default function ReglagesScreen() {
 
 function SettingsForm({ saved }: { saved: Settings }) {
   const { branding } = useMember();
+  const { colors } = useTheme();
   const save = useSaveSettings();
   const [s, setS] = useState<Settings>(saved);
   const [error, setError] = useState<string | null>(null);
@@ -123,6 +134,65 @@ function SettingsForm({ saved }: { saved: Settings }) {
             />
           </View>
         </View>
+      </Section>
+
+      <Section
+        title="Sections de l’app"
+        footer="Masquez ce qui ne sert pas à votre association : un club de sport n’a pas forcément besoin d’offres de partenaires. Les actus et Mon compte sont toujours là.">
+        <ListSection>
+          {SECTIONS.map(({ key, title, icon }) => (
+            <ListRow
+              key={key}
+              icon={icon}
+              title={title}
+              right={
+                <Switch
+                  accessibilityLabel={title}
+                  value={s[key] !== 'off'}
+                  onValueChange={(on) => set(key)(on ? 'on' : 'off')}
+                  trackColor={{ true: colors.primary }}
+                />
+              }
+            />
+          ))}
+        </ListSection>
+      </Section>
+
+      <Section
+        title="Vocabulaire"
+        footer="Les mots de votre association. Laissez vide pour garder le mot par défaut. Pour les catégories, séparez-les par des virgules ; sans catégorie, les filtres n’apparaissent pas.">
+        <TextField
+          label="Nom de l’annuaire"
+          value={s.label_annuaire}
+          onChangeText={set('label_annuaire')}
+          placeholder="Annuaire (ex : Membres, Partenaires)"
+        />
+        <TextField
+          label="Catégories de l’annuaire"
+          value={s.annuaire_categories}
+          onChangeText={set('annuaire_categories')}
+          placeholder="Ex : Commerçant, Restauration, Services"
+          autoCorrect={false}
+        />
+        <TextField
+          label="Nom des offres"
+          value={s.label_offres}
+          onChangeText={set('label_offres')}
+          placeholder="Offres (ex : Avantages, Bons plans)"
+        />
+        <TextField
+          label="Catégories des offres"
+          value={s.offres_categories}
+          onChangeText={set('offres_categories')}
+          placeholder="Ex : Particulier, Professionnel"
+          autoCorrect={false}
+        />
+        <TextField
+          label="Champ « nom » à l’inscription"
+          value={s.label_nom}
+          onChangeText={set('label_nom')}
+          placeholder="Nom (ex : Nom de l’entreprise)"
+        />
       </Section>
 
       <Section title="Version web" footer="Utilisés seulement par l’app web de l’association.">

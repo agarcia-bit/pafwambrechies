@@ -192,12 +192,15 @@ export function PhotoField({
   label,
   uri,
   loading,
+  whole,
   onPick,
   onRemove,
 }: {
   label: string;
   uri: string | null;
   loading: boolean;
+  /** Show the entire photo (it will not be cut) instead of filling the frame. */
+  whole?: boolean;
   onPick: () => void;
   onRemove: () => void;
 }) {
@@ -206,7 +209,11 @@ export function PhotoField({
     <View style={styles.field}>
       <FieldLabel>{label}</FieldLabel>
       {uri ? (
-        <Image source={{ uri }} style={[styles.photo, { backgroundColor: colors.fill }]} contentFit="cover" />
+        <Image
+          source={{ uri }}
+          style={[styles.photo, { backgroundColor: colors.fill }]}
+          contentFit={whole ? 'contain' : 'cover'}
+        />
       ) : (
         <View style={[styles.photo, styles.photoEmpty, { backgroundColor: colors.fill }]}>
           <Icon name="photo" size={32} color={colors.textSecondary} />

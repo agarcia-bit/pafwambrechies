@@ -42,6 +42,7 @@ const ICONS = {
   circle: { ios: 'circle', android: 'radio_button_unchecked' },
   checkCircle: { ios: 'checkmark.circle.fill', android: 'check_circle' },
   clipboard: { ios: 'list.bullet.clipboard', android: 'assignment' },
+  poll: { ios: 'chart.bar', android: 'bar_chart' },
 } satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol }>;
 
 export type IconName = keyof typeof ICONS;

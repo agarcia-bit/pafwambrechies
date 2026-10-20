@@ -4,6 +4,7 @@ import { Platform, ScrollView, StyleSheet } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { ListRow, ListSection } from '@/components/ui/list';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { LinkedText } from '@/components/ui/linked-text';
 import { Text } from '@/components/ui/text';
 import { addToCalendar } from '@/lib/calendar';
 import { useEvenements } from '@/lib/data';
@@ -41,7 +42,7 @@ export default function EvenementScreen() {
           />
         )}
       </ListSection>
-      {!!ev.description && <Text selectable>{ev.description}</Text>}
+      {!!ev.description && <LinkedText>{ev.description}</LinkedText>}
       {Platform.OS !== 'web' && (
         <Button title="Ajouter à mon agenda" icon="calendarAdd" variant="secondary" onPress={() => addToCalendar(ev)} />
       )}

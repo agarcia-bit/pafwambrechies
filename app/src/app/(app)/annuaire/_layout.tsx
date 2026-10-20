@@ -1,9 +1,12 @@
 import { Stack } from 'expo-router';
 
+import { useBrandHeader } from '@/theme';
+
 export default function AnnuaireLayout() {
+  const header = useBrandHeader();
   return (
-    <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
-      <Stack.Screen name="index" options={{ title: 'Annuaire', headerLargeTitleEnabled: true }} />
+    <Stack screenOptions={header}>
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="[id]" options={{ title: '' }} />
     </Stack>
   );

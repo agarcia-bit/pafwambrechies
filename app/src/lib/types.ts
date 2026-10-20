@@ -19,6 +19,17 @@ export type Branding = {
   tenant_secondary_color?: string;
   tenant_logo_url?: string;
   tenant_login_bg_url?: string;
+  // Per-association configuration, see supabase/tenant_app_config.sql.
+  module_annuaire?: string;
+  module_offres?: string;
+  module_agenda?: string;
+  module_idees?: string;
+  module_liens?: string;
+  label_annuaire?: string;
+  label_offres?: string;
+  label_nom?: string;
+  annuaire_categories?: string;
+  offres_categories?: string;
 };
 
 export type Count = { count: number }[];
@@ -30,9 +41,11 @@ export type Actu = {
   id: number;
   titre: string;
   date: string;
+  created_at: string;
   categorie: string;
   excerpt: string | null;
   contenu: string | null;
+  image_url: string | null;
   actus_likes: Count;
   actus_commentaires: Count;
   my_like: MyLike;

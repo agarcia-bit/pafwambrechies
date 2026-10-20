@@ -12,6 +12,7 @@ import { authErrorMessage } from '@/lib/auth-errors';
 import { PRIVACY_POLICY_URL } from '@/lib/config';
 import { openLink } from '@/lib/links';
 import { supabase } from '@/lib/supabase';
+import { tenantConfig } from '@/lib/tenant-config';
 import type { Branding } from '@/lib/types';
 import { BrandScope } from '@/theme';
 
@@ -39,7 +40,7 @@ export default function InscriptionScreen() {
 
   if (association) {
     return (
-      <BrandScope color={association.tenant_primary_color}>
+      <BrandScope color={association.tenant_primary_color} banner={association.tenant_secondary_color}>
         <AccountForm code={code.trim()} association={association} onChangeCode={() => setAssociation(null)} />
       </BrandScope>
     );
@@ -84,6 +85,9 @@ function AccountForm({
   const [loading, setLoading] = useState(false);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const name = association.tenant_name || association.name;
+  const { labels } = tenantConfig(association);
+  // The association chooses what this field is called: a company, or a plain last name.
+  const isCompany = /entreprise|société|societe|raison/i.test(labels.nom);
 
   async function signUp() {
     if (!prenom.trim() || !nom.trim() || !email.trim() || !password) {
@@ -133,11 +137,11 @@ function AccountForm({
 
       <TextField label="Prénom" value={prenom} onChangeText={setPrenom} autoComplete="given-name" textContentType="givenName" />
       <TextField
-        label="Nom de l’entreprise"
+        label={labels.nom}
         value={nom}
         onChangeText={setNom}
-        autoComplete="organization"
-        textContentType="organizationName"
+        autoComplete={isCompany ? 'organization' : 'family-name'}
+        textContentType={isCompany ? 'organizationName' : 'familyName'}
       />
       <TextField
         label="Email"

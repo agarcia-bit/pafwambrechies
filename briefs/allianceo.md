@@ -82,6 +82,43 @@ Fait (3e PR) — Pilotage bureau, dans Plus › Gestion, pour les membres du bur
 Vérifié en base (transaction annulée) : liste du bureau pour un membre non admin, héritage du
 référent, suppression en cascade, adhérent sans accès.
 
+Fait (adaptation à tous types d'associations) :
+- chaque asso règle depuis Plus › Administration › Réglages : les sections visibles (annuaire,
+  offres, agenda, idées, liens), le nom de l'annuaire et des offres, leurs catégories, et le
+  libellé du champ « nom » à l'inscription (`supabase/tenant_app_config.sql`, migration
+  `tenant_app_config`, clés dans `app_settings` renvoyées avec le branding) ;
+- sans réglage : toutes les sections, mots neutres (Annuaire, Offres, Nom), aucune catégorie
+  (valeur stockée « Général ») ; la PAF garde ses mots et ses catégories, écrits explicitement ;
+- les écrans masqués sont aussi protégés contre l'accès direct (routes gardées).
+Pas encore testé sur téléphone : le masquage des onglets et les écrans Admin correspondants.
+
+Fait (fil d'actualité) :
+- cartes d'actus (bande de couleur par catégorie, date en tuile façon Calendrier d'iPhone),
+  liens cliquables dans les textes ;
+- événements de l'Agenda dans le fil (« À venir », 3 prochains) avec « Ajouter à l'agenda » et
+  « Vu » ; le « vu » est retenu sur le téléphone (par membre), pas en base ;
+- sondages : l'admin en lance depuis Plus › Administration › Sondages (question + 2 à 6
+  réponses, choix unique, option « obligatoire ») ; notification dédiée ; le sondage s'affiche
+  en plein écran à l'ouverture de l'app, avec animations, avant tout le reste. Obligatoire :
+  pas de « Plus tard », l'app reste bloquée jusqu'à la réponse. Sinon : le membre peut le
+  repousser UNE fois (carte en attente en haut du fil + notification locale « ❗ Sondage en
+  attente » programmée sur le téléphone 3 jours plus tard, même app fermée), puis il redevient
+  obligatoire. Mêmes règles pour les admins (un admin qui lance un sondage obligatoire doit
+  y répondre aussi). Réponses nominatives pour les admins, aucun résultat côté membre. Logique : `src/lib/poll-queue.ts` (testée),
+  `poll-reminders.ts`. Fichier SQL de l'option : `supabase/sondages_obligatoire.sql`.
+  Limite connue : le rappel n'existe qu'après un report ; un membre qui n'ouvre jamais l'app
+  n'a que la notification initiale (un rappel serveur demanderait une tâche planifiée).
+  **Les membres ne sont plus prévenus sur la carte que les admins voient leurs réponses : la
+  politique de confidentialité d'Allianceo doit le dire (à écrire à l'étape 3).**
+  Backend : `supabase/sondages.sql` (tables, droits, `creer_sondage()`, suppression des votes
+  avec le compte, déclencheur `on_new_sondage`) ; la fonction `notify-new-actu` (v5, déployée)
+  gère aussi les sondages, sans notification web PAF.
+  Appliqués à la main dans le SQL Editor de Supabase (l'outil de migration est refusé) :
+  `supabase/sondages.sql` et `supabase/actus_photos.sql`.
+- photos d'actus : champ « Photo » dans le formulaire d'actu de l'Admin (recadrage 4:3,
+  1200 px, bucket public `actus-photos`, envoi réservé aux admins) ; dans le fil la photo
+  remplace la bande colorée, avec la catégorie et la date posées dessus.
+
 Reste à faire :
 1. Tester l'app entière sur iPhone (Expo Go), avec un compte adhérent et un compte admin.
 2. Compte existant sans profil (ex. compte Immopilot) : l'app affiche « Aucune association ».
@@ -101,6 +138,12 @@ Côté Andy pour tester sur iPhone :
 ## Étape 3 — stores
 EAS Build, TestFlight, fiches App Store Connect / Play Console, reprendre politique de
 confidentialité et page de suppression au nom d'Allianceo, compte de démo pour l'examen.
+Avant le lancement : expéditeur des emails d'authentification. Un seul réglage SMTP pour tout
+le projet Supabase (Resend, « Kadastria » <connexion@kadastria.fr>), partagé avec Kadastria
+(autre produit d'Andy) : ne rien y changer sans vérifier l'effet sur les emails de Kadastria.
+Voies : « Send Email hook » (un expéditeur par produit, recommandé, à tester soigneusement) ou
+signature commune « Agalumy » (domaine agalumy.fr à valider d'abord chez Resend, DKIM). Le
+modèle « Reset password » est neutre (code seul, sans nom de produit).
 Avant le lancement : codes d'accès aléatoires (pas du type nom + année), car
 `resolve_signup_code` est appelable sans compte et un code devinable ouvre l'annuaire.
 
