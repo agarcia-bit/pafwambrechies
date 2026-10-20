@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import Animated, { Easing, FadeIn, FadeInDown, useReducedMotion, ZoomIn } from 'react-native-reanimated';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,6 +17,9 @@ import { supabase } from '@/lib/supabase';
 // Neutral Allianceo screen: the association is only known once signed in.
 export default function ConnexionScreen() {
   const insets = useSafeAreaInsets();
+  const reduceMotion = useReducedMotion();
+  // The arrival: the logo pops in, then the name, then the form rises line by line.
+  const arrive = (delay: number) => (reduceMotion ? undefined : FadeInDown.delay(delay).duration(550).easing(Easing.out(Easing.cubic)));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -43,20 +47,26 @@ export default function ConnexionScreen() {
       style={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12, gap: 12 }}>
       <View style={styles.middle}>
       <View style={styles.brand}>
-        <Image source={require('../../assets/images/icon.png')} style={styles.logo} accessibilityLabel="Logo Allianceo" />
-        <View style={styles.wordmark}>
+        <Animated.View entering={reduceMotion ? undefined : ZoomIn.duration(750).easing(Easing.out(Easing.back(1.6)))}>
+          <Image source={require('../../assets/images/icon.png')} style={styles.logo} accessibilityLabel="Logo Allianceo" />
+        </Animated.View>
+        <Animated.View entering={arrive(350)} style={styles.wordmark}>
           {/* Same width as the dot, so that the name itself stays centered. */}
           <View style={styles.wordmarkSpacer} />
           <Text variant="largeTitle" style={styles.wordmarkText}>
             ALLIANCEO
           </Text>
-          <View style={styles.wordmarkDot} />
-        </View>
-        <Text style={[styles.center, styles.tagline]}>
-          L’espace adhérents de votre association
-        </Text>
+          <Animated.View
+            entering={reduceMotion ? undefined : ZoomIn.delay(900).duration(450).easing(Easing.out(Easing.back(3)))}
+            style={styles.wordmarkDot}
+          />
+        </Animated.View>
+        <Animated.View entering={arrive(500)}>
+          <Text style={[styles.center, styles.tagline]}>L’espace adhérents de votre association</Text>
+        </Animated.View>
       </View>
 
+      <Animated.View entering={arrive(700)}>
       <TextField
         onDark
         label="Email"
@@ -70,6 +80,8 @@ export default function ConnexionScreen() {
         textContentType="username"
         returnKeyType="next"
       />
+      </Animated.View>
+      <Animated.View entering={arrive(790)}>
       <TextField
         onDark
         label="Mot de passe"
@@ -81,26 +93,31 @@ export default function ConnexionScreen() {
         returnKeyType="go"
         onSubmitEditing={signIn}
       />
+      </Animated.View>
       {error && (
         <Text style={styles.error} accessibilityLiveRegion="polite">
           {error}
         </Text>
       )}
-      <Button title="Se connecter" variant="light" onPress={signIn} loading={loading} />
-      <Button
-        title="Mot de passe oublié ?"
-        variant="lightPlain"
-        onPress={() => router.push({ pathname: '/mot-de-passe-oublie', params: { email: email.trim() } })}
-      />
+      <Animated.View entering={arrive(880)}>
+        <Button title="Se connecter" variant="light" onPress={signIn} loading={loading} />
+      </Animated.View>
+      <Animated.View entering={arrive(960)}>
+        <Button
+          title="Mot de passe oublié ?"
+          variant="lightPlain"
+          onPress={() => router.push({ pathname: '/mot-de-passe-oublie', params: { email: email.trim() } })}
+        />
+      </Animated.View>
 
       </View>
 
-      <View style={styles.signup}>
+      <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(1100).duration(600)} style={styles.signup}>
         <Text style={[styles.center, styles.tagline]}>
           Première fois ? Votre association vous a communiqué un code d’accès.
         </Text>
         <Button title="Créer mon compte" variant="glass" onPress={() => router.push('/inscription')} />
-      </View>
+      </Animated.View>
     </FormScreen>
     </LinearGradient>
   );
