@@ -5,7 +5,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActuPhoto, DateTile, useCategoryHue } from '@/components/actu-visual';
-import { BackButton } from '@/components/full-screen-detail';
+import { BackButton, titleFit } from '@/components/full-screen-detail';
 import { CommentComposer, CommentCount, CommentsSection, LikeButton } from '@/components/social';
 import { LinkedText } from '@/components/ui/linked-text';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -69,7 +69,7 @@ export default function ActuScreen() {
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(230).duration(500)} style={styles.heroTitleRow}>
             {!!a.date_evenement && <DateTile date={a.date_evenement} large />}
-            <Text variant="title" style={styles.heroTitle} selectable>
+            <Text variant="title" style={styles.heroTitle} selectable {...titleFit(a.titre)}>
               {a.titre}
             </Text>
           </Animated.View>

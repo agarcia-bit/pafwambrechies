@@ -8,6 +8,15 @@ import { Icon, type IconName } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useTheme } from '@/theme';
 
+/**
+ * A short title shrinks to stay on ONE line (down to 65 % of its size); a long one keeps its size
+ * and wraps. `narrow`: the title shares its line with a visual (less width, so a lower limit).
+ */
+export function titleFit(title: string, narrow = false) {
+  const short = title.length <= (narrow ? 20 : 30);
+  return short ? { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.65 } : {};
+}
+
 /** With `fadeOnly`, the blocks of the screen fade in without rising (the agenda). */
 const FadeOnlyContext = createContext(false);
 /** With `centered`, the detail rows are centered too. */
@@ -89,7 +98,11 @@ export function FullScreenDetail({
           <Animated.View entering={fadeOnly ? FadeIn.delay(30).duration(200) : FadeInDown.delay(230).duration(500)} style={[styles.heroTitleRow, centered && styles.centeredColumn]}>
             {leading}
             <View style={centered ? styles.centeredText : styles.flex}>
-              <Text variant="title" style={[styles.heroTitle, centered && styles.centeredTitle]} selectable>
+              <Text
+                variant="title"
+                style={[styles.heroTitle, centered && styles.centeredTitle]}
+                selectable
+                {...titleFit(title, !centered && !!leading)}>
                 {title}
               </Text>
               {!!subtitle && (
