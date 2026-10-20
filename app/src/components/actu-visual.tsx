@@ -25,22 +25,31 @@ export function useCategoryHue(category: string): string {
 }
 
 /** Date as the iPhone Calendar icon: month in red on top, day number below. */
-export function DateTile({ date, onCard }: { date: string; /** On a white card instead of a colored band. */ onCard?: boolean }) {
+export function DateTile({
+  date,
+  onCard,
+  large,
+}: {
+  date: string;
+  /** On a white card instead of a colored band. */
+  onCard?: boolean;
+  large?: boolean;
+}) {
   const { colors } = useTheme();
   const { day, month } = dayParts(date);
   return (
     <View
-      style={[styles.tile, onCard && { backgroundColor: colors.fill }]}
+      style={[styles.tile, large && styles.tileLarge, onCard && { backgroundColor: colors.fill }]}
       accessible
       accessibilityLabel={formatDay(date)}>
-      <Text style={styles.tileMonth}>{month.replace('.', '').toUpperCase()}</Text>
-      <Text style={[styles.tileDay, onCard && { color: colors.text }]}>{day}</Text>
+      <Text style={[styles.tileMonth, large && styles.tileMonthLarge]}>{month.replace('.', '').toUpperCase()}</Text>
+      <Text style={[styles.tileDay, large && styles.tileDayLarge, onCard && { color: colors.text }]}>{day}</Text>
     </View>
   );
 }
 
-/** Slim colored band on top of a post: its category with an icon, and its date as a calendar tile. */
-export function CategoryBand({ category, date }: { category: string; date?: string }) {
+/** Slim colored band on top of a post: its category with an icon. */
+export function CategoryBand({ category }: { category: string }) {
   const hue = useCategoryHue(category);
   return (
     <View style={[styles.band, { backgroundColor: mix(hue, '#000000', 0.15) }]}>
@@ -48,7 +57,6 @@ export function CategoryBand({ category, date }: { category: string; date?: stri
       <Text variant="subhead" style={[styles.bandLabel, styles.bandGrow]} numberOfLines={1}>
         {category}
       </Text>
-      {!!date && <DateTile date={date} />}
     </View>
   );
 }
@@ -146,6 +154,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 0,
   },
+  tileLarge: { width: 56, height: 62, borderRadius: 12 },
+  tileMonthLarge: { fontSize: 11, lineHeight: 13 },
+  tileDayLarge: { fontSize: 26, lineHeight: 30 },
   tileMonth: { fontSize: 9, lineHeight: 11, fontWeight: '800', color: '#FF3B30', letterSpacing: 0.3 },
   tileDay: { fontSize: 18, lineHeight: 21, fontWeight: '600', color: '#000000' },
   photo: { width: '100%', overflow: 'hidden' },

@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { ActuThumb, CategoryBand } from '@/components/actu-visual';
+import { ActuThumb, CategoryBand, DateTile } from '@/components/actu-visual';
 import { Entrance } from '@/components/entrance';
 import { CommentCount, LikeButton, ShareButton } from '@/components/social';
 import { Avatar } from '@/components/ui/avatar';
@@ -33,15 +33,23 @@ export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
         style={styles.postCard}
         accessibilityLabel={actu.titre}
         onPress={() => router.push({ pathname: '/actu/[id]', params: { id: String(actu.id) } })}>
-        <CategoryBand category={actu.categorie} date={actu.date} />
+        <CategoryBand category={actu.categorie} />
         <View style={styles.postBody}>
           {actu.image_url ? (
             <View style={styles.withThumb}>
-              <ActuThumb uri={actu.image_url} />
+              <View>
+                <ActuThumb uri={actu.image_url} />
+                <View style={styles.thumbDate}>
+                  <DateTile date={actu.date} />
+                </View>
+              </View>
               {text}
             </View>
           ) : (
-            text
+            <View style={styles.withThumb}>
+              <DateTile date={actu.date} onCard large />
+              {text}
+            </View>
           )}
           <View style={[styles.footer, { borderTopColor: colors.separator }]}>
             <LikeButton
@@ -110,6 +118,16 @@ const styles = StyleSheet.create({
   postCard: { marginHorizontal: 16, padding: 0 },
   postBody: { gap: 12, padding: 16 },
   // Photo thumbnail on the left, title and extract beside it.
+  thumbDate: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+  },
   withThumb: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   postText: { flex: 1, gap: 8 },
   author: { flexDirection: 'row', alignItems: 'center', gap: 12 },
