@@ -18,11 +18,17 @@ let alreadyPlayed = false;
 const K = 0.3;
 const STROKE = 96 * K;
 const BAR = Math.hypot(212, 510) * K; // length of one stroke of the "A"
-const TILT = `${(Math.atan(212 / 510) * 180) / Math.PI}deg`;
+const ANGLE = Math.atan(212 / 510); // tilt of the strokes, from the vertical
+const TILT = `${(ANGLE * 180) / Math.PI}deg`;
 const MARK_W = 424 * K + STROKE;
-const MARK_H = 510 * K + STROKE;
 const DOT = 132 * K;
 const DOT_CY = STROKE / 2 + 360 * K; // center of the amber dot inside the mark
+// The mark is drawn in a box whose CENTER is the dot: scaling the box then zooms right into the dot
+// (no transform origin involved, it is not reliable on animated views).
+const BOX_H = 2 * DOT_CY;
+// Each stroke is a capsule centered on the middle of its center line, then rotated around itself.
+const MID_X = (BAR / 2) * Math.sin(ANGLE);
+const MID_Y = STROKE / 2 + (BAR / 2) * Math.cos(ANGLE);
 const FLAT_TEAL = '#0F8F83'; // the screen of the intro: a flat teal, the gradient is under it
 const ZOOM = 30; // how much the mark grows while we dive into it
 const POP_MS = 190;
@@ -74,18 +80,16 @@ export function LoginIntro() {
   const cover = useAnimatedStyle(() => ({ opacity: 1 - clamp01((zoom.value - 0.45) / 0.55) }));
 
   if (!visible) return null;
-  const markTop = height / 2 - DOT_CY;
   return (
     <View pointerEvents="none" style={styles.root} accessibilityElementsHidden>
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: FLAT_TEAL }, cover]} />
-      <Animated.View
-        style={[
-          styles.mark,
-          { left: width / 2 - MARK_W / 2, top: markTop, transformOrigin: `${MARK_W / 2}px ${DOT_CY}px` },
-          mark,
-        ]}>
-        <View style={[styles.bar, { left: MARK_W / 2 - STROKE / 2, transform: [{ rotate: TILT }] }]} />
-        <View style={[styles.bar, { left: MARK_W / 2 - STROKE / 2, transform: [{ rotate: `-${TILT}` }] }]} />
+      <Animated.View style={[styles.mark, { left: width / 2 - MARK_W / 2, top: height / 2 - BOX_H / 2 }, mark]}>
+        <View
+          style={[styles.bar, { left: MARK_W / 2 - MID_X - STROKE / 2, top: MID_Y - (BAR + STROKE) / 2, transform: [{ rotate: TILT }] }]}
+        />
+        <View
+          style={[styles.bar, { left: MARK_W / 2 + MID_X - STROKE / 2, top: MID_Y - (BAR + STROKE) / 2, transform: [{ rotate: `-${TILT}` }] }]}
+        />
         <Animated.View style={[styles.dot, { left: MARK_W / 2 - DOT / 2, top: DOT_CY - DOT / 2 }, dot]} />
       </Animated.View>
     </View>
@@ -94,16 +98,13 @@ export function LoginIntro() {
 
 const styles = StyleSheet.create({
   root: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, overflow: 'hidden' },
-  mark: { position: 'absolute', width: MARK_W, height: MARK_H },
+  mark: { position: 'absolute', width: MARK_W, height: BOX_H },
   bar: {
     position: 'absolute',
-    top: 0,
     width: STROKE,
     height: BAR + STROKE,
     borderRadius: STROKE / 2,
     backgroundColor: '#FFFFFF',
-    // Pivot: the center of the round end at the apex.
-    transformOrigin: `${STROKE / 2}px ${STROKE / 2}px`,
   },
   dot: { position: 'absolute', width: DOT, height: DOT, borderRadius: DOT / 2, backgroundColor: '#FBBF24' },
 });
