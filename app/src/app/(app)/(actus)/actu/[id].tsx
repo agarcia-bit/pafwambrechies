@@ -88,6 +88,7 @@ export default function ActuScreen() {
           </Animated.View>
         </View>
         <View style={[styles.sheet, { backgroundColor: colors.card }]}>
+          <View style={styles.article}>
           {!!a.image_url && (
             <Animated.View entering={FadeInDown.delay(320).duration(500)}>
               <ActuPhoto uri={a.image_url} radius={16} />
@@ -102,12 +103,15 @@ export default function ActuScreen() {
             <LikeButton kind="actu" id={a.id} liked={a.my_like.length > 0} count={a.actus_likes[0]?.count ?? 0} />
             <CommentCount count={a.actus_commentaires[0]?.count ?? 0} />
           </View>
-          <View style={[styles.divider, { backgroundColor: colors.separator }]} />
-          <CommentsSection
-            kind="actu"
-            parentId={a.id}
-            onInputFocus={() => setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 350)}
-          />
+          </View>
+          {/* The comments sit on their own grey ground, apart from the post. */}
+          <View style={[styles.comments, { backgroundColor: colors.background }]}>
+            <CommentsSection
+              kind="actu"
+              parentId={a.id}
+              onInputFocus={() => setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 350)}
+            />
+          </View>
         </View>
       </ScrollView>
       {close}
@@ -117,7 +121,7 @@ export default function ActuScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { paddingBottom: 40 },
+  content: { flexGrow: 1 },
   hero: { paddingHorizontal: 20, paddingBottom: 40, gap: 10 },
   // Same row as the close button (36 high, 16 from the right).
   heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, marginRight: 52 },
@@ -125,7 +129,9 @@ const styles = StyleSheet.create({
   heroTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   heroDate: { color: 'rgba(255,255,255,0.85)' },
   heroTitle: { color: '#FFFFFF', fontWeight: '800', flex: 1, fontSize: 26, lineHeight: 32 },
-  sheet: { marginTop: -28, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, gap: 14 },
+  sheet: { marginTop: -28, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', flexGrow: 1 },
+  article: { padding: 20, gap: 14 },
+  comments: { flexGrow: 1, padding: 20, paddingBottom: 48 },
   close: {
     position: 'absolute',
     right: 16,
@@ -146,5 +152,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actions: { flexDirection: 'row', gap: 24 },
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: 4 },
 });
