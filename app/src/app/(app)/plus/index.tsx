@@ -10,7 +10,7 @@ import { useTenantConfig } from '@/lib/tenant-config';
 import { useBandListStyle } from '@/theme';
 
 export default function PlusScreen() {
-  const { profile, isAdmin, isBureau } = useMember();
+  const { profile, isBureau } = useMember();
   const { modules } = useTenantConfig();
   const bandStyle = useBandListStyle();
   return (
@@ -32,14 +32,12 @@ export default function PlusScreen() {
             subtitle="Actions et tâches du bureau"
             onPress={() => router.push('/plus/bureau')}
           />
-          {isAdmin && (
-            <ListRow
+          <ListRow
               icon="shield"
               title="Administration"
-              subtitle="Actus, offres, agenda, annuaire, réglages"
+              subtitle="Actus, offres, agenda, annuaire, sondages"
               onPress={() => router.push('/plus/admin')}
             />
-          )}
         </ListSection>
       )}
       <ListSection>

@@ -82,7 +82,7 @@ export function useAdminSondages() {
           )
           .order('created_at', { ascending: false })
           .order('position', { referencedTable: 'sondage_options' }),
-        supabase.from('profiles').select('id, prenom, nom'),
+        supabase.rpc('member_names'),
       ]);
       if (sondages.error) throw sondages.error;
       if (members.error) throw members.error;
