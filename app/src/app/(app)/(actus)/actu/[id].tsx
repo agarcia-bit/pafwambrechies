@@ -1,11 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActuPhoto, useCategoryHue } from '@/components/actu-visual';
-import { CommentCount, CommentsSection, LikeButton } from '@/components/social';
+import { CommentComposer, CommentCount, CommentsSection, LikeButton } from '@/components/social';
 import { Icon } from '@/components/ui/icon';
 import { LinkedText } from '@/components/ui/linked-text';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -23,6 +23,15 @@ export default function ActuScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardOpen(true));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardOpen(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
   const auteurs = useAuteurs();
   const hue = useCategoryHue(actu.data?.categorie ?? '');
   const heroColor = mix(hue, '#000000', 0.15);
@@ -60,11 +69,10 @@ export default function ActuScreen() {
   const author = a.auteur_id ? auteurs.get(a.auteur_id) : undefined;
 
   return (
-    <View style={styles.flex}>
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         ref={scroll}
         contentInsetAdjustmentBehavior="never"
-        automaticallyAdjustKeyboardInsets
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}>
@@ -105,16 +113,24 @@ export default function ActuScreen() {
           </View>
           {/* The comments sit on their own grey ground, apart from the post. */}
           <View style={[styles.comments, { backgroundColor: colors.background }]}>
-            <CommentsSection
-              kind="actu"
-              parentId={a.id}
-              onInputFocus={() => setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 350)}
-            />
+            <CommentsSection kind="actu" parentId={a.id} hideComposer />
           </View>
         </View>
       </ScrollView>
+      {/* Pinned at the bottom, above the keyboard, like in a messaging app. */}
+      <View
+        style={[
+          styles.composer,
+          { backgroundColor: colors.background, borderTopColor: colors.separator, paddingBottom: keyboardOpen ? 8 : insets.bottom + 8 },
+        ]}>
+        <CommentComposer
+          kind="actu"
+          parentId={a.id}
+          onInputFocus={() => setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 350)}
+        />
+      </View>
       {close}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -130,7 +146,8 @@ const styles = StyleSheet.create({
   heroTitle: { color: '#FFFFFF', fontWeight: '800', flex: 1, fontSize: 26, lineHeight: 32 },
   sheet: { marginTop: -28, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', flexGrow: 1 },
   article: { padding: 20, gap: 14 },
-  comments: { flexGrow: 1, padding: 20, paddingBottom: 48 },
+  comments: { flexGrow: 1, padding: 20, paddingBottom: 24 },
+  composer: { paddingHorizontal: 12, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth },
   close: {
     position: 'absolute',
     right: 16,

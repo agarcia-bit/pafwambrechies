@@ -76,7 +76,8 @@ export function CommentCount({ count }: { count: number }) {
   );
 }
 
-export function CommentsSection({
+/** The comment input: inline under the comments, or pinned at the bottom of a screen. */
+export function CommentComposer({
   kind,
   parentId,
   onInputFocus,
@@ -85,10 +86,8 @@ export function CommentsSection({
   parentId: number;
   onInputFocus?: () => void;
 }) {
-  const { profile, isBureau } = useMember();
   const { colors } = useTheme();
-  const comments = useComments(kind, parentId);
-  const { add, remove } = useCommentMutations(kind, parentId);
+  const { add } = useCommentMutations(kind, parentId);
   const [text, setText] = useState('');
   const canSend = !!text.trim() && !add.isPending;
 
@@ -99,6 +98,48 @@ export function CommentsSection({
       onError: () => showMessage('Commentaire non envoyé', 'Vérifiez votre connexion et réessayez.'),
     });
   }
+
+  return (
+    <View style={[styles.inputRow, { backgroundColor: colors.card }]}>
+      <TextInput
+        value={text}
+        onChangeText={setText}
+        onFocus={onInputFocus}
+        placeholder="Ajouter un commentaire…"
+        placeholderTextColor={colors.textSecondary}
+        selectionColor={colors.primary}
+        multiline
+        maxLength={1000}
+        accessibilityLabel="Ajouter un commentaire"
+        style={[styles.input, { color: colors.text }]}
+      />
+      <Pressable accessibilityRole="button" accessibilityLabel="Envoyer" disabled={!canSend} onPress={send} hitSlop={8}>
+        {add.isPending ? (
+          <ActivityIndicator color={colors.primary} />
+        ) : (
+          <Icon name="send" size={30} color={canSend ? colors.primary : colors.separator} />
+        )}
+      </Pressable>
+    </View>
+  );
+}
+
+export function CommentsSection({
+  kind,
+  parentId,
+  onInputFocus,
+  hideComposer = false,
+}: {
+  kind: SocialKind;
+  parentId: number;
+  onInputFocus?: () => void;
+  /** The input is shown elsewhere (CommentComposer, pinned at the bottom of the screen). */
+  hideComposer?: boolean;
+}) {
+  const { profile, isBureau } = useMember();
+  const { colors } = useTheme();
+  const comments = useComments(kind, parentId);
+  const { remove } = useCommentMutations(kind, parentId);
 
   async function removeComment(id: number) {
     const ok = await confirmAction({ title: 'Supprimer ce commentaire ?', confirmLabel: 'Supprimer', destructive: true });
@@ -139,27 +180,7 @@ export function CommentsSection({
         <Text tone="secondary">Aucun commentaire pour l’instant.</Text>
       )}
 
-      <View style={[styles.inputRow, { backgroundColor: colors.card }]}>
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          onFocus={onInputFocus}
-          placeholder="Ajouter un commentaire…"
-          placeholderTextColor={colors.textSecondary}
-          selectionColor={colors.primary}
-          multiline
-          maxLength={1000}
-          accessibilityLabel="Ajouter un commentaire"
-          style={[styles.input, { color: colors.text }]}
-        />
-        <Pressable accessibilityRole="button" accessibilityLabel="Envoyer" disabled={!canSend} onPress={send} hitSlop={8}>
-          {add.isPending ? (
-            <ActivityIndicator color={colors.primary} />
-          ) : (
-            <Icon name="send" size={30} color={canSend ? colors.primary : colors.separator} />
-          )}
-        </Pressable>
-      </View>
+      {!hideComposer && <CommentComposer kind={kind} parentId={parentId} onInputFocus={onInputFocus} />}
     </View>
   );
 }
