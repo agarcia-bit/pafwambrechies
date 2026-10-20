@@ -1,4 +1,5 @@
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -14,7 +15,7 @@ import { openLink } from '@/lib/links';
 import { supabase } from '@/lib/supabase';
 import { tenantConfig } from '@/lib/tenant-config';
 import type { Branding } from '@/lib/types';
-import { BrandScope } from '@/theme';
+import { BrandScope, useTheme } from '@/theme';
 
 // Step 1: the access code tells which association the member joins.
 // Step 2: the member creates their account, shown in that association's colors.
@@ -85,6 +86,7 @@ function AccountForm({
   const [loading, setLoading] = useState(false);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const name = association.tenant_name || association.name;
+  const { colors } = useTheme();
   const { labels } = tenantConfig(association);
   // The association chooses what this field is called: a company, or a plain last name.
   const isCompany = /entreprise|société|societe|raison/i.test(labels.nom);
@@ -125,6 +127,18 @@ function AccountForm({
   }
 
   return (
+    <>
+      {/* From here on the screen wears the association's colors, header included. */}
+      <Stack.Screen
+        options={{
+          title: name,
+          headerStyle: { backgroundColor: colors.banner },
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: { color: '#FFFFFF' },
+          headerShadowVisible: false,
+        }}
+      />
+      <StatusBar style="light" />
     <FormScreen>
       <Card style={styles.association}>
         <Avatar name={name} uri={association.tenant_logo_url} size={56} />
@@ -177,6 +191,7 @@ function AccountForm({
         les contenus qui ne respectent pas ces règles.
       </Text>
     </FormScreen>
+    </>
   );
 }
 
