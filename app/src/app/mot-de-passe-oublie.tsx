@@ -7,6 +7,7 @@ import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { supabase } from '@/lib/supabase';
+import { StyleSheet } from 'react-native';
 
 // Supabase limits password emails to one per minute for the same address.
 const RESEND_DELAY_SECONDS = 60;
@@ -64,11 +65,11 @@ export default function MotDePasseOublieScreen() {
 
   if (sentTo) {
     return (
-      <AuthScreen>
-        <Text variant="title" style={authText.title}>
+      <AuthScreen style={styles.centered}>
+        <Text variant="title" style={[authText.title, styles.centerText]}>
           Saisissez le code
         </Text>
-        <Text style={authText.body}>
+        <Text style={[authText.body, styles.centerText]}>
           Si un compte existe pour {sentTo}, vous avez reçu un email avec un code. Recopiez-le ici. Pensez à
           regarder dans les courriers indésirables.
         </Text>
@@ -103,8 +104,8 @@ export default function MotDePasseOublieScreen() {
   }
 
   return (
-    <AuthScreen>
-      <Text style={authText.body}>Nous vous envoyons un code par email pour choisir un nouveau mot de passe.</Text>
+    <AuthScreen style={styles.centered}>
+      <Text style={[authText.body, styles.centerText]}>Nous vous envoyons un code par email pour choisir un nouveau mot de passe.</Text>
       <TextField
           onDark
         label="Email"
@@ -124,3 +125,9 @@ export default function MotDePasseOublieScreen() {
     </AuthScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  centerText: { textAlign: 'center' },
+  // The block sits in the middle of the screen (a little above, for the keyboard).
+  centered: { justifyContent: 'center', paddingBottom: 96 },
+});
