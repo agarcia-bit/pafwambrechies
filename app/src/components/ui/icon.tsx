@@ -27,6 +27,7 @@ const ICONS = {
   trash: { ios: 'trash', android: 'delete' },
   send: { ios: 'arrow.up.circle.fill', android: 'send' },
   plus: { ios: 'plus', android: 'add' },
+  close: { ios: 'xmark', android: 'close' },
   camera: { ios: 'camera', android: 'photo_camera' },
   briefcase: { ios: 'briefcase', android: 'work' },
   lock: { ios: 'lock', android: 'lock' },

@@ -8,7 +8,16 @@ export default function ActusLayout() {
   return (
     <Stack screenOptions={header}>
       <Stack.Screen name="index" options={{ headerShown: false, contentStyle: { backgroundColor: colors.banner } }} />
-      <Stack.Screen name="actu/[id]" options={{ title: '' }} />
+      {/* The post opens over the whole screen, rising from the bottom. */}
+      <Stack.Screen
+        name="actu/[id]"
+        options={{
+          headerShown: false,
+          presentation: 'fullScreenModal',
+          animation: 'slide_from_bottom',
+          contentStyle: { backgroundColor: colors.card },
+        }}
+      />
     </Stack>
   );
 }
