@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { AuthScreen, authText } from '@/components/auth-screen';
 import { FormScreen } from '@/components/form-screen';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -48,12 +49,15 @@ export default function InscriptionScreen() {
   }
 
   return (
-    <FormScreen>
-      <Text variant="title">Code d’accès</Text>
-      <Text tone="secondary">
+    <AuthScreen>
+      <Text variant="title" style={authText.title}>
+        Code d’accès
+      </Text>
+      <Text style={authText.body}>
         Chaque association communique un code à ses adhérents. Il vous permet de rejoindre son espace.
       </Text>
       <TextField
+        onDark
         label="Code d’accès"
         value={code}
         onChangeText={setCode}
@@ -63,9 +67,9 @@ export default function InscriptionScreen() {
         returnKeyType="next"
         onSubmitEditing={checkCode}
       />
-      {error && <Text tone="danger">{error}</Text>}
-      <Button title="Continuer" onPress={checkCode} loading={loading} />
-    </FormScreen>
+      {error && <Text style={authText.error}>{error}</Text>}
+      <Button title="Continuer" variant="light" onPress={checkCode} loading={loading} />
+    </AuthScreen>
   );
 }
 

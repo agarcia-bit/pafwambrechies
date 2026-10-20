@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 
-import { FormScreen } from '@/components/form-screen';
+import { AuthScreen, authText } from '@/components/auth-screen';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
@@ -64,13 +64,16 @@ export default function MotDePasseOublieScreen() {
 
   if (sentTo) {
     return (
-      <FormScreen>
-        <Text variant="title">Saisissez le code</Text>
-        <Text tone="secondary">
+      <AuthScreen>
+        <Text variant="title" style={authText.title}>
+          Saisissez le code
+        </Text>
+        <Text style={authText.body}>
           Si un compte existe pour {sentTo}, vous avez reçu un email avec un code. Recopiez-le ici. Pensez à
           regarder dans les courriers indésirables.
         </Text>
         <TextField
+          onDark
           label="Code reçu par email"
           value={code}
           onChangeText={setCode}
@@ -83,26 +86,27 @@ export default function MotDePasseOublieScreen() {
           onSubmitEditing={checkCode}
         />
         {error && (
-          <Text tone="danger" accessibilityLiveRegion="polite">
+          <Text style={authText.error} accessibilityLiveRegion="polite">
             {error}
           </Text>
         )}
-        <Button title="Valider" onPress={checkCode} loading={loading} />
+        <Button title="Valider" variant="light" onPress={checkCode} loading={loading} />
         <Button
           title={wait > 0 ? `Renvoyer le code (${wait} s)` : 'Renvoyer le code'}
-          variant="plain"
+          variant="lightPlain"
           disabled={wait > 0}
           onPress={sendCode}
         />
-        <Button title="Changer d’adresse email" variant="plain" onPress={() => setSentTo(null)} />
-      </FormScreen>
+        <Button title="Changer d’adresse email" variant="lightPlain" onPress={() => setSentTo(null)} />
+      </AuthScreen>
     );
   }
 
   return (
-    <FormScreen>
-      <Text tone="secondary">Nous vous envoyons un code par email pour choisir un nouveau mot de passe.</Text>
+    <AuthScreen>
+      <Text style={authText.body}>Nous vous envoyons un code par email pour choisir un nouveau mot de passe.</Text>
       <TextField
+          onDark
         label="Email"
         value={email}
         onChangeText={setEmail}
@@ -115,8 +119,8 @@ export default function MotDePasseOublieScreen() {
         returnKeyType="send"
         onSubmitEditing={sendCode}
       />
-      {error && <Text tone="danger">{error}</Text>}
-      <Button title="Envoyer le code" onPress={sendCode} loading={loading} />
-    </FormScreen>
+      {error && <Text style={authText.error}>{error}</Text>}
+      <Button title="Envoyer le code" variant="light" onPress={sendCode} loading={loading} />
+    </AuthScreen>
   );
 }
