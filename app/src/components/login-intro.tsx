@@ -32,13 +32,16 @@ const FLAT_TEAL = '#0F8F83'; // the screen of the intro: a flat teal, the gradie
 const HOLE = 16; // radius of the hole in the screen at the start (hidden behind the dot)
 const RING = 1300; // thickness of the screen around the hole: its outer edge always covers everything
 const RIPPLE = 90; // diameter of a ripple at its birth
-const HOLD_MS = 3000; // everything is on screen, then the circle opens
-const OPEN_MS = 850;
+// All the timings below are the original ones times SPEED (0.4 = two and a half times faster).
+const SPEED = 0.4;
+const ms = (value: number) => Math.round(value * SPEED);
+const HOLD_MS = ms(3000); // everything is on screen, then the circle opens
+const OPEN_MS = ms(850);
 
 function useRipple(delay: number) {
   const progress = useSharedValue(0);
   useEffect(() => {
-    progress.value = withDelay(delay, withTiming(1, { duration: 1500, easing: Easing.out(Easing.quad) }));
+    progress.value = withDelay(delay, withTiming(1, { duration: ms(1500), easing: Easing.out(Easing.quad) }));
   }, [delay, progress]);
   return useAnimatedStyle(() => ({
     opacity: progress.value === 0 ? 0 : 0.85 * (1 - progress.value),
@@ -59,9 +62,9 @@ export function LoginIntro() {
   const dot = useSharedValue(0);
   const mark = useSharedValue(0);
   const open = useSharedValue(0);
-  const ripple1 = useRipple(350);
-  const ripple2 = useRipple(750);
-  const ripple3 = useRipple(1150);
+  const ripple1 = useRipple(ms(350));
+  const ripple2 = useRipple(ms(750));
+  const ripple3 = useRipple(ms(1150));
   const endScale = (Math.hypot(width, height) / 2 + 60) / HOLE;
 
   useEffect(() => {
@@ -69,10 +72,10 @@ export function LoginIntro() {
     if (!visible) return;
     // The dot blooms (overshoot, then settles) as soon as the screen appears.
     dot.value = withSequence(
-      withTiming(1.7, { duration: 380, easing: Easing.out(Easing.cubic) }),
-      withSpring(1, { damping: 9, stiffness: 160 })
+      withTiming(1.7, { duration: ms(380), easing: Easing.out(Easing.cubic) }),
+      withSpring(1, { damping: 9, stiffness: 420, mass: 0.6 })
     );
-    mark.value = withDelay(1500, withTiming(1, { duration: 650, easing: Easing.out(Easing.back(1.3)) }));
+    mark.value = withDelay(ms(1500), withTiming(1, { duration: ms(650), easing: Easing.out(Easing.back(1.3)) }));
     open.value = withDelay(
       HOLD_MS,
       withTiming(1, { duration: OPEN_MS, easing: Easing.bezier(0.65, 0, 0.25, 1) }, (finished) => {
@@ -124,7 +127,7 @@ export function LoginIntro() {
 
         <View style={[styles.word, { top: markTop + MARK_H + 28 }]}>
           {WORD.map((letter, index) => (
-            <Animated.View key={index} entering={FadeInDown.delay(1900 + index * 60).duration(400)}>
+            <Animated.View key={index} entering={FadeInDown.delay(ms(1900) + index * ms(60)).duration(ms(400))}>
               <Text variant="largeTitle" style={styles.letter}>
                 {letter}
               </Text>
