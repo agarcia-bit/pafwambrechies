@@ -35,7 +35,9 @@ export default function ConnexionScreen() {
   }
 
   return (
-    <FormScreen style={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12, gap: 12 }}>
+    <FormScreen
+      fullScreen
+      style={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12, gap: 12 }}>
       <View style={styles.brand}>
         <View style={[styles.logo, { backgroundColor: colors.primary }]}>
           <Icon name="people" size={36} color={colors.onPrimary} />
