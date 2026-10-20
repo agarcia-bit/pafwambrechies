@@ -36,7 +36,7 @@ export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
         onPress={() => router.push({ pathname: '/actu/[id]', params: { id: String(actu.id) } })}>
         <View style={styles.postBody}>
           {text}
-          {!!actu.image_url && <ActuPhoto uri={actu.image_url} radius={12} minRatio={1.2} />}
+          {!!actu.image_url && <ActuPhoto uri={actu.image_url} radius={12} minRatio={1.78} />}
           <View style={[styles.footer, { borderTopColor: colors.separator }]}>
             <LikeButton
               kind="actu"
@@ -46,6 +46,9 @@ export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
             />
             <CommentCount count={actu.actus_commentaires[0]?.count ?? 0} />
             <View style={styles.spacer} />
+            <Text variant="subhead" tone="primary" style={styles.more}>
+              Lire la suite ›
+            </Text>
             <ShareButton message={preview ? `${actu.titre}\n\n${preview}` : actu.titre} />
           </View>
         </View>
@@ -113,5 +116,6 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
+  more: { fontWeight: '600' },
   spacer: { flex: 1 },
 });
