@@ -9,13 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { PressableCard } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
 import { formatRelative } from '@/lib/format';
-import { useAuteurs } from '@/lib/data';
 import { useTheme } from '@/theme';
 import type { Actu, Idee } from '@/lib/types';
 
 export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
   const { colors } = useTheme();
-  const auteurs = useAuteurs();
   const preview = (actu.excerpt || actu.contenu || '').trim();
   const text = (
     <View style={styles.postText}>
@@ -35,7 +33,7 @@ export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
         style={styles.postCard}
         accessibilityLabel={actu.titre}
         onPress={() => router.push({ pathname: '/actu/[id]', params: { id: String(actu.id) } })}>
-        <PostMeta category={actu.categorie} date={actu.date} author={actu.auteur_id ? auteurs.get(actu.auteur_id) : undefined} />
+        <PostMeta category={actu.categorie} date={actu.date} />
         <View style={styles.postBody}>
           {text}
           {!!actu.image_url && <ActuPhoto uri={actu.image_url} radius={12} minRatio={1.78} />}
