@@ -21,6 +21,7 @@ import { useBandListStyle, useTheme } from '@/theme';
 export default function AnnuaireScreen() {
   const annuaire = useAnnuaire();
   const bandStyle = useBandListStyle();
+  const { colors } = useTheme();
   const { categories, labels } = useTenantConfig();
   const [category, setCategory] = useState('Tous');
   const [search, setSearch] = useState('');
@@ -51,22 +52,21 @@ export default function AnnuaireScreen() {
         ItemSeparatorComponent={Gap}
         ListHeaderComponent={
           <View style={styles.header}>
-            <BrandBand title={labels.annuaire}>
-              <TextInput
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Rechercher"
-                placeholderTextColor="rgba(255,255,255,0.75)"
-                selectionColor="#FFFFFF"
-                autoCorrect={false}
-                clearButtonMode="while-editing"
-                returnKeyType="search"
-                style={styles.search}
-              />
+            <BrandBand title={labels.annuaire} subtitle="Les membres de l’association">
               {categories.annuaire.length > 0 && (
                 <ChipBar onBand options={['Tous', ...categories.annuaire]} value={category} onChange={setCategory} />
               )}
             </BrandBand>
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Rechercher"
+              placeholderTextColor={colors.textSecondary}
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+              returnKeyType="search"
+              style={[styles.search, { backgroundColor: colors.fill, color: colors.text }]}
+            />
           </View>
         }
         ListEmptyComponent={
@@ -78,7 +78,7 @@ export default function AnnuaireScreen() {
             <EmptyState icon="people" title="Aucun résultat" />
           )
         }
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />}
       />
     </>
   );
@@ -117,15 +117,7 @@ function Gap() {
 const styles = StyleSheet.create({
   content: { paddingTop: 0, paddingBottom: 32 },
   header: { gap: 12, marginBottom: 16 },
-  search: {
-    marginHorizontal: 16,
-    height: 40,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    color: '#FFFFFF',
-    backgroundColor: 'rgba(255,255,255,0.22)',
-  },
+  search: { marginHorizontal: 16, height: 40, borderRadius: 12, paddingHorizontal: 12, fontSize: 16 },
   row: { marginHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12 },
   rowText: { flex: 1, gap: 4 },
   gap: { height: 8 },
