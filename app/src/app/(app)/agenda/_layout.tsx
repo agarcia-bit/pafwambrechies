@@ -10,7 +10,7 @@ export default function AgendaLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen
         name="[id]"
-        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom', contentStyle: { backgroundColor: colors.card } }}
+        options={{ presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: colors.card } }}
       />
     </Stack>
   );

@@ -1,12 +1,15 @@
 import { router } from 'expo-router';
-import type { ReactNode } from 'react';
+import { createContext, use, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useTheme } from '@/theme';
+
+/** With `fadeOnly`, the blocks of the screen fade in without rising (the agenda). */
+const FadeOnlyContext = createContext(false);
 
 /** Close button of the full-screen screens (white on the hero, grey on a plain screen). */
 export function CloseButton({ onHero = true }: { onHero?: boolean }) {
@@ -46,6 +49,7 @@ export function FullScreenDetail({
   subtitle,
   leading,
   footer,
+  fadeOnly = false,
   children,
 }: {
   color: string;
@@ -56,6 +60,8 @@ export function FullScreenDetail({
   leading?: ReactNode;
   /** Pinned to the bottom of the sheet (main action). */
   footer?: ReactNode;
+  /** The blocks fade in where they are instead of rising: calmer. */
+  fadeOnly?: boolean;
   children: ReactNode;
 }) {
   const { colors } = useTheme();
@@ -64,14 +70,14 @@ export function FullScreenDetail({
     <View style={styles.flex}>
       <ScrollView contentInsetAdjustmentBehavior="never" contentContainerStyle={styles.content}>
         <View style={[styles.hero, { backgroundColor: color, paddingTop: insets.top + 8 }]}>
-          <Animated.View entering={FadeInDown.delay(150).duration(450)} style={styles.heroMeta}>
+          <Animated.View entering={(fadeOnly ? FadeIn : FadeInDown).delay(150).duration(450)} style={styles.heroMeta}>
             {!!label && (
               <Text variant="footnote" style={styles.heroLabel} numberOfLines={1}>
                 {label.toUpperCase()}
               </Text>
             )}
           </Animated.View>
-          <Animated.View entering={FadeInDown.delay(230).duration(500)} style={styles.heroTitleRow}>
+          <Animated.View entering={(fadeOnly ? FadeIn : FadeInDown).delay(230).duration(500)} style={styles.heroTitleRow}>
             {leading}
             <View style={styles.flex}>
               <Text variant="title" style={styles.heroTitle} selectable>
@@ -85,10 +91,12 @@ export function FullScreenDetail({
             </View>
           </Animated.View>
         </View>
-        <View style={[styles.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
-          {children}
-          {!!footer && <View style={styles.footer}>{footer}</View>}
-        </View>
+        <FadeOnlyContext value={fadeOnly}>
+          <View style={[styles.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
+            {children}
+            {!!footer && <View style={styles.footer}>{footer}</View>}
+          </View>
+        </FadeOnlyContext>
       </ScrollView>
       <CloseButton />
     </View>
@@ -97,7 +105,12 @@ export function FullScreenDetail({
 
 /** A block of the sheet that appears with a small delay (0 = first block). */
 export function Rise({ order = 0, children }: { order?: number; children: ReactNode }) {
-  return <Animated.View entering={FadeInDown.delay(320 + order * 60).duration(500)}>{children}</Animated.View>;
+  const fadeOnly = use(FadeOnlyContext);
+  return (
+    <Animated.View entering={(fadeOnly ? FadeIn : FadeInDown).delay(320 + order * 60).duration(500)}>
+      {children}
+    </Animated.View>
+  );
 }
 
 /** Grey rounded card holding rows of details. */
