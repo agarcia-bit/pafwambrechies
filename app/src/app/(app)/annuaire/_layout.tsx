@@ -1,13 +1,17 @@
 import { Stack } from 'expo-router';
 
-import { useBrandHeader } from '@/theme';
+import { useBrandHeader, useTheme } from '@/theme';
 
 export default function AnnuaireLayout() {
   const header = useBrandHeader();
+  const { colors } = useTheme();
   return (
-    <Stack screenOptions={header}>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="[id]" options={{ title: '' }} />
+    <Stack screenOptions={{ ...header, headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen
+        name="[id]"
+        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom', contentStyle: { backgroundColor: colors.card } }}
+      />
     </Stack>
   );
 }
