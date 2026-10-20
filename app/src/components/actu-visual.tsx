@@ -44,12 +44,16 @@ export function PostMeta({ category, date }: { category: string; date?: string }
   const { scheme } = useTheme();
   const hue = useCategoryHue(category);
   return (
-    <View style={styles.meta}>
+    <View style={[styles.meta, { backgroundColor: tint(scheme, hue).background }]}>
       <View style={[styles.dot, { backgroundColor: hue }]} />
       <Text variant="footnote" style={[styles.metaCategory, { color: tint(scheme, hue).color }]} numberOfLines={1}>
         {category.toUpperCase()}
       </Text>
-      {!!date && <DateTile date={date} onCard />}
+      {!!date && (
+        <View style={styles.metaTile}>
+          <DateTile date={date} />
+        </View>
+      )}
     </View>
   );
 }
@@ -144,7 +148,15 @@ export function ActuThumb({ uri, size = 104, radius = 14 }: { uri: string; size?
 }
 
 const styles = StyleSheet.create({
-  meta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10 },
+  metaTile: {
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
   dot: { width: 8, height: 8, borderRadius: 4 },
   metaCategory: { fontWeight: '700', letterSpacing: 0.3, flex: 1 },
   tile: {
