@@ -2,6 +2,7 @@ import { router, Stack } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Switch, View } from 'react-native';
 
+import { DateField } from '@/components/form-fields';
 import { FormScreen } from '@/components/form-screen';
 import { HeaderButton } from '@/components/header-button';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { ListRow, ListSection } from '@/components/ui/list';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
 import { adminErrorMessage } from '@/lib/admin';
+import { todayISO } from '@/lib/format';
 import { MAX_OPTIONS, MIN_OPTIONS, useCreateSondage } from '@/lib/sondages';
 import { POSTPONE_DAYS } from '@/lib/poll-reminders';
 import { useTheme } from '@/theme';
@@ -19,6 +21,7 @@ export default function NouveauSondageScreen() {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState<string[]>(['', '']);
   const [obligatoire, setObligatoire] = useState(false);
+  const [dateLimite, setDateLimite] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const setOption = (index: number, value: string) =>
@@ -34,9 +37,13 @@ export default function NouveauSondageScreen() {
       setError(`Proposez au moins ${MIN_OPTIONS} réponses.`);
       return;
     }
+    if (dateLimite && dateLimite < todayISO()) {
+      setError('La date limite ne peut pas être dans le passé.');
+      return;
+    }
     setError(null);
     create.mutate(
-      { question: question.trim(), options: filled, obligatoire },
+      { question: question.trim(), options: filled, obligatoire, dateLimite: dateLimite || null },
       { onSuccess: () => router.back(), onError: (e) => setError(adminErrorMessage(e)) }
     );
   }
@@ -86,6 +93,13 @@ export default function NouveauSondageScreen() {
             />
           )}
         </View>
+        <DateField label="Date limite (facultatif)" value={dateLimite} optional onChange={setDateLimite} />
+        {!!dateLimite && (
+          <Text variant="footnote" tone="secondary">
+            Les membres qui n’ont pas répondu sont relancés par notification 7 jours avant, 3 jours avant et la veille (si
+            le sondage est lancé assez tôt). Après cette date, ils ne peuvent plus répondre.
+          </Text>
+        )}
         <ListSection
           footer={
             obligatoire

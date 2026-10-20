@@ -3,7 +3,7 @@ import { createEventInCalendarAsync, requestCalendarPermissionsAsync } from 'exp
 import { Platform } from 'react-native';
 
 import { showMessage } from '@/lib/confirm';
-import { parseDay } from '@/lib/format';
+import { parseDay, venue } from '@/lib/format';
 import type { Evenement } from '@/lib/types';
 
 /** Start and end of an event from its "HH:MM – HH:MM" text; all-day when there is no time. */
@@ -33,7 +33,7 @@ export async function addToCalendar(ev: Evenement): Promise<void> {
     await createEventInCalendarAsync({
       title: ev.titre,
       ...eventDates(ev),
-      location: ev.lieu ?? undefined,
+      location: venue(ev.lieu) ?? undefined,
       notes: ev.description ?? undefined,
     });
   } catch {

@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { showMessage } from '@/lib/confirm';
+import { formatDay } from '@/lib/format';
 import { usePollQueue } from '@/lib/poll-queue';
 import { useAnswerSondage, useRefreshSondages, type MemberSondage, type SondageOption } from '@/lib/sondages';
 import { useTheme } from '@/theme';
@@ -155,6 +156,13 @@ function PollScreen({
                 {poll.question}
               </Text>
             </Animated.View>
+            {!!poll.date_limite && (
+              <Animated.View entering={rise(360)}>
+                <Text variant="subhead" tone="secondary" style={styles.question}>
+                  À répondre avant le {formatDay(poll.date_limite)}
+                </Text>
+              </Animated.View>
+            )}
             {mandatory && (
               <Animated.View entering={rise(400)} style={styles.mandatory}>
                 <Icon name="lock" size={16} color={colors.textSecondary} />

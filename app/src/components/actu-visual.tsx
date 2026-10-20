@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { ACTU_HUES } from '@/lib/categories';
-import { dayParts, formatDay } from '@/lib/format';
+import { dayParts, formatDay, formatDayShort } from '@/lib/format';
 import { photoRatio } from '@/lib/photos';
 import { useTheme } from '@/theme';
 import { tint } from '@/theme/colors';
@@ -40,16 +40,27 @@ export function DateTile({
 }
 
 /** First line of a post: a dot and the category in its color, and the date as a calendar tile on the right. */
-export function PostMeta({ category, date }: { category: string; date?: string }) {
+export function PostMeta({ category, date, author }: { category: string; date?: string; author?: string }) {
   const { scheme } = useTheme();
   const hue = useCategoryHue(category);
   return (
-    <View style={styles.meta}>
+    <View style={[styles.meta, { backgroundColor: tint(scheme, hue).background }]}>
       <View style={[styles.dot, { backgroundColor: hue }]} />
-      <Text variant="footnote" style={[styles.metaCategory, { color: tint(scheme, hue).color }]} numberOfLines={1}>
-        {category.toUpperCase()}
-      </Text>
-      {!!date && <DateTile date={date} onCard />}
+      <View style={styles.metaText}>
+        <Text variant="footnote" style={[styles.metaCategory, { color: tint(scheme, hue).color }]} numberOfLines={1}>
+          {category.toUpperCase()}
+        </Text>
+        {!!author && (
+          <Text variant="caption" tone="secondary" numberOfLines={1}>
+            Publié par {author}
+          </Text>
+        )}
+      </View>
+      {!!date && (
+        <Text variant="footnote" tone="secondary" style={styles.metaDate}>
+          Publié le {formatDayShort(date)}
+        </Text>
+      )}
     </View>
   );
 }
@@ -144,9 +155,11 @@ export function ActuThumb({ uri, size = 104, radius = 14 }: { uri: string; size?
 }
 
 const styles = StyleSheet.create({
-  meta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10 },
+  metaDate: { fontWeight: '600' },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  metaCategory: { fontWeight: '700', letterSpacing: 0.3, flex: 1 },
+  metaText: { flex: 1 },
+  metaCategory: { fontWeight: '700', letterSpacing: 0.3 },
   tile: {
     width: 36,
     height: 38,

@@ -1,13 +1,14 @@
 import { router } from 'expo-router';
 import { RefreshControl, SectionList, StyleSheet, View } from 'react-native';
 
+import { DateTile } from '@/components/actu-visual';
 import { BrandBand } from '@/components/brand-band';
 import { PressableCard } from '@/components/ui/card';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useEvenements } from '@/lib/data';
-import { dayParts, monthLabel } from '@/lib/format';
+import { dayParts, monthLabel, venue } from '@/lib/format';
 import type { Evenement } from '@/lib/types';
 import { useBandListStyle, useTheme } from '@/theme';
 
@@ -60,19 +61,14 @@ export default function AgendaScreen() {
 function EventRow({ event: ev }: { event: Evenement }) {
   const { colors } = useTheme();
   const { day, month } = dayParts(ev.date);
-  const details = [ev.heure, ev.lieu].filter(Boolean).join(' · ');
+  const details = [ev.heure, venue(ev.lieu)].filter(Boolean).join(' · ');
   return (
     <PressableCard
       style={styles.row}
       accessibilityLabel={`${ev.titre}, le ${day} ${month}`}
       onPress={() => router.push({ pathname: '/agenda/[id]', params: { id: String(ev.id) } })}>
-      <View style={[styles.date, { backgroundColor: colors.primarySoft }]}>
-        <Text variant="title" tone="primary" style={styles.day}>
-          {day}
-        </Text>
-        <Text variant="caption" tone="primary">
-          {month}
-        </Text>
+      <View style={[styles.date, { borderColor: colors.separator }]}>
+        <DateTile date={ev.date} large />
       </View>
       <View style={styles.rowText}>
         <Text variant="headline">{ev.titre}</Text>
@@ -94,8 +90,15 @@ const styles = StyleSheet.create({
   content: { paddingTop: 0, paddingBottom: 32 },
   sectionTitle: { marginHorizontal: 20, marginTop: 16, marginBottom: 8 },
   row: { marginHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12 },
-  date: { width: 56, height: 60, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  day: { lineHeight: 26 },
+  // White like the iPhone Calendar icon: a hairline and a soft shadow set it apart on the white card.
+  date: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+  },
   rowText: { flex: 1, gap: 2 },
   gap: { height: 8 },
 });

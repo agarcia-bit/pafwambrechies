@@ -9,6 +9,7 @@ import { PressableCard } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
 import { addToCalendar } from '@/lib/calendar';
 import { useEvenements } from '@/lib/data';
+import { venue } from '@/lib/format';
 import { useSeenEvents } from '@/lib/seen-events';
 import { useTenantConfig } from '@/lib/tenant-config';
 import type { Evenement } from '@/lib/types';
@@ -47,7 +48,7 @@ export function UpcomingEvents() {
 }
 
 function EventCard({ event: ev, onSeen }: { event: Evenement; onSeen: () => void }) {
-  const details = [ev.heure, ev.lieu].filter(Boolean).join(' · ');
+  const details = [ev.heure, venue(ev.lieu)].filter(Boolean).join(' · ');
   return (
     <PressableCard
       style={styles.card}

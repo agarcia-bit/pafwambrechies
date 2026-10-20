@@ -33,7 +33,9 @@ export function splitPolls(
   const waiting: MemberSondage[] = [];
   for (const poll of polls) {
     const entry = postponed[String(poll.id)];
-    if (!entry) gated.push({ poll, canPostpone: !poll.obligatoire });
+    // Too close to the deadline for "later" (it would end before the 3-day reminder).
+    const tooLate = !!poll.date_limite && Date.parse(`${poll.date_limite}T23:59:59`) - now <= POSTPONE_MS;
+    if (!entry) gated.push({ poll, canPostpone: !poll.obligatoire && !tooLate });
     else if (now - entry.at < POSTPONE_MS) waiting.push(poll);
     else gated.push({ poll, canPostpone: false });
   }

@@ -9,7 +9,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { adminErrorMessage } from '@/lib/admin';
 import { confirmAction } from '@/lib/confirm';
-import { formatRelative, plural } from '@/lib/format';
+import { daysUntil, formatDayShort, formatRelative, plural } from '@/lib/format';
 import {
   sondageResults,
   useAdminSondages,
@@ -78,6 +78,9 @@ function Results({ data, sondageId }: { data: AdminSondages; sondageId: number }
         <View style={styles.badges}>
           {sondage.obligatoire && <Badge label="Obligatoire" />}
           {!sondage.actif && <Badge label="Clôturé" />}
+          {!!sondage.date_limite && (
+            <Badge label={daysUntil(sondage.date_limite) < 0 ? `Terminé le ${formatDayShort(sondage.date_limite)}` : `Jusqu’au ${formatDayShort(sondage.date_limite)}`} />
+          )}
         </View>
       </View>
 

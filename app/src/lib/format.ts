@@ -25,6 +25,12 @@ export function todayISO(): string {
   return isoDay(new Date());
 }
 
+/** Whole calendar days from today to a "YYYY-MM-DD" day (negative when it is past). */
+export function daysUntil(iso: string): number {
+  const today = parseDay(todayISO());
+  return Math.round((parseDay(iso).getTime() - today.getTime()) / 86_400_000);
+}
+
 /** "HH:MM" of a Date. */
 export function hourMinute(date: Date): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
@@ -100,4 +106,12 @@ export function searchable(text: string): string {
 
 export function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
   return `${count} ${count > 1 ? pluralForm : singular}`;
+}
+
+/** The venue of an event, or null when it is empty or a placeholder such as "A définir". */
+export function venue(lieu: string | null | undefined): string | null {
+  const text = lieu?.trim();
+  if (!text) return null;
+  const plain = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return /^(a|to be)?\s*(definir|determiner|preciser|confirmer|tbd)\b/.test(plain) ? null : text;
 }

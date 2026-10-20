@@ -17,7 +17,6 @@ export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
   const preview = (actu.excerpt || actu.contenu || '').trim();
   const text = (
     <View style={styles.postText}>
-      <PostMeta category={actu.categorie} date={actu.date} />
       <Text variant="title" style={styles.postTitle} numberOfLines={3}>
         {actu.titre}
       </Text>
@@ -34,6 +33,7 @@ export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
         style={styles.postCard}
         accessibilityLabel={actu.titre}
         onPress={() => router.push({ pathname: '/actu/[id]', params: { id: String(actu.id) } })}>
+        <PostMeta category={actu.categorie} date={actu.date} />
         <View style={styles.postBody}>
           {text}
           {!!actu.image_url && <ActuPhoto uri={actu.image_url} radius={12} minRatio={1.78} />}

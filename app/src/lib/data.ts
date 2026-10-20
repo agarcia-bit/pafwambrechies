@@ -31,7 +31,7 @@ const SOCIAL = {
 export type SocialKind = keyof typeof SOCIAL;
 
 const ACTU_FIELDS =
-  'id, titre, date, created_at, categorie, excerpt, contenu, image_url, actus_likes(count), actus_commentaires(count), my_like:actus_likes(user_id)';
+  'id, titre, date, created_at, categorie, excerpt, contenu, image_url, auteur_id, actus_likes(count), actus_commentaires(count), my_like:actus_likes(user_id)';
 const IDEE_FIELDS =
   'id, user_id, prenom, categorie, titre, texte, created_at, idees_likes(count), idees_commentaires(count), my_like:idees_likes(user_id)';
 
@@ -77,6 +77,21 @@ export function useActu(id: number) {
       ),
     placeholderData: () => findInLists<Actu>(client, 'actus', id),
   });
+}
+
+/** Names ("Andy G.") of the bureau members who published actus, by member id. Empty if unavailable. */
+export function useAuteurs(): Map<string, string> {
+  const { data } = useQuery({
+    queryKey: ['actus-auteurs'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('actus_auteurs');
+      if (error) throw error;
+      return data as { id: string; nom: string }[];
+    },
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  return new Map((data ?? []).map((a) => [a.id, a.nom]));
 }
 
 // ── Ideas ────────────────────────────────────────────────────────────────────

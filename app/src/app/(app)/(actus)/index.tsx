@@ -14,11 +14,17 @@ import { useActus } from '@/lib/data';
 import { useMember } from '@/lib/session';
 import { useBandListStyle } from '@/theme';
 
+/** "Bonjour Andy" in the morning and afternoon, "Bonsoir Andy" from 6 pm. */
+function greeting(firstName: string | null): string {
+  const hello = new Date().getHours() >= 18 ? 'Bonsoir' : 'Bonjour';
+  return firstName?.trim() ? `${hello} ${firstName.trim()}` : hello;
+}
+
 type Category = (typeof ACTU_CATEGORIES)[number];
 
 export default function ActusScreen() {
   const [category, setCategory] = useState<Category>('Tous');
-  const { branding } = useMember();
+  const { branding, profile } = useMember();
   const bandStyle = useBandListStyle();
   const actus = useActus(category);
   const { refreshing, onRefresh } = usePullToRefresh(actus.refetch);
@@ -35,7 +41,9 @@ export default function ActusScreen() {
       ItemSeparatorComponent={Gap}
       ListHeaderComponent={
         <View style={styles.header}>
-          <BrandBand title={(branding?.tenant_name ?? branding?.name ?? 'Actus').toUpperCase()}>
+          <BrandBand
+            greeting={greeting(profile.prenom)}
+            title={(branding?.tenant_name ?? branding?.name ?? 'Actus').toUpperCase()}>
             <ChipBar onBand options={ACTU_CATEGORIES} value={category} onChange={setCategory} />
           </BrandBand>
           <PendingPolls />
