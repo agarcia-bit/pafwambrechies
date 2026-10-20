@@ -10,6 +10,8 @@ import { useTheme } from '@/theme';
 
 /** With `fadeOnly`, the blocks of the screen fade in without rising (the agenda). */
 const FadeOnlyContext = createContext(false);
+/** With `centered`, the detail rows are centered too. */
+const CenteredContext = createContext(false);
 
 /** "Retour" button of the full-screen screens, top left (white on the hero, grey on a plain screen). */
 export function BackButton({ onHero = true }: { onHero?: boolean }) {
@@ -100,10 +102,12 @@ export function FullScreenDetail({
           </Animated.View>
         </View>
         <FadeOnlyContext value={fadeOnly}>
-          <View style={[styles.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
-            {children}
-            {!!footer && <View style={styles.footer}>{footer}</View>}
-          </View>
+          <CenteredContext value={centered}>
+            <View style={[styles.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
+              {children}
+              {!!footer && <View style={styles.footer}>{footer}</View>}
+            </View>
+          </CenteredContext>
         </FadeOnlyContext>
       </ScrollView>
       <BackButton />
@@ -139,15 +143,18 @@ export function DetailRow({
   onPress?: () => void;
 }) {
   const { colors } = useTheme();
+  const centered = use(CenteredContext);
   const content = (
     <>
       <View style={[styles.detailIcon, { backgroundColor: colors.card }]}>
         <Icon name={icon} size={18} />
       </View>
-      <View style={styles.flex}>
-        <Text variant="headline">{text}</Text>
+      <View style={centered ? styles.detailTextCentered : styles.flex}>
+        <Text variant="headline" style={centered && styles.centeredTitle}>
+          {text}
+        </Text>
         {!!hint && (
-          <Text variant="footnote" tone="primary" style={styles.hint}>
+          <Text variant="footnote" tone="primary" style={[styles.hint, centered && styles.centeredTitle]}>
             {hint} ›
           </Text>
         )}
@@ -159,11 +166,11 @@ export function DetailRow({
       accessibilityRole="button"
       accessibilityLabel={hint ? `${text}, ${hint}` : text}
       onPress={onPress}
-      style={styles.detail}>
+      style={[styles.detail, centered && styles.detailCentered]}>
       {content}
     </Pressable>
   ) : (
-    <View style={styles.detail}>{content}</View>
+    <View style={[styles.detail, centered && styles.detailCentered]}>{content}</View>
   );
 }
 
@@ -176,6 +183,8 @@ const styles = StyleSheet.create({
   centeredColumn: { flexDirection: 'column', alignItems: 'center', gap: 18 },
   centeredText: { alignSelf: 'stretch' },
   centeredTitle: { textAlign: 'center' },
+  detailCentered: { justifyContent: 'center' },
+  detailTextCentered: { flexShrink: 1 },
   heroLabel: { color: 'rgba(255,255,255,0.95)', fontWeight: '700', letterSpacing: 0.4 },
   heroTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   heroTitle: { color: '#FFFFFF', fontWeight: '800', fontSize: 26, lineHeight: 32 },

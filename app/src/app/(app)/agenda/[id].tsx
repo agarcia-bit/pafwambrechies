@@ -59,7 +59,7 @@ export default function EvenementScreen() {
       </Rise>
       {!!ev.description && (
         <Rise order={1}>
-          <LinkedText>{ev.description}</LinkedText>
+          <LinkedText style={{ textAlign: 'center' }}>{ev.description}</LinkedText>
         </Rise>
       )}
     </FullScreenDetail>
