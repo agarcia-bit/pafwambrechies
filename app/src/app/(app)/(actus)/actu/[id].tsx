@@ -5,7 +5,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActuPhoto, DateTile, useCategoryHue } from '@/components/actu-visual';
-import { BackButton, titleFit } from '@/components/full-screen-detail';
+import { BackButton, layoutTitle } from '@/components/full-screen-detail';
 import { CommentComposer, CommentCount, CommentsSection, LikeButton } from '@/components/social';
 import { LinkedText } from '@/components/ui/linked-text';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -51,6 +51,7 @@ export default function ActuScreen() {
     );
   }
   const a = actu.data;
+  const fit = layoutTitle(a.titre);
   const author = a.auteur_id ? auteurs.get(a.auteur_id) : undefined;
 
   return (
@@ -69,8 +70,8 @@ export default function ActuScreen() {
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(230).duration(500)} style={styles.heroTitleRow}>
             {!!a.date_evenement && <DateTile date={a.date_evenement} large />}
-            <Text variant="title" style={styles.heroTitle} selectable {...titleFit(a.titre)}>
-              {a.titre}
+            <Text variant="title" style={styles.heroTitle} selectable {...fit.props}>
+              {fit.text}
             </Text>
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(300).duration(500)}>

@@ -9,12 +9,26 @@ import { Text } from '@/components/ui/text';
 import { useTheme } from '@/theme';
 
 /**
- * A short title shrinks to stay on ONE line (down to 65 % of its size); a long one keeps its size
- * and wraps. `narrow`: the title shares its line with a visual (less width, so a lower limit).
+ * The title of a hero, laid out: a dash with spaces around it ("Téléthon - Action commerçants")
+ * or an opening parenthesis ("Matinale EXPERT (thème)") starts a new line, as titles are usually
+ * written that way (the dash is dropped). When every line is short enough, the title shrinks
+ * rather than wrapping (down to 65 % of its size); a longer line keeps its size and wraps.
+ * `narrow`: the title shares its line with a visual (less width, so a lower limit).
  */
-export function titleFit(title: string, narrow = false) {
-  const short = title.length <= (narrow ? 20 : 30);
-  return short ? { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.65 } : {};
+export function layoutTitle(title: string, narrow = false) {
+  const text = title
+    .replace(/\s+[-–—]\s+/g, '\n')
+    .replace(/\s+\(/g, '\n(')
+    .trim();
+  const lines = text.split('\n');
+  const longest = Math.max(...lines.map((line) => line.length));
+  const fits = longest <= (narrow ? 20 : 30);
+  return {
+    text,
+    props: fits
+      ? { numberOfLines: lines.length, adjustsFontSizeToFit: true, minimumFontScale: 0.65 }
+      : ({} as Record<string, never>),
+  };
 }
 
 /** With `fadeOnly`, the blocks of the screen fade in without rising (the agenda). */
@@ -84,6 +98,7 @@ export function FullScreenDetail({
 }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const fit = layoutTitle(title, !centered && !!leading);
   return (
     <View style={styles.flex}>
       <ScrollView contentInsetAdjustmentBehavior="never" contentContainerStyle={styles.content}>
@@ -102,8 +117,8 @@ export function FullScreenDetail({
                 variant="title"
                 style={[styles.heroTitle, centered && styles.centeredTitle]}
                 selectable
-                {...titleFit(title, !centered && !!leading)}>
-                {title}
+                {...fit.props}>
+                {fit.text}
               </Text>
               {!!subtitle && (
                 <Text variant="subhead" style={[styles.heroSubtitle, centered && styles.centeredTitle]}>
