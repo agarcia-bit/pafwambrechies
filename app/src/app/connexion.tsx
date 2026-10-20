@@ -35,7 +35,7 @@ export default function ConnexionScreen() {
   }
 
   return (
-    <FormScreen style={{ paddingTop: insets.top + 48, paddingBottom: insets.bottom + 20 }}>
+    <FormScreen style={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12, gap: 12 }}>
       <View style={styles.brand}>
         <View style={[styles.logo, { backgroundColor: colors.primary }]}>
           <Icon name="people" size={36} color={colors.onPrimary} />
@@ -91,8 +91,8 @@ export default function ConnexionScreen() {
 }
 
 const styles = StyleSheet.create({
-  brand: { alignItems: 'center', gap: 8, marginBottom: 16 },
-  logo: { width: 76, height: 76, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  brand: { alignItems: 'center', gap: 6, marginTop: 24, marginBottom: 12 },
+  logo: { width: 68, height: 68, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   center: { textAlign: 'center' },
-  signup: { marginTop: 'auto', paddingTop: 24, gap: 12 },
+  signup: { marginTop: 'auto', paddingTop: 12, gap: 10 },
 });

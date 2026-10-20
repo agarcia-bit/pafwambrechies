@@ -12,6 +12,7 @@ export function FormScreen({ children, style }: { children: ReactNode; style?: S
       contentContainerStyle={[styles.content, style]}
       contentInsetAdjustmentBehavior="automatic"
       automaticallyAdjustKeyboardInsets
+      alwaysBounceVertical={false}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive">
       {children}
