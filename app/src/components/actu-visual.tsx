@@ -39,20 +39,17 @@ export function DateTile({
   );
 }
 
-/** First line of a post: a dot and the category in its color, then the date. */
+/** First line of a post: a dot and the category in its color, and the date as a calendar tile on the right. */
 export function PostMeta({ category, date }: { category: string; date: string }) {
   const { scheme } = useTheme();
   const hue = useCategoryHue(category);
-  const { day, month } = dayParts(date);
   return (
-    <View style={styles.meta} accessible accessibilityLabel={`${category}, ${formatDay(date)}`}>
+    <View style={styles.meta}>
       <View style={[styles.dot, { backgroundColor: hue }]} />
       <Text variant="footnote" style={[styles.metaCategory, { color: tint(scheme, hue).color }]} numberOfLines={1}>
         {category.toUpperCase()}
       </Text>
-      <Text variant="footnote" tone="secondary">
-        · {day} {month}
-      </Text>
+      <DateTile date={date} onCard />
     </View>
   );
 }
@@ -140,7 +137,7 @@ export function ActuThumb({ uri, size = 104, radius = 14 }: { uri: string; size?
 const styles = StyleSheet.create({
   meta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  metaCategory: { fontWeight: '700', letterSpacing: 0.3, flexShrink: 1 },
+  metaCategory: { fontWeight: '700', letterSpacing: 0.3, flex: 1 },
   tile: {
     width: 36,
     height: 38,
