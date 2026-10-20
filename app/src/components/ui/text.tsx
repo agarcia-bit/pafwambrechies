@@ -2,10 +2,11 @@ import { Text as RNText, StyleSheet, type TextProps as RNTextProps } from 'react
 
 import { useTheme } from '@/theme';
 
-// iOS text styles (size / line height), scaled by Dynamic Type.
+// iOS text styles (size / line height), scaled by Dynamic Type. Titles use Sora, the brand's
+// display font (loaded in the root layout); everything else stays in the system font.
 const VARIANTS = StyleSheet.create({
-  largeTitle: { fontSize: 34, lineHeight: 41, fontWeight: '700' },
-  title: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
+  largeTitle: { fontSize: 34, lineHeight: 42, fontFamily: 'Sora_800ExtraBold' },
+  title: { fontSize: 22, lineHeight: 29, fontFamily: 'Sora_700Bold' },
   headline: { fontSize: 17, lineHeight: 22, fontWeight: '600' },
   body: { fontSize: 17, lineHeight: 24 },
   callout: { fontSize: 16, lineHeight: 21 },

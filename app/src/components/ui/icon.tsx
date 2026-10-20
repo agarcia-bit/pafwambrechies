@@ -22,6 +22,7 @@ const ICONS = {
   clock: { ios: 'clock', android: 'schedule' },
   external: { ios: 'arrow.up.right.square', android: 'open_in_new' },
   chevron: { ios: 'chevron.right', android: 'chevron_right' },
+  chevronLeft: { ios: 'chevron.left', android: 'chevron_left' },
   bell: { ios: 'bell', android: 'notifications' },
   logout: { ios: 'rectangle.portrait.and.arrow.right', android: 'logout' },
   trash: { ios: 'trash', android: 'delete' },

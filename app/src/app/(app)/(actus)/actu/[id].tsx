@@ -1,12 +1,12 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActuPhoto, DateTile, useCategoryHue } from '@/components/actu-visual';
+import { BackButton, layoutTitle } from '@/components/full-screen-detail';
 import { CommentComposer, CommentCount, CommentsSection, LikeButton } from '@/components/social';
-import { Icon } from '@/components/ui/icon';
 import { LinkedText } from '@/components/ui/linked-text';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
@@ -36,17 +36,6 @@ export default function ActuScreen() {
   const hue = useCategoryHue(actu.data?.categorie ?? '');
   const heroColor = mix(hue, '#000000', 0.15);
 
-  const close = (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Fermer"
-      hitSlop={10}
-      onPress={() => router.back()}
-      style={[styles.close, { top: insets.top + 8 }]}>
-      <Icon name="close" size={18} color="#FFFFFF" />
-    </Pressable>
-  );
-
   if (actu.isPending || actu.isError || !actu.data) {
     return (
       <View style={styles.flex}>
@@ -57,15 +46,12 @@ export default function ActuScreen() {
         ) : (
           <EmptyState title="Actualité introuvable" message="Elle a peut-être été supprimée." />
         )}
-        <View style={[styles.closeOnLight, { top: insets.top + 8, backgroundColor: colors.fill }]}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Fermer" hitSlop={10} onPress={() => router.back()}>
-            <Icon name="close" size={18} />
-          </Pressable>
-        </View>
+        <BackButton onHero={false} />
       </View>
     );
   }
   const a = actu.data;
+  const fit = layoutTitle(a.titre);
   const author = a.auteur_id ? auteurs.get(a.auteur_id) : undefined;
 
   return (
@@ -76,7 +62,7 @@ export default function ActuScreen() {
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}>
-        <View style={[styles.hero, { backgroundColor: heroColor, paddingTop: insets.top + 8 }]}>
+        <View style={[styles.hero, { backgroundColor: heroColor, paddingTop: insets.top + 52 }]}>
           <Animated.View entering={FadeInDown.delay(150).duration(450)} style={styles.heroMeta}>
             <Text variant="footnote" style={styles.heroCategory} numberOfLines={1}>
               {a.categorie.toUpperCase()}
@@ -84,8 +70,8 @@ export default function ActuScreen() {
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(230).duration(500)} style={styles.heroTitleRow}>
             {!!a.date_evenement && <DateTile date={a.date_evenement} large />}
-            <Text variant="title" style={styles.heroTitle} selectable>
-              {a.titre}
+            <Text variant="title" style={styles.heroTitle} selectable {...fit.props}>
+              {fit.text}
             </Text>
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(300).duration(500)}>
@@ -135,7 +121,7 @@ export default function ActuScreen() {
           onInputFocus={() => setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 350)}
         />
       </View>
-      {close}
+      <BackButton />
     </KeyboardAvoidingView>
   );
 }
@@ -144,8 +130,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { flexGrow: 1 },
   hero: { paddingHorizontal: 20, paddingBottom: 40, gap: 10 },
-  // Same row as the close button (36 high, 16 from the right).
-  heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, marginRight: 52 },
+  heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 24 },
   heroCategory: { color: 'rgba(255,255,255,0.95)', fontWeight: '700', letterSpacing: 0.4 },
   heroTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   heroDate: { color: 'rgba(255,255,255,0.85)' },
@@ -155,24 +140,5 @@ const styles = StyleSheet.create({
   article: { padding: 20, gap: 14 },
   comments: { flexGrow: 1, padding: 20, paddingBottom: 8 },
   composer: { paddingHorizontal: 20, paddingTop: 4 },
-  close: {
-    position: 'absolute',
-    right: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  closeOnLight: {
-    position: 'absolute',
-    right: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   actions: { flexDirection: 'row', gap: 24 },
 });

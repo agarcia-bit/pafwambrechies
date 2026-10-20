@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FormScreen } from '@/components/form-screen';
+import { AuthScreen, authText } from '@/components/auth-screen';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
@@ -41,9 +41,12 @@ export default function NouveauMotDePasseScreen() {
   }
 
   return (
-    <FormScreen style={{ paddingTop: insets.top + 32 }}>
-      <Text variant="title">Nouveau mot de passe</Text>
+    <AuthScreen fullScreen style={{ paddingTop: insets.top + 32 }}>
+      <Text variant="title" style={authText.title}>
+        Nouveau mot de passe
+      </Text>
       <TextField
+        onDark
         label="Nouveau mot de passe"
         value={password}
         onChangeText={setPassword}
@@ -53,6 +56,7 @@ export default function NouveauMotDePasseScreen() {
         textContentType="newPassword"
       />
       <TextField
+        onDark
         label="Confirmation"
         value={confirmation}
         onChangeText={setConfirmation}
@@ -62,9 +66,9 @@ export default function NouveauMotDePasseScreen() {
         returnKeyType="done"
         onSubmitEditing={save}
       />
-      {error && <Text tone="danger">{error}</Text>}
+      {error && <Text style={authText.error}>{error}</Text>}
       <Button title="Enregistrer" onPress={save} loading={loading} />
       <Button title="Plus tard" variant="plain" onPress={endRecovery} />
-    </FormScreen>
+    </AuthScreen>
   );
 }

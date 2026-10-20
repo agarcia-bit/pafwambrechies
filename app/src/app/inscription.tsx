@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { AuthScreen, authText } from '@/components/auth-screen';
 import { FormScreen } from '@/components/form-screen';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -48,12 +49,15 @@ export default function InscriptionScreen() {
   }
 
   return (
-    <FormScreen>
-      <Text variant="title">Code d’accès</Text>
-      <Text tone="secondary">
+    <AuthScreen style={styles.centered}>
+      <Text variant="title" style={[authText.title, styles.centerText]}>
+        Code d’accès
+      </Text>
+      <Text style={[authText.body, styles.centerText]}>
         Chaque association communique un code à ses adhérents. Il vous permet de rejoindre son espace.
       </Text>
       <TextField
+        onDark
         label="Code d’accès"
         value={code}
         onChangeText={setCode}
@@ -63,9 +67,9 @@ export default function InscriptionScreen() {
         returnKeyType="next"
         onSubmitEditing={checkCode}
       />
-      {error && <Text tone="danger">{error}</Text>}
-      <Button title="Continuer" onPress={checkCode} loading={loading} />
-    </FormScreen>
+      {error && <Text style={authText.error}>{error}</Text>}
+      <Button title="Continuer" variant="light" onPress={checkCode} loading={loading} />
+    </AuthScreen>
   );
 }
 
@@ -199,4 +203,7 @@ const styles = StyleSheet.create({
   association: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   associationText: { flex: 1, gap: 2 },
   center: { textAlign: 'center' },
+  centerText: { textAlign: 'center' },
+  // Access code step: the block sits in the middle of the screen (a little above, for the keyboard).
+  centered: { justifyContent: 'center', paddingBottom: 96 },
 });
