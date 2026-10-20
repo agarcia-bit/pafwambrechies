@@ -7,7 +7,7 @@ import { useTheme } from '@/theme';
 type ButtonProps = {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'plain' | 'destructive';
+  variant?: 'primary' | 'secondary' | 'plain' | 'destructive' | 'light' | 'glass' | 'lightPlain';
   icon?: IconName;
   loading?: boolean;
   disabled?: boolean;
@@ -23,6 +23,10 @@ export function Button({ title, onPress, variant = 'primary', icon, loading, dis
     secondary: { background: colors.primarySoft, foreground: colors.primary },
     plain: { background: 'transparent', foreground: colors.primary },
     destructive: { background: colors.fill, foreground: colors.danger },
+    // On a colored background: white button, translucent button, plain white text.
+    light: { background: '#FFFFFF', foreground: '#0B5F58' },
+    glass: { background: 'rgba(255,255,255,0.2)', foreground: '#FFFFFF' },
+    lightPlain: { background: 'transparent', foreground: '#FFFFFF' },
   }[variant];
   const inactive = disabled || loading;
 
@@ -34,7 +38,7 @@ export function Button({ title, onPress, variant = 'primary', icon, loading, dis
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        variant === 'plain' && styles.plain,
+        (variant === 'plain' || variant === 'lightPlain') && styles.plain,
         compact && styles.compact,
         { backgroundColor: background, opacity: inactive ? 0.5 : pressed ? 0.7 : 1 },
         style,

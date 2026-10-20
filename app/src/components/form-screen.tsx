@@ -8,16 +8,19 @@ export function FormScreen({
   children,
   style,
   fullScreen = false,
+  transparent = false,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   /** No navigation header: the screen handles the safe areas itself (login). */
   fullScreen?: boolean;
+  /** Lets a background behind it (gradient) show through. */
+  transparent?: boolean;
 }) {
   const { colors } = useTheme();
   return (
     <ScrollView
-      style={{ backgroundColor: colors.background }}
+      style={{ backgroundColor: transparent ? 'transparent' : colors.background }}
       contentContainerStyle={[styles.content, style]}
       contentInsetAdjustmentBehavior={fullScreen ? 'never' : 'automatic'}
       automaticallyAdjustKeyboardInsets
