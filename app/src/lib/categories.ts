@@ -5,7 +5,7 @@ export const ACTU_CATEGORIES = ['Tous', 'Actu Asso', 'Infos pratiques', 'Événe
 export const ACTU_HUES: Record<string, string> = {
   'Actu Asso': '#4F46E5',
   'Infos pratiques': '#059669',
-  'Événement': '#EA580C',
+  'Événement': '#0891B2',
   Partenaire: '#9333EA',
   Membres: '#DB2777',
 };
