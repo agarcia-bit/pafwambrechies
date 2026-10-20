@@ -1,5 +1,6 @@
--- Who published an actu: shown to the members as "Andy G." (first name and the
--- initial of the last name) next to the category.
+-- Who published an actu: shown to the members under the category as the member's
+-- first-name field, as they wrote it (e.g. "Andy (Vice-Président)": members put
+-- their role there), or their last name when that field is empty.
 --
 --   * actus.auteur_id is filled by a trigger with the signed-in user (it cannot be
 --     forged from the API); actus published before this stay without author, and
@@ -39,8 +40,7 @@ security definer
 stable
 set search_path = public
 as $$
-  select p.id,
-         btrim(coalesce(p.prenom, '') || ' ' || case when coalesce(p.nom, '') <> '' then upper(left(p.nom, 1)) || '.' else '' end)
+  select p.id, coalesce(nullif(btrim(p.prenom), ''), nullif(btrim(p.nom), ''), 'Bureau')
   from public.profiles p
   where p.tenant_id = public.current_tenant_id()
     and p.role in ('bureau', 'admin')
