@@ -39,7 +39,12 @@ export default function ConnexionScreen() {
       <View style={styles.middle}>
       <View style={styles.brand}>
         <Image source={require('../../assets/images/icon.png')} style={styles.logo} accessibilityLabel="Logo Allianceo" />
-        <Text variant="largeTitle">Allianceo</Text>
+        <View style={styles.wordmark}>
+          <Text variant="largeTitle" style={styles.wordmarkText}>
+            ALLIANCEO
+          </Text>
+          <View style={styles.wordmarkDot} />
+        </View>
         <Text tone="secondary" style={styles.center}>
           L’espace adhérents de votre association
         </Text>
@@ -95,6 +100,10 @@ const styles = StyleSheet.create({
   // Logo, fields and buttons are centered in the free space; the sign-up block stays at the bottom.
   middle: { flex: 1, justifyContent: 'center', gap: 12 },
   brand: { alignItems: 'center', gap: 6, marginBottom: 12 },
+  // The brand colors of the logo: its teal for the name, its amber for the dot.
+  wordmark: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
+  wordmarkText: { color: '#0F766E', letterSpacing: 2 },
+  wordmarkDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#FBBF24', marginBottom: 8 },
   logo: { width: 76, height: 76, borderRadius: 19, marginBottom: 6 },
   center: { textAlign: 'center' },
   signup: { paddingTop: 12, gap: 10 },
