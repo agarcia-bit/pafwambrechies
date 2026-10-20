@@ -54,6 +54,7 @@ export function FullScreenDetail({
   leading,
   footer,
   fadeOnly = false,
+  centered = false,
   children,
 }: {
   color: string;
@@ -66,6 +67,8 @@ export function FullScreenDetail({
   footer?: ReactNode;
   /** The blocks fade in where they are instead of rising: calmer. */
   fadeOnly?: boolean;
+  /** Label and title centered, the `leading` visual (date tile) below the title. */
+  centered?: boolean;
   children: ReactNode;
 }) {
   const { colors } = useTheme();
@@ -74,25 +77,26 @@ export function FullScreenDetail({
     <View style={styles.flex}>
       <ScrollView contentInsetAdjustmentBehavior="never" contentContainerStyle={styles.content}>
         <View style={[styles.hero, { backgroundColor: color, paddingTop: insets.top + 52 }]}>
-          <Animated.View entering={fadeOnly ? FadeIn.duration(180) : FadeInDown.delay(150).duration(450)} style={styles.heroMeta}>
+          <Animated.View entering={fadeOnly ? FadeIn.duration(180) : FadeInDown.delay(150).duration(450)} style={[styles.heroMeta, centered && styles.centeredRow]}>
             {!!label && (
               <Text variant="footnote" style={styles.heroLabel} numberOfLines={1}>
                 {label.toUpperCase()}
               </Text>
             )}
           </Animated.View>
-          <Animated.View entering={fadeOnly ? FadeIn.delay(30).duration(200) : FadeInDown.delay(230).duration(500)} style={styles.heroTitleRow}>
-            {leading}
-            <View style={styles.flex}>
-              <Text variant="title" style={styles.heroTitle} selectable>
+          <Animated.View entering={fadeOnly ? FadeIn.delay(30).duration(200) : FadeInDown.delay(230).duration(500)} style={[styles.heroTitleRow, centered && styles.centeredColumn]}>
+            {!centered && leading}
+            <View style={centered ? styles.centeredText : styles.flex}>
+              <Text variant="title" style={[styles.heroTitle, centered && styles.centeredTitle]} selectable>
                 {title}
               </Text>
               {!!subtitle && (
-                <Text variant="subhead" style={styles.heroSubtitle}>
+                <Text variant="subhead" style={[styles.heroSubtitle, centered && styles.centeredTitle]}>
                   {subtitle}
                 </Text>
               )}
             </View>
+            {centered && leading}
           </Animated.View>
         </View>
         <FadeOnlyContext value={fadeOnly}>
@@ -168,6 +172,10 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1 },
   hero: { paddingHorizontal: 20, paddingBottom: 40, gap: 10 },
   heroMeta: { flexDirection: 'row', alignItems: 'center', height: 24 },
+  centeredRow: { justifyContent: 'center' },
+  centeredColumn: { flexDirection: 'column', alignItems: 'center', gap: 18 },
+  centeredText: { alignSelf: 'stretch' },
+  centeredTitle: { textAlign: 'center' },
   heroLabel: { color: 'rgba(255,255,255,0.95)', fontWeight: '700', letterSpacing: 0.4 },
   heroTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   heroTitle: { color: '#FFFFFF', fontWeight: '800', fontSize: 26, lineHeight: 32 },

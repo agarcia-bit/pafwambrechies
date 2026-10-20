@@ -38,6 +38,7 @@ export default function EvenementScreen() {
   return (
     <FullScreenDetail
       fadeOnly
+      centered
       color={mix(ACTU_HUES['Événement'], '#000000', 0.15)}
       label="Événement"
       title={ev.titre}
