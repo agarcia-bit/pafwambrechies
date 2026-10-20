@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ActuPhoto, DateTile, useCategoryHue } from '@/components/actu-visual';
+import { ActuPhoto, useCategoryHue } from '@/components/actu-visual';
 import { CommentCount, CommentsSection, LikeButton } from '@/components/social';
 import { Icon } from '@/components/ui/icon';
 import { LinkedText } from '@/components/ui/linked-text';
@@ -75,15 +75,14 @@ export default function ActuScreen() {
             </Text>
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(230).duration(500)} style={styles.heroTitleRow}>
-            <DateTile date={a.date} large />
             <Text variant="title" style={styles.heroTitle} selectable>
               {a.titre}
             </Text>
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(300).duration(500)}>
             <Text variant="footnote" style={styles.heroDate}>
-              {formatDayLong(a.date)}
-              {author ? ` · Publié par ${author}` : ''}
+              Publié le {formatDayLong(a.date).toLowerCase()}
+              {author ? ` par ${author}` : ''}
             </Text>
           </Animated.View>
         </View>

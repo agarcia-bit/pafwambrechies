@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { ACTU_HUES } from '@/lib/categories';
-import { dayParts, formatDay } from '@/lib/format';
+import { dayParts, formatDay, formatDayShort } from '@/lib/format';
 import { photoRatio } from '@/lib/photos';
 import { useTheme } from '@/theme';
 import { tint } from '@/theme/colors';
@@ -57,9 +57,9 @@ export function PostMeta({ category, date, author }: { category: string; date?: 
         )}
       </View>
       {!!date && (
-        <View style={styles.metaTile}>
-          <DateTile date={date} />
-        </View>
+        <Text variant="footnote" tone="secondary" style={styles.metaDate}>
+          Publié le {formatDayShort(date)}
+        </Text>
       )}
     </View>
   );
@@ -156,14 +156,7 @@ export function ActuThumb({ uri, size = 104, radius = 14 }: { uri: string; size?
 
 const styles = StyleSheet.create({
   meta: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10 },
-  metaTile: {
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 2,
-  },
+  metaDate: { fontWeight: '600' },
   dot: { width: 8, height: 8, borderRadius: 4 },
   metaText: { flex: 1 },
   metaCategory: { fontWeight: '700', letterSpacing: 0.3 },
