@@ -70,14 +70,14 @@ export function FullScreenDetail({
     <View style={styles.flex}>
       <ScrollView contentInsetAdjustmentBehavior="never" contentContainerStyle={styles.content}>
         <View style={[styles.hero, { backgroundColor: color, paddingTop: insets.top + 8 }]}>
-          <Animated.View entering={(fadeOnly ? FadeIn : FadeInDown).delay(150).duration(450)} style={styles.heroMeta}>
+          <Animated.View entering={fadeOnly ? FadeIn.duration(180) : FadeInDown.delay(150).duration(450)} style={styles.heroMeta}>
             {!!label && (
               <Text variant="footnote" style={styles.heroLabel} numberOfLines={1}>
                 {label.toUpperCase()}
               </Text>
             )}
           </Animated.View>
-          <Animated.View entering={(fadeOnly ? FadeIn : FadeInDown).delay(230).duration(500)} style={styles.heroTitleRow}>
+          <Animated.View entering={fadeOnly ? FadeIn.delay(30).duration(200) : FadeInDown.delay(230).duration(500)} style={styles.heroTitleRow}>
             {leading}
             <View style={styles.flex}>
               <Text variant="title" style={styles.heroTitle} selectable>
@@ -107,7 +107,7 @@ export function FullScreenDetail({
 export function Rise({ order = 0, children }: { order?: number; children: ReactNode }) {
   const fadeOnly = use(FadeOnlyContext);
   return (
-    <Animated.View entering={(fadeOnly ? FadeIn : FadeInDown).delay(320 + order * 60).duration(500)}>
+    <Animated.View entering={fadeOnly ? FadeIn.delay(60 + order * 30).duration(200) : FadeInDown.delay(320 + order * 60).duration(500)}>
       {children}
     </Animated.View>
   );
