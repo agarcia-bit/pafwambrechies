@@ -11,6 +11,7 @@ import { LinkedText } from '@/components/ui/linked-text';
 import { Text } from '@/components/ui/text';
 import { useAnnuaire } from '@/lib/data';
 import { fullName } from '@/lib/format';
+import { useContentMenu } from '@/lib/moderation';
 import { useMember } from '@/lib/session';
 import { useTenantConfig } from '@/lib/tenant-config';
 import { externalUrl, instagramUrl, mapsUrl, openLink, phoneUrl } from '@/lib/links';
@@ -22,6 +23,7 @@ export default function CommercantScreen() {
   const { colors } = useTheme();
   const { categories } = useTenantConfig();
   const { profile } = useMember();
+  const openMenu = useContentMenu();
   const m = annuaire.data?.find((item) => item.id === Number(id));
 
   if (annuaire.isPending) return <LoadingState />;
@@ -94,6 +96,15 @@ export default function CommercantScreen() {
               onPress={() => openLink(instagramUrl(m.instagram!), { inApp: false })}
             />
           )}
+        </ListSection>
+      )}
+      {!!m.user_id && m.user_id !== profile.id && (
+        <ListSection>
+          <ListRow
+            icon="flag"
+            title="Signaler cette fiche"
+            onPress={() => openMenu({ kind: 'annuaire', targetId: m.id, authorId: m.user_id, authorName: name })}
+          />
         </ListSection>
       )}
       {m.user_id === profile.id && (

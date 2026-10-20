@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { LinkedText } from '@/components/ui/linked-text';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
+import { useContentMenu } from '@/lib/moderation';
+import { useMember } from '@/lib/session';
 import { useAnnuaire, useOffres } from '@/lib/data';
 import { offerValidity, searchable } from '@/lib/format';
 import { useTenantConfig } from '@/lib/tenant-config';
@@ -18,6 +20,8 @@ export default function OffreScreen() {
   const annuaire = useAnnuaire();
   const { modules } = useTenantConfig();
   const { colors } = useTheme();
+  const openMenu = useContentMenu();
+  const { profile } = useMember();
   const o = offres.data?.find((item) => item.id === Number(id));
 
   if (offres.isPending || !o) {
@@ -75,6 +79,13 @@ export default function OffreScreen() {
       <Rise order={2}>
         <DetailCard>
           <DetailRow icon="calendar" text={offerValidity(o.expiration)} />
+          {!!o.user_id && o.user_id !== profile.id && (
+            <DetailRow
+              icon="flag"
+              text="Signaler cette offre"
+              onPress={() => openMenu({ kind: 'offre', targetId: o.id, authorId: o.user_id ?? null, authorName: o.commercant })}
+            />
+          )}
         </DetailCard>
       </Rise>
     </FullScreenDetail>

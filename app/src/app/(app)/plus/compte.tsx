@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import { useState } from 'react';
@@ -111,6 +112,8 @@ export default function CompteScreen() {
       </ListSection>
 
       <ListSection>
+        <ListRow icon="info" title="Règles de la communauté" onPress={() => router.push('/plus/regles')} />
+        <ListRow icon="block" title="Membres bloqués" onPress={() => router.push('/plus/bloques')} />
         <ListRow icon="lock" title="Politique de confidentialité" onPress={() => openLink(PRIVACY_POLICY_URL)} />
       </ListSection>
 

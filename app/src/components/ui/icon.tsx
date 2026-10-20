@@ -28,6 +28,8 @@ const ICONS = {
   send: { ios: 'arrow.up.circle.fill', android: 'send' },
   plus: { ios: 'plus', android: 'add' },
   close: { ios: 'xmark', android: 'close' },
+  flag: { ios: 'flag', android: 'flag' },
+  block: { ios: 'nosign', android: 'block' },
   camera: { ios: 'camera', android: 'photo_camera' },
   briefcase: { ios: 'briefcase', android: 'work' },
   lock: { ios: 'lock', android: 'lock' },

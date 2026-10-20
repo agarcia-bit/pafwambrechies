@@ -27,6 +27,8 @@ export default function PlusLayout() {
       <Stack.Protected guard={modules.annuaire}>
         <Stack.Screen name="ma-fiche" options={{ title: 'Ma fiche', presentation: 'modal' }} />
       </Stack.Protected>
+      <Stack.Screen name="regles" options={{ title: 'Règles de la communauté' }} />
+      <Stack.Screen name="bloques" options={{ title: 'Membres bloqués' }} />
       <Stack.Screen name="compte" options={{ title: 'Mon compte' }} />
       {/* The RLS policies enforce it server-side; this hides the screens from other members. */}
       <Stack.Protected guard={isBureau}>
@@ -34,6 +36,7 @@ export default function PlusLayout() {
         <Stack.Screen name="admin/[collection]/index" options={{ title: '' }} />
         <Stack.Screen name="admin/[collection]/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="admin/idees" options={{ title: 'Idées' }} />
+        <Stack.Screen name="admin/signalements" options={{ title: 'Signalements' }} />
         <Stack.Screen name="admin/sondages/index" options={{ title: 'Sondages' }} />
         <Stack.Screen name="admin/sondages/nouveau" options={{ title: 'Nouveau sondage', presentation: 'modal' }} />
         <Stack.Screen name="admin/sondages/[id]" options={{ title: 'Résultats' }} />

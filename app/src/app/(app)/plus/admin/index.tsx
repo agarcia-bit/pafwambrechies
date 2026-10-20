@@ -25,11 +25,12 @@ export default function AdminScreen() {
         ))}
         <ListRow icon="poll" title="Sondages" onPress={() => router.push('/plus/admin/sondages')} />
       </ListSection>
-      {config.modules.idees && (
-        <ListSection title="Modération">
+      <ListSection title="Modération">
+        <ListRow icon="flag" title="Signalements" onPress={() => router.push('/plus/admin/signalements')} />
+        {config.modules.idees && (
           <ListRow icon="lightbulb" title="Idées" onPress={() => router.push('/plus/admin/idees')} />
-        </ListSection>
-      )}
+        )}
+      </ListSection>
       {isAdmin && (
         <ListSection title="Association" footer="Réservé aux administrateurs : membres et rôles, code d’accès, nom, couleur et logo.">
           <ListRow icon="people" title="Membres" subtitle="Bureau et administrateurs" onPress={() => router.push('/plus/admin/membres')} />

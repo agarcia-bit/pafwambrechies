@@ -7,3 +7,7 @@ export const PRIVACY_POLICY_URL = 'https://paf-wambrechies.netlify.app/politique
 
 // Neutral brand shown before the association is known (login, signup).
 export const ALLIANCEO_COLOR = '#0F766E';
+
+// Contact for abuse reports and support, shown in the community rules (to fill in before the
+// App Store submission: Apple requires a published contact for apps with member content).
+export const SUPPORT_EMAIL = '';

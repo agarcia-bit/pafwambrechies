@@ -8,11 +8,13 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useIdees } from '@/lib/data';
+import { useBlockedIds } from '@/lib/moderation';
 
 export default function IdeesScreen() {
   const idees = useIdees();
   const { refreshing, onRefresh } = usePullToRefresh(idees.refetch);
-  const items = idees.data?.pages.flat() ?? [];
+  const blocked = useBlockedIds();
+  const items = (idees.data?.pages.flat() ?? []).filter((i) => !blocked.has(i.user_id));
   const propose = () => router.push('/plus/idees/nouvelle');
 
   return (

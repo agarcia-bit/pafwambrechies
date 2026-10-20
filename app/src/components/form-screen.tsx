@@ -4,14 +4,24 @@ import { ScrollView, StyleSheet, type StyleProp, type ViewStyle } from 'react-na
 import { useTheme } from '@/theme';
 
 /** Scrollable form that stays above the keyboard. */
-export function FormScreen({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+export function FormScreen({
+  children,
+  style,
+  fullScreen = false,
+}: {
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+  /** No navigation header: the screen handles the safe areas itself (login). */
+  fullScreen?: boolean;
+}) {
   const { colors } = useTheme();
   return (
     <ScrollView
       style={{ backgroundColor: colors.background }}
       contentContainerStyle={[styles.content, style]}
-      contentInsetAdjustmentBehavior="automatic"
+      contentInsetAdjustmentBehavior={fullScreen ? 'never' : 'automatic'}
       automaticallyAdjustKeyboardInsets
+      alwaysBounceVertical={false}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive">
       {children}
