@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NotificationObserver } from '@/components/notification-observer';
 import { PollGate } from '@/components/poll-gate';
@@ -16,6 +17,7 @@ import { useTheme } from '@/theme';
 export default function AppLayout() {
   const { membership, membershipError, reloadMembership } = useSession();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   if (!membership) {
     return (
@@ -54,6 +56,8 @@ export default function AppLayout() {
           <NativeTabs.Trigger.Icon sf={{ default: 'ellipsis.circle', selected: 'ellipsis.circle.fill' }} md="more_horiz" />
         </NativeTabs.Trigger>
       </NativeTabs>
+      {/* Keeps the white clock and battery readable whatever scrolls under the status bar. */}
+      <View pointerEvents="none" style={[styles.statusCover, { height: insets.top, backgroundColor: colors.banner }]} />
     </>
   );
 }
@@ -77,6 +81,7 @@ function NoMembership() {
 }
 
 const styles = StyleSheet.create({
+  statusCover: { position: 'absolute', top: 0, left: 0, right: 0 },
   screen: { flex: 1 },
   centered: { justifyContent: 'center', padding: 32, gap: 16 },
   center: { textAlign: 'center' },
