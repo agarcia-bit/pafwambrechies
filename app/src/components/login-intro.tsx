@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   runOnJS,
@@ -14,14 +14,14 @@ import Animated, {
 // Plays once per launch of the app, over the sign-in screen.
 let alreadyPlayed = false;
 
-// Sober and slow on purpose: no bounce, no spring, one gesture at a time.
+// Sober and airy on purpose: no bounce, no spring, no movement of the screen: it dissolves.
 const DEEP_TEAL = '#0A5C55';
 const ICON = 96;
 const NAME = 'ALLIANCEO';
 const SMOOTH = Easing.bezier(0.16, 1, 0.3, 1); // very soft landing
-const LIFT = Easing.bezier(0.76, 0, 0.24, 1); // calm start, calm end
-const LIFT_AT_MS = 1250;
-const LIFT_MS = 650; // the whole opening lasts about 1.9 s
+const DISSOLVE = Easing.bezier(0.45, 0, 0.55, 1); // calm start, calm end
+const DISSOLVE_AT_MS = 2000;
+const DISSOLVE_MS = 800; // the whole opening lasts about 2.8 s
 
 const clamp01 = (value: number) => {
   'worklet';
@@ -31,33 +31,31 @@ const clamp01 = (value: number) => {
 /**
  * The opening of the app: on a deep teal, the icon settles in with a slow fade and the barest
  * growth, the name appears under it with its letters closing in, a fine amber line is drawn,
- * then the screen lifts away smoothly and uncovers the sign-in screen (transforms and
- * opacity only, so it stays smooth).
+ * then everything dissolves into the sign-in screen behind (cross-fade, nothing moves).
  */
 export function LoginIntro() {
-  const { height } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
   const [visible, setVisible] = useState(!alreadyPlayed && !reduceMotion);
   const icon = useSharedValue(0);
   const name = useSharedValue(0);
   const line = useSharedValue(0);
-  const lift = useSharedValue(0);
+  const dissolve = useSharedValue(0);
 
   useEffect(() => {
     alreadyPlayed = true;
     if (!visible) return;
-    icon.value = withDelay(150, withTiming(1, { duration: 800, easing: SMOOTH }));
-    name.value = withDelay(500, withTiming(1, { duration: 800, easing: SMOOTH }));
-    line.value = withDelay(850, withTiming(1, { duration: 650, easing: SMOOTH }));
-    lift.value = withDelay(
-      LIFT_AT_MS,
-      withTiming(1, { duration: LIFT_MS, easing: LIFT }, (finished) => {
+    icon.value = withDelay(200, withTiming(1, { duration: 1100, easing: SMOOTH }));
+    name.value = withDelay(700, withTiming(1, { duration: 1100, easing: SMOOTH }));
+    line.value = withDelay(1250, withTiming(1, { duration: 800, easing: SMOOTH }));
+    dissolve.value = withDelay(
+      DISSOLVE_AT_MS,
+      withTiming(1, { duration: DISSOLVE_MS, easing: DISSOLVE }, (finished) => {
         if (finished) runOnJS(setVisible)(false);
       })
     );
-  }, [visible, icon, name, line, lift]);
+  }, [visible, icon, name, line, dissolve]);
 
-  const screen = useAnimatedStyle(() => ({ transform: [{ translateY: -height * lift.value }] }));
+  const screen = useAnimatedStyle(() => ({ opacity: 1 - dissolve.value }));
   const iconStyle = useAnimatedStyle(() => ({
     opacity: icon.value,
     transform: [{ scale: 0.94 + 0.06 * icon.value }],
