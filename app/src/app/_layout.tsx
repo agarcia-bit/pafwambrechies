@@ -1,4 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
+import { Sora_700Bold, Sora_800ExtraBold, useFonts } from '@expo-google-fonts/sora';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -21,14 +22,16 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const { session, isLoading, recovery, membership, membershipError } = useSession();
-  // Keep the splash screen until we know the screen to show and its colors.
-  const ready = !isLoading && (!session || membership !== undefined || membershipError);
+  const [fontsLoaded, fontError] = useFonts({ Sora_700Bold, Sora_800ExtraBold });
+  // Keep the splash screen until we know the screen to show, its colors and the title font.
+  const ready =
+    !isLoading && (fontsLoaded || !!fontError) && (!session || membership !== undefined || membershipError);
 
   useEffect(() => {
     if (ready) SplashScreen.hide();
   }, [ready]);
 
-  if (isLoading) return null;
+  if (isLoading || !(fontsLoaded || fontError)) return null;
 
   return (
     <AppThemeProvider brandColor={membership?.branding?.tenant_primary_color}
