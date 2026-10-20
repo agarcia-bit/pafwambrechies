@@ -1,20 +1,18 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   FadeInDown,
   runOnJS,
-  type SharedValue,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withDelay,
+  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
-import { AUTH_GRADIENT } from '@/components/auth-screen';
 import { Text } from '@/components/ui/text';
 
 // Plays once per launch of the app, over the sign-in screen.
@@ -28,100 +26,105 @@ const TILT = `${(Math.atan(212 / 510) * 180) / Math.PI}deg`;
 const MARK_W = 424 * K + STROKE;
 const MARK_H = 510 * K + STROKE;
 const DOT = 132 * K;
+const DOT_CY = STROKE / 2 + 360 * K; // center of the amber dot inside the mark
 const WORD = 'ALLIANCEO'.split('');
-const HOLD_MS = 2250; // everything is drawn, then the screen opens
-const OPEN_MS = 750;
+const FLAT_TEAL = '#0F8F83'; // the screen of the intro: a flat teal, the gradient is revealed under it
+const HOLE = 16; // radius of the hole in the screen at the start (hidden behind the dot)
+const RING = 1300; // thickness of the screen around the hole: its outer edge always covers everything
+const RIPPLE = 90; // diameter of a ripple at its birth
+const HOLD_MS = 3000; // everything is on screen, then the circle opens
+const OPEN_MS = 850;
 
-/** One stroke of the "A": it grows from the apex (scaleY 0 to 1) at its tilt. */
-function useBarStyle(progress: SharedValue<number>, tilt: string) {
-  return useAnimatedStyle(() => ({ transform: [{ rotate: tilt }, { scaleY: progress.value }] }));
+function useRipple(delay: number) {
+  const progress = useSharedValue(0);
+  useEffect(() => {
+    progress.value = withDelay(delay, withTiming(1, { duration: 1500, easing: Easing.out(Easing.quad) }));
+  }, [delay, progress]);
+  return useAnimatedStyle(() => ({
+    opacity: progress.value === 0 ? 0 : 0.85 * (1 - progress.value),
+    transform: [{ scale: 0.15 + progress.value * 5.2 }],
+  }));
 }
 
 /**
- * The opening of the app: on the teal, the "A" of the logo draws itself stroke by stroke,
- * its amber dot drops in and bounces, the name appears letter by letter, then the screen
- * splits across the middle and slides away, up and down, uncovering the sign-in screen.
+ * The opening of the app, "Éclat": on a flat teal, the amber dot of the logo blooms with
+ * ripples spreading from it, the "A" appears around it, the name rises letter by letter,
+ * then a circle opens from the dot and reveals the sign-in screen (transforms only, so it
+ * stays smooth).
  */
 export function LoginIntro() {
   const { width, height } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
   const [visible, setVisible] = useState(!alreadyPlayed && !reduceMotion);
-  const left = useSharedValue(0);
-  const right = useSharedValue(0);
-  const dotY = useSharedValue(-260);
-  const dotOpacity = useSharedValue(0);
+  const dot = useSharedValue(0);
+  const mark = useSharedValue(0);
   const open = useSharedValue(0);
+  const ripple1 = useRipple(350);
+  const ripple2 = useRipple(750);
+  const ripple3 = useRipple(1150);
+  const endScale = (Math.hypot(width, height) / 2 + 60) / HOLE;
 
   useEffect(() => {
     alreadyPlayed = true;
     if (!visible) return;
-    const draw = { duration: 650, easing: Easing.out(Easing.cubic) };
-    left.value = withTiming(1, draw);
-    right.value = withDelay(220, withTiming(1, draw));
-    dotOpacity.value = withDelay(800, withTiming(1, { duration: 120 }));
-    dotY.value = withDelay(800, withSpring(0, { damping: 7, stiffness: 150, mass: 0.9 }));
+    // The dot blooms (overshoot, then settles) as soon as the screen appears.
+    dot.value = withSequence(
+      withTiming(1.7, { duration: 380, easing: Easing.out(Easing.cubic) }),
+      withSpring(1, { damping: 9, stiffness: 160 })
+    );
+    mark.value = withDelay(1500, withTiming(1, { duration: 650, easing: Easing.out(Easing.back(1.3)) }));
     open.value = withDelay(
       HOLD_MS,
-      withTiming(1, { duration: OPEN_MS, easing: Easing.bezier(0.7, 0, 0.2, 1) }, (finished) => {
+      withTiming(1, { duration: OPEN_MS, easing: Easing.bezier(0.65, 0, 0.25, 1) }, (finished) => {
         if (finished) runOnJS(setVisible)(false);
       })
     );
-  }, [visible, left, right, dotY, dotOpacity, open]);
+  }, [visible, dot, mark, open]);
 
-  const leftBar = useBarStyle(left, TILT);
-  const rightBar = useBarStyle(right, `-${TILT}`);
-  const dotStyle = useAnimatedStyle(() => ({
-    opacity: dotOpacity.value,
-    transform: [{ translateY: dotY.value }],
+  const dotStyle = useAnimatedStyle(() => ({ transform: [{ scale: dot.value }] }));
+  const markStyle = useAnimatedStyle(() => ({
+    opacity: mark.value,
+    transform: [{ scale: 0.6 + 0.4 * mark.value }],
   }));
   const content = useAnimatedStyle(() => ({
-    opacity: 1 - Math.min(1, open.value * 2.5),
-    transform: [{ scale: 1 + open.value * 0.25 }],
+    opacity: 1 - Math.min(1, open.value * 3),
+    transform: [{ scale: 1 + open.value * 0.3 }],
   }));
-  const top = useAnimatedStyle(() => ({ transform: [{ translateY: -(height / 2) * open.value }] }));
-  const bottom = useAnimatedStyle(() => ({ transform: [{ translateY: (height / 2) * open.value }] }));
+  const screen = useAnimatedStyle(() => ({ transform: [{ scale: 1 + open.value * (endScale - 1) }] }));
 
   if (!visible) return null;
-  const gradient = (
-    <LinearGradient
-      colors={AUTH_GRADIENT}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{ position: 'absolute', left: 0, width, height }}
-    />
-  );
+  const markTop = height / 2 - DOT_CY;
   return (
-    <View pointerEvents="none" style={styles.screen} accessibilityElementsHidden>
-      {/* Two halves of the same gradient as the screen behind, so that the opening is seamless. */}
-      <Animated.View style={[styles.half, { top: 0, height: height / 2 }, top]}>
-        <View style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>{gradient}</View>
-      </Animated.View>
-      <Animated.View style={[styles.half, { bottom: 0, height: height / 2 }, bottom]}>
-        <View style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
-          <LinearGradient
-            colors={AUTH_GRADIENT}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ position: 'absolute', left: 0, top: -height / 2, width, height }}
-          />
-        </View>
-      </Animated.View>
+    <View pointerEvents="none" style={styles.root} accessibilityElementsHidden>
+      <View style={styles.screenBox}>
+        <Animated.View style={[styles.screen, screen]} />
+      </View>
 
-      <Animated.View style={[styles.center, content]}>
-        <View style={{ width: MARK_W, height: MARK_H }}>
-          <Animated.View style={[styles.bar, { left: MARK_W / 2 - STROKE / 2 }, leftBar]} />
-          <Animated.View style={[styles.bar, { left: MARK_W / 2 - STROKE / 2 }, rightBar]} />
+      <Animated.View style={[StyleSheet.absoluteFill, content]}>
+        {[ripple1, ripple2, ripple3].map((style, index) => (
           <Animated.View
-            style={[
-              styles.dot,
-              { left: MARK_W / 2 - DOT / 2, top: STROKE / 2 + (620 - 260) * K - DOT / 2 },
-              dotStyle,
-            ]}
+            key={index}
+            style={[styles.ripple, { left: width / 2 - RIPPLE / 2, top: height / 2 - RIPPLE / 2 }, style]}
           />
-        </View>
-        <View style={styles.word}>
+        ))}
+
+        <Animated.View
+          style={[
+            styles.mark,
+            { left: width / 2 - MARK_W / 2, top: markTop, transformOrigin: `${MARK_W / 2}px ${DOT_CY}px` },
+            markStyle,
+          ]}>
+          <View style={[styles.bar, { left: MARK_W / 2 - STROKE / 2, transform: [{ rotate: TILT }] }]} />
+          <View style={[styles.bar, { left: MARK_W / 2 - STROKE / 2, transform: [{ rotate: `-${TILT}` }] }]} />
+        </Animated.View>
+
+        <Animated.View
+          style={[styles.dot, { left: width / 2 - DOT / 2, top: height / 2 - DOT / 2 }, dotStyle]}
+        />
+
+        <View style={[styles.word, { top: markTop + MARK_H + 28 }]}>
           {WORD.map((letter, index) => (
-            <Animated.View key={index} entering={FadeInDown.delay(1250 + index * 60).duration(380)}>
+            <Animated.View key={index} entering={FadeInDown.delay(1900 + index * 60).duration(400)}>
               <Text variant="largeTitle" style={styles.letter}>
                 {letter}
               </Text>
@@ -134,9 +137,25 @@ export function LoginIntro() {
 }
 
 const styles = StyleSheet.create({
-  screen: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, overflow: 'hidden' },
-  half: { position: 'absolute', left: 0, right: 0, overflow: 'hidden' },
-  center: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', gap: 28 },
+  root: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, overflow: 'hidden' },
+  // The screen is a disc with a thick border: its middle is the hole that grows to reveal the sign-in screen.
+  screenBox: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
+  screen: {
+    width: 2 * (HOLE + RING),
+    height: 2 * (HOLE + RING),
+    borderRadius: HOLE + RING,
+    borderWidth: RING,
+    borderColor: FLAT_TEAL,
+  },
+  ripple: {
+    position: 'absolute',
+    width: RIPPLE,
+    height: RIPPLE,
+    borderRadius: RIPPLE / 2,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+  },
+  mark: { position: 'absolute', width: MARK_W, height: MARK_H },
   bar: {
     position: 'absolute',
     top: 0,
@@ -148,6 +167,6 @@ const styles = StyleSheet.create({
     transformOrigin: `${STROKE / 2}px ${STROKE / 2}px`,
   },
   dot: { position: 'absolute', width: DOT, height: DOT, borderRadius: DOT / 2, backgroundColor: '#FBBF24' },
-  word: { flexDirection: 'row' },
+  word: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', justifyContent: 'center' },
   letter: { color: '#FFFFFF', letterSpacing: 3 },
 });
