@@ -8,18 +8,20 @@ import Animated, {
   useReducedMotion,
   useSharedValue,
   withDelay,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
 // Plays once per launch of the app, over the sign-in screen.
 let alreadyPlayed = false;
 
-const FLAT_TEAL = '#0F8F83'; // the screen of the intro: a flat teal, the gradient is under it
-const ICON = 100;
+// Sober and slow on purpose: no bounce, no spring, one gesture at a time.
+const DEEP_TEAL = '#0A5C55';
+const ICON = 96;
 const NAME = 'ALLIANCEO';
-const LIFT_AT_MS = 950;
-const LIFT_MS = 450; // the whole opening lasts about 1.4 s
+const SMOOTH = Easing.bezier(0.16, 1, 0.3, 1); // very soft landing
+const LIFT = Easing.bezier(0.76, 0, 0.24, 1); // calm start, calm end
+const LIFT_AT_MS = 1250;
+const LIFT_MS = 650; // the whole opening lasts about 1.9 s
 
 const clamp01 = (value: number) => {
   'worklet';
@@ -27,49 +29,57 @@ const clamp01 = (value: number) => {
 };
 
 /**
- * The opening of the app, "Glissé": on a flat teal, the icon of the app rises from the bottom
- * with a bounce, the name arrives under it, then the whole screen lifts away like a curtain,
- * uncovering the sign-in screen (transforms and opacity only, so it stays smooth).
+ * The opening of the app: on a deep teal, the icon settles in with a slow fade and the barest
+ * growth, the name appears under it with its letters closing in, a fine amber line is drawn,
+ * then the screen lifts away smoothly and uncovers the sign-in screen (transforms and
+ * opacity only, so it stays smooth).
  */
 export function LoginIntro() {
   const { height } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
   const [visible, setVisible] = useState(!alreadyPlayed && !reduceMotion);
-  const rise = useSharedValue(height * 0.45);
+  const icon = useSharedValue(0);
   const name = useSharedValue(0);
+  const line = useSharedValue(0);
   const lift = useSharedValue(0);
 
   useEffect(() => {
     alreadyPlayed = true;
     if (!visible) return;
-    rise.value = withSpring(0, { damping: 11, stiffness: 190, mass: 0.8 });
-    name.value = withDelay(330, withTiming(1, { duration: 380, easing: Easing.out(Easing.cubic) }));
+    icon.value = withDelay(150, withTiming(1, { duration: 800, easing: SMOOTH }));
+    name.value = withDelay(500, withTiming(1, { duration: 800, easing: SMOOTH }));
+    line.value = withDelay(850, withTiming(1, { duration: 650, easing: SMOOTH }));
     lift.value = withDelay(
       LIFT_AT_MS,
-      withTiming(1, { duration: LIFT_MS, easing: Easing.bezier(0.7, 0, 0.2, 1) }, (finished) => {
+      withTiming(1, { duration: LIFT_MS, easing: LIFT }, (finished) => {
         if (finished) runOnJS(setVisible)(false);
       })
     );
-  }, [visible, rise, name, lift]);
+  }, [visible, icon, name, line, lift]);
 
   const screen = useAnimatedStyle(() => ({ transform: [{ translateY: -height * lift.value }] }));
-  const icon = useAnimatedStyle(() => ({
-    opacity: clamp01(1 - rise.value / (height * 0.3)),
-    transform: [{ translateY: rise.value }],
+  const iconStyle = useAnimatedStyle(() => ({
+    opacity: icon.value,
+    transform: [{ scale: 0.94 + 0.06 * icon.value }],
   }));
   const nameStyle = useAnimatedStyle(() => ({
     opacity: name.value,
-    transform: [{ translateY: (1 - name.value) * 14 }],
+    letterSpacing: 6 - 3.5 * name.value,
+  }));
+  const lineStyle = useAnimatedStyle(() => ({
+    opacity: clamp01(line.value * 2),
+    transform: [{ scaleX: line.value }],
   }));
 
   if (!visible) return null;
   return (
     <View pointerEvents="none" style={styles.root} accessibilityElementsHidden>
       <Animated.View style={[styles.screen, screen]}>
-        <Animated.View style={icon}>
+        <Animated.View style={iconStyle}>
           <Image source={require('../../assets/images/icon.png')} style={styles.icon} />
         </Animated.View>
         <Animated.Text style={[styles.name, nameStyle]}>{NAME}</Animated.Text>
+        <Animated.View style={[styles.line, lineStyle]} />
       </Animated.View>
     </View>
   );
@@ -79,17 +89,18 @@ const styles = StyleSheet.create({
   root: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, overflow: 'hidden' },
   screen: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: FLAT_TEAL,
+    backgroundColor: DEEP_TEAL,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 22,
+    gap: 24,
   },
   icon: {
     width: ICON,
     height: ICON,
-    borderRadius: ICON * 0.25,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
+    borderRadius: ICON * 0.225,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
-  name: { color: '#FFFFFF', fontFamily: 'Sora_800ExtraBold', fontSize: 28, lineHeight: 36, letterSpacing: 3 },
+  name: { color: '#FFFFFF', fontFamily: 'Sora_700Bold', fontSize: 24, lineHeight: 32, paddingLeft: 6 },
+  line: { width: 44, height: 2, borderRadius: 1, backgroundColor: '#FBBF24' },
 });
