@@ -1,20 +1,22 @@
 import type { PropsWithChildren } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui/text';
+import { introDelay } from '@/lib/launch-state';
 import { useTheme } from '@/theme';
 
 /** Home header: the association name on its colored band, with the filters below it. */
 export function BrandBand({ title, greeting, children }: PropsWithChildren<{ title: string; greeting?: string }>) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const reduceMotion = useReducedMotion();
   return (
     <View style={[styles.band, { backgroundColor: colors.banner, paddingTop: insets.top + 12 }]}>
       <View style={styles.titles}>
         {!!greeting && (
-          <Animated.View entering={FadeInDown.delay(200).duration(450)}>
+          <Animated.View entering={FadeInDown.delay(200 + introDelay(reduceMotion)).duration(450)}>
             <Text variant="subhead" style={styles.greeting}>
               {greeting}
             </Text>
