@@ -19,13 +19,14 @@ import { INTRO_HOLD_MS, introPending, markIntroShown } from '@/lib/launch-state'
 import { useMember } from '@/lib/session';
 import { useTheme } from '@/theme';
 
-const OPEN_MS = 700; // the screen slides down, off the bottom
+const OPEN_MS = 700; // the two halves slide apart, up and down
 const OPEN = Easing.bezier(0.65, 0, 0.25, 1);
 
 /**
  * Opening moment, once per launch: the association's logo and name on its color, then the
- * colored screen slides down and away, uncovering the feed from the top (a transform only,
- * so it stays smooth). The cards of the feed rise into place as it goes.
+ * screen splits across the middle: the top half slides up and the bottom half slides down,
+ * the logo fading as it goes, uncovering the feed (transforms only, so it stays smooth).
+ * The cards of the feed rise into place as it opens.
  */
 export function LaunchReveal() {
   const { colors } = useTheme();
@@ -46,13 +47,20 @@ export function LaunchReveal() {
     );
   }, [visible, open]);
 
-  const cover = useAnimatedStyle(() => ({ transform: [{ translateY: height * open.value }] }));
+  const top = useAnimatedStyle(() => ({ transform: [{ translateY: -(height / 2) * open.value }] }));
+  const bottom = useAnimatedStyle(() => ({ transform: [{ translateY: (height / 2) * open.value }] }));
+  const logo = useAnimatedStyle(() => ({
+    opacity: 1 - Math.min(1, open.value * 3),
+    transform: [{ scale: 1 + open.value * 0.4 }],
+  }));
 
   if (!visible) return null;
   const name = associationName(branding);
   return (
     <View pointerEvents="none" style={styles.screen} accessibilityElementsHidden>
-      <Animated.View style={[styles.cover, { backgroundColor: colors.banner }, cover]}>
+      <Animated.View style={[styles.half, styles.top, { backgroundColor: colors.banner }, top]} />
+      <Animated.View style={[styles.half, styles.bottom, { backgroundColor: colors.banner }, bottom]} />
+      <Animated.View style={[styles.center, logo]}>
         <Animated.View entering={ZoomIn.duration(650).easing(Easing.out(Easing.back(1.4)))}>
           <Avatar name={name} uri={branding?.tenant_logo_url} size={104} />
         </Animated.View>
@@ -68,6 +76,9 @@ export function LaunchReveal() {
 
 const styles = StyleSheet.create({
   screen: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, overflow: 'hidden' },
-  cover: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', gap: 20 },
+  half: { position: 'absolute', left: 0, right: 0, height: '50%' },
+  top: { top: 0 },
+  bottom: { bottom: 0 },
+  center: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', gap: 20 },
   name: { color: '#FFFFFF', fontWeight: '800', letterSpacing: 0.5, textAlign: 'center', paddingHorizontal: 24 },
 });
