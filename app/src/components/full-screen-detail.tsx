@@ -103,7 +103,8 @@ export function FullScreenDetail({
         <FadeOnlyContext value={fadeOnly}>
           <CenteredContext value={centered}>
             <View style={[styles.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
-              {children}
+              {/* Centered: the details sit in the middle of the free height, above the pinned action. */}
+              {centered ? <View style={styles.sheetBody}>{children}</View> : children}
               {!!footer && <View style={styles.footer}>{footer}</View>}
             </View>
           </CenteredContext>
@@ -187,6 +188,7 @@ const styles = StyleSheet.create({
   centeredText: { alignSelf: 'stretch' },
   centeredTitle: { textAlign: 'center' },
   detailTextCentered: { flexShrink: 1 },
+  sheetBody: { flexGrow: 1, justifyContent: 'center', gap: 18 },
   detailsBlock: { alignSelf: 'center', maxWidth: '100%' },
   heroLabel: { color: 'rgba(255,255,255,0.95)', fontWeight: '700', letterSpacing: 0.4 },
   heroTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
