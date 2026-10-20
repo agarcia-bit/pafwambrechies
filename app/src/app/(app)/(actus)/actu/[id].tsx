@@ -13,14 +13,14 @@ import { Text } from '@/components/ui/text';
 import { useActu } from '@/lib/data';
 import { formatDayLong } from '@/lib/format';
 import { useTheme } from '@/theme';
-import { mix } from '@/theme/colors';
+import { mix, tint } from '@/theme/colors';
 
 // The post fills the screen: a hero in the category's color (title in white), then the
 // content on a white sheet whose rounded top overlaps the hero.
 export default function ActuScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const actu = useActu(Number(id));
-  const { colors } = useTheme();
+  const { colors, scheme } = useTheme();
   const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
   const hue = useCategoryHue(actu.data?.categorie ?? '');
@@ -77,14 +77,18 @@ export default function ActuScreen() {
               {a.titre}
             </Text>
           </Animated.View>
-          <Animated.View entering={FadeInDown.delay(300).duration(500)} style={styles.heroDateRow}>
-            <DateTile date={a.date} large />
-            <Text variant="headline" style={styles.heroDateText}>
+        </View>
+        <View style={[styles.sheet, { backgroundColor: colors.card }]}>
+          <Animated.View
+            entering={FadeInDown.delay(300).duration(500)}
+            style={[styles.dateRow, { backgroundColor: tint(scheme, hue).background }]}>
+            <View style={styles.dateTile}>
+              <DateTile date={a.date} />
+            </View>
+            <Text variant="subhead" style={[styles.dateText, { color: tint(scheme, hue).color }]}>
               {formatDayLong(a.date)}
             </Text>
           </Animated.View>
-        </View>
-        <View style={[styles.sheet, { backgroundColor: colors.card }]}>
           {!!a.image_url && (
             <Animated.View entering={FadeInDown.delay(320).duration(500)}>
               <ActuPhoto uri={a.image_url} radius={16} />
@@ -115,12 +119,19 @@ export default function ActuScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { paddingBottom: 40 },
-  hero: { paddingHorizontal: 20, paddingBottom: 44, gap: 10 },
+  hero: { paddingHorizontal: 20, paddingBottom: 40, gap: 10 },
   // Same row as the close button (36 high, 16 from the right).
   heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, marginRight: 52 },
   heroCategory: { color: 'rgba(255,255,255,0.95)', fontWeight: '700', letterSpacing: 0.4 },
-  heroDateRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 6 },
-  heroDateText: { color: 'rgba(255,255,255,0.92)', fontWeight: '600' },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 14, alignSelf: 'flex-start' },
+  dateTile: {
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  dateText: { fontWeight: '700', paddingRight: 6 },
   heroTitle: { color: '#FFFFFF', fontWeight: '800' },
   sheet: { marginTop: -28, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, gap: 14 },
   close: {
