@@ -121,7 +121,7 @@ export default function ActuScreen() {
       <View
         style={[
           styles.composer,
-          { backgroundColor: colors.background, borderTopColor: colors.separator, paddingBottom: keyboardOpen ? 8 : insets.bottom + 8 },
+          { backgroundColor: colors.background, paddingBottom: keyboardOpen ? 8 : Math.max(insets.bottom - 6, 8) },
         ]}>
         <CommentComposer
           kind="actu"
@@ -146,8 +146,8 @@ const styles = StyleSheet.create({
   heroTitle: { color: '#FFFFFF', fontWeight: '800', flex: 1, fontSize: 26, lineHeight: 32 },
   sheet: { marginTop: -28, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', flexGrow: 1 },
   article: { padding: 20, gap: 14 },
-  comments: { flexGrow: 1, padding: 20, paddingBottom: 24 },
-  composer: { paddingHorizontal: 12, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth },
+  comments: { flexGrow: 1, padding: 20, paddingBottom: 8 },
+  composer: { paddingHorizontal: 20, paddingTop: 4 },
   close: {
     position: 'absolute',
     right: 16,
