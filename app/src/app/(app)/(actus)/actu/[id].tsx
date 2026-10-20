@@ -66,7 +66,7 @@ export default function ActuScreen() {
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}>
-        <View style={[styles.hero, { backgroundColor: heroColor, paddingTop: insets.top + 64 }]}>
+        <View style={[styles.hero, { backgroundColor: heroColor, paddingTop: insets.top + 8 }]}>
           <Animated.View entering={FadeInDown.delay(150).duration(450)} style={styles.heroMeta}>
             <Text variant="footnote" style={styles.heroCategory}>
               {a.categorie.toUpperCase()}
@@ -112,8 +112,9 @@ export default function ActuScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { paddingBottom: 40 },
-  hero: { paddingHorizontal: 20, paddingBottom: 48, gap: 8 },
-  heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  hero: { paddingHorizontal: 20, paddingBottom: 44, gap: 10 },
+  // Same row as the close button (36 high, 16 from the right).
+  heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, marginRight: 52 },
   heroCategory: { color: 'rgba(255,255,255,0.95)', fontWeight: '700', letterSpacing: 0.4 },
   heroDate: { color: 'rgba(255,255,255,0.8)' },
   heroTitle: { color: '#FFFFFF', fontWeight: '800' },
