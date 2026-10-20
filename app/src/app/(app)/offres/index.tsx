@@ -13,6 +13,7 @@ import { useOffres } from '@/lib/data';
 import { offerValidity } from '@/lib/format';
 import { useTenantConfig } from '@/lib/tenant-config';
 import type { Offre } from '@/lib/types';
+import { useBlockedIds } from '@/lib/moderation';
 import { useBandListStyle } from '@/theme';
 
 export default function OffresScreen() {
@@ -21,7 +22,10 @@ export default function OffresScreen() {
   const bandStyle = useBandListStyle();
   const [category, setCategory] = useState('Tous');
   const { refreshing, onRefresh } = usePullToRefresh(offres.refetch);
-  const items = (offres.data ?? []).filter((o) => category === 'Tous' || o.categorie === category);
+  const blocked = useBlockedIds();
+  const items = (offres.data ?? []).filter(
+    (o) => (category === 'Tous' || o.categorie === category) && !(o.user_id && blocked.has(o.user_id))
+  );
 
   return (
     <FlatList

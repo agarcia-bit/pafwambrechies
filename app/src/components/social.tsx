@@ -10,6 +10,7 @@ import { Text } from '@/components/ui/text';
 import { confirmAction, showMessage } from '@/lib/confirm';
 import { useCommentMutations, useComments, useToggleLike, type SocialKind } from '@/lib/data';
 import { formatRelative } from '@/lib/format';
+import { useBlockedIds, useContentMenu } from '@/lib/moderation';
 import { useMember } from '@/lib/session';
 import { useTheme } from '@/theme';
 
@@ -142,6 +143,8 @@ export function CommentsSection({
   const { colors } = useTheme();
   const comments = useComments(kind, parentId);
   const { remove } = useCommentMutations(kind, parentId);
+  const blocked = useBlockedIds();
+  const openMenu = useContentMenu();
 
   async function removeComment(id: number) {
     const ok = await confirmAction({ title: 'Supprimer ce commentaire ?', confirmLabel: 'Supprimer', destructive: true });
@@ -153,8 +156,10 @@ export function CommentsSection({
       <Text variant="headline">Commentaires</Text>
       {comments.isPending ? (
         <ActivityIndicator color={colors.textSecondary} />
-      ) : comments.data?.length ? (
-        comments.data.map((c) => (
+      ) : comments.data?.some((c) => !blocked.has(c.user_id)) ? (
+        comments.data
+          .filter((c) => !blocked.has(c.user_id))
+          .map((c) => (
           <View key={c.id} style={[styles.comment, { backgroundColor: colors.card }]}>
             <Avatar name={c.prenom} size={36} round />
             <View style={styles.commentBody}>
@@ -162,6 +167,22 @@ export function CommentsSection({
                 <Text variant="subhead" style={styles.author} numberOfLines={1}>
                   {c.prenom || 'Anonyme'}
                 </Text>
+                {c.user_id !== profile.id && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Signaler ou bloquer"
+                    hitSlop={10}
+                    onPress={() =>
+                      openMenu({
+                        kind: kind === 'actu' ? 'actus_commentaire' : 'idee_commentaire',
+                        targetId: c.id,
+                        authorId: c.user_id,
+                        authorName: c.prenom,
+                      })
+                    }>
+                    <Icon name="flag" size={16} color={colors.textSecondary} />
+                  </Pressable>
+                )}
                 {(c.user_id === profile.id || isBureau) && (
                   <Pressable
                     accessibilityRole="button"

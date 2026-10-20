@@ -13,6 +13,7 @@ import { Text } from '@/components/ui/text';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useAnnuaire } from '@/lib/data';
 import { fullName, searchable } from '@/lib/format';
+import { useBlockedIds } from '@/lib/moderation';
 import { useTenantConfig } from '@/lib/tenant-config';
 import type { Commercant } from '@/lib/types';
 import { useBandListStyle, useTheme } from '@/theme';
@@ -26,9 +27,11 @@ export default function AnnuaireScreen() {
   const { refreshing, onRefresh } = usePullToRefresh(annuaire.refetch);
 
   const query = searchable(search);
+  const blocked = useBlockedIds();
   const items = (annuaire.data ?? []).filter(
     (m) =>
       (category === 'Tous' || m.categorie === category) &&
+      !(m.user_id && blocked.has(m.user_id)) &&
       (!query ||
         searchable([m.nom_entreprise, m.prenom_contact, m.nom_contact, m.description].filter(Boolean).join(' ')).includes(
           query

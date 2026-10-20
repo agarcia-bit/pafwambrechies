@@ -172,7 +172,9 @@ function AccountForm({
         <Text variant="footnote" tone="primary" onPress={() => openLink(PRIVACY_POLICY_URL)}>
           politique de confidentialité
         </Text>
-        .
+        {' '}et vous vous engagez à respecter les règles de la communauté : aucun contenu offensant, haineux, illégal
+        ou indésirable. Les contenus peuvent être signalés et leurs auteurs bloqués ; le bureau de l’association retire
+        les contenus qui ne respectent pas ces règles.
       </Text>
     </FormScreen>
   );

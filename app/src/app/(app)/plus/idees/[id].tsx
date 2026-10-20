@@ -1,14 +1,17 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useRef } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { CommentCount, CommentsSection, LikeButton } from '@/components/social';
 import { Badge } from '@/components/ui/badge';
+import { Icon } from '@/components/ui/icon';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { LinkedText } from '@/components/ui/linked-text';
 import { Text } from '@/components/ui/text';
 import { useIdee } from '@/lib/data';
 import { formatRelative } from '@/lib/format';
+import { useContentMenu } from '@/lib/moderation';
+import { useMember } from '@/lib/session';
 import { useTheme } from '@/theme';
 
 export default function IdeeScreen() {
@@ -16,6 +19,8 @@ export default function IdeeScreen() {
   const idee = useIdee(Number(id));
   const { colors } = useTheme();
   const scroll = useRef<ScrollView>(null);
+  const openMenu = useContentMenu();
+  const { profile } = useMember();
 
   if (idee.isPending) return <LoadingState />;
   if (idee.isError) return <ErrorState onRetry={idee.refetch} />;
@@ -35,6 +40,15 @@ export default function IdeeScreen() {
         <Text variant="footnote" tone="secondary" style={styles.shrink}>
           {i.prenom || 'Anonyme'} · {formatRelative(i.created_at)}
         </Text>
+        {i.user_id !== profile.id && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Signaler ou bloquer"
+            hitSlop={10}
+            onPress={() => openMenu({ kind: 'idee', targetId: i.id, authorId: i.user_id, authorName: i.prenom })}>
+            <Icon name="flag" size={18} color={colors.textSecondary} />
+          </Pressable>
+        )}
       </View>
       {!!i.titre && (
         <Text variant="title" selectable>
@@ -59,7 +73,7 @@ export default function IdeeScreen() {
 const styles = StyleSheet.create({
   content: { padding: 20, gap: 14, paddingBottom: 40 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  shrink: { flexShrink: 1 },
+  shrink: { flexShrink: 1, flex: 1 },
   actions: { flexDirection: 'row', gap: 24 },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: 4 },
 });
