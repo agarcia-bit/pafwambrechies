@@ -20,6 +20,13 @@ export default function PlusLayout() {
       <Stack.Protected guard={modules.liens}>
         <Stack.Screen name="liens" options={{ title: 'Liens utiles' }} />
       </Stack.Protected>
+      <Stack.Protected guard={modules.offres}>
+        <Stack.Screen name="mes-offres/index" options={{ title: 'Mes offres' }} />
+        <Stack.Screen name="mes-offres/edit" options={{ presentation: 'modal' }} />
+      </Stack.Protected>
+      <Stack.Protected guard={modules.annuaire}>
+        <Stack.Screen name="ma-fiche" options={{ title: 'Ma fiche', presentation: 'modal' }} />
+      </Stack.Protected>
       <Stack.Screen name="compte" options={{ title: 'Mon compte' }} />
       {/* The RLS policies enforce it server-side; this hides the screens from other members. */}
       <Stack.Protected guard={isBureau}>

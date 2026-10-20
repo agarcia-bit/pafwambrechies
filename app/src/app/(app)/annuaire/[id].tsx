@@ -1,8 +1,9 @@
 import { Image } from 'expo-image';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ListRow, ListSection } from '@/components/ui/list';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -10,6 +11,7 @@ import { LinkedText } from '@/components/ui/linked-text';
 import { Text } from '@/components/ui/text';
 import { useAnnuaire } from '@/lib/data';
 import { fullName } from '@/lib/format';
+import { useMember } from '@/lib/session';
 import { useTenantConfig } from '@/lib/tenant-config';
 import { externalUrl, instagramUrl, mapsUrl, openLink, phoneUrl } from '@/lib/links';
 import { useTheme } from '@/theme';
@@ -19,6 +21,7 @@ export default function CommercantScreen() {
   const annuaire = useAnnuaire();
   const { colors } = useTheme();
   const { categories } = useTenantConfig();
+  const { profile } = useMember();
   const m = annuaire.data?.find((item) => item.id === Number(id));
 
   if (annuaire.isPending) return <LoadingState />;
@@ -92,6 +95,9 @@ export default function CommercantScreen() {
             />
           )}
         </ListSection>
+      )}
+      {m.user_id === profile.id && (
+        <Button title="Modifier ma fiche" icon="camera" variant="secondary" onPress={() => router.push('/plus/ma-fiche')} />
       )}
     </ScrollView>
   );
