@@ -40,6 +40,8 @@ export default function ConnexionScreen() {
       <View style={styles.brand}>
         <Image source={require('../../assets/images/icon.png')} style={styles.logo} accessibilityLabel="Logo Allianceo" />
         <View style={styles.wordmark}>
+          {/* Same width as the dot, so that the name itself stays centered. */}
+          <View style={styles.wordmarkSpacer} />
           <Text variant="largeTitle" style={styles.wordmarkText}>
             ALLIANCEO
           </Text>
@@ -103,6 +105,7 @@ const styles = StyleSheet.create({
   // The brand colors of the logo: its teal for the name, its amber for the dot.
   wordmark: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
   wordmarkText: { color: '#0F766E', letterSpacing: 2 },
+  wordmarkSpacer: { width: 10 },
   wordmarkDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#FBBF24', marginBottom: 8 },
   logo: { width: 76, height: 76, borderRadius: 19, marginBottom: 6 },
   center: { textAlign: 'center' },
