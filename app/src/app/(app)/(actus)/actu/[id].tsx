@@ -10,19 +10,20 @@ import { Icon } from '@/components/ui/icon';
 import { LinkedText } from '@/components/ui/linked-text';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
-import { useActu } from '@/lib/data';
+import { useActu, useAuteurs } from '@/lib/data';
 import { formatDayLong } from '@/lib/format';
 import { useTheme } from '@/theme';
-import { mix, tint } from '@/theme/colors';
+import { mix } from '@/theme/colors';
 
 // The post fills the screen: a hero in the category's color (title in white), then the
 // content on a white sheet whose rounded top overlaps the hero.
 export default function ActuScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const actu = useActu(Number(id));
-  const { colors, scheme } = useTheme();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
+  const auteurs = useAuteurs();
   const hue = useCategoryHue(actu.data?.categorie ?? '');
   const heroColor = mix(hue, '#000000', 0.15);
 
@@ -56,6 +57,7 @@ export default function ActuScreen() {
     );
   }
   const a = actu.data;
+  const author = a.auteur_id ? auteurs.get(a.auteur_id) : undefined;
 
   return (
     <View style={styles.flex}>
@@ -68,27 +70,24 @@ export default function ActuScreen() {
         contentContainerStyle={styles.content}>
         <View style={[styles.hero, { backgroundColor: heroColor, paddingTop: insets.top + 8 }]}>
           <Animated.View entering={FadeInDown.delay(150).duration(450)} style={styles.heroMeta}>
-            <Text variant="footnote" style={styles.heroCategory}>
+            <Text variant="footnote" style={styles.heroCategory} numberOfLines={1}>
               {a.categorie.toUpperCase()}
             </Text>
           </Animated.View>
-          <Animated.View entering={FadeInDown.delay(230).duration(500)}>
-            <Text variant="largeTitle" style={styles.heroTitle} selectable>
+          <Animated.View entering={FadeInDown.delay(230).duration(500)} style={styles.heroTitleRow}>
+            <DateTile date={a.date} large />
+            <Text variant="title" style={styles.heroTitle} selectable>
               {a.titre}
+            </Text>
+          </Animated.View>
+          <Animated.View entering={FadeInDown.delay(300).duration(500)}>
+            <Text variant="footnote" style={styles.heroDate}>
+              {formatDayLong(a.date)}
+              {author ? ` · Publié par ${author}` : ''}
             </Text>
           </Animated.View>
         </View>
         <View style={[styles.sheet, { backgroundColor: colors.card }]}>
-          <Animated.View
-            entering={FadeInDown.delay(300).duration(500)}
-            style={[styles.dateRow, { backgroundColor: tint(scheme, hue).background }]}>
-            <View style={styles.dateTile}>
-              <DateTile date={a.date} />
-            </View>
-            <Text variant="subhead" style={[styles.dateText, { color: tint(scheme, hue).color }]}>
-              {formatDayLong(a.date)}
-            </Text>
-          </Animated.View>
           {!!a.image_url && (
             <Animated.View entering={FadeInDown.delay(320).duration(500)}>
               <ActuPhoto uri={a.image_url} radius={16} />
@@ -123,16 +122,9 @@ const styles = StyleSheet.create({
   // Same row as the close button (36 high, 16 from the right).
   heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, marginRight: 52 },
   heroCategory: { color: 'rgba(255,255,255,0.95)', fontWeight: '700', letterSpacing: 0.4 },
-  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 14, alignSelf: 'flex-start' },
-  dateTile: {
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-  },
-  dateText: { fontWeight: '700', paddingRight: 6 },
-  heroTitle: { color: '#FFFFFF', fontWeight: '800' },
+  heroTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  heroDate: { color: 'rgba(255,255,255,0.85)' },
+  heroTitle: { color: '#FFFFFF', fontWeight: '800', flex: 1, fontSize: 26, lineHeight: 32 },
   sheet: { marginTop: -28, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, gap: 14 },
   close: {
     position: 'absolute',

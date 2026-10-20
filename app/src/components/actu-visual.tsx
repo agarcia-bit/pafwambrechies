@@ -40,15 +40,22 @@ export function DateTile({
 }
 
 /** First line of a post: a dot and the category in its color, and the date as a calendar tile on the right. */
-export function PostMeta({ category, date }: { category: string; date?: string }) {
+export function PostMeta({ category, date, author }: { category: string; date?: string; author?: string }) {
   const { scheme } = useTheme();
   const hue = useCategoryHue(category);
   return (
     <View style={[styles.meta, { backgroundColor: tint(scheme, hue).background }]}>
       <View style={[styles.dot, { backgroundColor: hue }]} />
-      <Text variant="footnote" style={[styles.metaCategory, { color: tint(scheme, hue).color }]} numberOfLines={1}>
-        {category.toUpperCase()}
-      </Text>
+      <View style={styles.metaText}>
+        <Text variant="footnote" style={[styles.metaCategory, { color: tint(scheme, hue).color }]} numberOfLines={1}>
+          {category.toUpperCase()}
+        </Text>
+        {!!author && (
+          <Text variant="caption" tone="secondary" numberOfLines={1}>
+            Publié par {author}
+          </Text>
+        )}
+      </View>
       {!!date && (
         <View style={styles.metaTile}>
           <DateTile date={date} />
@@ -158,7 +165,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  metaCategory: { fontWeight: '700', letterSpacing: 0.3, flex: 1 },
+  metaText: { flex: 1 },
+  metaCategory: { fontWeight: '700', letterSpacing: 0.3 },
   tile: {
     width: 36,
     height: 38,
