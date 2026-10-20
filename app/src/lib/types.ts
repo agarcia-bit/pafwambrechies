@@ -76,6 +76,8 @@ export type Commercant = {
   instagram: string | null;
   description: string | null;
   photo_url: string | null;
+  /** Member this entry belongs to, if any. */
+  user_id: string | null;
 };
 
 export type Offre = {
@@ -86,6 +88,11 @@ export type Offre = {
   expiration: string | null;
   tag: string | null;
   categorie: string | null;
+  created_at?: string;
+  /** Member who proposed it (null when created by the bureau or an admin). */
+  user_id?: string | null;
+  /** 'en_attente' until the bureau publishes a member's proposal. */
+  statut?: 'publiee' | 'en_attente';
 };
 
 export type Evenement = {

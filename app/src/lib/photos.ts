@@ -47,10 +47,11 @@ export function photoRatio(url: string): number | null {
 }
 
 /** Uploads to a public photo bucket (admins only) and returns the photo's URL. */
-export async function uploadPhoto(photo: PickedPhoto, bucketName: string): Promise<string> {
+/** Uploads a photo and returns its public URL; `folder` puts it in a sub-folder of the bucket. */
+export async function uploadPhoto(photo: PickedPhoto, bucketName: string, folder?: string): Promise<string> {
   const bytes = Uint8Array.from(atob(photo.base64), (c) => c.charCodeAt(0));
   // The size goes in the name so that screens know the photo's format before loading it.
-  const path = `${Date.now()}-${Math.random().toString(36).slice(2)}-${photo.width}x${photo.height}.jpg`;
+  const path = `${folder ? `${folder}/` : ''}${Date.now()}-${Math.random().toString(36).slice(2)}-${photo.width}x${photo.height}.jpg`;
   const bucket = supabase.storage.from(bucketName);
   const { error } = await bucket.upload(path, bytes.buffer, { contentType: 'image/jpeg' });
   if (error) throw error;

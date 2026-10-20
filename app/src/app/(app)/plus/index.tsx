@@ -41,6 +41,22 @@ export default function PlusScreen() {
         </ListSection>
       )}
       <ListSection>
+        {modules.annuaire && (
+          <ListRow
+            icon="people"
+            title="Ma fiche annuaire"
+            subtitle="Photo, coordonnées, description"
+            onPress={() => router.push('/plus/ma-fiche')}
+          />
+        )}
+        {modules.offres && (
+          <ListRow
+            icon="tag"
+            title="Mes offres"
+            subtitle="Proposer une offre aux adhérents"
+            onPress={() => router.push('/plus/mes-offres')}
+          />
+        )}
         <ListRow
           icon="person"
           title="Mon compte"

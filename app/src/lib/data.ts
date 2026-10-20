@@ -238,18 +238,54 @@ export function useAnnuaire() {
   });
 }
 
+/**
+ * The signed-in member's own directory entry (null when they have none yet). An entry created
+ * before the member signed up, with their e-mail, is claimed for them on the way.
+ */
+export function useMyFiche() {
+  const { profile } = useMember();
+  return useQuery({
+    queryKey: ['ma-fiche', profile.id],
+    queryFn: async () => {
+      const own = await supabase.from('annuaire').select('*').eq('user_id', profile.id).maybeSingle();
+      if (own.error) throw own.error;
+      if (own.data) return own.data as Commercant;
+      const { data: claimed } = await supabase.rpc('claim_ma_fiche');
+      if (!claimed) return null;
+      return unwrap<Commercant | null>(await supabase.from('annuaire').select('*').eq('id', claimed).maybeSingle());
+    },
+    retry: false,
+  });
+}
+
+/** The offers the signed-in member proposed, pending or published (newest first). */
+export function useMyOffres() {
+  const { profile } = useMember();
+  return useQuery({
+    queryKey: ['mes-offres', profile.id],
+    queryFn: async () =>
+      unwrap<Offre[]>(
+        await supabase.from('offres').select('*').eq('user_id', profile.id).order('created_at', { ascending: false })
+      ),
+    retry: false,
+  });
+}
+
 /** Offers still valid today (or without an end date), ending soonest first. */
 export function useOffres() {
   return useQuery({
     queryKey: ['offres'],
     queryFn: async () =>
-      unwrap<Offre[]>(
-        await supabase
-          .from('offres')
-          .select('*')
-          .or(`expiration.gte.${todayISO()},expiration.is.null`)
-          .order('expiration', { ascending: true, nullsFirst: false })
-      ),
+      // A member's own pending proposals are not public offers: they live in "Mes offres".
+      (
+        unwrap<Offre[]>(
+          await supabase
+            .from('offres')
+            .select('*')
+            .or(`expiration.gte.${todayISO()},expiration.is.null`)
+            .order('expiration', { ascending: true, nullsFirst: false })
+        )
+      ).filter((o) => o.statut !== 'en_attente'),
   });
 }
 

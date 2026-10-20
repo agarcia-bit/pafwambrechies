@@ -23,7 +23,15 @@ export function FieldView({ field, value, onChange }: { field: Field; value: str
   const label = field.required ? `${field.label} *` : field.label;
   switch (field.type) {
     case 'choice':
-      return <ChoiceField label={label} options={field.options ?? []} value={value} onChange={onChange} />;
+      return (
+        <ChoiceField
+          label={label}
+          options={field.options ?? []}
+          value={value}
+          onChange={onChange}
+          format={field.labels ? (option) => field.labels![option] ?? option : undefined}
+        />
+      );
     case 'date':
       return <DateField label={label} value={value} optional={!field.required} onChange={onChange} />;
     case 'time':

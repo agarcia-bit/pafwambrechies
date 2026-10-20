@@ -38,7 +38,19 @@ function ExistingItem({ collection: c, id }: { collection: Collection; id: numbe
   return <EmptyState title="Élément introuvable" message="Il a peut-être été supprimé." />;
 }
 
-function EditForm({ collection: c, row }: { collection: Collection; row?: Row }) {
+/**
+ * The form of a collection item. `own` is for a member editing their own directory entry:
+ * their photos go in their own folder, a new entry is theirs, and it cannot be deleted.
+ */
+export function EditForm({
+  collection: c,
+  row,
+  own,
+}: {
+  collection: Collection;
+  row?: Row;
+  own?: { memberId: string; title: string; hideFields?: string[]; canDelete?: boolean; submitLabel?: string };
+}) {
   const save = useSaveItem(c);
   const remove = useDeleteItem(c);
   const [values, setValues] = useState<FormValues>(() => (row ? c.toValues(row) : c.defaults()));
@@ -72,7 +84,13 @@ function EditForm({ collection: c, row }: { collection: Collection; row?: Row })
     }
     setError(null);
     save.mutate(
-      { id: row?.id, values, photo },
+      {
+        id: row?.id,
+        values,
+        photo,
+        extra: own ? { user_id: own.memberId } : undefined,
+        photoFolder: own?.memberId,
+      },
       { onSuccess: () => router.back(), onError: (e) => setError(adminErrorMessage(e)) }
     );
   }
@@ -92,12 +110,12 @@ function EditForm({ collection: c, row }: { collection: Collection; row?: Row })
     <>
       <Stack.Screen
         options={{
-          title: row ? c.editTitle : c.newTitle,
+          title: own ? own.title : row ? c.editTitle : c.newTitle,
           headerLeft: () => <HeaderButton title="Annuler" onPress={() => router.back()} />,
         }}
       />
       <FormScreen>
-        {c.fields.map((field) =>
+        {c.fields.filter((f) => !own?.hideFields?.includes(f.key)).map((field) =>
           field.type === 'photo' ? (
             <PhotoField
               key={field.key}
@@ -126,8 +144,8 @@ function EditForm({ collection: c, row }: { collection: Collection; row?: Row })
           </Text>
         )}
         {error && <Text tone="danger">{error}</Text>}
-        <Button title={row ? 'Enregistrer' : c.addLabel} onPress={submit} loading={save.isPending} />
-        {row && <Button title="Supprimer" variant="destructive" onPress={destroy} loading={remove.isPending} />}
+        <Button title={row ? 'Enregistrer' : (own?.submitLabel ?? c.addLabel)} onPress={submit} loading={save.isPending} />
+        {row && (!own || own.canDelete) && <Button title="Supprimer" variant="destructive" onPress={destroy} loading={remove.isPending} />}
       </FormScreen>
     </>
   );

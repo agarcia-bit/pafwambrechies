@@ -21,6 +21,8 @@ export type Field = {
   required?: boolean;
   placeholder?: string;
   options?: readonly string[];
+  /** Display names of the options when they differ from the stored values. */
+  labels?: Record<string, string>;
 };
 
 /** Form state: every field as a string, '' when empty. */
@@ -116,7 +118,7 @@ const offres: Collection = {
   editTitle: 'Modifier l’offre',
   addLabel: 'Ajouter une offre',
   empty: 'Aucune offre.',
-  memberQueries: ['offres'],
+  memberQueries: ['offres', 'mes-offres'],
   // No end date first, then the latest; expired offers end up at the bottom.
   order: [{ column: 'expiration', ascending: false, nullsFirst: true }],
   fields: [
@@ -126,8 +128,15 @@ const offres: Collection = {
     { key: 'expiration', label: 'Date limite', type: 'date' },
     { key: 'tag', label: 'Étiquette', type: 'text', placeholder: '-10 %, Offert…' },
     { key: 'categorie', label: 'Catégorie', type: 'choice', required: true, options: [] },
+    {
+      key: 'statut',
+      label: 'Statut',
+      type: 'choice',
+      options: ['publiee', 'en_attente'],
+      labels: { publiee: 'Publiée', en_attente: 'En attente de validation' },
+    },
   ],
-  defaults: () => ({ commercant: '', titre: '', description: '', expiration: '', tag: '', categorie: DEFAULT_CATEGORY }),
+  defaults: () => ({ commercant: '', titre: '', description: '', expiration: '', tag: '', categorie: DEFAULT_CATEGORY, statut: 'publiee' }),
   toValues: (r) => ({
     commercant: str(r.commercant),
     titre: str(r.titre),
@@ -135,8 +144,10 @@ const offres: Collection = {
     expiration: str(r.expiration),
     tag: str(r.tag),
     categorie: str(r.categorie) || DEFAULT_CATEGORY,
+    statut: str(r.statut),
   }),
   toPayload: (v) => ({
+    ...(v.statut ? { statut: v.statut } : {}),
     commercant: v.commercant.trim(),
     titre: v.titre.trim(),
     description: orNull(v.description),
@@ -147,7 +158,7 @@ const offres: Collection = {
   describe: (r) => ({
     title: str(r.titre),
     subtitle: [str(r.commercant), r.expiration ? `jusqu’au ${formatDay(str(r.expiration))}` : 'sans date limite'].join(' · '),
-    flag: r.expiration && str(r.expiration) < todayISO() ? 'Expirée' : undefined,
+    flag: r.statut === 'en_attente' ? 'À valider' : r.expiration && str(r.expiration) < todayISO() ? 'Expirée' : undefined,
   }),
 };
 
@@ -205,7 +216,7 @@ const annuaire: Collection = {
   editTitle: 'Modifier la fiche',
   addLabel: 'Ajouter une fiche',
   empty: 'Aucune fiche.',
-  memberQueries: ['annuaire'],
+  memberQueries: ['annuaire', 'ma-fiche'],
   order: [{ column: 'nom_entreprise', ascending: true }],
   photo: { key: 'photo_url', bucket: 'annuaire-photos', width: 800, crop: true },
   fields: [
@@ -337,15 +348,28 @@ export function useSaveItem(c: Collection) {
   const { profile } = useMember();
   const refresh = useRefresh([['admin', c.key], ...c.memberQueries.map((k) => [k])]);
   return useMutation({
-    mutationFn: async ({ id, values, photo }: { id?: number; values: FormValues; photo?: PickedPhoto | null }) => {
+    mutationFn: async ({
+      id,
+      values,
+      photo,
+      extra,
+      photoFolder,
+    }: {
+      id?: number;
+      values: FormValues;
+      photo?: PickedPhoto | null;
+      /** Added to the row on creation (e.g. the owner of a member's own entry). */
+      extra?: Record<string, unknown>;
+      photoFolder?: string;
+    }) => {
       const payload = c.toPayload(values);
-      if (photo && c.photo) payload[c.photo.key] = await uploadPhoto(photo, c.photo.bucket);
+      if (photo && c.photo) payload[c.photo.key] = await uploadPhoto(photo, c.photo.bucket, photoFolder);
       if (id) {
         const { data, error } = await supabase.from(c.key).update(payload).eq('id', id).select('id');
         if (error) throw error;
         if (!data.length) throw new NotAllowedError();
       } else {
-        const { error } = await supabase.from(c.key).insert({ ...payload, tenant_id: profile.tenant_id });
+        const { error } = await supabase.from(c.key).insert({ ...payload, ...extra, tenant_id: profile.tenant_id });
         if (error) throw error;
       }
     },
