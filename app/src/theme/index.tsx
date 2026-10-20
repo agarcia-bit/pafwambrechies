@@ -1,6 +1,7 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { createContext, use, type PropsWithChildren } from 'react';
 import { useColorScheme } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { makePalette, type Palette, type Scheme } from '@/theme/colors';
 
@@ -65,4 +66,11 @@ export function useBrandHeader() {
     headerLargeTitleStyle: { color: '#FFFFFF' },
     headerShadowVisible: false,
   };
+}
+
+/** Style for a screen whose list starts with a BrandBand: the list reaches up under the status bar. */
+export function useBandListStyle() {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  return { backgroundColor: colors.background, marginTop: -insets.top };
 }

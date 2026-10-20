@@ -11,7 +11,7 @@ export default function PlusLayout() {
   const { modules } = useTenantConfig();
   return (
     <Stack screenOptions={header}>
-      <Stack.Screen name="index" options={{ title: 'Plus', headerLargeTitleEnabled: true }} />
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Protected guard={modules.idees}>
         <Stack.Screen name="idees/index" options={{ title: 'Boîte à idées', headerLargeTitleEnabled: true }} />
         <Stack.Screen name="idees/[id]" options={{ title: '' }} />

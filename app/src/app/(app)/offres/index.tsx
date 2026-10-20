@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
+import { BrandBand } from '@/components/brand-band';
 import { OfferTag } from '@/components/offer-tag';
 import { PressableCard } from '@/components/ui/card';
 import { ChipBar } from '@/components/ui/chip-bar';
@@ -12,27 +13,32 @@ import { useOffres } from '@/lib/data';
 import { offerValidity } from '@/lib/format';
 import { useTenantConfig } from '@/lib/tenant-config';
 import type { Offre } from '@/lib/types';
+import { useBandListStyle } from '@/theme';
 
 export default function OffresScreen() {
   const offres = useOffres();
-  const { categories } = useTenantConfig();
+  const { categories, labels } = useTenantConfig();
+  const bandStyle = useBandListStyle();
   const [category, setCategory] = useState('Tous');
   const { refreshing, onRefresh } = usePullToRefresh(offres.refetch);
   const items = (offres.data ?? []).filter((o) => category === 'Tous' || o.categorie === category);
 
   return (
     <FlatList
+      style={bandStyle}
       data={items}
       keyExtractor={(o) => String(o.id)}
       renderItem={({ item }) => <OffreCard offre={item} />}
-      contentInsetAdjustmentBehavior="automatic"
+      contentInsetAdjustmentBehavior="never"
       contentContainerStyle={styles.content}
       ItemSeparatorComponent={Gap}
       ListHeaderComponent={
         <View style={styles.header}>
-          {categories.offres.length > 0 && (
-            <ChipBar onBand options={['Tous', ...categories.offres]} value={category} onChange={setCategory} />
-          )}
+          <BrandBand title={labels.offres}>
+            {categories.offres.length > 0 && (
+              <ChipBar onBand options={['Tous', ...categories.offres]} value={category} onChange={setCategory} />
+            )}
+          </BrandBand>
           <Text tone="secondary" style={styles.intro}>
             Les bons plans réservés aux adhérents.
           </Text>

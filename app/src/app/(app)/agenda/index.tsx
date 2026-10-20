@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { RefreshControl, SectionList, StyleSheet, View } from 'react-native';
 
+import { BrandBand } from '@/components/brand-band';
 import { PressableCard } from '@/components/ui/card';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
@@ -8,7 +9,7 @@ import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useEvenements } from '@/lib/data';
 import { dayParts, monthLabel } from '@/lib/format';
 import type { Evenement } from '@/lib/types';
-import { useTheme } from '@/theme';
+import { useBandListStyle, useTheme } from '@/theme';
 
 function byMonth(events: Evenement[]): { title: string; data: Evenement[] }[] {
   const sections: { title: string; data: Evenement[] }[] = [];
@@ -23,10 +24,13 @@ function byMonth(events: Evenement[]): { title: string; data: Evenement[] }[] {
 
 export default function AgendaScreen() {
   const events = useEvenements();
+  const bandStyle = useBandListStyle();
   const { refreshing, onRefresh } = usePullToRefresh(events.refetch);
 
   return (
     <SectionList
+      style={bandStyle}
+      ListHeaderComponent={<BrandBand title="Agenda" />}
       sections={byMonth(events.data ?? [])}
       keyExtractor={(ev) => String(ev.id)}
       renderItem={({ item }) => <EventRow event={item} />}
@@ -36,7 +40,7 @@ export default function AgendaScreen() {
         </Text>
       )}
       stickySectionHeadersEnabled={false}
-      contentInsetAdjustmentBehavior="automatic"
+      contentInsetAdjustmentBehavior="never"
       contentContainerStyle={styles.content}
       ItemSeparatorComponent={Gap}
       ListEmptyComponent={
@@ -87,7 +91,7 @@ function Gap() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingTop: 8, paddingBottom: 32 },
+  content: { paddingTop: 0, paddingBottom: 32 },
   sectionTitle: { marginHorizontal: 20, marginTop: 16, marginBottom: 8 },
   row: { marginHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12 },
   date: { width: 56, height: 60, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
