@@ -46,6 +46,8 @@ export type Actu = {
   excerpt: string | null;
   contenu: string | null;
   image_url: string | null;
+  /** Day of the event the actu announces (not its publication day), if any. */
+  date_evenement: string | null;
   /** Bureau member or admin who published it (null for older posts). */
   auteur_id: string | null;
   actus_likes: Count;

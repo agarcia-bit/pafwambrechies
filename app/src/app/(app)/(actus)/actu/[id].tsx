@@ -4,7 +4,7 @@ import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleS
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ActuPhoto, useCategoryHue } from '@/components/actu-visual';
+import { ActuPhoto, DateTile, useCategoryHue } from '@/components/actu-visual';
 import { CommentComposer, CommentCount, CommentsSection, LikeButton } from '@/components/social';
 import { Icon } from '@/components/ui/icon';
 import { LinkedText } from '@/components/ui/linked-text';
@@ -83,11 +83,17 @@ export default function ActuScreen() {
             </Text>
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(230).duration(500)} style={styles.heroTitleRow}>
+            {!!a.date_evenement && <DateTile date={a.date_evenement} large />}
             <Text variant="title" style={styles.heroTitle} selectable>
               {a.titre}
             </Text>
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(300).duration(500)}>
+            {!!a.date_evenement && (
+              <Text variant="subhead" style={styles.heroEventDate}>
+                Événement le {formatDayLong(a.date_evenement).toLowerCase()}
+              </Text>
+            )}
             <Text variant="footnote" style={styles.heroDate}>
               Publié le {formatDayLong(a.date).toLowerCase()}
               {author ? ` par ${author}` : ''}
@@ -143,6 +149,7 @@ const styles = StyleSheet.create({
   heroCategory: { color: 'rgba(255,255,255,0.95)', fontWeight: '700', letterSpacing: 0.4 },
   heroTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   heroDate: { color: 'rgba(255,255,255,0.85)' },
+  heroEventDate: { color: '#FFFFFF', fontWeight: '700', marginBottom: 2 },
   heroTitle: { color: '#FFFFFF', fontWeight: '800', flex: 1, fontSize: 26, lineHeight: 32 },
   sheet: { marginTop: -28, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', flexGrow: 1 },
   article: { padding: 20, gap: 14 },

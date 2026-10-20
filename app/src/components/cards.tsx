@@ -33,7 +33,7 @@ export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
         style={styles.postCard}
         accessibilityLabel={actu.titre}
         onPress={() => router.push({ pathname: '/actu/[id]', params: { id: String(actu.id) } })}>
-        <PostMeta category={actu.categorie} date={actu.date} />
+        <PostMeta category={actu.categorie} date={actu.date} eventDate={actu.date_evenement} />
         <View style={styles.postBody}>
           {text}
           {!!actu.image_url && <ActuPhoto uri={actu.image_url} radius={12} minRatio={1.78} />}
