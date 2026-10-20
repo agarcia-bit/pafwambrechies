@@ -51,7 +51,7 @@ export function AppThemeProvider({
 /** Tints a part of a screen with another association's color (signup preview). */
 export function BrandScope({ color, banner, children }: PropsWithChildren<{ color?: string | null; banner?: string | null }>) {
   const scheme = useScheme();
-  return <ThemeContext value={{ colors: makePalette(scheme, color), scheme }}>{children}</ThemeContext>;
+  return <ThemeContext value={{ colors: makePalette(scheme, color, banner), scheme }}>{children}</ThemeContext>;
 }
 
 /** Header options giving every screen the association's colored band with white titles. */
