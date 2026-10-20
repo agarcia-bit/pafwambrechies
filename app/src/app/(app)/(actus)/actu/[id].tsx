@@ -4,14 +4,14 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ActuPhoto, useCategoryHue } from '@/components/actu-visual';
+import { ActuPhoto, DateTile, useCategoryHue } from '@/components/actu-visual';
 import { CommentCount, CommentsSection, LikeButton } from '@/components/social';
 import { Icon } from '@/components/ui/icon';
 import { LinkedText } from '@/components/ui/linked-text';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { useActu } from '@/lib/data';
-import { formatDay } from '@/lib/format';
+import { formatDayLong } from '@/lib/format';
 import { useTheme } from '@/theme';
 import { mix } from '@/theme/colors';
 
@@ -71,13 +71,16 @@ export default function ActuScreen() {
             <Text variant="footnote" style={styles.heroCategory}>
               {a.categorie.toUpperCase()}
             </Text>
-            <Text variant="footnote" style={styles.heroDate}>
-              · {formatDay(a.date)}
-            </Text>
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(230).duration(500)}>
             <Text variant="largeTitle" style={styles.heroTitle} selectable>
               {a.titre}
+            </Text>
+          </Animated.View>
+          <Animated.View entering={FadeInDown.delay(300).duration(500)} style={styles.heroDateRow}>
+            <DateTile date={a.date} large />
+            <Text variant="headline" style={styles.heroDateText}>
+              {formatDayLong(a.date)}
             </Text>
           </Animated.View>
         </View>
@@ -116,7 +119,8 @@ const styles = StyleSheet.create({
   // Same row as the close button (36 high, 16 from the right).
   heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, marginRight: 52 },
   heroCategory: { color: 'rgba(255,255,255,0.95)', fontWeight: '700', letterSpacing: 0.4 },
-  heroDate: { color: 'rgba(255,255,255,0.8)' },
+  heroDateRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 6 },
+  heroDateText: { color: 'rgba(255,255,255,0.92)', fontWeight: '600' },
   heroTitle: { color: '#FFFFFF', fontWeight: '800' },
   sheet: { marginTop: -28, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, gap: 14 },
   close: {
