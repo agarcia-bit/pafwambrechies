@@ -128,7 +128,13 @@ export function Rise({ order = 0, children }: { order?: number; children: ReactN
 /** Grey rounded card holding rows of details. */
 export function DetailCard({ children }: { children: ReactNode }) {
   const { colors } = useTheme();
-  return <View style={[styles.details, { backgroundColor: colors.background }]}>{children}</View>;
+  const centered = use(CenteredContext);
+  // Centered: the rows keep their left alignment (the icons line up), the block sits in the middle.
+  return (
+    <View style={[styles.details, { backgroundColor: colors.background }]}>
+      {centered ? <View style={styles.detailsBlock}>{children}</View> : children}
+    </View>
+  );
 }
 
 export function DetailRow({
@@ -150,11 +156,9 @@ export function DetailRow({
         <Icon name={icon} size={18} />
       </View>
       <View style={centered ? styles.detailTextCentered : styles.flex}>
-        <Text variant="headline" style={centered && styles.centeredTitle}>
-          {text}
-        </Text>
+        <Text variant="headline">{text}</Text>
         {!!hint && (
-          <Text variant="footnote" tone="primary" style={[styles.hint, centered && styles.centeredTitle]}>
+          <Text variant="footnote" tone="primary" style={styles.hint}>
             {hint} ›
           </Text>
         )}
@@ -166,11 +170,11 @@ export function DetailRow({
       accessibilityRole="button"
       accessibilityLabel={hint ? `${text}, ${hint}` : text}
       onPress={onPress}
-      style={[styles.detail, centered && styles.detailCentered]}>
+      style={styles.detail}>
       {content}
     </Pressable>
   ) : (
-    <View style={[styles.detail, centered && styles.detailCentered]}>{content}</View>
+    <View style={styles.detail}>{content}</View>
   );
 }
 
@@ -183,8 +187,8 @@ const styles = StyleSheet.create({
   centeredColumn: { flexDirection: 'column', alignItems: 'center', gap: 18 },
   centeredText: { alignSelf: 'stretch' },
   centeredTitle: { textAlign: 'center' },
-  detailCentered: { justifyContent: 'center' },
   detailTextCentered: { flexShrink: 1 },
+  detailsBlock: { alignSelf: 'center', maxWidth: '100%' },
   heroLabel: { color: 'rgba(255,255,255,0.95)', fontWeight: '700', letterSpacing: 0.4 },
   heroTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   heroTitle: { color: '#FFFFFF', fontWeight: '800', fontSize: 26, lineHeight: 32 },
