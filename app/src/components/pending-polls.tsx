@@ -30,6 +30,11 @@ export function PendingPolls() {
                 </Text>
               </View>
               <Text variant="headline">{poll.question}</Text>
+              {!!poll.date_limite && (
+                <Text variant="footnote" tone="secondary">
+                  À répondre avant le {formatDay(poll.date_limite)}.
+                </Text>
+              )}
               {at != null && (
                 <Text variant="footnote" tone="secondary">
                   Il redeviendra obligatoire le {formatDay(isoDay(new Date(at + POSTPONE_MS)))}.

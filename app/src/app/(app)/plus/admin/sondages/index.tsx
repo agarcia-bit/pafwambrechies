@@ -8,7 +8,7 @@ import { Icon } from '@/components/ui/icon';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
-import { formatRelative, plural } from '@/lib/format';
+import { daysUntil, formatDayShort, formatRelative, plural } from '@/lib/format';
 import { useAdminSondages, type AdminSondage } from '@/lib/sondages';
 import { useTheme } from '@/theme';
 
@@ -71,6 +71,9 @@ function SondageRow({ sondage, memberCount }: { sondage: AdminSondage; memberCou
         <View style={styles.badges}>
           {sondage.obligatoire && <Badge label="Obligatoire" />}
           {!sondage.actif && <Badge label="Clôturé" />}
+          {!!sondage.date_limite && (
+            <Badge label={daysUntil(sondage.date_limite) < 0 ? `Terminé le ${formatDayShort(sondage.date_limite)}` : `Jusqu’au ${formatDayShort(sondage.date_limite)}`} />
+          )}
         </View>
       </View>
       <Icon name="chevron" size={14} color={colors.textSecondary} />

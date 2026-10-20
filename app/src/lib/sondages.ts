@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { NotAllowedError } from '@/lib/admin';
+import { daysUntil } from '@/lib/format';
 import { useMember } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
 
@@ -17,6 +18,8 @@ export type Sondage = {
   actif: boolean;
   /** Required: cannot be postponed, the app stays covered until it is answered. */
   obligatoire: boolean;
+  /** Last day to answer (YYYY-MM-DD), or null. */
+  date_limite: string | null;
   created_at: string;
   sondage_options: SondageOption[];
 };
@@ -34,7 +37,7 @@ export function usePendingSondages() {
       const { data, error } = await supabase
         .from('sondages')
         .select(
-          'id, question, actif, obligatoire, created_at, sondage_options(id, libelle, position), mes_reponses:sondage_reponses(option_id)'
+          'id, question, actif, obligatoire, date_limite, created_at, sondage_options(id, libelle, position), mes_reponses:sondage_reponses(option_id)'
         )
         .eq('actif', true)
         // Admins can read every answer: keep only the member's own.
@@ -42,7 +45,10 @@ export function usePendingSondages() {
         .order('created_at', { ascending: false })
         .order('position', { referencedTable: 'sondage_options' });
       if (error) throw error;
-      return (data as MemberSondage[]).filter((s) => s.mes_reponses.length === 0);
+      // A poll past its deadline can no longer be answered: it leaves the feed.
+      return (data as MemberSondage[]).filter(
+        (s) => s.mes_reponses.length === 0 && (!s.date_limite || daysUntil(s.date_limite) >= 0)
+      );
     },
     // The feed must not break (nor keep retrying) if polls are unavailable.
     retry: false,
@@ -78,7 +84,7 @@ export function useAdminSondages() {
         supabase
           .from('sondages')
           .select(
-            'id, question, actif, obligatoire, created_at, sondage_options(id, libelle, position), sondage_reponses(option_id, user_id, created_at)'
+            'id, question, actif, obligatoire, date_limite, created_at, sondage_options(id, libelle, position), sondage_reponses(option_id, user_id, created_at)'
           )
           .order('created_at', { ascending: false })
           .order('position', { referencedTable: 'sondage_options' }),
@@ -100,11 +106,22 @@ export function useRefreshSondages() {
 export function useCreateSondage() {
   const refresh = useRefreshSondages();
   return useMutation({
-    mutationFn: async ({ question, options, obligatoire }: { question: string; options: string[]; obligatoire: boolean }) => {
+    mutationFn: async ({
+      question,
+      options,
+      obligatoire,
+      dateLimite,
+    }: {
+      question: string;
+      options: string[];
+      obligatoire: boolean;
+      dateLimite: string | null;
+    }) => {
       const { error } = await supabase.rpc('creer_sondage', {
         p_question: question,
         p_options: options,
         p_obligatoire: obligatoire,
+        p_date_limite: dateLimite,
       });
       if (error) throw error;
     },

@@ -91,7 +91,7 @@ export function ChoiceField({
 // Dates are "YYYY-MM-DD" and times "HH:MM" strings. The native pickers have no
 // web version: the web preview gets plain text inputs.
 
-function DateField({
+export function DateField({
   label,
   value,
   optional,

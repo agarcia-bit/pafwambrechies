@@ -25,6 +25,12 @@ export function todayISO(): string {
   return isoDay(new Date());
 }
 
+/** Whole calendar days from today to a "YYYY-MM-DD" day (negative when it is past). */
+export function daysUntil(iso: string): number {
+  const today = parseDay(todayISO());
+  return Math.round((parseDay(iso).getTime() - today.getTime()) / 86_400_000);
+}
+
 /** "HH:MM" of a Date. */
 export function hourMinute(date: Date): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
