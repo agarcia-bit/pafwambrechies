@@ -3,6 +3,7 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { LaunchReveal } from '@/components/launch-reveal';
 import { NotificationObserver } from '@/components/notification-observer';
 import { PollGate } from '@/components/poll-gate';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ export default function AppLayout() {
     <>
       <NotificationObserver />
       <StatusBar style="light" />
+      <LaunchReveal />
       <PollGate />
       <NativeTabs tintColor={colors.primary}>
         <NativeTabs.Trigger name="(actus)">
