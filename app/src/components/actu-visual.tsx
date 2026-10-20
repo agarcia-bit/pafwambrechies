@@ -40,7 +40,18 @@ export function DateTile({
 }
 
 /** First line of a post: a dot and the category in its color, and the date as a calendar tile on the right. */
-export function PostMeta({ category, date, author }: { category: string; date?: string; author?: string }) {
+export function PostMeta({
+  category,
+  date,
+  eventDate,
+  author,
+}: {
+  category: string;
+  date?: string;
+  /** Day of the event announced: shown as a calendar tile instead of the publication day. */
+  eventDate?: string | null;
+  author?: string;
+}) {
   const { scheme } = useTheme();
   const hue = useCategoryHue(category);
   return (
@@ -56,10 +67,16 @@ export function PostMeta({ category, date, author }: { category: string; date?: 
           </Text>
         )}
       </View>
-      {!!date && (
-        <Text variant="footnote" tone="secondary" style={styles.metaDate}>
-          Publié le {formatDayShort(date)}
-        </Text>
+      {eventDate ? (
+        <View style={styles.metaTile} accessible accessibilityLabel={`Événement le ${formatDay(eventDate)}`}>
+          <DateTile date={eventDate} />
+        </View>
+      ) : (
+        !!date && (
+          <Text variant="footnote" tone="secondary" style={styles.metaDate}>
+            Publié le {formatDayShort(date)}
+          </Text>
+        )
       )}
     </View>
   );
@@ -157,6 +174,14 @@ export function ActuThumb({ uri, size = 104, radius = 14 }: { uri: string; size?
 const styles = StyleSheet.create({
   meta: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10 },
   metaDate: { fontWeight: '600' },
+  metaTile: {
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
   dot: { width: 8, height: 8, borderRadius: 4 },
   metaText: { flex: 1 },
   metaCategory: { fontWeight: '700', letterSpacing: 0.3 },

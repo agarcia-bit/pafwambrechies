@@ -77,14 +77,16 @@ const actus: Collection = {
   fields: [
     { key: 'titre', label: 'Titre', type: 'text', required: true },
     { key: 'categorie', label: 'Catégorie', type: 'choice', required: true, options: ACTU_CATEGORIES.slice(1) },
+    { key: 'date_evenement', label: 'Date de l’événement (facultatif)', type: 'date' },
     { key: 'contenu', label: 'Contenu', type: 'multiline' },
     { key: 'image_url', label: 'Photo', type: 'photo' },
   ],
   photo: { key: 'image_url', bucket: 'actus-photos', width: 1200, crop: false },
-  defaults: () => ({ titre: '', categorie: 'Actu Asso', contenu: '', date: todayISO(), image_url: '' }),
+  defaults: () => ({ titre: '', categorie: 'Actu Asso', date_evenement: '', contenu: '', date: todayISO(), image_url: '' }),
   toValues: (r) => ({
     titre: str(r.titre),
     categorie: str(r.categorie),
+    date_evenement: str(r.date_evenement),
     contenu: str(r.contenu),
     date: str(r.date),
     image_url: str(r.image_url),
@@ -93,6 +95,7 @@ const actus: Collection = {
   toPayload: (v) => ({
     titre: v.titre.trim(),
     categorie: v.categorie,
+    date_evenement: orNull(v.date_evenement),
     contenu: orNull(v.contenu),
     date: v.date || todayISO(),
     image_url: orNull(v.image_url),
