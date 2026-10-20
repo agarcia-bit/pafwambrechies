@@ -40,7 +40,7 @@ export function DateTile({
 }
 
 /** First line of a post: a dot and the category in its color, and the date as a calendar tile on the right. */
-export function PostMeta({ category, date }: { category: string; date: string }) {
+export function PostMeta({ category, date }: { category: string; date?: string }) {
   const { scheme } = useTheme();
   const hue = useCategoryHue(category);
   return (
@@ -49,7 +49,7 @@ export function PostMeta({ category, date }: { category: string; date: string })
       <Text variant="footnote" style={[styles.metaCategory, { color: tint(scheme, hue).color }]} numberOfLines={1}>
         {category.toUpperCase()}
       </Text>
-      <DateTile date={date} onCard />
+      {!!date && <DateTile date={date} onCard />}
     </View>
   );
 }
