@@ -12,7 +12,7 @@ import { Text } from '@/components/ui/text';
 import { addToCalendar } from '@/lib/calendar';
 import { ACTU_HUES } from '@/lib/categories';
 import { useEvenements } from '@/lib/data';
-import { formatDayLong } from '@/lib/format';
+import { formatDayLong, venue } from '@/lib/format';
 import { mapsUrl, openLink } from '@/lib/links';
 import { useTheme } from '@/theme';
 import { mix } from '@/theme/colors';
@@ -73,12 +73,12 @@ export default function EvenementScreen() {
           <Animated.View entering={FadeInDown.delay(320).duration(500)} style={[styles.details, { backgroundColor: colors.background }]}>
             <Detail icon="calendar" text={formatDayLong(ev.date)} />
             {!!ev.heure && <Detail icon="clock" text={ev.heure} />}
-            {!!ev.lieu && (
+            {!!venue(ev.lieu) && (
               <Detail
                 icon="location"
-                text={ev.lieu}
+                text={venue(ev.lieu)!}
                 hint="Itinéraire"
-                onPress={() => openLink(mapsUrl(ev.lieu!), { inApp: false })}
+                onPress={() => openLink(mapsUrl(venue(ev.lieu)!), { inApp: false })}
               />
             )}
           </Animated.View>

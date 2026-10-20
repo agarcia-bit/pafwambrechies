@@ -107,3 +107,11 @@ export function searchable(text: string): string {
 export function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
   return `${count} ${count > 1 ? pluralForm : singular}`;
 }
+
+/** The venue of an event, or null when it is empty or a placeholder such as "A définir". */
+export function venue(lieu: string | null | undefined): string | null {
+  const text = lieu?.trim();
+  if (!text) return null;
+  const plain = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return /^(a|to be)?\s*(definir|determiner|preciser|confirmer|tbd)\b/.test(plain) ? null : text;
+}

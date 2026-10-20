@@ -8,7 +8,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useEvenements } from '@/lib/data';
-import { dayParts, monthLabel } from '@/lib/format';
+import { dayParts, monthLabel, venue } from '@/lib/format';
 import type { Evenement } from '@/lib/types';
 import { useBandListStyle, useTheme } from '@/theme';
 
@@ -61,7 +61,7 @@ export default function AgendaScreen() {
 function EventRow({ event: ev }: { event: Evenement }) {
   const { colors } = useTheme();
   const { day, month } = dayParts(ev.date);
-  const details = [ev.heure, ev.lieu].filter(Boolean).join(' · ');
+  const details = [ev.heure, venue(ev.lieu)].filter(Boolean).join(' · ');
   return (
     <PressableCard
       style={styles.row}
