@@ -114,11 +114,13 @@ export function CommentComposer({
         style={[styles.input, { color: colors.text }]}
       />
       <Pressable accessibilityRole="button" accessibilityLabel="Envoyer" disabled={!canSend} onPress={send} hitSlop={8}>
-        {add.isPending ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : (
-          <Icon name="send" size={30} color={canSend ? colors.primary : colors.separator} />
-        )}
+        <View style={styles.sendSlot}>
+          {add.isPending ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : (
+            <Icon name="send" size={30} color={canSend ? colors.primary : colors.separator} />
+          )}
+        </View>
       </Pressable>
     </View>
   );
@@ -153,27 +155,28 @@ export function CommentsSection({
         <ActivityIndicator color={colors.textSecondary} />
       ) : comments.data?.length ? (
         comments.data.map((c) => (
-          <View key={c.id} style={styles.comment}>
-            <Avatar name={c.prenom} size={32} round />
+          <View key={c.id} style={[styles.comment, { backgroundColor: colors.card }]}>
+            <Avatar name={c.prenom} size={36} round />
             <View style={styles.commentBody}>
-              <Text variant="footnote" style={styles.author}>
-                {c.prenom || 'Anonyme'}
-                <Text variant="footnote" tone="secondary">
-                  {'  '}
-                  {formatRelative(c.created_at)}
+              <View style={styles.commentHead}>
+                <Text variant="subhead" style={styles.author} numberOfLines={1}>
+                  {c.prenom || 'Anonyme'}
                 </Text>
+                {(c.user_id === profile.id || isBureau) && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Supprimer ce commentaire"
+                    hitSlop={10}
+                    onPress={() => removeComment(c.id)}>
+                    <Icon name="trash" size={16} color={colors.textSecondary} />
+                  </Pressable>
+                )}
+              </View>
+              <Text variant="footnote" tone="secondary">
+                {formatRelative(c.created_at)}
               </Text>
               <LinkedText variant="callout">{c.texte}</LinkedText>
             </View>
-            {(c.user_id === profile.id || isBureau) && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Supprimer ce commentaire"
-                hitSlop={10}
-                onPress={() => removeComment(c.id)}>
-                <Icon name="trash" size={16} color={colors.textSecondary} />
-              </Pressable>
-            )}
           </View>
         ))
       ) : (
@@ -187,10 +190,12 @@ export function CommentsSection({
 
 const styles = StyleSheet.create({
   action: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 32 },
-  comments: { gap: 14 },
-  comment: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  comments: { gap: 10 },
+  comment: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', borderRadius: 16, padding: 12 },
   commentBody: { flex: 1, gap: 2 },
-  author: { fontWeight: '600' },
+  commentHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  author: { fontWeight: '700', flex: 1 },
+  sendSlot: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
