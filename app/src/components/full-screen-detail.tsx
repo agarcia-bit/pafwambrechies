@@ -69,7 +69,7 @@ export function FullScreenDetail({
   footer?: ReactNode;
   /** The blocks fade in where they are instead of rising: calmer. */
   fadeOnly?: boolean;
-  /** Label and title centered, the `leading` visual (date tile) below the title. */
+  /** Label, `leading` visual (date tile) and title, centered one under the other. */
   centered?: boolean;
   children: ReactNode;
 }) {
@@ -87,7 +87,7 @@ export function FullScreenDetail({
             )}
           </Animated.View>
           <Animated.View entering={fadeOnly ? FadeIn.delay(30).duration(200) : FadeInDown.delay(230).duration(500)} style={[styles.heroTitleRow, centered && styles.centeredColumn]}>
-            {!centered && leading}
+            {leading}
             <View style={centered ? styles.centeredText : styles.flex}>
               <Text variant="title" style={[styles.heroTitle, centered && styles.centeredTitle]} selectable>
                 {title}
@@ -98,7 +98,6 @@ export function FullScreenDetail({
                 </Text>
               )}
             </View>
-            {centered && leading}
           </Animated.View>
         </View>
         <FadeOnlyContext value={fadeOnly}>
