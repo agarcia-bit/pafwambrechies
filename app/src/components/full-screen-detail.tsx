@@ -45,6 +45,7 @@ export function FullScreenDetail({
   title,
   subtitle,
   leading,
+  footer,
   children,
 }: {
   color: string;
@@ -53,6 +54,8 @@ export function FullScreenDetail({
   subtitle?: string;
   /** Visual beside the title: date tile, logo… */
   leading?: ReactNode;
+  /** Pinned to the bottom of the sheet (main action). */
+  footer?: ReactNode;
   children: ReactNode;
 }) {
   const { colors } = useTheme();
@@ -82,7 +85,10 @@ export function FullScreenDetail({
             </View>
           </Animated.View>
         </View>
-        <View style={[styles.sheet, { backgroundColor: colors.card }]}>{children}</View>
+        <View style={[styles.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
+          {children}
+          {!!footer && <View style={styles.footer}>{footer}</View>}
+        </View>
       </ScrollView>
       <CloseButton />
     </View>
@@ -150,6 +156,7 @@ const styles = StyleSheet.create({
   heroTitle: { color: '#FFFFFF', fontWeight: '800', fontSize: 26, lineHeight: 32 },
   heroSubtitle: { color: 'rgba(255,255,255,0.85)', marginTop: 2 },
   sheet: { marginTop: -28, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, gap: 18, flexGrow: 1 },
+  footer: { marginTop: 'auto', paddingTop: 12 },
   details: { borderRadius: 16, padding: 6 },
   detail: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 10 },
   detailIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

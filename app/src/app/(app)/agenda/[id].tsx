@@ -40,7 +40,12 @@ export default function EvenementScreen() {
       color={mix(ACTU_HUES['Événement'], '#000000', 0.15)}
       label="Événement"
       title={ev.titre}
-      leading={<DateTile date={ev.date} large />}>
+      leading={<DateTile date={ev.date} large />}
+      footer={
+        Platform.OS !== 'web' ? (
+          <Button title="Ajouter à mon agenda" icon="calendarAdd" onPress={() => addToCalendar(ev)} />
+        ) : undefined
+      }>
       <Rise>
         <DetailCard>
           <DetailRow icon="calendar" text={formatDayLong(ev.date)} />
@@ -53,11 +58,6 @@ export default function EvenementScreen() {
       {!!ev.description && (
         <Rise order={1}>
           <LinkedText>{ev.description}</LinkedText>
-        </Rise>
-      )}
-      {Platform.OS !== 'web' && (
-        <Rise order={2}>
-          <Button title="Ajouter à mon agenda" icon="calendarAdd" onPress={() => addToCalendar(ev)} />
         </Rise>
       )}
     </FullScreenDetail>

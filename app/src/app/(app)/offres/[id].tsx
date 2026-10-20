@@ -1,9 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
 import { DetailCard, DetailRow, DetailStatus, FullScreenDetail, Rise } from '@/components/full-screen-detail';
-import { OfferTag } from '@/components/offer-tag';
+import { Button } from '@/components/ui/button';
 import { LinkedText } from '@/components/ui/linked-text';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Text } from '@/components/ui/text';
 import { useAnnuaire, useOffres } from '@/lib/data';
 import { offerValidity, searchable } from '@/lib/format';
 import { useTenantConfig } from '@/lib/tenant-config';
@@ -36,10 +38,33 @@ export default function OffreScreen() {
   const merchant = annuaire.data?.find((m) => searchable(m.nom_entreprise) === searchable(o.commercant));
 
   return (
-    <FullScreenDetail color={colors.banner} label={o.commercant} title={o.titre}>
+    <FullScreenDetail
+      color={colors.banner}
+      label={o.commercant}
+      title={o.titre}
+      footer={
+        modules.annuaire && merchant ? (
+          <Button
+            title="Voir la fiche du commerçant"
+            icon="people"
+            onPress={() => {
+              // Close this full-screen offer first: the fiche lives in the directory tab.
+              router.back();
+              setTimeout(() => router.push({ pathname: '/annuaire/[id]', params: { id: String(merchant.id) } }), 50);
+            }}
+          />
+        ) : undefined
+      }>
       {!!o.tag && (
         <Rise>
-          <OfferTag label={o.tag} />
+          <View style={[styles.highlight, { backgroundColor: colors.primary }]}>
+            <Text variant="footnote" style={[styles.highlightLabel, { color: colors.onPrimary }]}>
+              VOTRE AVANTAGE
+            </Text>
+            <Text variant="largeTitle" style={[styles.highlightText, { color: colors.onPrimary }]}>
+              {o.tag}
+            </Text>
+          </View>
         </Rise>
       )}
       {!!o.description && (
@@ -50,20 +75,14 @@ export default function OffreScreen() {
       <Rise order={2}>
         <DetailCard>
           <DetailRow icon="calendar" text={offerValidity(o.expiration)} />
-          {modules.annuaire && merchant && (
-            <DetailRow
-              icon="people"
-              text={merchant.nom_entreprise}
-              hint="Voir la fiche"
-              onPress={() => {
-                // Close this full-screen offer first: the fiche lives in the directory tab.
-                router.back();
-                setTimeout(() => router.push({ pathname: '/annuaire/[id]', params: { id: String(merchant.id) } }), 50);
-              }}
-            />
-          )}
         </DetailCard>
       </Rise>
     </FullScreenDetail>
   );
 }
+
+const styles = StyleSheet.create({
+  highlight: { borderRadius: 20, paddingVertical: 22, paddingHorizontal: 20, alignItems: 'center', gap: 6 },
+  highlightLabel: { fontWeight: '700', letterSpacing: 1, opacity: 0.85 },
+  highlightText: { fontWeight: '800', textAlign: 'center' },
+});
