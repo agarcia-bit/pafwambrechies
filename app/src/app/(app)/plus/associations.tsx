@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { StyleSheet, View , ScrollView } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
 import { ListRow, ListSection } from '@/components/ui/list';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
