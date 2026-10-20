@@ -49,11 +49,11 @@ export default function InscriptionScreen() {
   }
 
   return (
-    <AuthScreen>
-      <Text variant="title" style={authText.title}>
+    <AuthScreen style={styles.centered}>
+      <Text variant="title" style={[authText.title, styles.centerText]}>
         Code d’accès
       </Text>
-      <Text style={authText.body}>
+      <Text style={[authText.body, styles.centerText]}>
         Chaque association communique un code à ses adhérents. Il vous permet de rejoindre son espace.
       </Text>
       <TextField
@@ -203,4 +203,7 @@ const styles = StyleSheet.create({
   association: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   associationText: { flex: 1, gap: 2 },
   center: { textAlign: 'center' },
+  centerText: { textAlign: 'center' },
+  // Access code step: the block sits in the middle of the screen (a little above, for the keyboard).
+  centered: { justifyContent: 'center', paddingBottom: 96 },
 });
