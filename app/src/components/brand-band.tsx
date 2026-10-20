@@ -13,7 +13,7 @@ const SUBTITLE_HEIGHT = 20;
 const ROW_HEIGHT = 42; // the height of a row of filter chips
 
 /**
- * Header of a tab: the colored band with a line above, the title in capitals and a row below it
+ * Header of a tab: the colored band with the title in capitals, a line under it and a row below
  * (filters, or a small pill). It also extends far above the screen, so that pulling the list down
  * shows the same color instead of grey.
  */
@@ -25,6 +25,9 @@ export function BrandBand({ title, subtitle, children }: PropsWithChildren<{ tit
     <View style={[styles.band, { backgroundColor: colors.banner, paddingTop: insets.top + 12 }]}>
       <View pointerEvents="none" style={[styles.overscroll, { backgroundColor: colors.banner }]} />
       <View style={styles.titles}>
+        <Text variant="largeTitle" style={styles.title} numberOfLines={1} adjustsFontSizeToFit>
+          {title.toUpperCase()}
+        </Text>
         <Animated.View
           entering={FadeInDown.delay(200 + introDelay(reduceMotion)).duration(450)}
           style={styles.subtitleBox}>
@@ -34,9 +37,6 @@ export function BrandBand({ title, subtitle, children }: PropsWithChildren<{ tit
             </Text>
           )}
         </Animated.View>
-        <Text variant="largeTitle" style={styles.title} numberOfLines={1} adjustsFontSizeToFit>
-          {title.toUpperCase()}
-        </Text>
       </View>
       <View style={styles.row}>{children}</View>
     </View>
