@@ -131,7 +131,7 @@ export default function CompteScreen() {
       </ListSection>
 
       <Text variant="caption" tone="secondary" style={styles.version}>
-        Allianceo by Agalumy · version {Constants.expoConfig?.version}
+        Allianceo, développé par Agalumy · version {Constants.expoConfig?.version}
       </Text>
     </ScrollView>
   );
