@@ -35,7 +35,9 @@ export default function InscriptionScreen() {
     setError(null);
     const { data, error: rpcError } = await supabase.rpc('resolve_signup_code', { p_code: code.trim() });
     setLoading(false);
-    if (rpcError) setError('Pas de connexion internet. Réessayez.');
+    if (rpcError?.message?.includes('too_many_attempts')) {
+      setError('Trop d’essais. Patientez quelques minutes avant de réessayer.');
+    } else if (rpcError) setError('Pas de connexion internet. Réessayez.');
     else if (!data) setError("Code inconnu. Vérifiez-le auprès de votre association.");
     else setAssociation(data as Branding);
   }
