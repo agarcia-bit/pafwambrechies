@@ -54,6 +54,7 @@ export default function ConnexionScreen() {
           </Text>
           <View style={styles.wordmarkDot} />
         </View>
+        <Text style={styles.byline}>by AGALUMY</Text>
         <Text style={[styles.center, styles.tagline]}>
           L’espace adhérents de votre association
         </Text>
@@ -117,6 +118,8 @@ const styles = StyleSheet.create({
   wordmark: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
   wordmarkText: { color: '#FFFFFF', letterSpacing: 2 },
   tagline: { color: 'rgba(255,255,255,0.85)' },
+  // "Allianceo by Agalumy": the publisher, small and spaced, under the name.
+  byline: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600', letterSpacing: 3, marginTop: -2, marginBottom: 6 },
   error: { color: '#FFE4E1', fontWeight: '600' },
   screen: { flex: 1 },
   wordmarkSpacer: { width: 10 },
