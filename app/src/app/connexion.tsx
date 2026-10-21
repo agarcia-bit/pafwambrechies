@@ -102,6 +102,10 @@ export default function ConnexionScreen() {
           Première fois ? Votre association vous a communiqué un code d’accès.
         </Text>
         <Button title="Créer mon compte" variant="glass" onPress={() => router.push('/inscription')} />
+        <View style={styles.publisher} accessible accessibilityLabel="Allianceo, développé par Agalumy">
+          <Text style={styles.by}>développé par</Text>
+          <Image source={require('../../assets/images/agalumy-logo-white.png')} style={styles.publisherLogo} contentFit="contain" />
+        </View>
       </View>
     </FormScreen>
     <LoginIntro />
@@ -116,6 +120,10 @@ const styles = StyleSheet.create({
   // The brand colors of the logo: its teal for the name, its amber for the dot.
   wordmark: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
   wordmarkText: { color: '#FFFFFF', letterSpacing: 2 },
+  // "Allianceo by Agalumy": the publisher's logo at the bottom of the page.
+  publisher: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 8 },
+  by: { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '600', letterSpacing: 0.5 },
+  publisherLogo: { width: 52, height: 43, opacity: 0.9 },
   tagline: { color: 'rgba(255,255,255,0.85)' },
   error: { color: '#FFE4E1', fontWeight: '600' },
   screen: { flex: 1 },
