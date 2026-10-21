@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { RefreshControl, SectionList, StyleSheet, View } from 'react-native';
 
 import { DateTile } from '@/components/actu-visual';
-import { BrandBand } from '@/components/brand-band';
+import { BandPill, BrandBand } from '@/components/brand-band';
 import { PressableCard } from '@/components/ui/card';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
@@ -31,7 +31,13 @@ export default function AgendaScreen() {
   return (
     <SectionList
       style={bandStyle}
-      ListHeaderComponent={<BrandBand title="Agenda" />}
+      ListHeaderComponent={
+        <BrandBand title="Agenda" subtitle="Les prochains rendez-vous">
+          {events.data && (
+            <BandPill label={events.data.length === 1 ? '1 événement à venir' : `${events.data.length} événements à venir`} />
+          )}
+        </BrandBand>
+      }
       sections={byMonth(events.data ?? [])}
       keyExtractor={(ev) => String(ev.id)}
       renderItem={({ item }) => <EventRow event={item} />}
@@ -53,7 +59,7 @@ export default function AgendaScreen() {
           <EmptyState icon="calendar" title="Aucun événement à venir" />
         )
       }
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />}
     />
   );
 }

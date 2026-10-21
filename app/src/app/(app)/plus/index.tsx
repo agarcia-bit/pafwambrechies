@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { BrandBand } from '@/components/brand-band';
+import { BandPill, BrandBand } from '@/components/brand-band';
 import { AssociationBanner, associationName } from '@/components/association';
 import { ListRow, ListSection } from '@/components/ui/list';
 import { fullName } from '@/lib/format';
@@ -15,7 +15,9 @@ export default function PlusScreen() {
   const bandStyle = useBandListStyle();
   return (
     <ScrollView style={bandStyle} contentInsetAdjustmentBehavior="never">
-      <BrandBand title="Plus" />
+      <BrandBand title="Plus" subtitle="Mon espace">
+        <BandPill label={associationName(branding)} />
+      </BrandBand>
       <View style={styles.content}>
       <AssociationBanner />
       {isPlatformAdmin && (

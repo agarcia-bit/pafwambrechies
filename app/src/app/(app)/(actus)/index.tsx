@@ -42,7 +42,7 @@ export default function ActusScreen() {
       ListHeaderComponent={
         <View style={styles.header}>
           <BrandBand
-            greeting={greeting(profile.prenom)}
+            subtitle={greeting(profile.prenom)}
             title={(branding?.tenant_name ?? branding?.name ?? 'Actus').toUpperCase()}>
             <ChipBar onBand options={ACTU_CATEGORIES} value={category} onChange={setCategory} />
           </BrandBand>
@@ -65,7 +65,7 @@ export default function ActusScreen() {
         if (actus.hasNextPage && !actus.isFetchingNextPage) actus.fetchNextPage();
       }}
       onEndReachedThreshold={0.5}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />}
     />
   );
 }

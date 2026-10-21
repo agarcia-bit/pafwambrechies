@@ -38,14 +38,11 @@ export default function OffresScreen() {
       ItemSeparatorComponent={Gap}
       ListHeaderComponent={
         <View style={styles.header}>
-          <BrandBand title={labels.offres}>
+          <BrandBand title={labels.offres} subtitle="Les bons plans réservés aux adhérents">
             {categories.offres.length > 0 && (
               <ChipBar onBand options={['Tous', ...categories.offres]} value={category} onChange={setCategory} />
             )}
           </BrandBand>
-          <Text tone="secondary" style={styles.intro}>
-            Les bons plans réservés aux adhérents.
-          </Text>
         </View>
       }
       ListEmptyComponent={
@@ -57,7 +54,7 @@ export default function OffresScreen() {
           <EmptyState icon="tag" title="Aucune offre en cours" />
         )
       }
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />}
     />
   );
 }
@@ -89,7 +86,6 @@ function Gap() {
 const styles = StyleSheet.create({
   content: { paddingTop: 0, paddingBottom: 32 },
   header: { gap: 12, marginBottom: 16 },
-  intro: { marginHorizontal: 16 },
   card: { marginHorizontal: 16, gap: 6 },
   merchant: { fontWeight: '600', letterSpacing: 0.5 },
   footer: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 },
