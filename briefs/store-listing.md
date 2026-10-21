@@ -21,7 +21,7 @@ sont les limites des stores (les textes les respectent).
 ## App Store (iPhone)
 
 **Sous-titre** (30) : Votre association en poche
-*(EN : Your association in your pocket)*
+*(EN : Your association on the go)*
 
 **Texte promotionnel** (170) :
 Actus, agenda, offres, annuaire et sondages de votre association dans une seule application. Rejoignez votre espace avec le code donné par votre association.
