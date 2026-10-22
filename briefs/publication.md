@@ -14,6 +14,10 @@ sont dans `briefs/store-listing.md`.
 Le numéro de build s'incrémente tout seul pour `production` (`autoIncrement`), le numéro de version
 (`1.0.0`) est dans `app/app.json`.
 
+Les mises à jour à distance (EAS Update, `expo-updates`) ne sont pas activées : il n'y a donc pas de « canal » dans
+les profils. À activer plus tard, volontairement : elles permettent de corriger l'app sans repasser par la relecture
+des stores, mais ajoutent une règle de plus à tester.
+
 ## Étape 1 : relier le projet à Expo (une seule fois)
 
 Compte Expo : déjà connecté sur ce Mac (`npx eas-cli whoami`), avec l'organisation **agalumy**.
@@ -24,7 +28,8 @@ npx eas-cli init
 ```
 
 Choisir l'organisation **agalumy** : EAS crée le projet « allianceo » et écrit son identifiant dans `app.json`
-(`extra.eas.projectId`). Cet identifiant est nécessaire aux notifications push à distance. Commiter le changement.
+(`extra.eas.projectId`). Cet identifiant est nécessaire aux notifications push à distance. (Fait le 22 octobre 2026 :
+projet https://expo.dev/accounts/agalumy/projects/allianceo.)
 
 ## Étape 2 : un premier build de test (Android, sans compte Apple ni Google)
 
