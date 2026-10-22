@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "407314677877",
+    "project_id": "allianceo",
+    "storage_bucket": "allianceo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:407314677877:android:6f5487fc87722beb97f83c",
+        "android_client_info": {
+          "package_name": "fr.agalumy.allianceo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7rm7ow0tvshqMWKuaxwtHTc9uW4w62ig"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

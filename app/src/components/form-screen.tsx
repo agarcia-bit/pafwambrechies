@@ -1,0 +1,37 @@
+import type { ReactNode } from 'react';
+import { ScrollView, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+
+import { useTheme } from '@/theme';
+
+/** Scrollable form that stays above the keyboard. */
+export function FormScreen({
+  children,
+  style,
+  fullScreen = false,
+  transparent = false,
+}: {
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+  /** No navigation header: the screen handles the safe areas itself (login). */
+  fullScreen?: boolean;
+  /** Lets a background behind it (gradient) show through. */
+  transparent?: boolean;
+}) {
+  const { colors } = useTheme();
+  return (
+    <ScrollView
+      style={{ backgroundColor: transparent ? 'transparent' : colors.background }}
+      contentContainerStyle={[styles.content, style]}
+      contentInsetAdjustmentBehavior={fullScreen ? 'never' : 'automatic'}
+      automaticallyAdjustKeyboardInsets
+      alwaysBounceVertical={false}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive">
+      {children}
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  content: { padding: 20, gap: 16, flexGrow: 1 },
+});

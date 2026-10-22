@@ -6,13 +6,74 @@
 /* ============================================================
    SUPABASE CLIENT
    ============================================================ */
-const SUPABASE_URL = 'https://ancwbfyjzaebxahtlqkm.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_jCDrtwqzqjbsq0NEIwUbPQ_EFeoFaDh';
+const PAF_CFG      = (typeof window !== 'undefined' && window.__PAF_CONFIG__) || {};
+const SUPABASE_URL = PAF_CFG.SUPABASE_URL      || 'https://ancwbfyjzaebxahtlqkm.supabase.co';
+const SUPABASE_KEY = PAF_CFG.SUPABASE_ANON_KEY || 'sb_publishable_jCDrtwqzqjbsq0NEIwUbPQ_EFeoFaDh';
+const TENANT_SLUG  = PAF_CFG.TENANT_SLUG       || 'paf-wambrechies';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* Helper used by every write path: shallow-clones the payload and stamps
+   the current user's tenant_id on it. RLS on Supabase double-checks the
+   value, but adding it client-side keeps the intent explicit. */
+function withTenant(payload) {
+  return { ...payload, tenant_id: currentProfile?.tenant_id };
+}
+
+/* ── Tenant branding — fetched at boot from public.get_public_branding() ─── */
+async function applyTenantBranding() {
+  try {
+    const { data, error } = await sb.rpc('get_public_branding', { p_slug: TENANT_SLUG });
+    if (error || !data) return;
+
+    const name      = (data.tenant_name            || '').trim();
+    const tagline   = (data.tenant_tagline         || '').trim();
+    const color     = (data.tenant_primary_color   || '').trim();
+    const secondary = (data.tenant_secondary_color || '').trim();
+    const logo      = (data.tenant_logo_url        || '').trim();
+    const bg        = (data.tenant_login_bg_url    || '').trim();
+
+    if (name) {
+      document.title = name;
+      document.querySelectorAll('.header-title').forEach(el => el.textContent = name);
+      document.querySelectorAll('.auth-logo img, .header-logo-img').forEach(el => {
+        if (el.getAttribute('alt') !== null) el.setAttribute('alt', name);
+      });
+      // Auth screen footer line — replaces "Application réservée aux adhérents PAF Wambrechies".
+      document.querySelectorAll('.auth-footer').forEach(el => {
+        el.textContent = 'Application réservée aux adhérents ' + name;
+      });
+    }
+    if (tagline) {
+      document.querySelectorAll('.header-sub').forEach(el => el.textContent = tagline);
+      // Login screen sub-heading (only the auth-screen, not signup / set-password
+      // whose auth-sub carries a contextual instruction, not the brand tagline).
+      const authSub = document.querySelector('#auth-screen .auth-sub');
+      if (authSub) authSub.textContent = tagline;
+    }
+    if (color) {
+      document.documentElement.style.setProperty('--primary', color);
+    }
+    if (secondary) {
+      document.documentElement.style.setProperty('--accent', secondary);
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', secondary);
+    }
+    if (logo) {
+      document.querySelectorAll('.auth-logo img, .header-logo-img').forEach(el => {
+        el.src = logo;
+      });
+    }
+    if (bg) {
+      document.querySelectorAll('.auth-screen').forEach(el => {
+        el.style.backgroundImage = `url("${bg}")`;
+      });
+    }
+  } catch (_) { /* non-blocking */ }
+}
 
 let currentUser = null;
 let currentProfile = null; // { prenom, nom } depuis la table profiles
 let isAdmin = false;
+let isBureauOrAdmin = false;
 let appInitialized = false;
 
 /* ============================================================
@@ -29,6 +90,7 @@ function openCropper(file) {
       const img = document.getElementById('crop-image');
       img.src = e.target.result;
       document.getElementById('crop-modal').classList.remove('hidden');
+      pushModalState('crop');
       if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
       cropperInstance = new Cropper(img, {
         aspectRatio: 4 / 3,
@@ -51,6 +113,7 @@ window.confirmCrop = function() {
     cropperInstance.destroy(); cropperInstance = null;
     cropResolve(blob);
     cropResolve = null;
+    popModalState();
   }, 'image/jpeg', 0.85);
 };
 
@@ -58,7 +121,43 @@ window.cancelCrop = function() {
   document.getElementById('crop-modal').classList.add('hidden');
   if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
   if (cropResolve) { cropResolve(null); cropResolve = null; }
+  popModalState();
 };
+
+/* ============================================================
+   CONTEXTE D'EXÉCUTION (app installée vs navigateur)
+   ============================================================ */
+// True for the Play Store app (Trusted Web Activity) and for home-screen
+// installs. The TWA's first load carries an android-app:// referrer; the flag
+// is kept in sessionStorage because reloads lose the referrer.
+const IS_INSTALLED_APP = (() => {
+  try {
+    if (document.referrer.startsWith('android-app://')) sessionStorage.setItem('paf_installed_app', '1');
+    if (sessionStorage.getItem('paf_installed_app') === '1') return true;
+  } catch (_) { /* storage blocked */ }
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+})();
+
+// Set when a new service worker takes over inside the installed app.
+let appUpdatePending = false;
+
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+// Apple Maps on iOS, Google Maps elsewhere: the Android app previously sent
+// users to maps.apple.com, which only renders a degraded web page on Android.
+function mapsUrl(address) {
+  const q = encodeURIComponent(address);
+  return IS_IOS ? `https://maps.apple.com/?q=${q}` : `https://www.google.com/maps/search/?api=1&query=${q}`;
+}
+
+// URLs typed by admins ("www.site.fr", "linkedin.com/in/x") lack a scheme and
+// would resolve as paths inside the app.
+function externalUrl(url) {
+  const u = String(url || '').trim();
+  if (!u) return '';
+  return /^(https?:|mailto:|tel:)/i.test(u) ? u : 'https://' + u.replace(/^\/+/, '');
+}
 
 /* ============================================================
    OFFLINE / MISE À JOUR
@@ -158,7 +257,15 @@ if ('serviceWorker' in navigator) {
       indicator.style.transform = '';
     }
     if (dist > 80) {
-      window.location.reload();
+      // In the installed app a full page reload flashes a white screen and
+      // resets the tab, which feels broken; refreshing the data is enough.
+      // A pending app update is the exception: reload to apply it.
+      if (IS_INSTALLED_APP && !appUpdatePending) {
+        reloadAllSections();
+        showToast('Actualisé', 'success');
+      } else {
+        window.location.reload();
+      }
     }
     startY = 0;
   }, { passive: true });
@@ -182,10 +289,31 @@ function showUpdateBanner() {
 }
 
 if ('serviceWorker' in navigator) {
+  // controllerchange also fires the very first time a SW takes control of an
+  // uncontrolled page (initial install) — that's not a real "update", so skip
+  // the banner in that case to avoid confusing first-time visitors (e.g. users
+  // arriving via an invitation link).
+  const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    showUpdateBanner();
+    if (!hadController) return;
+    // A "reload" banner looks out of place in a store app: apply the update
+    // silently instead (see the visibilitychange handler below).
+    if (IS_INSTALLED_APP) appUpdatePending = true;
+    else showUpdateBanner();
   });
 }
+
+// Installed app: apply a pending update when the user comes back after more
+// than a minute away, so a quick app switch (e.g. copying something) never
+// wipes a comment or form being typed.
+let hiddenSince = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    hiddenSince = Date.now();
+  } else if (appUpdatePending && hiddenSince && Date.now() - hiddenSince > 60 * 1000) {
+    window.location.reload();
+  }
+});
 
 /* ============================================================
    HELPERS
@@ -234,13 +362,116 @@ function showToast(msg, type) {
 function showAuthScreen() {
   document.getElementById('auth-screen').classList.remove('hidden');
   document.getElementById('set-password-screen').classList.add('hidden');
+  document.getElementById('signup-screen').classList.add('hidden');
   document.getElementById('app').classList.add('hidden');
 }
 
-function showSetPasswordScreen() {
+function showSignupScreen() {
+  document.getElementById('signup-screen').classList.remove('hidden');
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('set-password-screen').classList.add('hidden');
+  document.getElementById('app').classList.add('hidden');
+}
+
+let signupFormBound = false;
+function bindSignupForm() {
+  if (signupFormBound) return;
+  signupFormBound = true;
+
+  const form    = document.getElementById('signup-form');
+  const errorEl = document.getElementById('signup-error');
+  const btn     = document.getElementById('signup-submit');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const prenom = document.getElementById('signup-prenom').value.trim();
+    const nom    = document.getElementById('signup-nom').value.trim();
+    const email  = document.getElementById('signup-email').value.trim();
+    const pwd    = document.getElementById('signup-password').value;
+    const code   = document.getElementById('signup-code').value.trim();
+
+    errorEl.classList.add('hidden');
+    if (!prenom || !nom || !email || !pwd || !code) {
+      errorEl.textContent = 'Merci de remplir tous les champs.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    if (pwd.length < 8) {
+      errorEl.textContent = 'Le mot de passe doit contenir au moins 8 caractères.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Création…';
+
+    const { data: ok, error: rpcErr } = await sb.rpc('validate_signup_code', { p_slug: TENANT_SLUG, p_code: code });
+    if (rpcErr || !ok) {
+      errorEl.textContent = 'Code d\'accès invalide. Contactez un administrateur de la PAF.';
+      errorEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Créer mon compte';
+      return;
+    }
+
+    const { data, error } = await sb.auth.signUp({
+      email,
+      password: pwd,
+      // The code is re-checked server-side by the handle_new_user trigger,
+      // so a crafted signUp call can't join a tenant without it.
+      options: { data: { prenom, nom, tenant_slug: TENANT_SLUG, signup_code: code } }
+    });
+    if (error) {
+      let msg = 'Erreur : ' + error.message;
+      if (/already.*registered|exists/i.test(error.message)) {
+        msg = 'Un compte existe déjà avec cet email. Cliquez sur "Se connecter".';
+      }
+      errorEl.textContent = msg;
+      errorEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Créer mon compte';
+      return;
+    }
+
+    // If email confirmation is enabled on Supabase, no session is returned.
+    if (!data.session) {
+      errorEl.textContent = 'Compte créé. Vérifiez votre boîte mail pour confirmer votre adresse, puis revenez vous connecter.';
+      errorEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Créer mon compte';
+      return;
+    }
+    // Otherwise the SDK fires SIGNED_IN, which routes to showApp() (no
+    // PWD_SETUP_FLAG was set, so we skip the set-password screen).
+    currentUser = data.session.user;
+  });
+}
+
+const PWD_SETUP_FLAG = 'paf_needs_password_setup';
+let setPasswordFormBound = false;
+
+async function showSetPasswordScreen() {
   document.getElementById('set-password-screen').classList.remove('hidden');
   document.getElementById('auth-screen').classList.add('hidden');
   document.getElementById('app').classList.add('hidden');
+
+  // Pre-fill prenom/nom if the invitation already populated them.
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      const { data } = await sb.from('profiles')
+        .select('prenom, nom')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (data) {
+        if (data.prenom) document.getElementById('new-prenom').value = data.prenom;
+        if (data.nom)    document.getElementById('new-nom').value    = data.nom;
+      }
+    }
+  } catch (_) { /* non-blocking */ }
+
+  if (setPasswordFormBound) return;
+  setPasswordFormBound = true;
 
   const form    = document.getElementById('set-password-form');
   const errorEl = document.getElementById('set-password-error');
@@ -248,10 +479,17 @@ function showSetPasswordScreen() {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const pwd  = document.getElementById('new-password').value;
-    const pwd2 = document.getElementById('new-password-confirm').value;
+    const prenom = document.getElementById('new-prenom').value.trim();
+    const nom    = document.getElementById('new-nom').value.trim();
+    const pwd    = document.getElementById('new-password').value;
+    const pwd2   = document.getElementById('new-password-confirm').value;
 
     errorEl.classList.add('hidden');
+    if (!prenom || !nom) {
+      errorEl.textContent = 'Merci de renseigner votre prénom et le nom de votre entreprise.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
     if (pwd.length < 8) {
       errorEl.textContent = 'Le mot de passe doit contenir au moins 8 caractères.';
       errorEl.classList.remove('hidden');
@@ -266,70 +504,134 @@ function showSetPasswordScreen() {
     btn.disabled = true;
     btn.textContent = 'Enregistrement…';
 
-    const { error } = await sb.auth.updateUser({ password: pwd });
-
-    if (error) {
-      errorEl.textContent = 'Erreur : ' + error.message;
+    const { error: pwdErr } = await sb.auth.updateUser({ password: pwd });
+    if (pwdErr) {
+      errorEl.textContent = 'Erreur : ' + pwdErr.message;
       errorEl.classList.remove('hidden');
       btn.disabled = false;
-      btn.textContent = 'Créer mon mot de passe';
-    } else {
-      // Clear hash and go to app
-      history.replaceState(null, '', window.location.pathname);
-      const { data: { session } } = await sb.auth.getSession();
-      if (session) {
-        currentUser = session.user;
-        document.getElementById('set-password-screen').classList.add('hidden');
-        showApp();
-      }
+      btn.textContent = 'Créer mon compte';
+      return;
     }
+
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      const { error: profErr } = await sb.from('profiles')
+        .update({ prenom, nom })
+        .eq('id', session.user.id);
+      if (profErr) {
+        errorEl.textContent = 'Mot de passe enregistré, mais impossible de sauver le profil : ' + profErr.message;
+        errorEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Réessayer';
+        return;
+      }
+      currentUser = session.user;
+    }
+
+    localStorage.removeItem(PWD_SETUP_FLAG);
+    history.replaceState(null, '', window.location.pathname);
+    document.getElementById('set-password-screen').classList.add('hidden');
+    showApp();
   });
 }
 
 async function loadProfile() {
   if (!currentUser) return;
-  const { data } = await sb.from('profiles').select('prenom, nom, role').eq('id', currentUser.id).single();
+  const { data } = await sb.from('profiles').select('prenom, nom, role, tenant_id').eq('id', currentUser.id).single();
   currentProfile = data || null;
   isAdmin = data?.role === 'admin';
+  isBureauOrAdmin = data?.role === 'admin' || data?.role === 'bureau';
 }
 
 async function showApp() {
   document.getElementById('auth-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   await loadProfile();
+  const bottomNav = document.querySelector('.bottom-nav');
+  if (isBureauOrAdmin) {
+    document.getElementById('nav-bureau').classList.remove('hidden');
+    bottomNav.classList.add('bureau-mode');
+  }
   if (isAdmin) {
     document.getElementById('nav-admin').classList.remove('hidden');
-    document.querySelector('.bottom-nav').classList.add('admin-mode');
+    bottomNav.classList.add('admin-mode');
   }
   initApp();
 }
 
 async function initAuth() {
-  // Detect invite/recovery token in both hash (#type=invite) and query (?type=invite)
+  // Fire and forget: apply tenant branding as soon as possible. Non-blocking
+  // so login/set-password paths aren't delayed if the RPC is slow or missing.
+  applyTenantBranding();
+
+  // Detect invite/recovery token in hash (#type=invite) or query (?type=invite).
   const hashParams   = new URLSearchParams(window.location.hash.slice(1));
   const searchParams = new URLSearchParams(window.location.search);
   const urlType      = hashParams.get('type') || searchParams.get('type');
-  const needsPassword = urlType === 'invite' || urlType === 'recovery';
+  const fromUrl      = urlType === 'invite' || urlType === 'recovery';
+
+  // Surface Supabase auth errors carried in the URL hash (e.g. expired or
+  // already-consumed invitation links) instead of silently falling through
+  // to the login screen with no explanation.
+  const urlError = hashParams.get('error_code') || searchParams.get('error_code');
+  let pendingErrorMsg = null;
+  if (urlError) {
+    history.replaceState(null, '', window.location.pathname);
+    localStorage.removeItem(PWD_SETUP_FLAG);
+    if (urlError === 'otp_expired') {
+      pendingErrorMsg = 'Le lien d\'invitation a expiré ou a déjà été utilisé. Demandez à un administrateur de la PAF de vous renvoyer une invitation.';
+    } else if (urlError === 'access_denied') {
+      pendingErrorMsg = 'Accès refusé. Demandez une nouvelle invitation à un administrateur.';
+    } else {
+      pendingErrorMsg = 'Le lien d\'invitation est invalide.';
+    }
+  }
+
+  // Scanner-safe flow: the email template uses ?token_hash=xxx&type=invite.
+  // Token hashes don't grant access on their own; consuming them requires a
+  // POST via verifyOtp from JS. Email security scanners only do GETs, so
+  // pre-fetching the link no longer burns the invitation.
+  const tokenHash = searchParams.get('token_hash');
+  if (tokenHash && fromUrl) {
+    localStorage.setItem(PWD_SETUP_FLAG, '1');
+    const { error: verifyErr } = await sb.auth.verifyOtp({ token_hash: tokenHash, type: urlType });
+    history.replaceState(null, '', window.location.pathname);
+    if (verifyErr) {
+      localStorage.removeItem(PWD_SETUP_FLAG);
+      pendingErrorMsg = 'Le lien d\'invitation a expiré ou a déjà été utilisé. Demandez à un administrateur de la PAF de vous renvoyer une invitation.';
+    }
+    // On success the SDK fires SIGNED_IN, which the listener below routes
+    // to the set-password screen via the PWD_SETUP_FLAG.
+  }
+
+  // Persist the flag so it survives any reload (e.g. SW update banner click)
+  // before the user actually sets the password.
+  if (fromUrl) {
+    localStorage.setItem(PWD_SETUP_FLAG, '1');
+  }
+  const needsPassword = fromUrl || localStorage.getItem(PWD_SETUP_FLAG) === '1';
 
   // Set up ongoing auth state listener
   sb.auth.onAuthStateChange((event, session) => {
-    if (needsPassword && event === 'SIGNED_IN') {
-      showSetPasswordScreen();
-      return;
-    }
     if (event === 'PASSWORD_RECOVERY') {
+      localStorage.setItem(PWD_SETUP_FLAG, '1');
       showSetPasswordScreen();
       return;
     }
     if (event === 'SIGNED_OUT') {
       currentUser = null;
       appInitialized = false;
+      localStorage.removeItem(PWD_SETUP_FLAG);
       showAuthScreen();
       return;
     }
-    if (event === 'SIGNED_IN' && session && !needsPassword) {
-      currentUser = session.user;
-      showApp();
+    if (event === 'SIGNED_IN' && session) {
+      if (localStorage.getItem(PWD_SETUP_FLAG) === '1') {
+        showSetPasswordScreen();
+      } else {
+        currentUser = session.user;
+        showApp();
+      }
     }
   });
 
@@ -343,12 +645,33 @@ async function initAuth() {
     return;
   }
 
-  if (session) {
+  if (session && !pendingErrorMsg) {
     currentUser = session.user;
     showApp();
   } else {
     showAuthScreen();
+    if (pendingErrorMsg) {
+      const errorEl = document.getElementById('auth-error');
+      if (errorEl) {
+        errorEl.textContent = pendingErrorMsg;
+        errorEl.classList.remove('hidden');
+      }
+    }
   }
+
+  document.getElementById('go-to-signup').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('auth-error').classList.add('hidden');
+    document.getElementById('signup-error').classList.add('hidden');
+    showSignupScreen();
+    bindSignupForm();
+  });
+  document.getElementById('go-to-login').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('signup-error').classList.add('hidden');
+    document.getElementById('auth-error').classList.add('hidden');
+    showAuthScreen();
+  });
 
   const form = document.getElementById('auth-form');
   form.addEventListener('submit', async (e) => {
@@ -382,15 +705,397 @@ async function initAuth() {
 }
 
 async function logout() {
+  localStorage.removeItem(PWD_SETUP_FLAG);
   await sb.auth.signOut();
   appInitialized = false;
 }
 window.logout = logout;
 
 /* ============================================================
+   BUREAU — Pilotage (actions + taches, gated bureau|admin)
+   ============================================================ */
+const BUREAU_STATUTS_ACTION = ['À faire', 'En cours', 'Terminé', 'Bloqué'];
+const BUREAU_STATUTS_TACHE  = ['À faire', 'En cours', 'Terminé'];
+const BUREAU_PRIORITES      = ['Haute', 'Moyenne', 'Basse'];
+
+let bureauSub          = 'dashboard';
+let bureauActions      = [];
+let bureauTaches       = [];
+let bureauMembers      = [];   // profiles of same tenant with role bureau|admin
+let bureauShowArchived = false;
+let bureauShowDone     = false; // "Todo liste équipe" toggle
+
+window.showBureauSub = function(sub) {
+  bureauSub = sub;
+  document.querySelectorAll('.bureau-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.sub === sub)
+  );
+  renderBureau();
+};
+
+async function loadBureauSub() {
+  const el = document.getElementById('bureau-content');
+  if (!el) return;
+  el.innerHTML = '<div class="loading">Chargement…</div>';
+
+  const tenantId = currentProfile?.tenant_id;
+  if (!tenantId) { el.innerHTML = '<div class="empty-state">Profil incomplet.</div>'; return; }
+
+  const [actionsRes, tachesRes, membersRes] = await Promise.all([
+    sb.from('actions').select('*').order('date_action', { ascending: true }),
+    sb.from('taches').select('*'),
+    sb.from('profiles').select('id, prenom, nom, role').in('role', ['bureau', 'admin']).order('prenom')
+  ]);
+  bureauActions = actionsRes.data || [];
+  bureauTaches  = tachesRes.data  || [];
+  bureauMembers = membersRes.data || [];
+
+  renderBureau();
+}
+
+function bureauMemberLabel(id) {
+  if (!id) return 'Non assigné';
+  const m = bureauMembers.find(x => x.id === id);
+  if (!m) return 'Inconnu';
+  return [m.prenom, m.nom].filter(Boolean).join(' ') || m.prenom || 'Membre';
+}
+
+function bureauMemberInitials(id) {
+  if (!id) return '?';
+  const m = bureauMembers.find(x => x.id === id);
+  if (!m) return '?';
+  const first = (m.prenom || m.nom || '?').trim().charAt(0);
+  return first.toUpperCase() || '?';
+}
+
+function bureauMemberOptions(selectedId) {
+  const opts = ['<option value="">— Non assigné —</option>'];
+  bureauMembers.forEach(m => {
+    const label = escHtml([m.prenom, m.nom].filter(Boolean).join(' ') || m.prenom || 'Membre');
+    opts.push(`<option value="${m.id}" ${m.id === selectedId ? 'selected' : ''}>${label}</option>`);
+  });
+  return opts.join('');
+}
+
+function bureauStatutOptions(list, current) {
+  return list.map(s => `<option value="${escHtml(s)}" ${s === current ? 'selected' : ''}>${escHtml(s)}</option>`).join('');
+}
+
+function bureauFormatDate(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
+}
+
+function bureauIsOverdue(iso, statut) {
+  if (!iso || statut === 'Terminé') return false;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return new Date(iso) < today;
+}
+
+function tachesForAction(actionId) {
+  return bureauTaches
+    .filter(t => t.action_id === actionId)
+    .sort((a, b) => {
+      const ea = a.echeance || '9999-12-31';
+      const eb = b.echeance || '9999-12-31';
+      return ea.localeCompare(eb);
+    });
+}
+
+/* ── Render dispatcher ─────────────────────────────────────────────── */
+function renderBureau() {
+  if (bureauSub === 'dashboard')     renderBureauDashboard();
+  else if (bureauSub === 'actions')  renderBureauActions();
+  else if (bureauSub === 'equipe')   renderBureauEquipe();
+}
+
+/* ── 1. Dashboard "À venir" ─────────────────────────────────────────── */
+function renderBureauDashboard() {
+  const el = document.getElementById('bureau-content');
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const list = bureauActions
+    .filter(a => a.statut !== 'Terminé' && a.date_action >= todayISO)
+    .sort((a, b) => a.date_action.localeCompare(b.date_action))
+    .slice(0, 5);
+
+  if (!list.length) {
+    el.innerHTML = '<div class="empty-state">Aucune action à venir. Créez-en une dans l\'onglet Actions.</div>';
+    return;
+  }
+
+  el.innerHTML = list.map(a => {
+    const openTaches = tachesForAction(a.id).filter(t => t.statut !== 'Terminé');
+    return `
+      <div class="bureau-card">
+        <div class="bureau-card-head">
+          <span class="bureau-date">${bureauFormatDate(a.date_action)}</span>
+          <span class="bureau-emoji">${escHtml(a.emoji || '')}</span>
+          <span class="bureau-titre">${escHtml(a.titre)}</span>
+          <span class="bureau-pastille" title="${escHtml(bureauMemberLabel(a.referent))}">${escHtml(bureauMemberInitials(a.referent))}</span>
+          <span class="bureau-statut bureau-statut-${a.statut.toLowerCase().replace(/\W/g,'')}">${escHtml(a.statut)}</span>
+        </div>
+        ${openTaches.length ? `
+          <ul class="bureau-taches-mini">
+            ${openTaches.map(t => `
+              <li class="${bureauIsOverdue(t.echeance, t.statut) ? 'overdue' : ''}">
+                <span class="tache-libelle">${escHtml(t.libelle)}</span>
+                <span class="tache-meta">${bureauFormatDate(t.echeance)} · ${escHtml(bureauMemberLabel(t.responsable))}</span>
+              </li>`).join('')}
+          </ul>` : ''}
+      </div>`;
+  }).join('');
+}
+
+/* ── 2. Actions — liste éditable avec tâches imbriquées ─────────────── */
+function renderBureauActions() {
+  const el = document.getElementById('bureau-content');
+  const filtered = bureauActions
+    .filter(a => bureauShowArchived ? a.statut === 'Terminé' : a.statut !== 'Terminé')
+    .sort((a, b) => a.date_action.localeCompare(b.date_action));
+
+  el.innerHTML = `
+    <div class="bureau-toolbar">
+      <button class="btn-new-idea" onclick="bureauNewAction()">+ Nouvelle action</button>
+      <div class="bureau-toggle">
+        <button class="chip ${!bureauShowArchived ? 'active' : ''}" onclick="bureauSetArchived(false)">En cours</button>
+        <button class="chip ${bureauShowArchived  ? 'active' : ''}" onclick="bureauSetArchived(true)">Terminées</button>
+      </div>
+    </div>
+    ${filtered.length ? filtered.map(a => renderActionRow(a)).join('')
+                     : '<div class="empty-state">Aucune action ' + (bureauShowArchived ? 'terminée' : 'en cours') + '.</div>'}
+  `;
+}
+
+function renderActionRow(a) {
+  const taches = tachesForAction(a.id);
+  return `
+    <div class="bureau-action-row" data-action-id="${a.id}">
+      <div class="bureau-action-head">
+        <input type="text" class="ba-emoji" value="${escHtml(a.emoji || '')}" placeholder="🎉" maxlength="4" onchange="bureauUpdateAction(${a.id}, 'emoji', this.value.trim() || null)" />
+        <input type="text" class="ba-titre" value="${escHtml(a.titre)}" placeholder="Titre" onchange="bureauUpdateAction(${a.id}, 'titre', this.value.trim())" />
+        <input type="date" class="ba-date" value="${escHtml(a.date_action)}" onchange="bureauUpdateAction(${a.id}, 'date_action', this.value)" />
+        <select class="ba-referent" onchange="bureauUpdateAction(${a.id}, 'referent', this.value || null)">${bureauMemberOptions(a.referent)}</select>
+        <select class="ba-statut" onchange="bureauUpdateAction(${a.id}, 'statut', this.value)">${bureauStatutOptions(BUREAU_STATUTS_ACTION, a.statut)}</select>
+        <input type="number" class="ba-budget" value="${a.budget != null ? a.budget : ''}" placeholder="€" onchange="bureauUpdateAction(${a.id}, 'budget', this.value === '' ? null : parseInt(this.value, 10))" />
+        <button class="ba-del" onclick="bureauDeleteAction(${a.id})" aria-label="Supprimer l'action">🗑️</button>
+      </div>
+      <div class="bureau-taches-list">
+        ${taches.map(t => renderTacheRow(t, a)).join('')}
+        <button class="ba-add-tache" onclick="bureauNewTache(${a.id})">+ Nouvelle tâche</button>
+      </div>
+    </div>`;
+}
+
+function renderTacheRow(t, action) {
+  const done = t.statut === 'Terminé';
+  const overdue = bureauIsOverdue(t.echeance, t.statut);
+  return `
+    <div class="bureau-tache-row ${done ? 'done' : ''} ${overdue ? 'overdue' : ''}" data-tache-id="${t.id}">
+      <input type="checkbox" ${done ? 'checked' : ''} onchange="bureauToggleTacheDone(${t.id}, this.checked)" />
+      <input type="text" class="bt-libelle" value="${escHtml(t.libelle)}" onchange="bureauUpdateTache(${t.id}, 'libelle', this.value.trim())" />
+      <select class="bt-responsable" onchange="bureauUpdateTache(${t.id}, 'responsable', this.value || null)">${bureauMemberOptions(t.responsable)}</select>
+      <input type="date" class="bt-echeance" value="${escHtml(t.echeance || '')}" onchange="bureauUpdateTache(${t.id}, 'echeance', this.value || null)" />
+      <select class="bt-priorite" onchange="bureauUpdateTache(${t.id}, 'priorite', this.value)">${bureauStatutOptions(BUREAU_PRIORITES, t.priorite)}</select>
+      <button class="bt-del" onclick="bureauDeleteTache(${t.id})" aria-label="Supprimer la tâche">🗑️</button>
+    </div>`;
+}
+
+/* ── 3. Todo liste équipe ──────────────────────────────────────────── */
+function renderBureauEquipe() {
+  const el = document.getElementById('bureau-content');
+  const groups = [];
+  bureauMembers.forEach(m => {
+    const actions = bureauActions.filter(a => a.referent === m.id);
+    const taches  = bureauTaches.filter(t => t.responsable === m.id);
+    groups.push({ member: m, actions, taches });
+  });
+  // "Non assigné"
+  groups.push({
+    member: null,
+    actions: bureauActions.filter(a => !a.referent),
+    taches:  bureauTaches.filter(t => !t.responsable),
+  });
+
+  const filterDone = (rows) => rows.filter(r => bureauShowDone ? true : r.statut !== 'Terminé');
+
+  el.innerHTML = `
+    <div class="bureau-toolbar">
+      <button class="chip ${bureauShowDone ? 'active' : ''}" onclick="bureauSetShowDone(!bureauShowDone)">
+        ${bureauShowDone ? 'Masquer les terminés' : 'Afficher les terminés'}
+      </button>
+    </div>
+    ${groups.map(g => {
+      const actions = filterDone(g.actions).sort((a, b) => a.date_action.localeCompare(b.date_action));
+      const taches  = filterDone(g.taches).sort((a, b) => (a.echeance || '9999').localeCompare(b.echeance || '9999'));
+      if (!actions.length && !taches.length) return '';
+      const label = g.member ? escHtml(bureauMemberLabel(g.member.id)) : 'Non assigné';
+      return `
+        <div class="bureau-card bureau-equipe-card">
+          <div class="bureau-equipe-head">
+            <span class="bureau-pastille">${g.member ? escHtml(bureauMemberInitials(g.member.id)) : '?'}</span>
+            <strong>${label}</strong>
+          </div>
+          ${actions.length ? `<div class="bureau-equipe-sub">Actions référentes</div>
+            <ul class="bureau-taches-mini">
+              ${actions.map(a => `
+                <li class="${bureauIsOverdue(a.date_action, a.statut) ? 'overdue' : ''}">
+                  <span class="tache-libelle">${escHtml(a.emoji || '')} ${escHtml(a.titre)}</span>
+                  <span class="tache-meta">${bureauFormatDate(a.date_action)} · ${escHtml(a.statut)}</span>
+                </li>`).join('')}
+            </ul>` : ''}
+          ${taches.length ? `<div class="bureau-equipe-sub">Tâches assignées</div>
+            <ul class="bureau-taches-mini">
+              ${taches.map(t => `
+                <li class="${bureauIsOverdue(t.echeance, t.statut) ? 'overdue' : ''}">
+                  <span class="tache-libelle">${escHtml(t.libelle)}</span>
+                  <span class="tache-meta">${bureauFormatDate(t.echeance)} · ${escHtml(t.statut)}</span>
+                </li>`).join('')}
+            </ul>` : ''}
+        </div>`;
+    }).join('') || '<div class="empty-state">Aucune action ni tâche.</div>'}
+  `;
+}
+
+/* ── Handlers ──────────────────────────────────────────────────────── */
+window.bureauSetArchived = function(archived) {
+  bureauShowArchived = archived;
+  renderBureau();
+};
+window.bureauSetShowDone = function(show) {
+  bureauShowDone = show;
+  renderBureau();
+};
+
+window.bureauNewAction = async function() {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, error } = await sb.from('actions').insert(withTenant({
+    titre: 'Nouvelle action',
+    date_action: today,
+    statut: 'À faire'
+  })).select().single();
+  if (error) { showToast('Erreur : ' + error.message, 'error'); return; }
+  bureauActions.push(data);
+  renderBureau();
+};
+
+window.bureauUpdateAction = async function(id, field, value) {
+  const idx = bureauActions.findIndex(a => a.id === id);
+  if (idx === -1) return;
+  const prev = bureauActions[idx][field];
+  bureauActions[idx] = { ...bureauActions[idx], [field]: value };
+  const { error } = await sb.from('actions').update({ [field]: value }).eq('id', id);
+  if (error) {
+    bureauActions[idx][field] = prev;
+    showToast('Erreur : ' + error.message, 'error');
+    renderBureau();
+    return;
+  }
+  // Referent inheritance: taches without responsable follow the new referent.
+  if (field === 'referent') {
+    bureauTaches.forEach(t => {
+      if (t.action_id === id && !t.responsable) t.responsable = value;
+    });
+  }
+  if (field === 'statut') renderBureau();
+};
+
+window.bureauDeleteAction = async function(id) {
+  if (!confirm('Supprimer cette action et toutes ses tâches ?')) return;
+  const { error } = await sb.from('actions').delete().eq('id', id);
+  if (error) { showToast('Erreur : ' + error.message, 'error'); return; }
+  bureauActions = bureauActions.filter(a => a.id !== id);
+  bureauTaches  = bureauTaches.filter(t => t.action_id !== id);
+  renderBureau();
+};
+
+window.bureauNewTache = async function(actionId) {
+  const parent = bureauActions.find(a => a.id === actionId);
+  const payload = withTenant({
+    action_id: actionId,
+    libelle: 'Nouvelle tâche',
+    statut: 'À faire',
+    priorite: 'Moyenne',
+    responsable: parent?.referent || null,
+  });
+  const { data, error } = await sb.from('taches').insert(payload).select().single();
+  if (error) { showToast('Erreur : ' + error.message, 'error'); return; }
+  bureauTaches.push(data);
+  renderBureau();
+};
+
+window.bureauUpdateTache = async function(id, field, value) {
+  const idx = bureauTaches.findIndex(t => t.id === id);
+  if (idx === -1) return;
+  const prev = bureauTaches[idx][field];
+  bureauTaches[idx] = { ...bureauTaches[idx], [field]: value };
+  const { error } = await sb.from('taches').update({ [field]: value }).eq('id', id);
+  if (error) {
+    bureauTaches[idx][field] = prev;
+    showToast('Erreur : ' + error.message, 'error');
+    renderBureau();
+  }
+};
+
+window.bureauToggleTacheDone = async function(id, done) {
+  await window.bureauUpdateTache(id, 'statut', done ? 'Terminé' : 'À faire');
+  renderBureau();
+};
+
+window.bureauDeleteTache = async function(id) {
+  const { error } = await sb.from('taches').delete().eq('id', id);
+  if (error) { showToast('Erreur : ' + error.message, 'error'); return; }
+  bureauTaches = bureauTaches.filter(t => t.id !== id);
+  renderBureau();
+};
+
+/* ============================================================
    NAVIGATION
    ============================================================ */
-function showSection(id) {
+/* Android back button support. Following the Android convention, the history
+   holds at most [home tab, current tab, open overlay]: back closes the overlay,
+   then returns to the home tab, then leaves the app. Without this, switching
+   tabs never touched history and back closed the app from anywhere. */
+const HOME_SECTION = 'actus';
+let currentSection = null;
+
+function syncSectionHistory(id) {
+  const st = history.state;
+  const onOtherTab = !!(st && st.section && st.section !== HOME_SECTION);
+  if (id === HOME_SECTION) {
+    // Going home from another tab: drop the tab entry instead of stacking a
+    // second home entry (which would make back need two presses to exit).
+    if (onOtherTab) history.back();
+    else history.replaceState({ section: HOME_SECTION }, '');
+  } else if (onOtherTab) {
+    history.replaceState({ section: id }, '');
+  } else {
+    history.pushState({ section: id }, '');
+  }
+}
+
+function pushModalState(name) {
+  history.pushState({ ...(history.state || {}), modal: name }, '');
+}
+
+// Called by every close path (button, backdrop, back button). When triggered
+// by the back button the modal entry is already gone, so this is a no-op.
+function popModalState() {
+  if (history.state && history.state.modal) history.back();
+}
+
+window.addEventListener('popstate', (e) => {
+  if (document.getElementById('app').classList.contains('hidden')) return;
+  if (!document.getElementById('crop-modal').classList.contains('hidden')) window.cancelCrop();
+  if (!document.getElementById('merchant-modal').classList.contains('hidden')) closeMerchantModal();
+  if (!document.getElementById('offre-modal').classList.contains('hidden')) window.closeOffreModal();
+  const target = (e.state && e.state.section) || HOME_SECTION;
+  if (target !== currentSection) showSection(target, { fromHistory: true });
+});
+
+function showSection(id, { fromHistory = false } = {}) {
+  if (!fromHistory) syncSectionHistory(id);
+  currentSection = id;
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
 
@@ -414,6 +1119,7 @@ function showSection(id) {
     });
   }
   else if (id === 'admin' && isAdmin) loadAdminSub();
+  else if (id === 'bureau' && isBureauOrAdmin) loadBureauSub();
 }
 
 document.querySelectorAll('.nav-item').forEach(btn => {
@@ -450,6 +1156,46 @@ function renderActusCats() {
 }
 window.setActuCat = function(cat) { actuFilter = cat; renderActusCats(); loadActusPage(true); };
 
+/* ── Comments helpers (shared by actus & idees) ───────────────────────────── */
+function canDeleteComment(c) {
+  if (!currentUser) return false;
+  return isAdmin || c.user_id === currentUser.id;
+}
+
+function commentHtml(c, kind, parentId) {
+  const del = canDeleteComment(c) ? `
+    <button class="comment-delete" onclick="deleteComment('${kind}', ${c.id}, ${parentId})" aria-label="Supprimer ce commentaire" title="Supprimer">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+    </button>` : '';
+  return `
+    <div class="comment" data-comment-id="${c.id}">
+      <span class="comment-author">${escHtml(c.prenom || 'Anonyme')}</span>
+      <span class="comment-text">${escHtml(c.texte)}</span>
+      ${del}
+    </div>`;
+}
+
+window.deleteComment = async function(kind, id, parentId) {
+  if (!currentUser) return;
+  if (!confirm('Supprimer ce commentaire ?')) return;
+  const table = kind === 'actu' ? 'actus_commentaires' : 'idees_commentaires';
+  const { error } = await sb.from(table).delete().eq('id', id);
+  if (error) {
+    showToast('Suppression impossible : ' + error.message, 'error');
+    return;
+  }
+  const listEl = document.getElementById((kind === 'actu' ? 'actu-comments-list-' : 'comments-list-') + parentId);
+  if (listEl) {
+    const node = listEl.querySelector('[data-comment-id="' + id + '"]');
+    if (node) node.remove();
+  }
+  const countEl = document.getElementById((kind === 'actu' ? 'actu-comment-count-' : 'idea-comment-count-') + parentId);
+  if (countEl) {
+    const n = parseInt(countEl.textContent, 10);
+    if (!isNaN(n) && n > 0) countEl.textContent = n - 1;
+  }
+};
+
 function renderActusList() {
   const container = document.getElementById('actus-list');
 
@@ -462,11 +1208,7 @@ function renderActusList() {
     const likeCount    = a.actus_likes?.[0]?.count || 0;
     const comments     = a.actus_commentaires || [];
     const commentCount = comments.length;
-    const commentsHtml = comments.map(c => `
-      <div class="comment">
-        <span class="comment-author">${escHtml(c.prenom || 'Anonyme')}</span>
-        <span class="comment-text">${escHtml(c.texte)}</span>
-      </div>`).join('');
+    const commentsHtml = comments.map(c => commentHtml(c, 'actu', a.id)).join('');
     return `
     <div class="actu-card" id="actu-card-${a.id}">
       <div class="actu-header" onclick="toggleActu(${a.id})">
@@ -530,7 +1272,7 @@ async function loadActusPage(reset = false) {
   const from = actuPage * ACTUS_PAGE_SIZE;
   const to   = from + ACTUS_PAGE_SIZE - 1;
   let query = sb.from('actus')
-    .select('*, actus_likes(count), actus_commentaires(id, prenom, texte, created_at)')
+    .select('*, actus_likes(count), actus_commentaires(id, user_id, prenom, texte, created_at)')
     .order('date', { ascending: false })
     .range(from, to);
   if (actuFilter !== 'Tous') query = query.eq('categorie', actuFilter);
@@ -569,7 +1311,7 @@ async function toggleActuLike(actuId) {
   if (isLiked) {
     await sb.from('actus_likes').delete().eq('actu_id', actuId).eq('user_id', currentUser.id);
   } else {
-    await sb.from('actus_likes').insert({ actu_id: actuId, user_id: currentUser.id });
+    await sb.from('actus_likes').insert(withTenant({ actu_id: actuId, user_id: currentUser.id }));
   }
 }
 window.toggleActuLike = toggleActuLike;
@@ -581,15 +1323,15 @@ async function addActuComment(e, actuId) {
   const texte = input?.value.trim();
   if (!texte) return;
   const prenom = [currentProfile?.prenom, currentProfile?.nom].filter(Boolean).join(' ') || currentUser.email?.split('@')[0] || 'Anonyme';
-  const { error } = await sb.from('actus_commentaires').insert({ actu_id: actuId, user_id: currentUser.id, prenom, texte });
-  if (error) return;
+  const { data: inserted, error } = await sb.from('actus_commentaires')
+    .insert(withTenant({ actu_id: actuId, user_id: currentUser.id, prenom, texte }))
+    .select('id, user_id, prenom, texte')
+    .single();
+  if (error || !inserted) return;
   input.value = '';
   const listEl = document.getElementById('actu-comments-list-' + actuId);
   if (listEl) {
-    const div = document.createElement('div');
-    div.className = 'comment';
-    div.innerHTML = `<span class="comment-author">${escHtml(prenom)}</span><span class="comment-text">${escHtml(texte)}</span>`;
-    listEl.appendChild(div);
+    listEl.insertAdjacentHTML('beforeend', commentHtml(inserted, 'actu', actuId));
     const countEl = document.getElementById('actu-comment-count-' + actuId);
     if (countEl) countEl.textContent = parseInt(countEl.textContent, 10) + 1;
   }
@@ -681,19 +1423,21 @@ function openMerchantModal(id) {
       ${contact ? `<p class="modal-contact-name">${escHtml(contact)}</p>` : ''}
       ${m.description ? `<p class="modal-desc">${escHtml(m.description)}</p>` : ''}
       <div class="modal-contacts">
-        ${m.adresse   ? `<a class="modal-contact modal-contact-link" href="https://maps.apple.com/?q=${encodeURIComponent(m.adresse)}" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escHtml(m.adresse)}</a>` : ''}
+        ${m.adresse   ? `<a class="modal-contact modal-contact-link" href="${escHtml(mapsUrl(m.adresse))}" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escHtml(m.adresse)}</a>` : ''}
         ${m.telephone ? `<a class="modal-contact modal-contact-link" href="tel:${escHtml(m.telephone.replace(/\s/g,''))}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${escHtml(m.telephone)}</a>` : ''}
         ${m.email     ? `<a class="modal-contact modal-contact-link" href="mailto:${escHtml(m.email)}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${escHtml(m.email)}</a>` : ''}
-        ${m.linkedin  ? `<a class="modal-contact modal-contact-link" href="${escHtml(m.linkedin)}" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>LinkedIn</a>` : ''}
-        ${m.instagram ? (() => { const ig = m.instagram.trim(); const url = ig.startsWith('http') ? ig : `https://www.instagram.com/${ig.replace('@','')}/`; return `<a class="modal-contact modal-contact-link" href="${escHtml(url)}" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>${escHtml(ig)}</a>`; })() : ''}
+        ${m.linkedin  ? `<a class="modal-contact modal-contact-link" href="${escHtml(externalUrl(m.linkedin))}" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>LinkedIn</a>` : ''}
+        ${m.instagram ? (() => { const ig = m.instagram.trim(); const url = /instagram\.com/i.test(ig) ? externalUrl(ig) : `https://www.instagram.com/${ig.replace('@','')}/`; return `<a class="modal-contact modal-contact-link" href="${escHtml(url)}" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>${escHtml(ig)}</a>`; })() : ''}
       </div>
     </div>`;
   document.getElementById('merchant-modal').classList.remove('hidden');
+  pushModalState('merchant');
 }
 window.openMerchantModal = openMerchantModal;
 
 function closeMerchantModal() {
   document.getElementById('merchant-modal').classList.add('hidden');
+  popModalState();
 }
 window.closeMerchantModal = closeMerchantModal;
 
@@ -788,9 +1532,11 @@ window.openOffreModal = function(id) {
       </div>
     </div>`;
   document.getElementById('offre-modal').classList.remove('hidden');
+  pushModalState('offre');
 };
 window.closeOffreModal = function() {
   document.getElementById('offre-modal').classList.add('hidden');
+  popModalState();
 };
 
 async function loadOffresPage(reset = false) {
@@ -840,12 +1586,7 @@ function renderIdeesList() {
       ? new Date(idea.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
       : '';
 
-    const commentsHtml = comments.map(c => `
-      <div class="comment">
-        <span class="comment-author">${escHtml(c.prenom || 'Anonyme')}</span>
-        <span class="comment-text">${escHtml(c.texte)}</span>
-      </div>
-    `).join('');
+    const commentsHtml = comments.map(c => commentHtml(c, 'idea', idea.id)).join('');
 
     return `
       <div class="idea-card" id="idea-card-${idea.id}">
@@ -863,7 +1604,7 @@ function renderIdeesList() {
           </button>
           <button class="idea-comment-toggle" onclick="toggleComments(${idea.id})" aria-label="Commentaires">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            <span>${commentCount}</span>
+            <span id="idea-comment-count-${idea.id}">${commentCount}</span>
           </button>
         </div>
         <div class="idea-comments hidden" id="comments-${idea.id}">
@@ -905,7 +1646,7 @@ async function loadIdeesPage(reset = false) {
   const to   = from + IDEES_PAGE_SIZE - 1;
   const { data, error } = await sb
     .from('idees')
-    .select('*, idees_likes(count), idees_commentaires(id, prenom, texte, created_at)')
+    .select('*, idees_likes(count), idees_commentaires(id, user_id, prenom, texte, created_at)')
     .eq('visible', true)
     .order('created_at', { ascending: false })
     .range(from, to);
@@ -961,7 +1702,7 @@ async function toggleLike(ideeId) {
   } else {
     const { error } = await sb
       .from('idees_likes')
-      .insert({ idee_id: ideeId, user_id: currentUser.id });
+      .insert(withTenant({ idee_id: ideeId, user_id: currentUser.id }));
     if (error) {
       if (btn) btn.classList.toggle('liked', false);
       if (countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent, 10) - 1);
@@ -986,35 +1727,25 @@ async function addComment(e, ideeId) {
 
   const prenom = [currentProfile?.prenom, currentProfile?.nom].filter(Boolean).join(' - ') || currentUser.email?.split('@')[0] || 'Anonyme';
 
-  const { error } = await sb.from('idees_commentaires').insert({
-    idee_id: ideeId,
-    user_id: currentUser.id,
-    prenom,
-    texte
-  });
+  const { data: inserted, error } = await sb.from('idees_commentaires')
+    .insert(withTenant({ idee_id: ideeId, user_id: currentUser.id, prenom, texte }))
+    .select('id, user_id, prenom, texte')
+    .single();
 
-  if (error) {
+  if (error || !inserted) {
     showToast('Erreur lors de l\'envoi du commentaire.', 'error');
     return;
   }
 
   if (input) input.value = '';
 
-  // Append dans le DOM sans re-render
   const listEl = document.getElementById('comments-list-' + ideeId);
   if (listEl) {
-    const div = document.createElement('div');
-    div.className = 'comment';
-    div.innerHTML = `<span class="comment-author">${escHtml(prenom)}</span><span class="comment-text">${escHtml(texte)}</span>`;
-    listEl.appendChild(div);
+    listEl.insertAdjacentHTML('beforeend', commentHtml(inserted, 'idea', ideeId));
   }
 
-  // Incrémenter le compteur
-  const card = document.getElementById('idea-card-' + ideeId);
-  if (card) {
-    const countSpan = card.querySelector('.idea-comment-toggle span');
-    if (countSpan) countSpan.textContent = parseInt(countSpan.textContent, 10) + 1;
-  }
+  const countEl = document.getElementById('idea-comment-count-' + ideeId);
+  if (countEl) countEl.textContent = parseInt(countEl.textContent, 10) + 1;
 }
 window.addComment = addComment;
 
@@ -1090,13 +1821,13 @@ function initIdees() {
     const prenom = [currentProfile?.prenom, currentProfile?.nom].filter(Boolean).join(' - ')
                    || currentUser.email?.split('@')[0] || 'Anonyme';
 
-    const { error } = await sb.from('idees').insert({
+    const { error } = await sb.from('idees').insert(withTenant({
       user_id: currentUser.id,
       prenom,
       categorie,
       titre,
       texte
-    });
+    }));
 
     if (error) { showToast('Erreur lors de l\'enregistrement de l\'idée.', 'error'); return; }
 
@@ -1348,12 +2079,12 @@ async function subscribeToPush() {
     });
     if (!sub || !currentUser) return;
     const json = sub.toJSON();
-    await sb.from('push_subscriptions').upsert({
+    await sb.from('push_subscriptions').upsert(withTenant({
       user_id:  currentUser.id,
       endpoint: json.endpoint,
       p256dh:   json.keys?.p256dh  || null,
       auth:     json.keys?.auth    || null
-    }, { onConflict: 'user_id,endpoint' });
+    }), { onConflict: 'user_id,endpoint' });
   } catch (_) { /* push not supported or VAPID not configured */ }
 }
 
@@ -1412,7 +2143,98 @@ async function loadAdminSub() {
     case 'annuaire': await renderAdminAnnuaire(el); break;
     case 'idees':    await renderAdminIdees(el);    break;
     case 'liens':    await renderAdminLiens(el);    break;
+    case 'settings': await renderAdminSettings(el); break;
   }
+}
+
+const SETTINGS_KEYS = [
+  'signup_code',
+  'tenant_name',
+  'tenant_tagline',
+  'tenant_primary_color',
+  'tenant_secondary_color',
+  'tenant_logo_url',
+  'tenant_login_bg_url',
+];
+
+async function renderAdminSettings(el) {
+  const { data, error } = await sb.from('app_settings')
+    .select('key, value')
+    .in('key', SETTINGS_KEYS);
+  if (error) { el.innerHTML = '<div class="empty-state">Impossible de charger les réglages.</div>'; return; }
+  const map = {};
+  (data || []).forEach(r => { map[r.key] = r.value || ''; });
+
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:14px">
+      <div style="font-weight:700;font-size:1rem;margin-bottom:6px">Code d'inscription</div>
+      <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:12px">
+        Les nouveaux adhérents en ont besoin pour créer leur compte depuis la page de connexion. Changez-le quand vous voulez révoquer les inscriptions avec l'ancien code.
+      </p>
+      <form data-settings-form>
+        <div class="form-group">
+          <label for="admin-signup-code">Code actuel</label>
+          <input type="text" id="admin-signup-code" data-key="signup_code" value="${escHtml(map.signup_code)}" autocomplete="off" />
+        </div>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:700;font-size:1rem;margin-bottom:6px">Identité de l'application</div>
+      <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:12px">
+        Nom de l'association, couleur, logo… Ce sont ces valeurs qui apparaissent dans l'en-tête, sur la page de connexion et dans l'onglet du navigateur.
+      </p>
+      <form data-settings-form>
+        <div class="form-group">
+          <label for="admin-tenant-name">Nom de l'association</label>
+          <input type="text" id="admin-tenant-name" data-key="tenant_name" value="${escHtml(map.tenant_name)}" placeholder="PAF Wambrechies" />
+        </div>
+        <div class="form-group">
+          <label for="admin-tenant-tagline">Sous-titre</label>
+          <input type="text" id="admin-tenant-tagline" data-key="tenant_tagline" value="${escHtml(map.tenant_tagline)}" placeholder="Espace adhérents" />
+        </div>
+        <div class="form-group">
+          <label for="admin-tenant-color">Couleur principale <span class="form-hint">(boutons, onglets)</span></label>
+          <input type="color" id="admin-tenant-color" data-key="tenant_primary_color" value="${escHtml(map.tenant_primary_color || '#2E3192')}" style="height:44px;padding:4px" />
+        </div>
+        <div class="form-group">
+          <label for="admin-tenant-color2">Couleur secondaire <span class="form-hint">(en-tête, accents)</span></label>
+          <input type="color" id="admin-tenant-color2" data-key="tenant_secondary_color" value="${escHtml(map.tenant_secondary_color || '#E84528')}" style="height:44px;padding:4px" />
+        </div>
+        <div class="form-group">
+          <label for="admin-tenant-logo">URL du logo <span class="form-hint">(carré, PNG/SVG)</span></label>
+          <input type="url" id="admin-tenant-logo" data-key="tenant_logo_url" value="${escHtml(map.tenant_logo_url)}" placeholder="https://…/logo.png" />
+        </div>
+        <div class="form-group">
+          <label for="admin-tenant-bg">URL de l'image de fond du login <span class="form-hint">(optionnel)</span></label>
+          <input type="url" id="admin-tenant-bg" data-key="tenant_login_bg_url" value="${escHtml(map.tenant_login_bg_url)}" placeholder="https://…/fond.jpg" />
+        </div>
+        <button type="submit" class="btn btn-primary">Enregistrer l'identité</button>
+      </form>
+    </div>
+  `;
+
+  el.querySelectorAll('form[data-settings-form]').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const tenantId = currentProfile?.tenant_id;
+      if (!tenantId) { showToast('Impossible de récupérer le tenant courant.', 'error'); return; }
+      const rows = [...form.querySelectorAll('input[data-key]')].map(input => ({
+        tenant_id: tenantId,
+        key: input.dataset.key,
+        value: input.value.trim(),
+        updated_at: new Date().toISOString(),
+      }));
+      const empty = rows.find(r => r.key === 'signup_code' && !r.value);
+      if (empty) { showToast('Le code d\'inscription ne peut pas être vide.', 'error'); return; }
+      const { error: upErr } = await sb.from('app_settings')
+        .upsert(rows, { onConflict: 'tenant_id,key' });
+      if (upErr) { showToast('Erreur : ' + upErr.message, 'error'); return; }
+      showToast('Réglages enregistrés.', 'success');
+      applyTenantBranding();
+    });
+  });
 }
 
 async function renderAdminActus(el) {
@@ -1461,7 +2283,7 @@ async function renderAdminActus(el) {
     };
     const { error } = editId
       ? await sb.from('actus').update(payload).eq('id', editId)
-      : await sb.from('actus').insert(payload);
+      : await sb.from('actus').insert(withTenant(payload));
     if (error) { showToast('Erreur.', 'error'); return; }
     showToast(editId ? 'Actu mise à jour !' : 'Actu ajoutée !', 'success');
     loadAdminSub();
@@ -1525,7 +2347,7 @@ async function renderAdminOffres(el) {
     };
     const { error } = editId
       ? await sb.from('offres').update(payload).eq('id', editId)
-      : await sb.from('offres').insert(payload);
+      : await sb.from('offres').insert(withTenant(payload));
     if (error) { showToast('Erreur.', 'error'); return; }
     showToast(editId ? 'Offre mise à jour !' : 'Offre ajoutée !', 'success');
     loadAdminSub();
@@ -1597,7 +2419,7 @@ async function renderAdminEvents(el) {
     };
     const { error } = editId
       ? await sb.from('evenements').update(payload).eq('id', editId)
-      : await sb.from('evenements').insert(payload);
+      : await sb.from('evenements').insert(withTenant(payload));
     if (error) { showToast('Erreur.', 'error'); return; }
     showToast(editId ? 'Événement mis à jour !' : 'Événement ajouté !', 'success');
     loadAdminSub();
@@ -1700,7 +2522,7 @@ async function renderAdminAnnuaire(el) {
 
     const { error } = editId
       ? await sb.from('annuaire').update(payload).eq('id', editId)
-      : await sb.from('annuaire').insert({ ...payload, photo_url });
+      : await sb.from('annuaire').insert(withTenant({ ...payload, photo_url }));
     submitBtn.disabled = false; submitBtn.textContent = 'Enregistrer';
     if (error) { showToast('Erreur.', 'error'); return; }
     showToast(editId ? 'Commerçant mis à jour !' : 'Commerçant ajouté !', 'success');
@@ -1757,7 +2579,7 @@ async function loadLiens() {
     return;
   }
   container.innerHTML = data.map(l => `
-    <a href="${escHtml(l.url)}" target="_blank" rel="noopener" class="lien-card card">
+    <a href="${escHtml(externalUrl(l.url))}" target="_blank" rel="noopener" class="lien-card card">
       <div class="lien-icon">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
       </div>
@@ -1807,7 +2629,7 @@ async function renderAdminLiens(el) {
     };
     const { error } = editId
       ? await sb.from('liens').update(payload).eq('id', editId)
-      : await sb.from('liens').insert(payload);
+      : await sb.from('liens').insert(withTenant(payload));
     if (error) { showToast('Erreur.', 'error'); return; }
     showToast(editId ? 'Lien mis à jour !' : 'Lien ajouté !', 'success');
     await loadAdminSub();

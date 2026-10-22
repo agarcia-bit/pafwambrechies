@@ -1,0 +1,94 @@
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+
+import { BrandBand } from '@/components/brand-band';
+import { OfferTag } from '@/components/offer-tag';
+import { PressableCard } from '@/components/ui/card';
+import { ChipBar } from '@/components/ui/chip-bar';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Text } from '@/components/ui/text';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+import { useOffres } from '@/lib/data';
+import { offerValidity } from '@/lib/format';
+import { useTenantConfig } from '@/lib/tenant-config';
+import type { Offre } from '@/lib/types';
+import { useBlockedIds } from '@/lib/moderation';
+import { useBandListStyle } from '@/theme';
+
+export default function OffresScreen() {
+  const offres = useOffres();
+  const { categories, labels } = useTenantConfig();
+  const bandStyle = useBandListStyle();
+  const [category, setCategory] = useState('Tous');
+  const { refreshing, onRefresh } = usePullToRefresh(offres.refetch);
+  const blocked = useBlockedIds();
+  const items = (offres.data ?? []).filter(
+    (o) => (category === 'Tous' || o.categorie === category) && !(o.user_id && blocked.has(o.user_id))
+  );
+
+  return (
+    <FlatList
+      style={bandStyle}
+      data={items}
+      keyExtractor={(o) => String(o.id)}
+      renderItem={({ item }) => <OffreCard offre={item} />}
+      contentInsetAdjustmentBehavior="never"
+      contentContainerStyle={styles.content}
+      ItemSeparatorComponent={Gap}
+      ListHeaderComponent={
+        <View style={styles.header}>
+          <BrandBand title={labels.offres} subtitle="Les bons plans réservés aux adhérents">
+            {categories.offres.length > 0 && (
+              <ChipBar onBand options={['Tous', ...categories.offres]} value={category} onChange={setCategory} />
+            )}
+          </BrandBand>
+        </View>
+      }
+      ListEmptyComponent={
+        offres.isPending ? (
+          <LoadingState />
+        ) : offres.isError ? (
+          <ErrorState onRetry={offres.refetch} />
+        ) : (
+          <EmptyState icon="tag" title="Aucune offre en cours" />
+        )
+      }
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />}
+    />
+  );
+}
+
+function OffreCard({ offre: o }: { offre: Offre }) {
+  return (
+    <PressableCard
+      style={styles.card}
+      accessibilityLabel={`${o.titre}, ${o.commercant}`}
+      onPress={() => router.push({ pathname: '/offres/[id]', params: { id: String(o.id) } })}>
+      <Text variant="footnote" tone="secondary" style={styles.merchant}>
+        {o.commercant.toUpperCase()}
+      </Text>
+      <Text variant="headline">{o.titre}</Text>
+      <View style={styles.footer}>
+        <Text variant="footnote" tone="secondary" style={styles.flex}>
+          {offerValidity(o.expiration)}
+        </Text>
+        {!!o.tag && <OfferTag label={o.tag} />}
+      </View>
+    </PressableCard>
+  );
+}
+
+function Gap() {
+  return <View style={styles.gap} />;
+}
+
+const styles = StyleSheet.create({
+  content: { paddingTop: 0, paddingBottom: 32 },
+  header: { gap: 12, marginBottom: 16 },
+  card: { marginHorizontal: 16, gap: 6 },
+  merchant: { fontWeight: '600', letterSpacing: 0.5 },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 },
+  flex: { flex: 1 },
+  gap: { height: 12 },
+});

@@ -1,0 +1,36 @@
+{
+  "fill" : {
+    "linear-gradient" : [
+      "extended-srgb:0.07843,0.72157,0.65098,1.00000",
+      "extended-srgb:0.04314,0.37255,0.34510,1.00000"
+    ],
+    "orientation" : {
+      "start" : { "x" : 0, "y" : 0 },
+      "stop" : { "x" : 1, "y" : 1 }
+    }
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "allianceo-mark.svg",
+          "name" : "allianceo-mark"
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.4
+      },
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

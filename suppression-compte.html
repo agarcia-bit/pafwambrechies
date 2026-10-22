@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Suppression de compte — PAF Wambrechies</title>
+  <style>
+    :root {
+      --primary: #2E3192;
+      --text: #1F2937;
+      --text-muted: #6B7280;
+      --bg: #F0F4F8;
+      --card: #FFFFFF;
+      --border: #E5E7EB;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg); color: var(--text); line-height: 1.6;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
+    header { margin-bottom: 32px; }
+    h1 { font-size: 1.5rem; color: var(--primary); margin: 0 0 6px; }
+    .updated { color: var(--text-muted); font-size: .85rem; }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 20px 24px; margin-bottom: 16px;
+    }
+    h2 { font-size: 1.05rem; color: var(--primary); margin: 0 0 10px; }
+    p, li { font-size: .92rem; color: var(--text); }
+    ul { margin: 8px 0; padding-left: 20px; }
+    a { color: var(--primary); }
+    .contact-box { background: #EAEBF8; border-radius: 10px; padding: 14px 18px; font-size: .9rem; }
+    .steps { counter-reset: step; list-style: none; padding: 0; margin: 12px 0; }
+    .steps li {
+      counter-increment: step; position: relative; padding-left: 38px; margin-bottom: 14px;
+    }
+    .steps li::before {
+      content: counter(step); position: absolute; left: 0; top: 0;
+      width: 26px; height: 26px; border-radius: 50%; background: var(--primary); color: #fff;
+      font-size: .82rem; font-weight: 700; display: flex; align-items: center; justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Suppression de compte et de données</h1>
+      <p class="updated">Application PAF Wambrechies — dernière mise à jour : 23 septembre 2026</p>
+    </header>
+
+    <div class="card">
+      <h2>Comment demander la suppression de votre compte ?</h2>
+      <p>
+        Vous pouvez demander la suppression de votre compte et de toutes les données
+        associées à tout moment, <strong>même si vous n'arrivez plus à vous connecter</strong>
+        à l'application.
+      </p>
+      <ol class="steps">
+        <li>
+          Envoyez un email à
+          <a href="mailto:paf.wambrechies@gmail.com?subject=Demande%20de%20suppression%20de%20compte">paf.wambrechies@gmail.com</a>
+          avec pour objet « Demande de suppression de compte ».
+        </li>
+        <li>
+          Indiquez l'adresse email associée à votre compte PAF Wambrechies, pour que nous
+          puissions vous identifier.
+        </li>
+        <li>
+          Votre compte et vos données seront supprimés sous <strong>30 jours maximum</strong>.
+          Vous recevrez une confirmation par email une fois la suppression effectuée.
+        </li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>Quelles données sont supprimées ?</h2>
+      <ul>
+        <li>Votre compte (adresse email, prénom, nom, mot de passe)</li>
+        <li>Vos commentaires et « j'aime » sur les actualités et la boîte à idées</li>
+        <li>Les idées que vous avez proposées</li>
+        <li>Votre abonnement aux notifications push, le cas échéant</li>
+      </ul>
+      <p>
+        Si vous êtes un commerçant référencé dans l'annuaire de l'association, votre fiche
+        (nom d'entreprise, coordonnées, description, photo) est gérée séparément par
+        l'administration de l'association ; contactez-nous par le même email pour en
+        demander le retrait.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Conservation partielle possible</h2>
+      <p>
+        Dans de rares cas, certaines données peuvent être conservées au-delà de la
+        suppression du compte si la loi nous y oblige (obligations comptables ou légales),
+        mais uniquement pour la durée strictement nécessaire, et sans que ces données
+        restent accessibles au sein de l'application.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Contact</h2>
+      <div class="contact-box">
+        📧 <a href="mailto:paf.wambrechies@gmail.com">paf.wambrechies@gmail.com</a>
+      </div>
+      <p style="margin-top:12px">
+        Pour toute autre question sur vos données personnelles, consultez également notre
+        <a href="/politique-de-confidentialite.html">politique de confidentialité</a>.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
