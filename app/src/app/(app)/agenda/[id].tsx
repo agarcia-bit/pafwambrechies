@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 import { DateTile } from '@/components/actu-visual';
 import { DetailCard, DetailRow, DetailStatus, FullScreenDetail, Rise } from '@/components/full-screen-detail';
+import { ParticipationBlock } from '@/components/participation';
 import { Button } from '@/components/ui/button';
 import { LinkedText } from '@/components/ui/linked-text';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -57,8 +58,13 @@ export default function EvenementScreen() {
           )}
         </DetailCard>
       </Rise>
-      {!!ev.description && (
+      {!!ev.participation && (
         <Rise order={1}>
+          <ParticipationBlock event={ev} />
+        </Rise>
+      )}
+      {!!ev.description && (
+        <Rise order={2}>
           <LinkedText>{ev.description}</LinkedText>
         </Rise>
       )}

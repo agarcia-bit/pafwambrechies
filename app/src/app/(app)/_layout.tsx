@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LaunchReveal } from '@/components/launch-reveal';
 import { NotificationObserver } from '@/components/notification-observer';
+import { ParticipationGate } from '@/components/participation-gate';
 import { PollGate } from '@/components/poll-gate';
 import { Button } from '@/components/ui/button';
 import { ErrorState, LoadingState } from '@/components/ui/states';
@@ -36,6 +37,7 @@ export default function AppLayout() {
       <StatusBar style="light" />
       <LaunchReveal />
       <PollGate />
+      <ParticipationGate />
       <NativeTabs tintColor={colors.primary}>
         <NativeTabs.Trigger name="(actus)">
           <NativeTabs.Trigger.Label>Actus</NativeTabs.Trigger.Label>
