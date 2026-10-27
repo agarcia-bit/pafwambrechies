@@ -8,7 +8,7 @@ import { useTenantConfig } from '@/lib/tenant-config';
 export default function PlusLayout() {
   const header = useBrandHeader();
   const { isAdmin, isBureau, isPlatformAdmin } = useMember();
-  const { modules } = useTenantConfig();
+  const { modules, cotisations } = useTenantConfig();
   return (
     <Stack screenOptions={header}>
       <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -47,6 +47,9 @@ export default function PlusLayout() {
       <Stack.Protected guard={isAdmin}>
         <Stack.Screen name="admin/reglages" options={{ title: 'Réglages' }} />
         <Stack.Screen name="admin/membres" options={{ title: 'Membres' }} />
+      </Stack.Protected>
+      <Stack.Protected guard={isBureau && cotisations.enabled}>
+        <Stack.Screen name="admin/cotisations" options={{ title: 'Cotisations' }} />
       </Stack.Protected>
       <Stack.Protected guard={isBureau}>
         <Stack.Screen name="bureau/index" options={{ title: 'Pilotage bureau' }} />

@@ -13,6 +13,8 @@ export type TenantConfig = {
   labels: { annuaire: string; offres: string; nom: string };
   /** Filters of the directory and of the offers; empty = no categories. */
   categories: { annuaire: string[]; offres: string[] };
+  /** Membership dues: off unless the association turns them on. */
+  cotisations: { enabled: boolean; url: string; echeance: string; montant: string };
 };
 
 /** Stored category when an association uses none (the column cannot be empty). */
@@ -43,6 +45,13 @@ export function tenantConfig(branding: Branding | null | undefined): TenantConfi
       nom: text(b.label_nom, 'Nom'),
     },
     categories: { annuaire: parseList(b.annuaire_categories), offres: parseList(b.offres_categories) },
+    cotisations: {
+      enabled: b.module_cotisations?.trim().toLowerCase() === 'on',
+      // Only an https page can be opened for payment.
+      url: /^https:\/\//i.test(b.cotisation_url?.trim() ?? '') ? (b.cotisation_url ?? '').trim() : '',
+      echeance: b.cotisation_echeance?.trim() ?? '',
+      montant: b.cotisation_montant?.trim() ?? '',
+    },
   };
 }
 
