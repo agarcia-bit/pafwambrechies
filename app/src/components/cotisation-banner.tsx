@@ -1,18 +1,49 @@
-import { Alert, Linking, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { ListRow } from '@/components/ui/list';
 import { Text } from '@/components/ui/text';
 import { showMessage } from '@/lib/confirm';
-import { STATUS_LABELS, cotisationStatus, describeStatus, needsRenewal, useMyCotisation } from '@/lib/cotisations';
+import {
+  STATUS_LABELS,
+  cotisationStatus,
+  describeStatus,
+  needsRenewal,
+  useMyCotisation,
+  type CotisationStatus,
+} from '@/lib/cotisations';
 import { useTenantConfig } from '@/lib/tenant-config';
 import { useTheme } from '@/theme';
 
 /** Opens the association's payment page (HelloAsso, ...) in the browser. */
-export function openPaymentPage(url: string) {
+function openPaymentPage(url: string) {
   Linking.openURL(url).catch(() => showMessage('Lien impossible à ouvrir', 'Réessayez ou contactez le bureau.'));
+}
+
+/**
+ * Paying happens on the association's own page, outside the app: nothing is locked, and the
+ * bureau updates the status afterwards. The details say so, with the payment button when due.
+ */
+function showDetails(
+  status: CotisationStatus,
+  validUntil: string | null | undefined,
+  config: { url: string; montant: string }
+) {
+  const { title, message } = describeStatus(status, validUntil);
+  const canPay = needsRenewal(status) && !!config.url;
+  const lines = [message];
+  if (needsRenewal(status) && config.montant) lines.push(`Montant : ${config.montant}.`);
+  lines.push(
+    canPay
+      ? 'Le paiement se fait sur le site de l’association ; le bureau met ensuite à jour votre statut.'
+      : needsRenewal(status)
+        ? 'Rapprochez-vous du bureau pour régler votre cotisation.'
+        : ''
+  );
+  Alert.alert(title, lines.filter(Boolean).join('\n\n'), [
+    ...(canPay ? [{ text: 'Régler en ligne', onPress: () => openPaymentPage(config.url) }] : []),
+    { text: 'Fermer', style: 'cancel' as const },
+  ]);
 }
 
 /** "Ma cotisation" row of the Plus tab: the member's status, and the payment page when one is due. */
@@ -20,32 +51,21 @@ export function CotisationRow() {
   const { cotisations } = useTenantConfig();
   const mine = useMyCotisation();
   if (!cotisations.enabled) return null;
-
   const status = mine.data === undefined ? null : cotisationStatus(mine.data);
-  const { title, message } = describeStatus(status ?? 'aucune', mine.data);
-
-  function open() {
-    if (!status) return;
-    const canPay = needsRenewal(status) && !!cotisations.url;
-    Alert.alert(title, message, [
-      ...(canPay ? [{ text: 'Régler en ligne', onPress: () => openPaymentPage(cotisations.url) }] : []),
-      { text: 'Fermer', style: 'cancel' as const },
-    ]);
-  }
 
   return (
     <ListRow
       icon="card"
       title="Ma cotisation"
       subtitle={status ? STATUS_LABELS[status] : undefined}
-      onPress={open}
+      onPress={status ? () => showDetails(status, mine.data, cotisations) : undefined}
     />
   );
 }
 
 /**
- * Reminder shown to a member whose dues are missing or about to end. Paying happens on the
- * association's own page, outside the app: nothing is locked, the bureau updates the status.
+ * Thin red strip at the top of the home feed while the member's dues are missing or about to
+ * end, like a pending poll: it stays until the bureau records the renewal.
  */
 export function CotisationBanner() {
   const { cotisations } = useTenantConfig();
@@ -55,39 +75,36 @@ export function CotisationBanner() {
 
   const status = cotisationStatus(mine.data);
   if (!needsRenewal(status)) return null;
-  const { title, message } = describeStatus(status, mine.data);
+  const { title } = describeStatus(status, mine.data);
 
   return (
-    <Card style={styles.card}>
-      <View style={styles.head}>
-        <Icon name="card" size={24} color={status === 'expiree' ? colors.danger : colors.primary} />
-        <View style={styles.text}>
-          <Text variant="headline">{title}</Text>
-          <Text variant="subhead" tone="secondary">
-            {message}
-            {cotisations.montant ? ` Montant : ${cotisations.montant}.` : ''}
-          </Text>
-        </View>
-      </View>
-      {cotisations.url ? (
-        <>
-          <Button title="Régler en ligne" icon="external" onPress={() => openPaymentPage(cotisations.url)} />
-          <Text variant="footnote" tone="secondary">
-            Le paiement se fait sur le site de l’association, en dehors de l’application. Le bureau met ensuite à jour
-            votre statut.
-          </Text>
-        </>
-      ) : (
-        <Text variant="footnote" tone="secondary">
-          Rapprochez-vous du bureau pour régler votre cotisation.
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityHint="Affiche le détail et le lien de paiement"
+      onPress={() => showDetails(status, mine.data, cotisations)}
+      style={({ pressed }) => [styles.strip, { backgroundColor: colors.danger, opacity: pressed ? 0.85 : 1 }]}>
+      <View style={styles.row}>
+        <Icon name="card" size={18} color="#FFFFFF" />
+        <Text variant="subhead" style={styles.label}>
+          {title}
         </Text>
-      )}
-    </Card>
+      </View>
+      <Icon name="chevron" size={13} color="#FFFFFF" />
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 16, gap: 12 },
-  head: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  text: { flex: 1, gap: 4 },
+  strip: {
+    marginHorizontal: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  label: { color: '#FFFFFF', fontWeight: '700' },
 });

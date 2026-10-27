@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { PushOffer } from '@/components/association';
+import { CotisationBanner } from '@/components/cotisation-banner';
 import { PendingPolls } from '@/components/pending-polls';
 import { UpcomingEvents } from '@/components/upcoming-events';
 import { BrandBand } from '@/components/brand-band';
@@ -46,6 +47,7 @@ export default function ActusScreen() {
             title={(branding?.tenant_name ?? branding?.name ?? 'Actus').toUpperCase()}>
             <ChipBar onBand options={ACTU_CATEGORIES} value={category} onChange={setCategory} />
           </BrandBand>
+          <CotisationBanner />
           <PendingPolls />
           <PushOffer />
           {(category === 'Tous' || category === 'Événement') && <UpcomingEvents />}
