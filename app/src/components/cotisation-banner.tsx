@@ -1,8 +1,7 @@
-import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Linking } from 'react-native';
 
-import { Icon } from '@/components/ui/icon';
+import { AlertStrip } from '@/components/alert-strip';
 import { ListRow } from '@/components/ui/list';
-import { Text } from '@/components/ui/text';
 import { showMessage } from '@/lib/confirm';
 import {
   STATUS_LABELS,
@@ -16,7 +15,6 @@ import {
   type CotisationStatus,
 } from '@/lib/cotisations';
 import { useTenantConfig } from '@/lib/tenant-config';
-import { useTheme } from '@/theme';
 
 /** Opens the association's payment page (HelloAsso, ...) in the browser. */
 function openPaymentPage(url: string) {
@@ -75,7 +73,6 @@ export function CotisationRow() {
 export function CotisationBanner() {
   const { cotisations } = useTenantConfig();
   const mine = useMyCotisation();
-  const { colors } = useTheme();
   if (!cotisations.enabled || mine.isPending || mine.isError) return null;
 
   const campaign = campaignOf(cotisations);
@@ -84,33 +81,11 @@ export function CotisationBanner() {
   const { title } = describeStatus(status, mine.data, campaign);
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      accessibilityHint="Affiche le détail et le lien de paiement"
+    <AlertStrip
+      icon="card"
+      title={title}
+      hint="Affiche le détail et le lien de paiement"
       onPress={() => showDetails(status, mine.data, cotisations, campaign)}
-      style={({ pressed }) => [styles.strip, { backgroundColor: colors.danger, opacity: pressed ? 0.85 : 1 }]}>
-      <View style={styles.row}>
-        <Icon name="card" size={18} color="#FFFFFF" />
-        <Text variant="subhead" style={styles.label}>
-          {title}
-        </Text>
-      </View>
-      <Icon name="chevron" size={13} color="#FFFFFF" />
-    </Pressable>
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  strip: {
-    marginHorizontal: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  label: { color: '#FFFFFF', fontWeight: '700' },
-});

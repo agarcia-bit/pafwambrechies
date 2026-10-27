@@ -179,8 +179,15 @@ const evenements: Collection = {
     { key: 'fin', label: 'Fin', type: 'time' },
     { key: 'lieu', label: 'Lieu', type: 'text', placeholder: 'Ex : Salle des fêtes' },
     { key: 'description', label: 'Description', type: 'multiline' },
+    {
+      key: 'participation',
+      label: 'Demander qui vient',
+      type: 'choice',
+      options: ['non', 'oui'],
+      labels: { non: 'Non', oui: 'Oui, avec rappels aux adhérents' },
+    },
   ],
-  defaults: () => ({ titre: '', date: todayISO(), debut: '09:00', fin: '10:00', lieu: '', description: '' }),
+  defaults: () => ({ titre: '', date: todayISO(), debut: '09:00', fin: '10:00', lieu: '', description: '', participation: 'non' }),
   // "heure" is stored as text: "09:00 – 10:00", like the web app does.
   toValues: (r) => {
     const [debut = '09:00', fin = '10:00'] = str(r.heure).match(/\d{1,2}:\d{2}/g) ?? [];
@@ -191,6 +198,7 @@ const evenements: Collection = {
       fin: pad(fin),
       lieu: str(r.lieu),
       description: str(r.description),
+      participation: r.participation ? 'oui' : 'non',
     };
   },
   toPayload: (v) => ({
@@ -199,12 +207,13 @@ const evenements: Collection = {
     heure: v.debut && v.fin ? `${v.debut} – ${v.fin}` : v.debut || v.fin || null,
     lieu: orNull(v.lieu),
     description: orNull(v.description),
+    participation: v.participation === 'oui',
   }),
   derive: (changed, v) => (changed === 'debut' ? { ...v, fin: addOneHour(v.debut) } : v),
   describe: (r) => ({
     title: str(r.titre),
     subtitle: [formatDay(str(r.date)), str(r.heure), str(r.lieu)].filter(Boolean).join(' · '),
-    flag: str(r.date) < todayISO() ? 'Passé' : undefined,
+    flag: str(r.date) < todayISO() ? 'Passé' : r.participation ? 'Réponses demandées' : undefined,
   }),
 };
 

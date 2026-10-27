@@ -43,6 +43,7 @@ export default function PlusLayout() {
         <Stack.Screen name="admin/sondages/index" options={{ title: 'Sondages' }} />
         <Stack.Screen name="admin/sondages/nouveau" options={{ title: 'Nouveau sondage', presentation: 'modal' }} />
         <Stack.Screen name="admin/sondages/[id]" options={{ title: 'Résultats' }} />
+        <Stack.Screen name="admin/participants" options={{ title: 'Réponses' }} />
       </Stack.Protected>
       <Stack.Protected guard={isAdmin}>
         <Stack.Screen name="admin/reglages" options={{ title: 'Réglages' }} />

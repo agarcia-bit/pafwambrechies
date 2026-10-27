@@ -47,7 +47,7 @@ export function BackButton({ onHero = true }: { onHero?: boolean }) {
       accessibilityLabel="Retour"
       hitSlop={10}
       onPress={() => router.back()}
-      style={[styles.back, { top: insets.top + 8, backgroundColor: onHero ? 'rgba(255,255,255,0.22)' : colors.fill }]}>
+      style={[styles.back, { top: insets.top + 8, backgroundColor: onHero ? 'rgba(0,0,0,0.5)' : colors.fill }]}>
       <Icon name="chevronLeft" size={16} color={color} />
       <Text variant="subhead" style={[styles.backText, { color }]}>
         Retour
@@ -236,6 +236,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    // Stays readable over the colored hero and over the white sheet it scrolls onto.
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
   },
   backText: { fontWeight: '600' },
 });

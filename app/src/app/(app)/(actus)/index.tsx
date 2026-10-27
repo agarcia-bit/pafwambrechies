@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'r
 
 import { PushOffer } from '@/components/association';
 import { CotisationBanner } from '@/components/cotisation-banner';
+import { ParticipationBanner } from '@/components/participation-banner';
 import { PendingPolls } from '@/components/pending-polls';
 import { UpcomingEvents } from '@/components/upcoming-events';
 import { BrandBand } from '@/components/brand-band';
@@ -48,6 +49,7 @@ export default function ActusScreen() {
             <ChipBar onBand options={ACTU_CATEGORIES} value={category} onChange={setCategory} />
           </BrandBand>
           <CotisationBanner />
+          <ParticipationBanner />
           <PendingPolls />
           <PushOffer />
           {(category === 'Tous' || category === 'Événement') && <UpcomingEvents />}

@@ -58,11 +58,15 @@ export default function ActuScreen() {
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         ref={scroll}
+        // Pulling past the end shows the comments' grey, not the white of the screen.
+        style={{ backgroundColor: colors.background }}
         contentInsetAdjustmentBehavior="never"
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}>
         <View style={[styles.hero, { backgroundColor: heroColor, paddingTop: insets.top + 52 }]}>
+          {/* Pulling down at the top keeps the hero color instead of showing the grey ground. */}
+          <View pointerEvents="none" style={[styles.heroOverscroll, { backgroundColor: heroColor }]} />
           <Animated.View entering={FadeInDown.delay(150).duration(450)} style={styles.heroMeta}>
             <Text variant="footnote" style={styles.heroCategory} numberOfLines={1}>
               {a.categorie.toUpperCase()}
@@ -130,6 +134,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { flexGrow: 1 },
   hero: { paddingHorizontal: 20, paddingBottom: 40, gap: 10 },
+  heroOverscroll: { position: 'absolute', top: -1000, left: 0, right: 0, height: 1000 },
   heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 24 },
   heroCategory: { color: 'rgba(255,255,255,0.95)', fontWeight: '700', letterSpacing: 0.4 },
   heroTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },

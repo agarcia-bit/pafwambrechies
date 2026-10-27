@@ -109,6 +109,8 @@ export type Evenement = {
   heure: string | null;
   lieu: string | null;
   description: string | null;
+  /** The bureau asks the members whether they come (supabase/evenements_participation.sql). */
+  participation?: boolean;
 };
 
 export type Idee = {
