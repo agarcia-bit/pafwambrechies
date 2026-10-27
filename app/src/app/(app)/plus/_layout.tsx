@@ -50,6 +50,7 @@ export default function PlusLayout() {
       </Stack.Protected>
       <Stack.Protected guard={isBureau && cotisations.enabled}>
         <Stack.Screen name="admin/cotisations" options={{ title: 'Cotisations' }} />
+        <Stack.Screen name="admin/cotisations-reglages" options={{ title: 'Campagne et paiement' }} />
       </Stack.Protected>
       <Stack.Protected guard={isBureau}>
         <Stack.Screen name="bureau/index" options={{ title: 'Pilotage bureau' }} />

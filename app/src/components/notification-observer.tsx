@@ -4,8 +4,9 @@ import { useEffect } from 'react';
 
 /**
  * Opens what a tapped push notification is about (sent by notify-new-actu): the actu
- * (data.actu_id), the feed for a new poll (data.sondage_id), where the poll is pinned, or the
- * reports screen for a new report (data.signalement_id, for the bureau and the admins).
+ * (data.actu_id), the feed for a new poll (data.sondage_id) or a dues reminder (data.cotisation),
+ * where the poll or the reminder is pinned, or the reports screen for a new report
+ * (data.signalement_id, for the bureau and the admins).
  */
 export function NotificationObserver() {
   const response = Notifications.useLastNotificationResponse();
@@ -19,7 +20,7 @@ export function NotificationObserver() {
     } else if (data?.signalement_id) {
       Notifications.clearLastNotificationResponse();
       router.push('/plus/admin/signalements');
-    } else if (data?.sondage_id) {
+    } else if (data?.sondage_id || data?.cotisation) {
       Notifications.clearLastNotificationResponse();
       router.navigate('/');
     }

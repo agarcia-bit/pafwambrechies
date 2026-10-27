@@ -440,9 +440,6 @@ export const SETTING_KEYS = [
   'annuaire_categories',
   'offres_categories',
   'module_cotisations',
-  'cotisation_url',
-  'cotisation_echeance',
-  'cotisation_montant',
 ] as const;
 export type Settings = Record<(typeof SETTING_KEYS)[number], string>;
 

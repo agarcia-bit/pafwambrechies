@@ -1,8 +1,10 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { PressableCard } from '@/components/ui/card';
 import { ChipBar } from '@/components/ui/chip-bar';
 import { Icon } from '@/components/ui/icon';
@@ -13,13 +15,15 @@ import { showMessage } from '@/lib/confirm';
 import {
   STATUS_HUES,
   STATUS_LABELS,
+  campaignOf,
+  campaignOpen,
   cotisationStatus,
-  followingYear,
   needsRenewal,
   proposedEndDate,
   useClearCotisation,
   useCotisations,
   useSetCotisation,
+  type Campaign,
   type CotisationRow,
 } from '@/lib/cotisations';
 import { formatDay, fullName } from '@/lib/format';
@@ -34,7 +38,9 @@ export default function CotisationsScreen() {
   const { refreshing, onRefresh } = usePullToRefresh(cotisations.refetch);
   const [filter, setFilter] = useState<Filter>('À renouveler');
 
-  const rows = (cotisations.data ?? []).map((row) => ({ row, status: cotisationStatus(row.valide_jusqu) }));
+  const config = useTenantConfig().cotisations;
+  const campaign = campaignOf(config);
+  const rows = (cotisations.data ?? []).map((row) => ({ row, status: cotisationStatus(row.valide_jusqu, campaign) }));
   const toRenew = rows.filter((r) => needsRenewal(r.status)).length;
   const visible = rows.filter(
     (r) => filter === 'Tous' || (filter === 'À jour' ? !needsRenewal(r.status) : needsRenewal(r.status))
@@ -44,7 +50,7 @@ export default function CotisationsScreen() {
     <FlatList
       data={visible}
       keyExtractor={(item) => item.row.id}
-      renderItem={({ item }) => <MemberItem row={item.row} />}
+      renderItem={({ item }) => <MemberItem row={item.row} campaign={campaign} />}
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={styles.content}
       ItemSeparatorComponent={Gap}
@@ -52,10 +58,24 @@ export default function CotisationsScreen() {
         <View style={styles.header}>
           {cotisations.data && (
             <Text tone="secondary" style={styles.intro}>
-              {rows.length - toRenew} à jour · {toRenew} à renouveler ou jamais réglée{toRenew > 1 ? 's' : ''}. Touchez un
-              adhérent pour enregistrer son renouvellement.
+              {rows.length - toRenew} à jour · {toRenew} à renouveler. Touchez un adhérent pour enregistrer son
+              renouvellement.
             </Text>
           )}
+          <Text variant="footnote" tone="secondary" style={styles.intro}>
+            {campaign
+              ? campaignOpen(campaign)
+                ? `Campagne ${campaign.libelle || ''} ouverte depuis le ${formatDay(campaign.ouverture)} : les adhérents concernés voient un bandeau et reçoivent une notification par semaine jusqu’au ${formatDay(campaign.fin)}.`
+                : `Campagne ${campaign.libelle || ''} : ouverture le ${formatDay(campaign.ouverture)}, valable jusqu’au ${formatDay(campaign.fin)}.`
+              : 'Aucune campagne en cours : aucun rappel n’est envoyé. Lancez-en une pour demander le renouvellement.'}
+          </Text>
+          <Button
+            title="Campagne et lien de paiement"
+            icon="gear"
+            variant="secondary"
+            onPress={() => router.push('/plus/admin/cotisations-reglages')}
+            style={styles.setup}
+          />
           <ChipBar options={FILTERS} value={filter} onChange={setFilter} />
         </View>
       }
@@ -76,22 +96,20 @@ export default function CotisationsScreen() {
   );
 }
 
-function MemberItem({ row }: { row: CotisationRow }) {
+function MemberItem({ row, campaign }: { row: CotisationRow; campaign: Campaign | null }) {
   const { colors } = useTheme();
-  const { cotisations } = useTenantConfig();
   const setCotisation = useSetCotisation();
   const clearCotisation = useClearCotisation();
-  const status = cotisationStatus(row.valide_jusqu);
+  const status = cotisationStatus(row.valide_jusqu, campaign);
   const name = fullName(row.prenom, row.nom) || row.email || 'Adhérent';
 
   const fail = () => showMessage('Enregistrement impossible', 'La cotisation n’a pas pu être modifiée. Réessayez.');
   const record = (validUntil: string) => setCotisation.mutate({ memberId: row.id, validUntil }, { onError: fail });
 
   function choose() {
-    const proposed = proposedEndDate(cotisations.echeance);
+    const proposed = proposedEndDate(campaign);
     Alert.alert(name, row.valide_jusqu ? `Cotisation valable jusqu’au ${formatDay(row.valide_jusqu)}.` : 'Aucune cotisation enregistrée.', [
       { text: `Renouvelée, jusqu’au ${formatDay(proposed)}`, onPress: () => record(proposed) },
-      { text: `Jusqu’au ${formatDay(followingYear(proposed))}`, onPress: () => record(followingYear(proposed)) },
       ...(row.valide_jusqu
         ? [
             {
@@ -133,6 +151,7 @@ const styles = StyleSheet.create({
   content: { paddingTop: 8, paddingBottom: 32 },
   header: { gap: 12, marginBottom: 12 },
   intro: { marginHorizontal: 20 },
+  setup: { marginHorizontal: 16 },
   row: { marginHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12 },
   text: { flex: 1, gap: 4 },
   gap: { height: 8 },

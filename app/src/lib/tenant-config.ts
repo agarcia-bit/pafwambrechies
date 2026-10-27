@@ -14,7 +14,7 @@ export type TenantConfig = {
   /** Filters of the directory and of the offers; empty = no categories. */
   categories: { annuaire: string[]; offres: string[] };
   /** Membership dues: off unless the association turns them on. */
-  cotisations: { enabled: boolean; url: string; echeance: string; montant: string };
+  cotisations: { enabled: boolean; url: string; montant: string; libelle: string; ouverture: string; fin: string };
 };
 
 /** Stored category when an association uses none (the column cannot be empty). */
@@ -49,8 +49,10 @@ export function tenantConfig(branding: Branding | null | undefined): TenantConfi
       enabled: b.module_cotisations?.trim().toLowerCase() === 'on',
       // Only an https page can be opened for payment.
       url: /^https:\/\//i.test(b.cotisation_url?.trim() ?? '') ? (b.cotisation_url ?? '').trim() : '',
-      echeance: b.cotisation_echeance?.trim() ?? '',
       montant: b.cotisation_montant?.trim() ?? '',
+      libelle: b.cotisation_libelle?.trim() ?? '',
+      ouverture: b.cotisation_ouverture?.trim() ?? '',
+      fin: b.cotisation_fin?.trim() ?? '',
     },
   };
 }

@@ -6,10 +6,13 @@ import { Text } from '@/components/ui/text';
 import { showMessage } from '@/lib/confirm';
 import {
   STATUS_LABELS,
+  campaignOf,
+  campaignOpen,
   cotisationStatus,
   describeStatus,
   needsRenewal,
   useMyCotisation,
+  type Campaign,
   type CotisationStatus,
 } from '@/lib/cotisations';
 import { useTenantConfig } from '@/lib/tenant-config';
@@ -27,9 +30,10 @@ function openPaymentPage(url: string) {
 function showDetails(
   status: CotisationStatus,
   validUntil: string | null | undefined,
-  config: { url: string; montant: string }
+  config: { url: string; montant: string },
+  campaign: Campaign | null
 ) {
-  const { title, message } = describeStatus(status, validUntil);
+  const { title, message } = describeStatus(status, validUntil, campaign);
   const canPay = needsRenewal(status) && !!config.url;
   const lines = [message];
   if (needsRenewal(status) && config.montant) lines.push(`Montant : ${config.montant}.`);
@@ -51,21 +55,22 @@ export function CotisationRow() {
   const { cotisations } = useTenantConfig();
   const mine = useMyCotisation();
   if (!cotisations.enabled) return null;
-  const status = mine.data === undefined ? null : cotisationStatus(mine.data);
+  const campaign = campaignOf(cotisations);
+  const status = mine.data === undefined ? null : cotisationStatus(mine.data, campaign);
 
   return (
     <ListRow
       icon="card"
       title="Ma cotisation"
       subtitle={status ? STATUS_LABELS[status] : undefined}
-      onPress={status ? () => showDetails(status, mine.data, cotisations) : undefined}
+      onPress={status ? () => showDetails(status, mine.data, cotisations, campaign) : undefined}
     />
   );
 }
 
 /**
- * Thin red strip at the top of the home feed while the member's dues are missing or about to
- * end, like a pending poll: it stays until the bureau records the renewal.
+ * Thin red strip at the top of the home feed while a renewal campaign is open and the member's
+ * dues do not cover it, like a pending poll: it stays until the bureau records the renewal.
  */
 export function CotisationBanner() {
   const { cotisations } = useTenantConfig();
@@ -73,16 +78,17 @@ export function CotisationBanner() {
   const { colors } = useTheme();
   if (!cotisations.enabled || mine.isPending || mine.isError) return null;
 
-  const status = cotisationStatus(mine.data);
-  if (!needsRenewal(status)) return null;
-  const { title } = describeStatus(status, mine.data);
+  const campaign = campaignOf(cotisations);
+  const status = cotisationStatus(mine.data, campaign);
+  if (!campaignOpen(campaign) || !needsRenewal(status)) return null;
+  const { title } = describeStatus(status, mine.data, campaign);
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityHint="Affiche le détail et le lien de paiement"
-      onPress={() => showDetails(status, mine.data, cotisations)}
+      onPress={() => showDetails(status, mine.data, cotisations, campaign)}
       style={({ pressed }) => [styles.strip, { backgroundColor: colors.danger, opacity: pressed ? 0.85 : 1 }]}>
       <View style={styles.row}>
         <Icon name="card" size={18} color="#FFFFFF" />

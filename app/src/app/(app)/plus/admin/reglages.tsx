@@ -10,7 +10,6 @@ import { ListRow, ListSection } from '@/components/ui/list';
 import { ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
-import { parseEcheance } from '@/lib/cotisations';
 import { adminErrorMessage, generateSignupCode, useSaveSettings, useSettings, type Settings } from '@/lib/admin';
 import { showMessage } from '@/lib/confirm';
 import { useMember } from '@/lib/session';
@@ -50,14 +49,6 @@ function SettingsForm({ saved }: { saved: Settings }) {
     }
     if ([s.tenant_primary_color, s.tenant_secondary_color].some((c) => c.trim() && !HEX.test(c.trim()))) {
       setError('Les couleurs s’écrivent avec un # et 6 caractères, par exemple #2E3192.');
-      return;
-    }
-    if (s.cotisation_url.trim() && !/^https:\/\//i.test(s.cotisation_url.trim())) {
-      setError('Le lien de paiement doit commencer par https://.');
-      return;
-    }
-    if (s.cotisation_echeance.trim() && !parseEcheance(s.cotisation_echeance)) {
-      setError('La date d’échéance s’écrit jour/mois, par exemple 31/08.');
       return;
     }
     setError(null);
@@ -206,7 +197,7 @@ function SettingsForm({ saved }: { saved: Settings }) {
 
       <Section
         title="Cotisations"
-        footer="Le bureau tient la liste de ceux qui ont renouvelé. Les adhérents en retard voient un rappel avec le lien de paiement (HelloAsso par exemple) ; le règlement se fait sur ce site, pas dans l’app, et le bureau met ensuite à jour le statut.">
+        footer="Le bureau tient la liste de ceux qui ont renouvelé, lance les campagnes de renouvellement et règle le lien de paiement depuis Administration › Cotisations. Le règlement se fait sur le site de l’association (HelloAsso par exemple), pas dans l’app.">
         <ListSection>
           <ListRow
             icon="card"
@@ -221,33 +212,6 @@ function SettingsForm({ saved }: { saved: Settings }) {
             }
           />
         </ListSection>
-        {s.module_cotisations === 'on' && (
-          <>
-            <TextField
-              label="Lien de paiement"
-              value={s.cotisation_url}
-              onChangeText={set('cotisation_url')}
-              placeholder="https://www.helloasso.com/associations/…"
-              keyboardType="url"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <TextField
-              label="Échéance chaque année (jour/mois)"
-              value={s.cotisation_echeance}
-              onChangeText={set('cotisation_echeance')}
-              placeholder="31/08"
-              keyboardType="numbers-and-punctuation"
-              autoCorrect={false}
-            />
-            <TextField
-              label="Montant (affiché aux adhérents)"
-              value={s.cotisation_montant}
-              onChangeText={set('cotisation_montant')}
-              placeholder="Ex : 25 € par an"
-            />
-          </>
-        )}
       </Section>
 
       <Section title="Version web" footer="Utilisés seulement par l’app web de l’association.">

@@ -6,12 +6,18 @@
 --     set_cotisation / clear_cotisation, which check the role and the association;
 --   * list_cotisations(): every member of the association with their end date (bureau/admins only,
 --     the profiles policy does not let the bureau read other members);
---   * settings (app_settings, per association, not secret): module_cotisations ('on' to enable,
---     absent = off), cotisation_url (payment page, e.g. HelloAsso), cotisation_echeance ("31/08",
---     yearly deadline), cotisation_montant (free text shown to members). They travel with the
---     branding, like the other module settings.
+--   * a renewal CAMPAIGN decided by the bureau: from cotisation_ouverture, the membership
+--     "cotisation_libelle" (e.g. 2027) is due, valid until cotisation_fin. Members whose
+--     valide_jusqu is before cotisation_fin are asked to renew (banner in the app, one push a
+--     week, see cotisations_rappels_cron.sql) until the bureau records their renewal. Without an
+--     open campaign nobody is asked anything. save_cotisation_settings() lets the bureau (not only
+--     the admins) set the campaign, the payment link and the amount;
+--   * settings (app_settings, per association, not secret) travel with the branding, like the
+--     other module settings: module_cotisations ('on' to enable, set by an admin, absent = off),
+--     cotisation_url (payment page, e.g. HelloAsso), cotisation_montant, cotisation_libelle,
+--     cotisation_ouverture, cotisation_fin ("YYYY-MM-DD").
 --
--- Deleting an account deletes the member's row (cascade on auth.users).
+-- Deleting an account deletes the member's row (cascade on auth.users). Safe to run again.
 
 create table if not exists public.cotisations (
   tenant_id   uuid not null references public.tenants(id) on delete cascade,
@@ -97,7 +103,7 @@ revoke all on function public.clear_cotisation(uuid) from public, anon;
 grant execute on function public.clear_cotisation(uuid) to authenticated;
 
 -- ── The settings travel with the branding ────────────────────────────────────
--- Same function as in tenant_app_config.sql, with the four cotisation keys added.
+-- Same function as in tenant_app_config.sql, with the cotisation keys added.
 create or replace function public.branding_for_tenant(p_tenant uuid)
 returns jsonb
 language sql
@@ -116,10 +122,86 @@ as $$
                               'module_idees', 'module_liens',
                               'label_annuaire', 'label_offres', 'label_nom',
                               'annuaire_categories', 'offres_categories',
-                              'module_cotisations', 'cotisation_url',
-                              'cotisation_echeance', 'cotisation_montant')
+                              'module_cotisations', 'cotisation_url', 'cotisation_montant',
+                              'cotisation_libelle', 'cotisation_ouverture', 'cotisation_fin')
             ), '{}'::jsonb)
   from public.tenants t
   where t.id = p_tenant;
 $$;
 revoke all on function public.branding_for_tenant(uuid) from public, anon, authenticated;
+
+-- ── Bureau: payment link, amount and renewal campaign ────────────────────────
+-- Not limited to admins (app_settings is): the bureau runs the renewals.
+create or replace function public.save_cotisation_settings(
+  p_url text,
+  p_montant text,
+  p_libelle text,
+  p_ouverture date,
+  p_fin date
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_tenant uuid := public.current_tenant_id();
+  v_url text := nullif(btrim(coalesce(p_url, '')), '');
+begin
+  if not public.is_bureau_or_admin() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+  if v_url is not null and v_url !~* '^https://' then
+    raise exception 'invalid_url' using errcode = '22023';
+  end if;
+  if (p_ouverture is null) <> (p_fin is null) or (p_fin is not null and p_fin < p_ouverture) then
+    raise exception 'invalid_campaign' using errcode = '22023';
+  end if;
+  insert into public.app_settings (tenant_id, key, value, updated_at)
+  values
+    (v_tenant, 'cotisation_url',        coalesce(v_url, ''), now()),
+    (v_tenant, 'cotisation_montant',    btrim(coalesce(p_montant, '')), now()),
+    (v_tenant, 'cotisation_libelle',    btrim(coalesce(p_libelle, '')), now()),
+    (v_tenant, 'cotisation_ouverture',  coalesce(p_ouverture::text, ''), now()),
+    (v_tenant, 'cotisation_fin',        coalesce(p_fin::text, ''), now())
+  on conflict (tenant_id, key)
+  do update set value = excluded.value, updated_at = excluded.updated_at;
+end;
+$$;
+revoke all on function public.save_cotisation_settings(text, text, text, date, date) from public, anon;
+grant execute on function public.save_cotisation_settings(text, text, text, date, date) to authenticated;
+
+-- ── Weekly reminder: who is asked to renew right now ─────────────────────────
+-- Called by the notify-cotisations edge function (service_role only). A member is listed when
+-- the association has the module on, its campaign is open today (ouverture <= today <= fin)
+-- and the member's end date is missing or before the campaign's end date.
+create or replace function public.cotisations_a_relancer()
+returns table (tenant_id uuid, user_id uuid, libelle text)
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  with today as (select (now() at time zone 'Europe/Paris')::date as d),
+  cfg as (
+    select s.tenant_id,
+           max(case when s.key = 'module_cotisations' then s.value end)                    as module,
+           nullif(max(case when s.key = 'cotisation_libelle' then s.value end), '')         as libelle,
+           nullif(max(case when s.key = 'cotisation_ouverture' then s.value end), '')::date as ouverture,
+           nullif(max(case when s.key = 'cotisation_fin' then s.value end), '')::date       as fin
+    from public.app_settings s
+    where s.key in ('module_cotisations', 'cotisation_libelle', 'cotisation_ouverture', 'cotisation_fin')
+    group by s.tenant_id
+  )
+  select c.tenant_id, p.id, c.libelle
+  from cfg c
+  cross join today
+  join public.profiles p on p.tenant_id = c.tenant_id
+  left join public.cotisations k on k.tenant_id = c.tenant_id and k.user_id = p.id
+  where c.module = 'on'
+    and c.ouverture is not null and c.fin is not null
+    and today.d between c.ouverture and c.fin
+    and (k.valide_jusqu is null or k.valide_jusqu < c.fin);
+$$;
+revoke all on function public.cotisations_a_relancer() from public, anon, authenticated;
+grant execute on function public.cotisations_a_relancer() to service_role;

@@ -33,8 +33,10 @@ export type Branding = {
   // Membership dues, see supabase/cotisations.sql.
   module_cotisations?: string;
   cotisation_url?: string;
-  cotisation_echeance?: string;
   cotisation_montant?: string;
+  cotisation_libelle?: string;
+  cotisation_ouverture?: string;
+  cotisation_fin?: string;
 };
 
 export type Count = { count: number }[];
