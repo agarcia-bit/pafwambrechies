@@ -195,6 +195,25 @@ function SettingsForm({ saved }: { saved: Settings }) {
         />
       </Section>
 
+      <Section
+        title="Cotisations"
+        footer="Le bureau tient la liste de ceux qui ont renouvelé, lance les campagnes de renouvellement et règle le lien de paiement depuis Administration › Cotisations. Le règlement se fait sur le site de l’association (HelloAsso par exemple), pas dans l’app.">
+        <ListSection>
+          <ListRow
+            icon="card"
+            title="Suivre les cotisations"
+            right={
+              <Switch
+                accessibilityLabel="Suivre les cotisations"
+                value={s.module_cotisations === 'on'}
+                onValueChange={(on) => set('module_cotisations')(on ? 'on' : 'off')}
+                trackColor={{ true: colors.primary }}
+              />
+            }
+          />
+        </ListSection>
+      </Section>
+
       <Section title="Version web" footer="Utilisés seulement par l’app web de l’association.">
         <ColorField
           label="Couleur secondaire (en-tête)"

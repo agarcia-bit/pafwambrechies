@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { BandPill, BrandBand } from '@/components/brand-band';
 import { AssociationBanner, associationName } from '@/components/association';
+import { CotisationRow } from '@/components/cotisation-banner';
 import { ListRow, ListSection } from '@/components/ui/list';
 import { fullName } from '@/lib/format';
 import { useMember } from '@/lib/session';
@@ -69,6 +70,7 @@ export default function PlusScreen() {
             onPress={() => router.push('/plus/mes-offres')}
           />
         )}
+        <CotisationRow />
         <ListRow
           icon="person"
           title="Mon compte"
