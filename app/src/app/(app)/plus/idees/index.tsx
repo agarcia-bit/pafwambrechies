@@ -52,7 +52,7 @@ export default function IdeesScreen() {
             <EmptyState icon="lightbulb" title="Aucune idée pour le moment" message="Soyez le premier à en proposer une !" />
           )
         }
-        ListFooterComponent={idees.isFetchingNextPage ? <ActivityIndicator style={styles.more} /> : null}
+        ListFooterComponent={idees.isFetchingNextPage ? <ActivityIndicator style={styles.more} /> : undefined}
         onEndReached={() => {
           if (idees.hasNextPage && !idees.isFetchingNextPage) idees.fetchNextPage();
         }}

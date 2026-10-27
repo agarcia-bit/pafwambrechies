@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
 
 import { CommentCount, CommentsSection, LikeButton } from '@/components/social';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +18,7 @@ export default function IdeeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const idee = useIdee(Number(id));
   const { colors } = useTheme();
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const openMenu = useContentMenu();
   const { profile } = useMember();
 

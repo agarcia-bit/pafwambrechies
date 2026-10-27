@@ -60,7 +60,7 @@ export default function ActusScreen() {
           <EmptyState icon="newspaper" title="Aucune actualité" message="Les publications de votre association apparaîtront ici." />
         )
       }
-      ListFooterComponent={actus.isFetchingNextPage ? <ActivityIndicator style={styles.more} /> : null}
+      ListFooterComponent={actus.isFetchingNextPage ? <ActivityIndicator style={styles.more} /> : undefined}
       onEndReached={() => {
         if (actus.hasNextPage && !actus.isFetchingNextPage) actus.fetchNextPage();
       }}
