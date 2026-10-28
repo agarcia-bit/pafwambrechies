@@ -187,7 +187,7 @@ const evenements: Collection = {
       labels: { non: 'Non', oui: 'Oui, avec rappels aux adhérents' },
     },
   ],
-  defaults: () => ({ titre: '', date: todayISO(), debut: '09:00', fin: '10:00', lieu: '', description: '', participation: 'non' }),
+  defaults: () => ({ titre: '', date: todayISO(), debut: '09:00', fin: '10:00', lieu: '', description: '', participation: 'oui' }),
   // "heure" is stored as text: "09:00 – 10:00", like the web app does.
   toValues: (r) => {
     const [debut = '09:00', fin = '10:00'] = str(r.heure).match(/\d{1,2}:\d{2}/g) ?? [];
