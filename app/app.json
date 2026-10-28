@@ -72,6 +72,12 @@
         "projectId": "89e143c3-1fb5-4435-9c4e-5b6fba75012f"
       }
     },
-    "owner": "agalumy"
+    "owner": "agalumy",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/89e143c3-1fb5-4435-9c4e-5b6fba75012f"
+    }
   }
 }
