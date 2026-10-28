@@ -25,16 +25,22 @@ export default function AdminScreen() {
         ))}
         <ListRow icon="poll" title="Sondages" onPress={() => router.push('/plus/admin/sondages')} />
       </ListSection>
-      {config.cotisations.enabled && (
-        <ListSection title="Adhésions">
+      <ListSection title="Adhésions">
+        <ListRow
+          icon="people"
+          title="Adhérents à inviter"
+          subtitle="Importer votre liste et inviter par e-mail"
+          onPress={() => router.push('/plus/admin/invitations')}
+        />
+        {config.cotisations.enabled && (
           <ListRow
             icon="card"
             title="Cotisations"
             subtitle="Qui a renouvelé, qui reste à relancer"
             onPress={() => router.push('/plus/admin/cotisations')}
           />
-        </ListSection>
-      )}
+        )}
+      </ListSection>
       <ListSection title="Modération">
         <ListRow icon="flag" title="Signalements" onPress={() => router.push('/plus/admin/signalements')} />
         {config.modules.idees && (
