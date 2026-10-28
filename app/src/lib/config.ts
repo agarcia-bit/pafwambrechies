@@ -6,6 +6,10 @@ export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_jCDrtwqzqjbsq0NEIwUbPQ_E
 export const PRIVACY_POLICY_URL = 'https://paf-wambrechies.netlify.app/allianceo-confidentialite.html';
 export const ACCOUNT_DELETION_URL = 'https://paf-wambrechies.netlify.app/allianceo-suppression-compte.html';
 
+// Where members download the app (one link that opens the App Store or Google Play). To fill in
+// once the app is published: until then the invitation message only names the app.
+export const APP_DOWNLOAD_URL = '';
+
 // Neutral brand shown before the association is known (login, signup).
 export const ALLIANCEO_COLOR = '#0F766E';
 
