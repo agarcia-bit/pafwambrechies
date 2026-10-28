@@ -23,6 +23,7 @@ const SECTIONS = [
   { key: 'module_agenda', title: 'Agenda', icon: 'calendar' },
   { key: 'module_idees', title: 'Boîte à idées', icon: 'lightbulb' },
   { key: 'module_liens', title: 'Liens utiles', icon: 'link' },
+  { key: 'module_documents', title: 'Documents', icon: 'document' },
 ] as const;
 
 export default function ReglagesScreen() {

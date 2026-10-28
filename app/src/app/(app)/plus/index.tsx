@@ -31,9 +31,12 @@ export default function PlusScreen() {
           />
         </ListSection>
       )}
-      {(modules.idees || modules.liens) && (
+      {(modules.idees || modules.liens || modules.documents) && (
         <ListSection title="Communauté">
           {modules.idees && <ListRow icon="lightbulb" title="Boîte à idées" onPress={() => router.push('/plus/idees')} />}
+          {modules.documents && (
+            <ListRow icon="document" title="Documents" onPress={() => router.push('/plus/documents')} />
+          )}
           {modules.liens && <ListRow icon="link" title="Liens utiles" onPress={() => router.push('/plus/liens')} />}
         </ListSection>
       )}

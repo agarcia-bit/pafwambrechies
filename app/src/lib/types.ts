@@ -25,6 +25,7 @@ export type Branding = {
   module_agenda?: string;
   module_idees?: string;
   module_liens?: string;
+  module_documents?: string;
   label_annuaire?: string;
   label_offres?: string;
   label_nom?: string;

@@ -47,6 +47,7 @@ const ICONS = {
   checkCircle: { ios: 'checkmark.circle.fill', android: 'check_circle' },
   clipboard: { ios: 'list.bullet.clipboard', android: 'assignment' },
   poll: { ios: 'chart.bar', android: 'bar_chart' },
+  document: { ios: 'doc.text', android: 'description' },
   card: { ios: 'creditcard', android: 'credit_card' },
 } satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol }>;
 
