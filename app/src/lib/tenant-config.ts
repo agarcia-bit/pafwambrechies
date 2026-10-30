@@ -6,7 +6,7 @@ import type { Branding } from '@/lib/types';
 // with the branding (see supabase/tenant_app_config.sql); an association that
 // has set nothing gets every section and neutral wording.
 
-export type ModuleKey = 'annuaire' | 'offres' | 'agenda' | 'idees' | 'liens';
+export type ModuleKey = 'annuaire' | 'offres' | 'agenda' | 'idees' | 'liens' | 'documents';
 
 export type TenantConfig = {
   modules: Record<ModuleKey, boolean>;
@@ -20,7 +20,7 @@ export type TenantConfig = {
 /** Stored category when an association uses none (the column cannot be empty). */
 export const DEFAULT_CATEGORY = 'Général';
 
-export const MODULE_KEYS: ModuleKey[] = ['annuaire', 'offres', 'agenda', 'idees', 'liens'];
+export const MODULE_KEYS: ModuleKey[] = ['annuaire', 'offres', 'agenda', 'idees', 'liens', 'documents'];
 
 export function parseList(value: string | undefined): string[] {
   const items = (value ?? '').split(',').map((item) => item.trim()).filter(Boolean);
@@ -38,6 +38,7 @@ export function tenantConfig(branding: Branding | null | undefined): TenantConfi
       agenda: on(b.module_agenda),
       idees: on(b.module_idees),
       liens: on(b.module_liens),
+      documents: on(b.module_documents),
     },
     labels: {
       annuaire: text(b.label_annuaire, 'Annuaire'),

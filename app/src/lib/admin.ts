@@ -443,6 +443,7 @@ export const SETTING_KEYS = [
   'module_agenda',
   'module_idees',
   'module_liens',
+  'module_documents',
   'label_annuaire',
   'label_offres',
   'label_nom',

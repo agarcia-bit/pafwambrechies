@@ -20,6 +20,9 @@ export default function PlusLayout() {
       <Stack.Protected guard={modules.liens}>
         <Stack.Screen name="liens" options={{ title: 'Liens utiles' }} />
       </Stack.Protected>
+      <Stack.Protected guard={modules.documents}>
+        <Stack.Screen name="documents" options={{ title: 'Documents' }} />
+      </Stack.Protected>
       <Stack.Protected guard={modules.offres}>
         <Stack.Screen name="mes-offres/index" options={{ title: 'Mes offres' }} />
         <Stack.Screen name="mes-offres/edit" options={{ presentation: 'modal' }} />
@@ -45,6 +48,7 @@ export default function PlusLayout() {
         <Stack.Screen name="admin/sondages/[id]" options={{ title: 'Résultats' }} />
         <Stack.Screen name="admin/participants" options={{ title: 'Réponses' }} />
         <Stack.Screen name="admin/invitations" options={{ title: 'Adhérents à inviter' }} />
+        <Stack.Screen name="admin/document-nouveau" options={{ title: 'Nouveau document', presentation: 'modal' }} />
         <Stack.Screen name="admin/import" options={{ title: 'Importer des adhérents', presentation: 'modal' }} />
       </Stack.Protected>
       <Stack.Protected guard={isAdmin}>
