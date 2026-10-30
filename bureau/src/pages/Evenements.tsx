@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { Empty, Skeleton } from '../Icon';
 import { daysUntil, formatDay, fullName, loadMembers, mailto, supabase, today, useAsync } from '../lib';
 
 type Ev = { id: number; titre: string; date: string; lieu: string | null; participation: boolean };
@@ -21,7 +22,7 @@ export function Evenements() {
     return { events: ev.data as Ev[], answers, members: members.filter((m) => m.inscrit) };
   }, []);
 
-  if (data.loading) return <p className="muted">Chargement…</p>;
+  if (data.loading) return <div className="card"><Skeleton lines={5} /></div>;
   if (data.error) return <p className="error">{data.error}</p>;
   const { events, answers, members } = data.data!;
   const list = events.filter((e) => (past ? e.date < today() : e.date >= today()));
@@ -33,7 +34,7 @@ export function Evenements() {
         <button className={!past ? 'chip on' : 'chip'} onClick={() => setPast(false)}>À venir</button>
         <button className={past ? 'chip on' : 'chip'} onClick={() => setPast(true)}>Passés</button>
       </div>
-      {!list.length && <p className="muted">Aucun événement {past ? 'passé' : 'à venir'}.</p>}
+      {!list.length && <Empty icon="calendar" title={past ? 'Aucun événement passé' : 'Aucun événement à venir'} hint="Les événements se créent depuis l’application." />}
       {list.map((e) => <EventCard key={e.id} e={e} answers={answers[e.id] ?? {}} members={members} />)}
     </>
   );

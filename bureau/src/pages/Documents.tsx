@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 
 import type { PageProps } from '../App';
+import { Empty, Icon, Skeleton } from '../Icon';
 import { formatDay, supabase, useAsync } from '../lib';
 
 type Doc = { id: number; titre: string; categorie: string | null; path: string; nom_fichier: string; taille: number | null; created_at: string };
@@ -66,12 +67,12 @@ export function Documents({ profile }: PageProps) {
         <p className="muted">PDF, images, Word, Excel, PowerPoint, texte — 20 Mo maximum. Visibles par tous les adhérents.</p>
         <div className="row">
           <input type="text" placeholder="Catégorie (facultatif) : Statuts, Comptes rendus…" value={categorie} onChange={(e) => setCategorie(e.target.value)} />
-          <button className="primary" disabled={busy} onClick={() => input.current?.click()}>Choisir des fichiers</button>
+          <button className="primary" disabled={busy} onClick={() => input.current?.click()}><Icon name="upload" size={15} /> Choisir des fichiers</button>
         </div>
         <input ref={input} type="file" multiple hidden onChange={(e) => e.target.files && upload(e.target.files)} />
       </div>
       {message && <p className="error">{message}</p>}
-      {docs.loading ? <p className="muted">Chargement…</p> : docs.error ? <p className="error">{docs.error}</p> : (
+      {docs.loading ? <div className="card"><Skeleton lines={4} /></div> : docs.error ? <p className="error">{docs.error}</p> : (
         <div className="card flush">
           <table>
             <thead><tr><th>Document</th><th>Catégorie</th><th>Ajouté le</th><th>Taille</th><th /></tr></thead>
@@ -82,10 +83,10 @@ export function Documents({ profile }: PageProps) {
                   <td className="muted">{d.categorie ?? '—'}</td>
                   <td className="muted">{formatDay(d.created_at.slice(0, 10))}</td>
                   <td className="muted">{size(d.taille)}</td>
-                  <td className="right"><button className="link danger" onClick={() => remove(d)}>Supprimer</button></td>
+                  <td className="right"><button className="icon-btn" aria-label="Supprimer" title="Supprimer" onClick={() => remove(d)}><Icon name="trash" size={15} /></button></td>
                 </tr>
               ))}
-              {!docs.data!.length && <tr><td colSpan={5} className="muted empty">Aucun document pour l’instant.</td></tr>}
+              {!docs.data!.length && <tr><td colSpan={5} className="empty"><Empty icon="file" title="Aucun document pour l’instant" hint="Déposez un fichier ci-dessus : les adhérents le verront dans l’application." /></td></tr>}
             </tbody>
           </table>
         </div>

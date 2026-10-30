@@ -1,5 +1,5 @@
 import type { PageProps } from '../App';
-import { Icon } from '../Icon';
+import { Empty, Icon, Skeleton } from '../Icon';
 import { cotisStatus, daysUntil, dueLabel, formatDay, fullName, isOverdue, loadBureau, loadMembers, supabase, today, useAsync } from '../lib';
 
 export function Overview({ profile }: PageProps) {
@@ -11,7 +11,7 @@ export function Overview({ profile }: PageProps) {
     return data as { id: number; titre: string; date: string; participation: boolean }[];
   }, []);
 
-  if (members.loading) return <p className="muted">Chargement…</p>;
+  if (members.loading) return <><div className="stats">{[0,1,2,3].map((i) => <div key={i} className="card stat"><Skeleton lines={2} /></div>)}</div><div className="card"><Skeleton lines={5} /></div></>;
   if (members.error) return <p className="error">{members.error}</p>;
   const all = members.data!;
   const waiting = all.filter((m) => !m.inscrit);
@@ -51,7 +51,7 @@ export function Overview({ profile }: PageProps) {
 
         <section className="card">
           <div className="head"><h2>Mes tâches</h2><a href="#pilotage">Ouvrir le pilotage →</a></div>
-          {bureau.loading && !b ? <p className="muted">Chargement…</p> : mine.length ? (
+          {bureau.loading && !b ? <Skeleton lines={3} /> : mine.length ? (
             <ul className="todo compact">
               {mine.slice(0, 5).map((t) => (
                 <li key={t.id}>
@@ -61,7 +61,7 @@ export function Overview({ profile }: PageProps) {
                 </li>
               ))}
             </ul>
-          ) : <p className="empty-state">Rien à faire pour vous. 🎉</p>}
+          ) : <Empty icon="sparkle" title="Rien à faire pour vous" hint="Vos tâches du pilotage apparaîtront ici." />}
           {late.length > 0 && <p className="note-bad"><Icon name="alert" size={15} /> {late.length} tâche{late.length > 1 ? 's' : ''} en retard dans le bureau</p>}
         </section>
 
@@ -80,7 +80,7 @@ export function Overview({ profile }: PageProps) {
                 );
               })}
             </ul>
-          ) : <p className="muted">Aucun événement à venir.</p>}
+          ) : <Empty icon="calendar" title="Aucun événement à venir" />}
         </section>
 
         <section className="card">
@@ -91,7 +91,7 @@ export function Overview({ profile }: PageProps) {
                 <li key={m.key}><span className="grow">{fullName(m)}</span><span className="muted small">{m.valide_jusqu ? `expirée le ${formatDay(m.valide_jusqu)}` : 'jamais réglée'}</span></li>
               ))}
             </ul>
-          ) : <p className="empty-state">Tout le monde est à jour. 🎉</p>}
+          ) : <Empty icon="check" title="Tout le monde est à jour" />}
         </section>
       </div>
     </>

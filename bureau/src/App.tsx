@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 
 import { fullName, supabase, useAsync, type Profile } from './lib';
 import { Adherents } from './pages/Adherents';
@@ -8,7 +8,7 @@ import { Evenements } from './pages/Evenements';
 import { Importer } from './pages/Importer';
 import { Overview } from './pages/Overview';
 import { Pilotage } from './pages/Pilotage';
-import { Avatar, Icon } from './Icon';
+import { Avatar, Icon, Skeleton } from './Icon';
 import { Toasts } from './Toasts';
 
 const PAGES = [
@@ -37,7 +37,7 @@ export function App() {
     const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => data.subscription.unsubscribe();
   }, []);
-  if (session === undefined) return <div className="center muted">Chargement…</div>;
+  if (session === undefined) return <div className="center"><div className="card" style={{ width: 320 }}><Skeleton lines={4} /></div></div>;
   if (!session) return <Login />;
   return <Shell userId={session.user.id} />;
 }
@@ -61,6 +61,11 @@ function Login() {
         <div className="logo">A</div>
         <h1>Allianceo</h1>
         <p>L’espace de pilotage du bureau : adhérents, cotisations, événements et actions, au même endroit.</p>
+        <ul>
+          <li><Icon name="check" size={16} /> Les cotisations et les relances en un clic</li>
+          <li><Icon name="check" size={16} /> Les actions du bureau et qui fait quoi</li>
+          <li><Icon name="check" size={16} /> Les mêmes données que l’application</li>
+        </ul>
       </div>
       <div className="login-form">
         <form onSubmit={submit}>
@@ -85,7 +90,7 @@ function Shell({ userId }: { userId: string }) {
     return { profile: data as Profile, association: (t?.name as string | undefined) ?? 'Mon association' };
   }, [userId]);
 
-  if (me.loading) return <div className="center muted">Chargement…</div>;
+  if (me.loading) return <div className="center"><div className="card" style={{ width: 320 }}><Skeleton lines={4} /></div></div>;
   if (!me.data) return <Denied text="Impossible de charger votre profil." />;
   const { profile, association } = me.data;
   if (profile.role === 'adherent') return <Denied text="Cet espace est réservé au bureau. Utilisez l’application sur votre téléphone." />;
@@ -95,11 +100,15 @@ function Shell({ userId }: { userId: string }) {
   return (
     <div className="shell">
       <Toasts />
-      <aside>
+      <aside className="nav">
         <div className="brand"><span className="logo sm">A</span><div>Allianceo<small>{association}</small></div></div>
         <nav>
-          {PAGES.map((p) => (
-            <a key={p.path} href={'#' + p.path} className={p.path === page.path ? 'active' : ''}><Icon name={p.icon} />{p.label}</a>
+          {PAGES.map((p, i) => (
+            <Fragment key={p.path}>
+              {i === 2 && <div className="nav-label">Association</div>}
+              {i === 5 && <div className="nav-label">Outils</div>}
+              <a href={'#' + p.path} className={p.path === page.path ? 'active' : ''}><Icon name={p.icon} size={17} />{p.label}</a>
+            </Fragment>
           ))}
         </nav>
         <div className="me">

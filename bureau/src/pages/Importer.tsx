@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 
+import { Icon } from '../Icon';
 import { formatDay, supabase } from '../lib';
 import { parseImport } from '../import-adherents';
 
@@ -35,7 +36,7 @@ export function Importer() {
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) readFile(f); }}>
         <div className="row">
-          <button className="primary" onClick={() => input.current?.click()}>Choisir un fichier CSV</button>
+          <button className="primary" onClick={() => input.current?.click()}><Icon name="upload" size={15} /> Choisir un fichier CSV</button>
           <span className="muted">ou collez ci-dessous</span>
         </div>
         <input ref={input} type="file" accept=".csv,.txt,.tsv,text/csv" hidden onChange={(e) => e.target.files?.[0] && readFile(e.target.files[0])} />

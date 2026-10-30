@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { Drawer as Panel } from '../Drawer';
-import { Avatar, Icon } from '../Icon';
+import { Avatar, Empty, Icon, Skeleton } from '../Icon';
 import {
   addOneYear, cotisStatus, formatDay, fullName, loadMembers, mailto, STATUS_LABEL, supabase, today, toast, useAsync, type MemberRow,
 } from '../lib';
@@ -40,7 +40,7 @@ export function Adherents() {
     });
   }, [members.data, q, filter, sort]);
 
-  if (members.loading && !members.data) return <p className="muted">Chargement…</p>;
+  if (members.loading && !members.data) return <div className="card"><Skeleton lines={8} /></div>;
   if (members.error) return <p className="error">{members.error}</p>;
 
   const toggle = (k: string) => setPicked((s) => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n; });
@@ -71,13 +71,13 @@ export function Adherents() {
   return (
     <>
       <div className="toolbar">
-        <input type="search" placeholder="Rechercher un nom ou un e-mail" value={q} onChange={(e) => setQ(e.target.value)} />
+        <div className="search"><Icon name="search" size={16} /><input type="search" placeholder="Rechercher un nom ou un e-mail" value={q} onChange={(e) => setQ(e.target.value)} /></div>
         <div className="chips">
           {([['tous', `Tous (${all.length})`], ['a_relancer', `À relancer (${all.filter((m) => cotisStatus(m.valide_jusqu) !== 'a_jour').length})`], ['non_inscrits', `Pas inscrits (${all.filter((m) => !m.inscrit).length})`]] as [Filter, string][]).map(([k, l]) => (
             <button key={k} className={filter === k ? 'chip on' : 'chip'} onClick={() => setFilter(k)}>{l}</button>
           ))}
         </div>
-        <button className="push" onClick={exportCsv}>Exporter en CSV</button>
+        <button className="push ghost" onClick={exportCsv}><Icon name="download" size={15} /> Exporter en CSV</button>
       </div>
       {chosen.length > 0 && (
         <div className="bar">
@@ -116,7 +116,7 @@ export function Adherents() {
                 </tr>
               );
             })}
-            {!rows.length && <tr><td colSpan={5} className="muted empty">Aucun adhérent ne correspond.</td></tr>}
+            {!rows.length && <tr><td colSpan={5} className="empty"><Empty icon="search" title="Aucun adhérent ne correspond" hint="Essayez un autre nom ou retirez le filtre." /></td></tr>}
           </tbody>
         </table>
       </div>

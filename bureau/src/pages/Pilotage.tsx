@@ -2,136 +2,120 @@ import { useMemo, useState } from 'react';
 
 import type { PageProps } from '../App';
 import { Drawer } from '../Drawer';
-import { Calendrier, Chronologie, Equipe } from './PilotageViews';
-import { Avatar, Icon } from '../Icon';
+import { Icon, Skeleton } from '../Icon';
 import {
-  ACTION_STATUTS, dueLabel, formatDay, isOverdue, loadBureau, nameOf, PRIORITES, supabase, today, toast, useAsync,
+  ACTION_STATUTS, dueLabel, isOverdue, loadBureau, nameOf, PRIORITES, supabase, today, toast, useAsync,
   type Action, type BureauMember, type Tache,
 } from '../lib';
+import { Calendrier, Chronologie, Equipe, Kanban, MyTasks, TONE, type CalEvent } from './PilotageViews';
 
-const STATUT_TONE: Record<string, string> = { 'À faire': 'neutral', 'En cours': 'info', Bloqué: 'bad', Terminé: 'ok' };
+const VIEWS = [
+  { key: 'chrono', label: 'Chronologie', icon: 'list', hint: 'Ce qui arrive, dans l’ordre' },
+  { key: 'equipe', label: 'Équipe', icon: 'users', hint: 'Qui fait quoi' },
+  { key: 'cal', label: 'Calendrier', icon: 'calendar', hint: 'Le mois en un coup d’œil' },
+  { key: 'kanban', label: 'Kanban', icon: 'columns', hint: 'Par statut, à glisser' },
+] as const;
 
 export function Pilotage({ profile }: PageProps) {
   const data = useAsync(loadBureau, []);
-  const [mine, setMine] = useState(true);
+  const agenda = useAsync(async () => {
+    const { data } = await supabase.from('evenements').select('id, titre, date').gte('date', today());
+    return (data ?? []) as CalEvent[];
+  }, []);
+  const [onlyMe, setOnlyMe] = useState(false);
   const [open, setOpen] = useState<number | 'new' | null>(null);
   const [view, setViewState] = useState<string>(() => { try { return localStorage.getItem('pilotage-vue') || 'chrono'; } catch { return 'chrono'; } });
   const setView = (v: string) => { setViewState(v); try { localStorage.setItem('pilotage-vue', v); } catch { /* sans stockage */ } };
 
-  const stats = useMemo(() => {
+  const kpi = useMemo(() => {
     const d = data.data;
     if (!d) return null;
     const openTasks = d.taches.filter((t) => t.statut !== 'Terminé');
     return {
+      aVenir: d.actions.filter((a) => a.statut !== 'Terminé' && a.date_action >= today()).length,
       enCours: d.actions.filter((a) => a.statut === 'En cours').length,
+      bloque: d.actions.filter((a) => a.statut === 'Bloqué').length,
       retard: openTasks.filter((t) => isOverdue(t.echeance, t.statut)).length,
       mine: openTasks.filter((t) => t.responsable === profile.id).length,
       budget: d.actions.filter((a) => a.statut !== 'Terminé').reduce((s, a) => s + (a.budget ?? 0), 0),
     };
   }, [data.data, profile.id]);
 
-  if (data.loading && !data.data) return <p className="muted">Chargement…</p>;
+  if (data.loading && !data.data) return <div className="card"><Skeleton lines={6} /></div>;
   if (data.error) return <p className="error">{data.error}</p>;
-  const { actions, taches, members } = data.data!;
-  const actionOf = (id: number) => actions.find((a) => a.id === id);
+  const all = data.data!;
+  const actionOf = (id: number) => all.actions.find((a) => a.id === id);
 
-  const todo = taches
-    .filter((t) => t.statut !== 'Terminé' && (!mine || t.responsable === profile.id))
-    .sort((a, b) => (a.echeance ?? '9999').localeCompare(b.echeance ?? '9999'));
+  // « Moi uniquement » : mes tâches, et les actions dont je suis référent ou où j'ai une tâche.
+  const taches = onlyMe ? all.taches.filter((t) => t.responsable === profile.id) : all.taches;
+  const actions = onlyMe ? all.actions.filter((a) => a.referent === profile.id || taches.some((t) => t.action_id === a.id)) : all.actions;
 
   async function toggle(t: Tache) {
     const { error } = await supabase.from('taches').update({ statut: t.statut === 'Terminé' ? 'À faire' : 'Terminé' }).eq('id', t.id);
     if (error) return toast(error.message, 'error');
-    if (t.statut !== 'Terminé') toast('Tâche terminée');
+    if (t.statut !== 'Terminé') toast('Tâche terminée ✓');
+    data.reload();
+  }
+  async function addTask(a: Action, libelle: string) {
+    const { error } = await supabase.from('taches').insert({ action_id: a.id, tenant_id: profile.tenant_id, libelle, responsable: a.referent });
+    if (error) return toast(error.message, 'error');
+    toast('Tâche ajoutée');
+    data.reload();
+  }
+  async function moveAction(a: Action, statut: string) {
+    if (a.statut === statut) return;
+    const { error } = await supabase.from('actions').update({ statut }).eq('id', a.id);
+    if (error) return toast(error.message, 'error');
+    toast(`« ${a.titre} » → ${statut}`);
     data.reload();
   }
 
+  const props = { actions, taches, members: all.members, me: profile.id, onOpen: setOpen, onToggle: toggle, onAddTask: addTask, onMove: moveAction };
+  const current = VIEWS.find((v) => v.key === view) ?? VIEWS[0];
+
   return (
     <>
-      <div className="stats">
-        <Stat icon="target" label="Actions en cours" value={stats!.enCours} tone="info" />
-        <Stat icon="alert" label="Tâches en retard" value={stats!.retard} tone={stats!.retard ? 'bad' : 'ok'} />
-        <Stat icon="tasks" label="Mes tâches ouvertes" value={stats!.mine} tone="brand" />
-        <Stat icon="euro" label="Budget des actions en cours" value={`${stats!.budget.toLocaleString('fr-FR')} €`} tone="neutral" />
+      <div className="kpis">
+        <Kpi value={kpi!.aVenir} label="actions à venir" />
+        <Kpi value={kpi!.enCours} label="en cours" tone="info" />
+        {kpi!.bloque > 0 && <Kpi value={kpi!.bloque} label={kpi!.bloque > 1 ? 'bloquées' : 'bloquée'} tone="bad" />}
+        <Kpi value={kpi!.retard} label={kpi!.retard > 1 ? 'tâches en retard' : 'tâche en retard'} tone={kpi!.retard ? 'bad' : 'ok'} />
+        <Kpi value={kpi!.mine} label={kpi!.mine > 1 ? 'tâches pour moi' : 'tâche pour moi'} tone="brand" />
+        {kpi!.budget > 0 && <Kpi value={`${kpi!.budget.toLocaleString('fr-FR')} €`} label="budget engagé" />}
       </div>
 
-      <section className="card">
-        <div className="head">
-          <h2>À faire</h2>
-          <div className="seg">
-            <button className={mine ? 'on' : ''} onClick={() => setMine(true)}>Mes tâches</button>
-            <button className={!mine ? 'on' : ''} onClick={() => setMine(false)}>Tout le bureau</button>
-          </div>
-        </div>
-        {todo.length ? (
-          <ul className="todo">
-            {todo.map((t) => {
-              const late = isOverdue(t.echeance, t.statut);
-              const a = actionOf(t.action_id);
-              return (
-                <li key={t.id}>
-                  <button className="check" aria-label="Terminer la tâche" onClick={() => toggle(t)} />
-                  <div className="grow">
-                    <div className="t-title">{t.libelle}{t.priorite === 'Haute' && <span className="badge bad">Haute</span>}</div>
-                    <div className="muted small">
-                      {a && <button className="link" onClick={() => setOpen(a.id)}>{a.emoji} {a.titre}</button>}
-                      {!mine && <> · {nameOf(members, t.responsable)}</>}
-                    </div>
-                  </div>
-                  {t.echeance && <span className={'due' + (late ? ' late' : '')}><Icon name="clock" size={14} /> {dueLabel(t.echeance)}</span>}
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p className="empty-state">{mine ? 'Vous n’avez aucune tâche en cours. 🎉' : 'Aucune tâche ouverte.'}</p>
-        )}
-      </section>
-
-      <div className="head" style={{ margin: '24px 0 12px' }}>
-        <div className="seg" role="tablist" aria-label="Vue des actions">
-          {[['chrono', 'Chronologie'], ['equipe', 'Équipe'], ['cal', 'Calendrier'], ['kanban', 'Kanban']].map(([k, l]) => (
-            <button key={k} role="tab" aria-selected={view === k} className={view === k ? 'on' : ''} onClick={() => setView(k)}>{l}</button>
+      <div className="view-bar">
+        <div className="seg" role="tablist" aria-label="Vue">
+          {VIEWS.map((v) => (
+            <button key={v.key} role="tab" aria-selected={view === v.key} className={view === v.key ? 'on' : ''} onClick={() => setView(v.key)} title={v.hint}>
+              <Icon name={v.icon} size={15} /><span>{v.label}</span>
+            </button>
           ))}
         </div>
+        <span className="muted small view-hint">{current.hint}</span>
+        <span className="grow" />
+        <label className="switch">
+          <input type="checkbox" checked={onlyMe} onChange={(e) => setOnlyMe(e.target.checked)} />
+          <span className="track" /><span>Moi uniquement</span>
+        </label>
         <button className="primary" onClick={() => setOpen('new')}><Icon name="plus" size={16} /> Nouvelle action</button>
       </div>
-      {view === 'chrono' && <Chronologie actions={actions} taches={taches} members={members} onOpen={setOpen} onToggle={toggle} />}
-      {view === 'equipe' && <Equipe actions={actions} taches={taches} members={members} onOpen={setOpen} onToggle={toggle} />}
-      {view === 'cal' && <Calendrier actions={actions} taches={taches} members={members} onOpen={setOpen} onToggle={toggle} />}
-      {view === 'kanban' && (
-      <div className="board">
-        {ACTION_STATUTS.map((s) => {
-          const col = actions.filter((a) => a.statut === s);
-          return (
-            <div key={s} className="col">
-              <h3><span className={'dot ' + STATUT_TONE[s]} /> {s} <span className="muted">{col.length}</span></h3>
-              {col.map((a) => {
-                const list = taches.filter((t) => t.action_id === a.id);
-                const done = list.filter((t) => t.statut === 'Terminé').length;
-                return (
-                  <button key={a.id} className="action-card" onClick={() => setOpen(a.id)}>
-                    <div className="ac-title"><span className="emoji">{a.emoji || '📌'}</span> {a.titre}</div>
-                    <div className="muted small"><Icon name="calendar" size={13} /> {formatDay(a.date_action)}{a.budget ? ` · ${a.budget.toLocaleString('fr-FR')} €` : ''}</div>
-                    {list.length > 0 && (
-                      <div className="progress"><span style={{ width: `${(done / list.length) * 100}%` }} /><small>{done}/{list.length}</small></div>
-                    )}
-                    <div className="ac-foot"><Avatar name={nameOf(members, a.referent)} size={22} /><span className="muted small">{nameOf(members, a.referent)}</span></div>
-                  </button>
-                );
-              })}
-              {!col.length && <p className="muted small col-empty">Aucune action</p>}
-            </div>
-          );
-        })}
-      </div>
+
+      {view === 'chrono' && (
+        <div className="with-side">
+          <Chronologie {...props} />
+          <MyTasks {...props} actions={all.actions} taches={all.taches} />
+        </div>
       )}
+      {view === 'equipe' && <Equipe {...props} />}
+      {view === 'cal' && <Calendrier {...props} events={agenda.data ?? []} />}
+      {view === 'kanban' && <Kanban {...props} />}
 
       {open !== null && (
         <ActionDrawer
           action={open === 'new' ? null : actionOf(open) ?? null}
-          taches={open === 'new' ? [] : taches.filter((t) => t.action_id === open)}
-          members={members}
+          taches={open === 'new' ? [] : all.taches.filter((t) => t.action_id === open)}
+          members={all.members}
           me={profile.id}
           tenant={profile.tenant_id}
           onClose={() => setOpen(null)}
@@ -142,14 +126,11 @@ export function Pilotage({ profile }: PageProps) {
   );
 }
 
-function Stat({ icon, label, value, tone }: { icon: string; label: string; value: number | string; tone: string }) {
-  return (
-    <div className="card stat">
-      <span className={'tile ' + tone}><Icon name={icon === 'target' ? 'tasks' : icon} /></span>
-      <div><strong>{value}</strong><span className="muted">{label}</span></div>
-    </div>
-  );
+function Kpi({ value, label, tone }: { value: number | string; label: string; tone?: string }) {
+  return <div className={'kpi ' + (tone ?? '')}><strong>{value}</strong><span>{label}</span></div>;
 }
+
+// ── Fiche d'une action ───────────────────────────────────────────────────────
 
 function ActionDrawer({ action, taches, members, me, tenant, onClose, onChanged }: {
   action: Action | null; taches: Tache[]; members: BureauMember[]; me: string; tenant: string; onClose: () => void; onChanged: () => void;
@@ -160,8 +141,10 @@ function ActionDrawer({ action, taches, members, me, tenant, onClose, onChanged 
     referent: action?.referent ?? me, statut: action?.statut ?? 'À faire', budget: action?.budget?.toString() ?? '',
   });
   const [busy, setBusy] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [nt, setNt] = useState({ libelle: '', responsable: action?.referent ?? me, echeance: '', priorite: 'Moyenne' });
   const people = members.filter((m) => m.is_bureau || m.id === f.referent);
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => { setF({ ...f, [k]: e.target.value }); setDirty(true); };
 
   async function save() {
     setBusy(true);
@@ -173,10 +156,11 @@ function ActionDrawer({ action, taches, members, me, tenant, onClose, onChanged 
     if (res.error) return toast(res.error.message, 'error');
     toast(id ? 'Action enregistrée' : 'Action créée');
     if (!id) setId((res.data as { id: number }).id);
+    setDirty(false);
     onChanged();
   }
   async function remove() {
-    if (!id || !confirm('Supprimer cette action et toutes ses tâches ?')) return;
+    if (!id || !confirm(`Supprimer « ${f.titre} » et toutes ses tâches ?`)) return;
     const { error } = await supabase.from('actions').delete().eq('id', id);
     if (error) return toast(error.message, 'error');
     toast('Action supprimée');
@@ -190,8 +174,8 @@ function ActionDrawer({ action, taches, members, me, tenant, onClose, onChanged 
     setNt({ ...nt, libelle: '', echeance: '' });
     onChanged();
   }
-  async function toggle(t: Tache) {
-    const { error } = await supabase.from('taches').update({ statut: t.statut === 'Terminé' ? 'À faire' : 'Terminé' }).eq('id', t.id);
+  async function patchTask(t: Tache, patch: Partial<Tache>) {
+    const { error } = await supabase.from('taches').update(patch).eq('id', t.id);
     if (error) return toast(error.message, 'error');
     onChanged();
   }
@@ -201,57 +185,79 @@ function ActionDrawer({ action, taches, members, me, tenant, onClose, onChanged 
     onChanged();
   }
 
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
-  const mine = taches.filter((t) => t.action_id === id).sort((a, b) => (a.echeance ?? '9999').localeCompare(b.echeance ?? '9999'));
+  const list = [...taches].sort((a, b) => (a.statut === 'Terminé') === (b.statut === 'Terminé') ? (a.echeance ?? '9999').localeCompare(b.echeance ?? '9999') : a.statut === 'Terminé' ? 1 : -1);
+  const done = list.filter((t) => t.statut === 'Terminé').length;
 
   return (
-    <Drawer title={id ? 'Action' : 'Nouvelle action'} subtitle={id ? undefined : 'Un projet ou un événement que le bureau pilote'} onClose={onClose} wide>
+    <Drawer
+      wide
+      onClose={onClose}
+      title={<span className="drawer-title"><span className="emoji-box">{f.emoji || '📌'}</span>{id ? f.titre || 'Action' : 'Nouvelle action'}</span>}
+      subtitle={id ? <span className={'pill ' + TONE[f.statut]}>{f.statut}</span> : 'Un projet ou un événement que le bureau pilote.'}
+      footer={
+        <>
+          {id && <button className="ghost danger" onClick={remove}><Icon name="trash" size={15} /> Supprimer</button>}
+          <span className="grow" />
+          <button className="ghost" onClick={onClose}>Fermer</button>
+          <button className="primary" disabled={busy || !f.titre.trim() || (!!id && !dirty)} onClick={save}>{id ? 'Enregistrer' : 'Créer l’action'}</button>
+        </>
+      }>
       <div className="form">
         <div className="form-row">
-          <label style={{ width: 80 }}>Icône<input type="text" maxLength={4} value={f.emoji} onChange={set('emoji')} placeholder="📌" /></label>
-          <label className="grow">Titre<input type="text" value={f.titre} onChange={set('titre')} placeholder="Ex. Organiser le Beaujolais nouveau" /></label>
+          <label className="w-emoji">Icône<input type="text" maxLength={4} value={f.emoji} onChange={set('emoji')} placeholder="📌" /></label>
+          <label className="grow">Titre<input type="text" value={f.titre} onChange={set('titre')} placeholder="Ex. Organiser le Beaujolais nouveau" autoFocus={!id} /></label>
         </div>
         <div className="form-row">
-          <label className="grow">Date<input type="date" value={f.date_action} onChange={set('date_action')} /></label>
-          <label className="grow">Statut<select value={f.statut} onChange={set('statut')}>{ACTION_STATUTS.map((s) => <option key={s}>{s}</option>)}</select></label>
+          <label>Date<input type="date" value={f.date_action} onChange={set('date_action')} /></label>
+          <label>Statut<select value={f.statut} onChange={set('statut')}>{ACTION_STATUTS.map((s) => <option key={s}>{s}</option>)}</select></label>
         </div>
         <div className="form-row">
-          <label className="grow">Référent<select value={f.referent} onChange={set('referent')}><option value="">Non assigné</option>{people.map((m) => <option key={m.id} value={m.id}>{nameOf(members, m.id)}</option>)}</select></label>
-          <label className="grow">Budget (€)<input type="number" min="0" value={f.budget} onChange={set('budget')} placeholder="—" /></label>
-        </div>
-        <div className="row" style={{ marginTop: 0 }}>
-          <button className="primary" disabled={busy || !f.titre.trim()} onClick={save}>{id ? 'Enregistrer' : 'Créer l’action'}</button>
-          {id && <button className="link danger" onClick={remove}><Icon name="trash" size={15} /> Supprimer</button>}
+          <label>Référent<select value={f.referent} onChange={set('referent')}><option value="">Non assigné</option>{people.map((m) => <option key={m.id} value={m.id}>{nameOf(members, m.id)}</option>)}</select></label>
+          <label>Budget (€)<input type="number" min="0" value={f.budget} onChange={set('budget')} placeholder="—" /></label>
         </div>
       </div>
 
       {id ? (
-        <>
-          <h3 className="sect">Tâches ({mine.filter((t) => t.statut === 'Terminé').length}/{mine.length})</h3>
-          <ul className="todo compact">
-            {mine.map((t) => (
-              <li key={t.id}>
-                <button className={'check' + (t.statut === 'Terminé' ? ' done' : '')} aria-label="Cocher" onClick={() => toggle(t)}>{t.statut === 'Terminé' && <Icon name="check" size={13} />}</button>
-                <div className="grow">
-                  <div className={'t-title' + (t.statut === 'Terminé' ? ' struck' : '')}>{t.libelle}</div>
-                  <div className="muted small">{nameOf(members, t.responsable)}{t.priorite === 'Haute' ? ' · Priorité haute' : ''}</div>
-                </div>
-                {t.echeance && <span className={'due' + (isOverdue(t.echeance, t.statut) ? ' late' : '')}>{dueLabel(t.echeance)}</span>}
-                <button className="icon-btn" aria-label="Supprimer la tâche" onClick={() => removeTask(t)}><Icon name="trash" size={15} /></button>
-              </li>
-            ))}
-            {!mine.length && <li className="muted">Aucune tâche pour l’instant.</li>}
+        <section className="drawer-section">
+          <div className="section-head">
+            <h3>Tâches</h3>
+            <span className="muted small">{done}/{list.length} terminée{done > 1 ? 's' : ''}</span>
+          </div>
+          <ul className="task-list editable">
+            {list.map((t) => {
+              const isDone = t.statut === 'Terminé';
+              return (
+                <li key={t.id} className={'task' + (isDone ? ' done' : '')}>
+                  <button className={'check' + (isDone ? ' on' : '')} aria-label={isDone ? 'Rouvrir' : 'Terminer'} onClick={() => patchTask(t, { statut: isDone ? 'À faire' : 'Terminé' })}>{isDone && <Icon name="check" size={12} />}</button>
+                  <div className="grow">
+                    <div className="task-title">{t.libelle}</div>
+                    <div className="task-meta">
+                      <select className="inline" value={t.responsable ?? ''} onChange={(e) => patchTask(t, { responsable: e.target.value || null })} aria-label="Responsable">
+                        <option value="">Non assigné</option>{members.filter((m) => m.is_bureau || m.id === t.responsable).map((m) => <option key={m.id} value={m.id}>{nameOf(members, m.id)}</option>)}
+                      </select>
+                      <input className="inline" type="date" value={t.echeance ?? ''} onChange={(e) => patchTask(t, { echeance: e.target.value || null })} aria-label="Échéance" />
+                      <select className="inline" value={t.priorite} onChange={(e) => patchTask(t, { priorite: e.target.value as Tache['priorite'] })} aria-label="Priorité">
+                        {PRIORITES.map((p) => <option key={p}>{p}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  {t.echeance && <span className={'due' + (isOverdue(t.echeance, t.statut) ? ' late' : '')}>{dueLabel(t.echeance)}</span>}
+                  <button className="icon-btn" aria-label="Supprimer la tâche" onClick={() => removeTask(t)}><Icon name="trash" size={15} /></button>
+                </li>
+              );
+            })}
+            {!list.length && <li className="muted small empty-line">Aucune tâche pour l’instant.</li>}
           </ul>
           <div className="add-task">
-            <input type="text" placeholder="Nouvelle tâche…" value={nt.libelle} onChange={(e) => setNt({ ...nt, libelle: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && addTask()} />
+            <input type="text" placeholder="Nouvelle tâche… (Entrée pour ajouter)" value={nt.libelle} onChange={(e) => setNt({ ...nt, libelle: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && addTask()} />
             <div className="form-row">
-              <select value={nt.responsable} onChange={(e) => setNt({ ...nt, responsable: e.target.value })}><option value="">Non assigné</option>{members.filter((m) => m.is_bureau).map((m) => <option key={m.id} value={m.id}>{nameOf(members, m.id)}</option>)}</select>
-              <input type="date" value={nt.echeance} onChange={(e) => setNt({ ...nt, echeance: e.target.value })} />
-              <select value={nt.priorite} onChange={(e) => setNt({ ...nt, priorite: e.target.value })}>{PRIORITES.map((p) => <option key={p}>{p}</option>)}</select>
-              <button className="primary" disabled={!nt.libelle.trim()} onClick={addTask}><Icon name="plus" size={16} /> Ajouter</button>
+              <select value={nt.responsable} onChange={(e) => setNt({ ...nt, responsable: e.target.value })} aria-label="Responsable"><option value="">Non assigné</option>{members.filter((m) => m.is_bureau).map((m) => <option key={m.id} value={m.id}>{nameOf(members, m.id)}</option>)}</select>
+              <input type="date" value={nt.echeance} onChange={(e) => setNt({ ...nt, echeance: e.target.value })} aria-label="Échéance" />
+              <select value={nt.priorite} onChange={(e) => setNt({ ...nt, priorite: e.target.value })} aria-label="Priorité">{PRIORITES.map((p) => <option key={p}>{p}</option>)}</select>
+              <button className="primary" disabled={!nt.libelle.trim()} onClick={addTask}><Icon name="plus" size={15} /> Ajouter</button>
             </div>
           </div>
-        </>
+        </section>
       ) : <p className="muted small">Créez l’action pour pouvoir lui ajouter des tâches.</p>}
     </Drawer>
   );
