@@ -82,3 +82,35 @@ export function addOneYear(iso: string) {
   const last = new Date(y + 1, m, 0).getDate();
   return `${y + 1}-${String(m).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
 }
+
+// ── Pilotage du bureau (actions et tâches) ──────────────────────────────────
+export const ACTION_STATUTS = ['À faire', 'En cours', 'Bloqué', 'Terminé'] as const;
+export const TACHE_STATUTS = ['À faire', 'En cours', 'Terminé'] as const;
+export const PRIORITES = ['Haute', 'Moyenne', 'Basse'] as const;
+export type Action = { id: number; emoji: string | null; titre: string; date_action: string; referent: string | null; statut: (typeof ACTION_STATUTS)[number]; budget: number | null };
+export type Tache = { id: number; action_id: number; libelle: string; responsable: string | null; echeance: string | null; statut: (typeof TACHE_STATUTS)[number]; priorite: (typeof PRIORITES)[number] };
+export type BureauMember = { id: string; prenom: string | null; nom: string | null; is_bureau: boolean };
+
+export async function loadBureau() {
+  const [actions, taches, members] = await Promise.all([
+    supabase.from('actions').select('id, emoji, titre, date_action, referent, statut, budget').order('date_action'),
+    supabase.from('taches').select('id, action_id, libelle, responsable, echeance, statut, priorite'),
+    supabase.rpc('bureau_members'),
+  ]);
+  if (actions.error) throw actions.error;
+  if (taches.error) throw taches.error;
+  if (members.error) throw members.error;
+  return { actions: actions.data as Action[], taches: taches.data as Tache[], members: members.data as BureauMember[] };
+}
+
+export const isOverdue = (day: string | null, statut: string) => !!day && statut !== 'Terminé' && day < today();
+export const nameOf = (members: BureauMember[], id: string | null) => {
+  if (!id) return 'Non assigné';
+  const m = members.find((x) => x.id === id);
+  return m ? fullName(m) : 'Ancien membre';
+};
+export function dueLabel(day: string | null) {
+  if (!day) return '';
+  const d = daysUntil(day);
+  return d === 0 ? 'Aujourd’hui' : d === 1 ? 'Demain' : d === -1 ? 'Hier' : formatDay(day);
+}

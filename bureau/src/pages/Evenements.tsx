@@ -52,9 +52,9 @@ function EventCard({ e, answers, members }: { e: Ev; answers: Record<string, Rep
   const when = d === 0 ? 'aujourd’hui' : d === 1 ? 'demain' : d > 0 ? `dans ${d} jours` : `il y a ${-d} jours`;
 
   const cols: { key: 'present' | 'absent' | 'silence'; label: string; tone: string }[] = [
-    { key: 'present', label: 'Présents', tone: 'a_jour' },
-    { key: 'absent', label: 'Absents', tone: 'expiree' },
-    { key: 'silence', label: 'Sans réponse', tone: 'aucune' },
+    { key: 'present', label: 'Présents', tone: 'ok' },
+    { key: 'absent', label: 'Absents', tone: 'bad' },
+    { key: 'silence', label: 'Sans réponse', tone: 'neutral' },
   ];
 
   return (
@@ -75,8 +75,8 @@ function EventCard({ e, answers, members }: { e: Ev; answers: Record<string, Rep
       ) : (
         <>
           <div className="meter" aria-hidden>
-            <span className="a_jour" style={{ width: `${(groups.present.length / total) * 100}%` }} />
-            <span className="expiree" style={{ width: `${(groups.absent.length / total) * 100}%` }} />
+            <span className="ok" style={{ width: `${(groups.present.length / total) * 100}%` }} />
+            <span className="bad" style={{ width: `${(groups.absent.length / total) * 100}%` }} />
           </div>
           <div className="summary">
             {cols.map((c) => (

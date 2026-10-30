@@ -1,20 +1,23 @@
 import type { Session } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 
-import { supabase, useAsync, type Profile } from './lib';
+import { fullName, supabase, useAsync, type Profile } from './lib';
 import { Adherents } from './pages/Adherents';
 import { Documents } from './pages/Documents';
 import { Evenements } from './pages/Evenements';
 import { Importer } from './pages/Importer';
 import { Overview } from './pages/Overview';
+import { Pilotage } from './pages/Pilotage';
+import { Avatar, Icon } from './Icon';
 import { Toasts } from './Toasts';
 
 const PAGES = [
-  { path: 'accueil', label: 'Vue d’ensemble', el: Overview },
-  { path: 'adherents', label: 'Adhérents', el: Adherents },
-  { path: 'evenements', label: 'Événements', el: Evenements },
-  { path: 'documents', label: 'Documents', el: Documents },
-  { path: 'importer', label: 'Importer', el: Importer },
+  { path: 'accueil', label: 'Vue d’ensemble', icon: 'home', sub: 'L’essentiel de votre association en un coup d’œil', el: Overview },
+  { path: 'pilotage', label: 'Pilotage', icon: 'tasks', sub: 'Les actions du bureau et la liste des choses à faire', el: Pilotage },
+  { path: 'adherents', label: 'Adhérents', icon: 'users', sub: 'Cotisations, inscriptions et messages', el: Adherents },
+  { path: 'evenements', label: 'Événements', icon: 'calendar', sub: 'Qui vient, qui n’a pas répondu', el: Evenements },
+  { path: 'documents', label: 'Documents', icon: 'file', sub: 'Les fichiers partagés avec les adhérents', el: Documents },
+  { path: 'importer', label: 'Importer', icon: 'upload', sub: 'Ajoutez vos adhérents depuis un tableur', el: Importer },
 ] as const;
 
 const useHash = () => {
@@ -53,15 +56,22 @@ function Login() {
     setBusy(false);
   }
   return (
-    <div className="center">
-      <form className="card login" onSubmit={submit}>
+    <div className="login-page">
+      <div className="login-brand">
+        <div className="logo">A</div>
         <h1>Allianceo</h1>
-        <p className="muted">Espace réservé au bureau de l’association.</p>
-        <label>Adresse e-mail<input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
-        <label>Mot de passe<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
-        {error && <p className="error">{error}</p>}
-        <button className="primary" disabled={busy}>{busy ? 'Connexion…' : 'Se connecter'}</button>
-      </form>
+        <p>L’espace de pilotage du bureau : adhérents, cotisations, événements et actions, au même endroit.</p>
+      </div>
+      <div className="login-form">
+        <form onSubmit={submit}>
+          <h2>Connexion</h2>
+          <p className="muted">Réservé aux membres du bureau.</p>
+          <label>Adresse e-mail<input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+          <label>Mot de passe<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
+          {error && <p className="error">{error}</p>}
+          <button className="primary big" disabled={busy}>{busy ? 'Connexion…' : 'Se connecter'}</button>
+        </form>
+      </div>
     </div>
   );
 }
@@ -86,19 +96,23 @@ function Shell({ userId }: { userId: string }) {
     <div className="shell">
       <Toasts />
       <aside>
-        <div className="brand">Allianceo<small>{association}</small></div>
+        <div className="brand"><span className="logo sm">A</span><div>Allianceo<small>{association}</small></div></div>
         <nav>
           {PAGES.map((p) => (
-            <a key={p.path} href={'#' + p.path} className={p.path === page.path ? 'active' : ''}>{p.label}</a>
+            <a key={p.path} href={'#' + p.path} className={p.path === page.path ? 'active' : ''}><Icon name={p.icon} />{p.label}</a>
           ))}
         </nav>
         <div className="me">
-          {profile.prenom ?? profile.email}
-          <button className="link" onClick={() => supabase.auth.signOut()}>Se déconnecter</button>
+          <Avatar name={fullName(profile)} size={34} />
+          <div className="grow"><strong>{profile.prenom ?? profile.email}</strong><small>{profile.role === 'admin' ? 'Administrateur' : 'Bureau'}</small></div>
+          <button className="icon-btn" onClick={() => supabase.auth.signOut()} aria-label="Se déconnecter" title="Se déconnecter"><Icon name="logout" /></button>
         </div>
       </aside>
       <main>
-        <h1>{page.label}</h1>
+        <header className="page-head">
+          <h1>{page.label}</h1>
+          <p className="muted">{page.sub}</p>
+        </header>
         <Page profile={profile} association={association} />
       </main>
     </div>
@@ -109,7 +123,7 @@ function Denied({ text }: { text: string }) {
   return (
     <div className="center">
       <div className="card login">
-        <h1>Accès refusé</h1>
+        <h2>Accès refusé</h2>
         <p className="muted">{text}</p>
         <button onClick={() => supabase.auth.signOut()}>Se déconnecter</button>
       </div>

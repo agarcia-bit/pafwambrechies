@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { Drawer as Panel } from '../Drawer';
+import { Avatar, Icon } from '../Icon';
 import {
   addOneYear, cotisStatus, formatDay, fullName, loadMembers, mailto, STATUS_LABEL, supabase, today, toast, useAsync, type MemberRow,
 } from '../lib';
@@ -107,10 +109,10 @@ export function Adherents() {
               return (
                 <tr key={m.key} onClick={() => setOpen(m.key)} className={m.key === open ? 'sel' : ''}>
                   <td onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Sélectionner ${fullName(m)}`} checked={picked.has(m.key)} onChange={() => toggle(m.key)} /></td>
-                  <td>{fullName(m)}{m.role && m.role !== 'adherent' && <span className="tag">{m.role}</span>}</td>
+                  <td><span className="who"><Avatar name={fullName(m)} />{fullName(m)}{m.role && m.role !== 'adherent' && <span className="tag">{m.role}</span>}</span></td>
                   <td className="muted">{m.email}</td>
                   <td><span className={'badge ' + status}>{STATUS_LABEL[status]}</span>{m.valide_jusqu && <span className="muted"> {formatDay(m.valide_jusqu)}</span>}</td>
-                  <td>{m.inscrit ? <span className="badge a_jour">Inscrit</span> : <span className="badge aucune">En attente</span>}</td>
+                  <td>{m.inscrit ? <span className="badge ok">Inscrit</span> : <span className="badge neutral">En attente</span>}</td>
                 </tr>
               );
             })}
@@ -136,11 +138,6 @@ function Drawer({ m, onClose, onChanged }: { m: MemberRow; onClose: () => void; 
   useEffect(() => {
     setDate(m.valide_jusqu && cotisStatus(m.valide_jusqu) === 'a_jour' ? m.valide_jusqu : addOneYear(today()));
   }, [m.key, m.valide_jusqu]);
-  useEffect(() => {
-    const on = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    addEventListener('keydown', on);
-    return () => removeEventListener('keydown', on);
-  }, [onClose]);
   const status = cotisStatus(m.valide_jusqu);
 
   async function run(action: () => PromiseLike<{ error: { message: string } | null }>, ok: string) {
@@ -163,31 +160,23 @@ function Drawer({ m, onClose, onChanged }: { m: MemberRow; onClose: () => void; 
   };
 
   return (
-    <>
-      <div className="scrim" onClick={onClose} />
-      <aside className="drawer" aria-label={`Fiche de ${fullName(m)}`}>
-        <div className="head">
-          <div>
-            <h2>{fullName(m)}</h2>
-            <span className="muted">{m.email}</span>
-          </div>
-          <button className="link" onClick={onClose} aria-label="Fermer">✕</button>
-        </div>
-        <p>
-          {m.inscrit ? <span className="badge a_jour">Inscrit sur l’app</span> : <span className="badge aucune">Pas encore inscrit</span>}
-          {m.role && m.role !== 'adherent' && <span className="tag">{m.role}</span>}
-        </p>
-        <h3>Cotisation</h3>
-        <p><span className={'badge ' + status}>{STATUS_LABEL[status]}</span>{m.valide_jusqu && <span className="muted"> jusqu’au {formatDay(m.valide_jusqu)}</span>}</p>
+    <Panel title={fullName(m)} subtitle={m.email ?? undefined} onClose={onClose}>
+      <p>
+        {m.inscrit ? <span className="badge ok">Inscrit sur l’app</span> : <span className="badge neutral">Pas encore inscrit</span>}
+        {m.role && m.role !== 'adherent' && <span className="tag">{m.role}</span>}
+      </p>
+      <h3 className="sect">Cotisation</h3>
+      <p><span className={'badge ' + status}>{STATUS_LABEL[status]}</span>{m.valide_jusqu && <span className="muted"> jusqu’au {formatDay(m.valide_jusqu)}</span>}</p>
+      <div className="form">
         <label>Valable jusqu’au<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
-        <div className="row">
+        <div className="row" style={{ marginTop: 0 }}>
           <button className="primary" disabled={busy || !date} onClick={save}>{status === 'a_jour' ? 'Mettre à jour' : 'Enregistrer le renouvellement'}</button>
           {m.id && m.valide_jusqu && <button className="link danger" disabled={busy} onClick={clear}>Effacer</button>}
         </div>
-        <p className="muted small">La date proposée est à 12 mois. Le paiement lui-même se fait sur votre page de règlement, hors de l’app.</p>
-        {m.email && <p><a className="button" href={mailto([m.email], 'Message du bureau', '')}>Écrire à cette personne</a></p>}
-        {!m.inscrit && <p><button className="link danger" disabled={busy} onClick={removeInvite}>Retirer de la liste</button></p>}
-      </aside>
-    </>
+      </div>
+      <p className="muted small">La date proposée est à 12 mois. Le paiement lui-même se fait sur votre page de règlement, hors de l’app.</p>
+      {m.email && <p><a className="button" href={mailto([m.email], 'Message du bureau', '')}><Icon name="mail" size={16} /> Écrire à cette personne</a></p>}
+      {!m.inscrit && <p><button className="link danger" disabled={busy} onClick={removeInvite}>Retirer de la liste</button></p>}
+    </Panel>
   );
 }
