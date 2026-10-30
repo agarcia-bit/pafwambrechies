@@ -20,10 +20,10 @@ export function Overview() {
   return (
     <>
       <div className="stats">
-        <Stat label="Adhérents" value={all.length} />
-        <Stat label="Inscrits sur l’app" value={inscrits.length} note={waiting.length ? `${waiting.length} pas encore inscrits` : undefined} />
+        <Stat label="Adhérents" value={all.length} href="#adherents" />
+        <Stat label="Inscrits sur l’app" value={inscrits.length} note={waiting.length ? `${waiting.length} pas encore inscrits` : undefined} href={waiting.length ? '#adherents?filtre=non_inscrits' : '#adherents'} />
         <Stat label="Cotisations à jour" value={upToDate} note={all.length ? `${Math.round((upToDate / all.length) * 100)} %` : undefined} />
-        <Stat label="À relancer" value={toChase.length} warn={toChase.length > 0} />
+        <Stat label="À relancer" value={toChase.length} warn={toChase.length > 0} href="#adherents?filtre=a_relancer" />
       </div>
       <div className="grid2">
         <section className="card">
@@ -31,7 +31,7 @@ export function Overview() {
           {events.data?.length ? (
             <ul className="plain">
               {events.data.map((e) => (
-                <li key={e.id}><a href="#evenements">{e.titre}</a><span className="muted">{formatDay(e.date)} · dans {daysUntil(e.date)} j</span></li>
+                <li key={e.id}><a href="#evenements">{e.titre}</a><span className="muted">{formatDay(e.date)} · {daysUntil(e.date) === 0 ? 'aujourd’hui' : daysUntil(e.date) === 1 ? 'demain' : `dans ${daysUntil(e.date)} j`}</span></li>
               ))}
             </ul>
           ) : <p className="muted">Aucun événement à venir.</p>}
@@ -45,19 +45,20 @@ export function Overview() {
               ))}
             </ul>
           ) : <p className="muted">Tout le monde est à jour.</p>}
-          {toChase.length > 8 && <p><a href="#adherents">Voir les {toChase.length} adhérents</a></p>}
+          {toChase.length > 8 && <p><a href="#adherents?filtre=a_relancer">Voir les {toChase.length} adhérents</a></p>}
         </section>
       </div>
     </>
   );
 }
 
-function Stat({ label, value, note, warn }: { label: string; value: number; note?: string; warn?: boolean }) {
+function Stat({ label, value, note, warn, href }: { label: string; value: number; note?: string; warn?: boolean; href?: string }) {
+  const Tag = href ? 'a' : 'div';
   return (
-    <div className={'card stat' + (warn ? ' warn' : '')}>
+    <Tag href={href} className={'card stat' + (warn ? ' warn' : '') + (href ? ' link-card' : '')}>
       <span className="muted">{label}</span>
       <strong>{value}</strong>
       {note && <small className="muted">{note}</small>}
-    </div>
+    </Tag>
   );
 }

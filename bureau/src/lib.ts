@@ -72,3 +72,13 @@ export async function loadMembers(): Promise<MemberRow[]> {
     .map((i) => ({ key: 'i:' + i.email, id: null, prenom: i.prenom, nom: i.nom, email: i.email, role: null, valide_jusqu: i.valide_jusqu, inscrit: false }));
   return [...joined, ...waiting];
 }
+
+// ── Messages de confirmation ────────────────────────────────────────────────
+export const toast = (message: string, kind: 'ok' | 'error' = 'ok') =>
+  window.dispatchEvent(new CustomEvent('toast', { detail: { message, kind } }));
+
+export function addOneYear(iso: string) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const last = new Date(y + 1, m, 0).getDate();
+  return `${y + 1}-${String(m).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
+}

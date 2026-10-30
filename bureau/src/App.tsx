@@ -7,6 +7,7 @@ import { Documents } from './pages/Documents';
 import { Evenements } from './pages/Evenements';
 import { Importer } from './pages/Importer';
 import { Overview } from './pages/Overview';
+import { Toasts } from './Toasts';
 
 const PAGES = [
   { path: 'accueil', label: 'Vue d’ensemble', el: Overview },
@@ -17,9 +18,9 @@ const PAGES = [
 ] as const;
 
 const useHash = () => {
-  const [hash, setHash] = useState(location.hash.slice(1) || 'accueil');
+  const [hash, setHash] = useState(location.hash.slice(1).split('?')[0] || 'accueil');
   useEffect(() => {
-    const on = () => setHash(location.hash.slice(1) || 'accueil');
+    const on = () => setHash(location.hash.slice(1).split('?')[0] || 'accueil');
     addEventListener('hashchange', on);
     return () => removeEventListener('hashchange', on);
   }, []);
@@ -83,6 +84,7 @@ function Shell({ userId }: { userId: string }) {
   const Page = page.el;
   return (
     <div className="shell">
+      <Toasts />
       <aside>
         <div className="brand">Allianceo<small>{association}</small></div>
         <nav>

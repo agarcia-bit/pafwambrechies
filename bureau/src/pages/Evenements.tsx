@@ -1,70 +1,98 @@
-import { daysUntil, formatDay, fullName, mailto, supabase, useAsync } from '../lib';
+import { useState } from 'react';
+
+import { daysUntil, formatDay, fullName, loadMembers, mailto, supabase, today, useAsync } from '../lib';
 
 type Ev = { id: number; titre: string; date: string; lieu: string | null; participation: boolean };
-type Answer = { id: string; prenom: string | null; nom: string | null; reponse: 'present' | 'absent' | 'indecis' | null };
+type Reponse = 'present' | 'absent' | 'indecis';
 
 export function Evenements() {
-  const events = useAsync(async () => {
-    const { data, error } = await supabase
-      .from('evenements').select('id, titre, date, lieu, participation').gte('date', new Date().toISOString().slice(0, 10)).order('date');
-    if (error) throw error;
-    return data as Ev[];
+  const [past, setPast] = useState(false);
+  // Tout est chargé en trois requêtes, quel que soit le nombre d'événements.
+  const data = useAsync(async () => {
+    const [ev, rep, members] = await Promise.all([
+      supabase.from('evenements').select('id, titre, date, lieu, participation').order('date'),
+      supabase.from('evenement_reponses').select('evenement_id, user_id, reponse'),
+      loadMembers(),
+    ]);
+    if (ev.error) throw ev.error;
+    if (rep.error) throw rep.error;
+    const answers: Record<number, Record<string, Reponse>> = {};
+    for (const r of rep.data as { evenement_id: number; user_id: string; reponse: Reponse }[]) (answers[r.evenement_id] ??= {})[r.user_id] = r.reponse;
+    return { events: ev.data as Ev[], answers, members: members.filter((m) => m.inscrit) };
   }, []);
-  if (events.loading) return <p className="muted">Chargement…</p>;
-  if (events.error) return <p className="error">{events.error}</p>;
-  if (!events.data?.length) return <p className="muted">Aucun événement à venir.</p>;
-  return <>{events.data.map((e) => <EventCard key={e.id} e={e} />)}</>;
+
+  if (data.loading) return <p className="muted">Chargement…</p>;
+  if (data.error) return <p className="error">{data.error}</p>;
+  const { events, answers, members } = data.data!;
+  const list = events.filter((e) => (past ? e.date < today() : e.date >= today()));
+  if (past) list.reverse();
+
+  return (
+    <>
+      <div className="chips" style={{ marginBottom: 14 }}>
+        <button className={!past ? 'chip on' : 'chip'} onClick={() => setPast(false)}>À venir</button>
+        <button className={past ? 'chip on' : 'chip'} onClick={() => setPast(true)}>Passés</button>
+      </div>
+      {!list.length && <p className="muted">Aucun événement {past ? 'passé' : 'à venir'}.</p>}
+      {list.map((e) => <EventCard key={e.id} e={e} answers={answers[e.id] ?? {}} members={members} />)}
+    </>
+  );
 }
 
-function EventCard({ e }: { e: Ev }) {
-  const answers = useAsync(async () => {
-    if (!e.participation) return [] as Answer[];
-    const { data, error } = await supabase.rpc('evenement_participants', { p_evenement: e.id });
-    if (error) throw error;
-    return data as Answer[];
-  }, [e.id]);
-  // E-mails of the members who have not answered (the RPC does not return them).
-  const mails = useAsync(async () => {
-    const { data } = await supabase.rpc('list_cotisations');
-    return Object.fromEntries(((data as { id: string; email: string | null }[]) ?? []).map((m) => [m.id, m.email]));
-  }, []);
+function EventCard({ e, answers, members }: { e: Ev; answers: Record<string, Reponse>; members: { id: string | null; prenom: string | null; nom: string | null; email: string | null }[] }) {
+  const [openCol, setOpenCol] = useState<'present' | 'absent' | 'silence' | null>(null);
+  const groups = {
+    present: members.filter((m) => answers[m.id!] === 'present'),
+    absent: members.filter((m) => answers[m.id!] === 'absent'),
+    silence: members.filter((m) => !answers[m.id!] || answers[m.id!] === 'indecis'),
+  };
+  const total = members.length || 1;
+  const silentMails = groups.silence.map((m) => m.email).filter((m): m is string => !!m);
+  const d = daysUntil(e.date);
+  const when = d === 0 ? 'aujourd’hui' : d === 1 ? 'demain' : d > 0 ? `dans ${d} jours` : `il y a ${-d} jours`;
 
-  const list = answers.data ?? [];
-  const by = (r: Answer['reponse']) => list.filter((a) => a.reponse === r);
-  const silent = list.filter((a) => !a.reponse || a.reponse === 'indecis');
-  const silentMails = silent.map((a) => mails.data?.[a.id]).filter((m): m is string => !!m);
+  const cols: { key: 'present' | 'absent' | 'silence'; label: string; tone: string }[] = [
+    { key: 'present', label: 'Présents', tone: 'a_jour' },
+    { key: 'absent', label: 'Absents', tone: 'expiree' },
+    { key: 'silence', label: 'Sans réponse', tone: 'aucune' },
+  ];
 
   return (
     <section className="card">
       <div className="head">
         <div>
           <h2>{e.titre}</h2>
-          <span className="muted">{formatDay(e.date)} · dans {daysUntil(e.date)} j{e.lieu ? ` · ${e.lieu}` : ''}</span>
+          <span className="muted">{formatDay(e.date)} · {when}{e.lieu ? ` · ${e.lieu}` : ''}</span>
         </div>
-        {e.participation && silentMails.length > 0 && (
-          <a className="button" href={mailto(silentMails, `Seras-tu présent·e : ${e.titre} ?`, `Bonjour,\n\nPeux-tu répondre dans l’application pour « ${e.titre} » (${formatDay(e.date)}) ?\n\nMerci !`)}>
-            Relancer les {silentMails.length} silencieux
+        {e.participation && d >= 0 && silentMails.length > 0 && (
+          <a className="button" href={mailto(silentMails.slice(0, 50), `Seras-tu présent·e : ${e.titre} ?`, `Bonjour,\n\nPeux-tu répondre dans l’application pour « ${e.titre} » (${formatDay(e.date)}) ?\n\nMerci !`)}>
+            Relancer les {Math.min(silentMails.length, 50)} silencieux
           </a>
         )}
       </div>
       {!e.participation ? (
-        <p className="muted">Les réponses ne sont pas demandées pour cet événement (à activer dans l’application).</p>
-      ) : answers.loading ? <p className="muted">Chargement…</p> : answers.error ? <p className="error">{answers.error}</p> : (
-        <div className="cols3">
-          <Col title="Présents" tone="a_jour" people={by('present')} />
-          <Col title="Absents" tone="expiree" people={by('absent')} />
-          <Col title="Sans réponse / indécis" tone="aucune" people={silent} />
-        </div>
+        <p className="muted">Les réponses ne sont pas demandées pour cet événement (à activer depuis l’application).</p>
+      ) : (
+        <>
+          <div className="meter" aria-hidden>
+            <span className="a_jour" style={{ width: `${(groups.present.length / total) * 100}%` }} />
+            <span className="expiree" style={{ width: `${(groups.absent.length / total) * 100}%` }} />
+          </div>
+          <div className="summary">
+            {cols.map((c) => (
+              <button key={c.key} className={'sum' + (openCol === c.key ? ' on' : '')} onClick={() => setOpenCol(openCol === c.key ? null : c.key)}>
+                <span className={'badge ' + c.tone}>{groups[c.key].length}</span> {c.label}
+              </button>
+            ))}
+          </div>
+          {openCol && (
+            <ul className="plain compact names">
+              {groups[openCol].map((m) => <li key={m.id}>{fullName(m)}</li>)}
+              {!groups[openCol].length && <li className="muted">Personne.</li>}
+            </ul>
+          )}
+        </>
       )}
     </section>
-  );
-}
-
-function Col({ title, tone, people }: { title: string; tone: string; people: Answer[] }) {
-  return (
-    <div>
-      <h3><span className={'badge ' + tone}>{people.length}</span> {title}</h3>
-      <ul className="plain compact">{people.map((p) => <li key={p.id}>{fullName(p)}</li>)}</ul>
-    </div>
   );
 }
