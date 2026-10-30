@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 
 import type { PageProps } from '../App';
 import { Drawer } from '../Drawer';
+import { Calendrier, Chronologie, Equipe } from './PilotageViews';
 import { Avatar, Icon } from '../Icon';
 import {
   ACTION_STATUTS, dueLabel, formatDay, isOverdue, loadBureau, nameOf, PRIORITES, supabase, today, toast, useAsync,
@@ -14,6 +15,8 @@ export function Pilotage({ profile }: PageProps) {
   const data = useAsync(loadBureau, []);
   const [mine, setMine] = useState(true);
   const [open, setOpen] = useState<number | 'new' | null>(null);
+  const [view, setViewState] = useState<string>(() => { try { return localStorage.getItem('pilotage-vue') || 'chrono'; } catch { return 'chrono'; } });
+  const setView = (v: string) => { setViewState(v); try { localStorage.setItem('pilotage-vue', v); } catch { /* sans stockage */ } };
 
   const stats = useMemo(() => {
     const d = data.data;
@@ -86,9 +89,17 @@ export function Pilotage({ profile }: PageProps) {
       </section>
 
       <div className="head" style={{ margin: '24px 0 12px' }}>
-        <h2 style={{ margin: 0 }}>Actions du bureau</h2>
+        <div className="seg" role="tablist" aria-label="Vue des actions">
+          {[['chrono', 'Chronologie'], ['equipe', 'Équipe'], ['cal', 'Calendrier'], ['kanban', 'Kanban']].map(([k, l]) => (
+            <button key={k} role="tab" aria-selected={view === k} className={view === k ? 'on' : ''} onClick={() => setView(k)}>{l}</button>
+          ))}
+        </div>
         <button className="primary" onClick={() => setOpen('new')}><Icon name="plus" size={16} /> Nouvelle action</button>
       </div>
+      {view === 'chrono' && <Chronologie actions={actions} taches={taches} members={members} onOpen={setOpen} onToggle={toggle} />}
+      {view === 'equipe' && <Equipe actions={actions} taches={taches} members={members} onOpen={setOpen} onToggle={toggle} />}
+      {view === 'cal' && <Calendrier actions={actions} taches={taches} members={members} onOpen={setOpen} onToggle={toggle} />}
+      {view === 'kanban' && (
       <div className="board">
         {ACTION_STATUTS.map((s) => {
           const col = actions.filter((a) => a.statut === s);
@@ -114,6 +125,7 @@ export function Pilotage({ profile }: PageProps) {
           );
         })}
       </div>
+      )}
 
       {open !== null && (
         <ActionDrawer
