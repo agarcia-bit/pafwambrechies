@@ -3,13 +3,26 @@
 // the caller must be bureau or admin of their association. Provider: Resend, one message
 // per recipient (nobody sees the other addresses), "reply-to" set to the sender.
 //
-// Secrets: RESEND_API_KEY (required), MAIL_FROM (e.g. "Allianceo <bureau@allianceo.fr>",
-// a verified Resend domain). Without RESEND_API_KEY the function answers 501 and the
+// Sender: each association sends under its own name and address on the platform domain,
+// e.g. "PAF Wambrechies <paf-wambrechies@monallianceo.fr>" (no mailbox needed: replies go to
+// the bureau member through reply-to).
+//
+// Secrets: RESEND_API_KEY (required), MAIL_DOMAIN (a domain verified in Resend, e.g.
+// "monallianceo.fr"). Without MAIL_DOMAIN, Resend's test address is used (it only delivers to
+// the Resend account owner). Without RESEND_API_KEY the function answers 501 and the
 // dashboard falls back to a mailto: link.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const MAIL_FROM = Deno.env.get("MAIL_FROM") ?? "Allianceo <onboarding@resend.dev>";
+const MAIL_DOMAIN = Deno.env.get("MAIL_DOMAIN")?.trim().toLowerCase();
+
+/** "PAF Wambrechies" <paf-wambrechies@monallianceo.fr> */
+function senderFor(name: string, slug: string): string {
+  const display = name.replace(/["<>\r\n]/g, "").trim() || "Allianceo";
+  const local = slug.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "association";
+  return `"${display}" <${MAIL_DOMAIN ? `${local}@${MAIL_DOMAIN}` : "onboarding@resend.dev"}>`;
+}
 const MAX_RECIPIENTS = 300;
 const BATCH = 100; // Resend batch endpoint limit
 
@@ -57,9 +70,13 @@ Deno.serve(async (req) => {
   if (to.length > MAX_RECIPIENTS) return json({ error: "too_many" }, 400);
 
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const { data: tenant } = await sb.from("tenants").select("name").eq("id", profile.tenant_id).single();
+  const { data: tenant } = await sb.from("tenants").select("name, slug").eq("id", profile.tenant_id).single();
+  const { data: branding } = await sb.from("app_settings").select("value")
+    .eq("tenant_id", profile.tenant_id).eq("key", "tenant_name").maybeSingle();
   const sender = [profile.prenom, profile.nom].filter(Boolean).join(" ") || profile.email || "Le bureau";
-  const assoc = tenant?.name ?? "Votre association";
+  // The name the association chose in its settings, else the platform's record.
+  const assoc = branding?.value?.trim() || tenant?.name || "Votre association";
+  const from = senderFor(assoc, tenant?.slug ?? "");
   const text = `${corps}\n\n—\n${sender}, pour ${assoc}`;
   const html = `<div style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.55;color:#1f2937">` +
     `<p>${escapeHtml(corps).replace(/\n/g, "<br>")}</p>` +
@@ -73,7 +90,7 @@ Deno.serve(async (req) => {
         method: "POST",
         headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify(batch.map((r) => ({
-          from: MAIL_FROM,
+          from,
           to: [r.email],
           reply_to: profile.email ?? undefined,
           subject: sujet,

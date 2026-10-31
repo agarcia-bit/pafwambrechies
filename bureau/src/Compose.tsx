@@ -41,7 +41,7 @@ export function Compose({ to, subject = '', body = '', onClose, onSent }: {
   return (
     <Drawer
       title={emails.length === 1 ? `Écrire à ${emails[0]}` : `Écrire à ${emails.length} personnes`}
-      subtitle="Chaque personne reçoit son propre e-mail ; les réponses vous arrivent directement."
+      subtitle="Envoyé au nom de l’association. Chaque personne reçoit son propre e-mail ; les réponses vous arrivent directement."
       onClose={onClose}
       footer={
         <>
