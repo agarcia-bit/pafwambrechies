@@ -84,6 +84,54 @@ export async function loadCotisConfig(): Promise<CotisConfig> {
     ouverture: b.cotisation_ouverture ?? '', fin: b.cotisation_fin ?? '', module: b.module_cotisations === 'on',
   };
 }
+// ── Configuration de l'association (sections, vocabulaire, catégories) ──────
+export type ModuleKey = 'annuaire' | 'offres' | 'agenda' | 'idees' | 'liens' | 'documents';
+export type TenantConfig = {
+  raw: Record<string, string>;
+  modules: Record<ModuleKey, boolean>;
+  labels: { annuaire: string; offres: string; nom: string };
+  categories: { annuaire: string[]; offres: string[] };
+};
+export const DEFAULT_CATEGORY = 'Général';
+export const parseList = (v: string | undefined) => [...new Set((v ?? '').split(',').map((s) => s.trim()).filter(Boolean))];
+export async function loadTenantConfig(): Promise<TenantConfig> {
+  const { data, error } = await supabase.rpc('get_my_branding');
+  if (error) throw error;
+  const b = (data ?? {}) as Record<string, string>;
+  const on = (v?: string) => (v ?? '').trim().toLowerCase() !== 'off';
+  return {
+    raw: b,
+    modules: { annuaire: on(b.module_annuaire), offres: on(b.module_offres), agenda: on(b.module_agenda), idees: on(b.module_idees), liens: on(b.module_liens), documents: on(b.module_documents) },
+    labels: { annuaire: b.label_annuaire?.trim() || 'Annuaire', offres: b.label_offres?.trim() || 'Offres', nom: b.label_nom?.trim() || 'Nom' },
+    categories: { annuaire: parseList(b.annuaire_categories), offres: parseList(b.offres_categories) },
+  };
+}
+export const formatRelative = (iso: string) => {
+  const d = Math.round((Date.now() - new Date(iso).getTime()) / 86400000);
+  return d <= 0 ? 'aujourd’hui' : d === 1 ? 'hier' : d < 30 ? `il y a ${d} jours` : formatDay(iso.slice(0, 10));
+};
+
+/** Redimensionne une image dans le navigateur et l'envoie dans un bucket public, comme l'application
+ *  (le nom contient les dimensions : l'app s'en sert pour le ratio d'affichage). */
+export async function uploadPhoto(file: File, bucket: string, width: number, crop: boolean): Promise<string> {
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, width / bmp.width);
+  let sw = bmp.width, sh = bmp.height, sx = 0, sy = 0;
+  if (crop) { // 4:3, centré
+    if (sw / sh > 4 / 3) { sw = Math.round(sh * 4 / 3); sx = Math.round((bmp.width - sw) / 2); } else { sh = Math.round(sw * 3 / 4); sy = Math.round((bmp.height - sh) / 2); }
+  }
+  const w = Math.round(sw * scale), h = Math.round(sh * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d')!.drawImage(bmp, sx, sy, sw, sh, 0, 0, w, h);
+  const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.85));
+  if (!blob) throw new Error('Image illisible');
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2)}-${w}x${h}.jpg`;
+  const { error } = await supabase.storage.from(bucket).upload(path, blob, { contentType: 'image/jpeg' });
+  if (error) throw error;
+  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
+
 export const euros = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
 // ── E-mails envoyés depuis l'espace bureau (fonction send-mail + historique) ─

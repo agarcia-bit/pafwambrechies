@@ -3,22 +3,36 @@ import { Fragment, useEffect, useState } from 'react';
 
 import { fullName, supabase, useAsync, type Profile } from './lib';
 import { Adherents } from './pages/Adherents';
+import { Contenus } from './pages/Contenus';
 import { Documents } from './pages/Documents';
 import { Evenements } from './pages/Evenements';
 import { Importer } from './pages/Importer';
+import { Membres } from './pages/Membres';
+import { Moderation } from './pages/Moderation';
 import { Overview } from './pages/Overview';
 import { Pilotage } from './pages/Pilotage';
+import { Reglages } from './pages/Reglages';
+import { Sondages } from './pages/Sondages';
 import { Avatar, Icon, Skeleton } from './Icon';
 import { Toasts } from './Toasts';
 
-const PAGES = [
+type Page = { path: string; label: string; icon: string; sub: string; el: (p: PageProps) => JSX.Element; section?: string; admin?: boolean };
+const PAGES: Page[] = [
   { path: 'accueil', label: 'Vue d’ensemble', icon: 'home', sub: 'L’essentiel de votre association en un coup d’œil', el: Overview },
   { path: 'pilotage', label: 'Pilotage', icon: 'tasks', sub: 'Les actions du bureau et la liste des choses à faire', el: Pilotage },
-  { path: 'adherents', label: 'Adhérents', icon: 'users', sub: 'Cotisations, relances et messages', el: Adherents },
+  { path: 'adherents', label: 'Adhérents', icon: 'users', sub: 'Cotisations, relances et messages', el: Adherents, section: 'Association' },
   { path: 'evenements', label: 'Événements', icon: 'calendar', sub: 'Créez vos événements et suivez qui vient', el: Evenements },
+  { path: 'sondages', label: 'Sondages', icon: 'flag', sub: 'Posez une question à tous les adhérents', el: Sondages },
+  { path: 'actus', label: 'Actus', icon: 'sparkle', sub: 'Ce que les adhérents voient dans leur fil', el: (p) => <Contenus kind="actus" {...p} />, section: 'Contenus de l’app' },
+  { path: 'offres', label: 'Offres', icon: 'euro', sub: 'Les bons plans proposés aux adhérents', el: (p) => <Contenus kind="offres" {...p} /> },
+  { path: 'annuaire', label: 'Annuaire', icon: 'user', sub: 'Les fiches visibles dans l’app', el: (p) => <Contenus kind="annuaire" {...p} /> },
+  { path: 'liens', label: 'Liens utiles', icon: 'external', sub: 'Sites et ressources partagés', el: (p) => <Contenus kind="liens" {...p} /> },
   { path: 'documents', label: 'Documents', icon: 'file', sub: 'Les fichiers partagés avec les adhérents', el: Documents },
+  { path: 'moderation', label: 'Modération', icon: 'alert', sub: 'Signalements et boîte à idées', el: Moderation },
+  { path: 'membres', label: 'Membres et accès', icon: 'users', sub: 'Rôles, code d’accès et invitations', el: Membres, section: 'Administration' },
   { path: 'importer', label: 'Importer', icon: 'upload', sub: 'Ajoutez vos adhérents depuis un tableur', el: Importer },
-] as const;
+  { path: 'reglages', label: 'Réglages', icon: 'edit', sub: 'Identité, sections et vocabulaire de l’app', el: Reglages, admin: true },
+];
 
 const useHash = () => {
   const [hash, setHash] = useState(location.hash.slice(1).split('?')[0] || 'accueil');
@@ -176,7 +190,8 @@ function Shell({ userId }: { userId: string }) {
   const { profile, association } = me.data;
   if (profile.role === 'adherent') return <Denied text="Cet espace est réservé au bureau. Utilisez l’application sur votre téléphone." />;
 
-  const page = PAGES.find((p) => p.path === hash) ?? PAGES[0];
+  const pages = PAGES.filter((p) => !p.admin || profile.role === 'admin');
+  const page = pages.find((p) => p.path === hash) ?? pages[0];
   const Page = page.el;
   return (
     <div className="shell">
@@ -184,10 +199,9 @@ function Shell({ userId }: { userId: string }) {
       <aside className="nav">
         <div className="brand"><span className="logo sm">A</span><div>Allianceo<small>{association}</small></div></div>
         <nav>
-          {PAGES.map((p, i) => (
+          {pages.map((p) => (
             <Fragment key={p.path}>
-              {i === 2 && <div className="nav-label">Association</div>}
-              {i === 5 && <div className="nav-label">Outils</div>}
+              {p.section && <div className="nav-label">{p.section}</div>}
               <a href={'#' + p.path} className={p.path === page.path ? 'active' : ''}><Icon name={p.icon} size={17} />{p.label}</a>
             </Fragment>
           ))}
