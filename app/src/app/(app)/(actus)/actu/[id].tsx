@@ -12,7 +12,6 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { useActu, useAuteurs } from '@/lib/data';
 import { formatDayLong } from '@/lib/format';
-import { useReadActus } from '@/lib/read-actus';
 import { useTheme } from '@/theme';
 import { mix } from '@/theme/colors';
 
@@ -33,13 +32,6 @@ export default function ActuScreen() {
       hide.remove();
     };
   }, []);
-  // Opening a post marks it as read: it shrinks to one line in the feed.
-  const { markRead } = useReadActus();
-  const loaded = !!actu.data;
-  useEffect(() => {
-    if (loaded) markRead(Number(id));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, id]);
   const auteurs = useAuteurs();
   const hue = useCategoryHue(actu.data?.categorie ?? '');
   const heroColor = mix(hue, '#000000', 0.15);
