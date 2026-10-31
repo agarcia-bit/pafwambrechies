@@ -53,6 +53,8 @@ Deno.serve(async (req) => {
     if (devError) throw devError;
 
     const what = KIND_LABELS[String(record.kind)] ?? "un contenu";
+    const { data: branding } = await sb.rpc("branding_for_tenant", { p_tenant: record.tenant_id });
+    const assoc = (branding?.tenant_name || branding?.name || "Votre association").trim();
     let sent = 0;
     const gone: number[] = [];
     const tokens = devices ?? [];
@@ -67,8 +69,8 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify(batch.map((d) => ({
           to: d.token,
-          title: "Contenu signalé",
-          body: `Un membre a signalé ${what}. À examiner.`,
+          title: assoc,
+          body: `Contenu signalé : un membre a signalé ${what}. À examiner.`,
           sound: "default",
           data: { signalement_id: record.id },
         }))),

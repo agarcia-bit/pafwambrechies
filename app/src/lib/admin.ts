@@ -230,7 +230,7 @@ const annuaire: Collection = {
   photo: { key: 'photo_url', bucket: 'annuaire-photos', width: 800, crop: true },
   fields: [
     { key: 'photo_url', label: 'Photo', type: 'photo' },
-    { key: 'nom_entreprise', label: 'Nom', type: 'text', required: true },
+    { key: 'nom_entreprise', label: 'Nom de l’entreprise', type: 'text', required: true },
     { key: 'prenom_contact', label: 'Prénom du contact', type: 'text' },
     { key: 'nom_contact', label: 'Nom du contact', type: 'text' },
     { key: 'categorie', label: 'Catégorie', type: 'choice', required: true, options: [] },

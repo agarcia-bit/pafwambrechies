@@ -133,15 +133,17 @@ Deno.serve(async (req) => {
     if (!record?.tenant_id) return new Response("No record", { status: 400 });
 
     const { data: branding } = await sb.rpc("branding_for_tenant", { p_tenant: record.tenant_id });
+    // The association's name on the first line, what is new on the second.
+    const assoc = (branding?.tenant_name || branding?.name || "Votre association").trim();
     const notification: Notification = payload.table === "sondages"
       ? {
-        title: "Nouveau sondage",
-        body: truncate(String(record.question ?? ""), 140),
+        title: assoc,
+        body: truncate(`Nouveau sondage : ${record.question ?? ""}`, 160),
         data: { sondage_id: record.id },
       }
       : {
-        title: record.titre || "Nouvelle actualité",
-        body: `Nouvelle publication sur ${branding?.tenant_name || branding?.name || "votre association"}`,
+        title: assoc,
+        body: truncate(record.titre ? `Nouvelle actu : ${record.titre}` : "Nouvelle actu", 160),
         data: { actu_id: record.id },
       };
 

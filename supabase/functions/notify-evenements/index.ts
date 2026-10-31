@@ -73,6 +73,16 @@ async function pushTo(tokens: { id: number; token: string }[], title: string, bo
 
 type Row = { evenement_id: number; tenant_id: string; titre: string; date: string; user_id: string; reponse: string | null };
 
+// Title of every notification: the association's name (as it chose it in its settings).
+const names = new Map<string, string>();
+async function assocName(tenantId: string): Promise<string> {
+  if (!names.has(tenantId)) {
+    const { data } = await sb.rpc("branding_for_tenant", { p_tenant: tenantId });
+    names.set(tenantId, (data?.tenant_name || data?.name || "Votre association").trim());
+  }
+  return names.get(tenantId)!;
+}
+
 Deno.serve(async (req) => {
   if (!isServiceRole(req)) return new Response("Forbidden", { status: 403 });
   try {
@@ -105,8 +115,8 @@ Deno.serve(async (req) => {
           .in("user_id", users.slice(i, i + ID_CHUNK));
         devices.push(...(tokens ?? []));
       }
-      const title = mostUrgent === 2 ? "Plus que 2 jours : vous venez ?" : "Vous venez ?";
-      const sent = devices.length ? await pushTo(devices, title, `${titre}, ${longDay(date)}`, id) : 0;
+      const ask = mostUrgent === 2 ? "Plus que 2 jours : vous venez ?" : "Vous venez ?";
+      const sent = devices.length ? await pushTo(devices, await assocName(tenant_id), `${ask} ${titre}, ${longDay(date)}`, id) : 0;
 
       // Whatever was sent, these reminders are done.
       await sb.from("evenement_rappels").upsert(due.map((jours) => ({ evenement_id: id, jours })));

@@ -74,6 +74,16 @@ async function pushTo(tokens: { id: number; token: string }[], title: string, bo
   return sent;
 }
 
+// Title of every notification: the association's name (as it chose it in its settings).
+const names = new Map<string, string>();
+async function assocName(tenantId: string): Promise<string> {
+  if (!names.has(tenantId)) {
+    const { data } = await sb.rpc("branding_for_tenant", { p_tenant: tenantId });
+    names.set(tenantId, (data?.tenant_name || data?.name || "Votre association").trim());
+  }
+  return names.get(tenantId)!;
+}
+
 Deno.serve(async (req) => {
   if (!isServiceRole(req)) return new Response("Forbidden", { status: 403 });
   try {
@@ -106,7 +116,7 @@ Deno.serve(async (req) => {
         ]);
         const answered = new Set((answers ?? []).map((a) => a.user_id));
         const targets = (devices ?? []).filter((d) => !answered.has(d.user_id));
-        sent = await pushTo(targets, wording(mostUrgent), truncate(String(poll.question), 140), poll.id);
+        sent = await pushTo(targets, await assocName(poll.tenant_id), truncate(`${wording(mostUrgent)} : ${poll.question}`, 170), poll.id);
       }
       // Whatever was skipped or sent, these reminders are done.
       await sb.from("sondage_rappels").upsert(due.map((jours) => ({ sondage_id: poll.id, jours })));

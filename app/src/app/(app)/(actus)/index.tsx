@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 
 import { PushOffer } from '@/components/association';
 import { CotisationBanner } from '@/components/cotisation-banner';
@@ -10,9 +11,11 @@ import { BrandBand } from '@/components/brand-band';
 import { ActuCard } from '@/components/cards';
 import { ChipBar } from '@/components/ui/chip-bar';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Text } from '@/components/ui/text';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { ACTU_CATEGORIES } from '@/lib/categories';
 import { useActus } from '@/lib/data';
+import { useReadActus } from '@/lib/read-actus';
 import { useMember } from '@/lib/session';
 import { useBandListStyle } from '@/theme';
 
@@ -31,13 +34,28 @@ export default function ActusScreen() {
   const actus = useActus(category);
   const { refreshing, onRefresh } = usePullToRefresh(actus.refetch);
   const items = actus.data?.pages.flat() ?? [];
+  const { isRead } = useReadActus();
+  // Unread news first (newest first), then the ones already read, shrunk to one line.
+  const unread = items.filter((a) => !isRead(a.id));
+  const read = items.filter((a) => isRead(a.id));
+  const sorted = [...unread, ...read];
 
   return (
-    <FlatList
+    <Animated.FlatList
       style={bandStyle}
-      data={items}
+      data={sorted}
       keyExtractor={(item) => String(item.id)}
-      renderItem={({ item, index }) => <ActuCard actu={item} index={index} />}
+      itemLayoutAnimation={LinearTransition.duration(250)}
+      renderItem={({ item, index }) => (
+        <View>
+          {index === unread.length && (
+            <Text variant="footnote" tone="secondary" style={styles.readHeader}>
+              DÉJÀ LUES
+            </Text>
+          )}
+          <ActuCard actu={item} index={index} />
+        </View>
+      )}
       contentInsetAdjustmentBehavior="never"
       contentContainerStyle={styles.content}
       ItemSeparatorComponent={Gap}
@@ -83,4 +101,5 @@ const styles = StyleSheet.create({
   header: { gap: 16, marginBottom: 16 },
   gap: { height: 12 },
   more: { marginTop: 16 },
+  readHeader: { marginHorizontal: 20, marginTop: 8, marginBottom: 8, fontWeight: '600', letterSpacing: 0.5 },
 });

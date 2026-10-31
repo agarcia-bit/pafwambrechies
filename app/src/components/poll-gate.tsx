@@ -23,6 +23,7 @@ import { showMessage } from '@/lib/confirm';
 import { formatDay } from '@/lib/format';
 import { usePollQueue } from '@/lib/poll-queue';
 import { useAnswerSondage, useRefreshSondages, type MemberSondage, type SondageOption } from '@/lib/sondages';
+import { useTourOpen } from '@/lib/tour';
 import { useTheme } from '@/theme';
 
 const THANKS_DURATION_MS = 1700;
@@ -42,6 +43,8 @@ type Shown = { poll: MemberSondage; canPostpone: boolean; voluntary: boolean };
  */
 export function PollGate() {
   const queue = usePollQueue();
+  // The guided tour goes first: this screen waits for it to close.
+  const tourOpen = useTourOpen();
   const refresh = useRefreshSondages();
   // The poll just answered: it stays on screen ("Merci") while it is already removed behind the modal.
   const [finishing, setFinishing] = useState<MemberSondage | null>(null);
@@ -70,7 +73,7 @@ export function PollGate() {
 
   return (
     // Android back button and swipe-down do nothing: the poll must be answered.
-    <Modal visible={!!target} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => {}}>
+    <Modal visible={!!target && !tourOpen} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => {}}>
       <PollScreen
         key={shown.poll.id}
         poll={shown.poll}
