@@ -11,7 +11,7 @@ import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
 import { adminErrorMessage } from '@/lib/admin';
 import { showMessage } from '@/lib/confirm';
-import { invitationMessage, useImportAdherents, useSignupCode } from '@/lib/invitations';
+import { invitationMessage, sendInvitationMail, useImportAdherents, useSignupCode } from '@/lib/invitations';
 import { useMember } from '@/lib/session';
 import { useTenantConfig } from '@/lib/tenant-config';
 import { useTheme } from '@/theme';
@@ -82,9 +82,25 @@ function Invite({ added, assoc, code }: { added: Added; assoc: string; code: str
   const message = invitationMessage(assoc, code);
   const who = added.prenom || added.email;
 
-  function mail() {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  function openMailApp() {
     const url = `mailto:${encodeURIComponent(added.email)}?subject=${encodeURIComponent(message.subject)}&body=${encodeURIComponent(message.body)}`;
     Linking.openURL(url).catch(() => showMessage('Messagerie introuvable', 'Utilisez « Envoyer autrement ».'));
+  }
+
+  // Sent directly, under the association's name; the phone's mail app only if that fails.
+  async function mail() {
+    setSending(true);
+    const result = await sendInvitationMail([added.email], message);
+    setSending(false);
+    if (result !== 'unavailable' && result.sent > 0) {
+      setSent(true);
+      return;
+    }
+    showMessage('Envoi impossible', 'Le message va s’ouvrir dans votre messagerie pour l’envoyer vous-même.');
+    openMailApp();
   }
 
   function share() {
@@ -108,7 +124,16 @@ function Invite({ added, assoc, code }: { added: Added; assoc: string; code: str
       </View>
       {!added.alreadyMember && (
         <>
-          <Button title="Envoyer l’invitation par e-mail" icon="mail" onPress={mail} />
+          {sent ? (
+            <View style={[styles.sent, { backgroundColor: colors.primarySoft }]}>
+              <Icon name="checkCircle" size={18} color={colors.primary} />
+              <Text tone="primary" style={styles.sentText}>
+                Invitation envoyée à {added.email}
+              </Text>
+            </View>
+          ) : (
+            <Button title="Envoyer l’invitation par e-mail" icon="mail" onPress={mail} loading={sending} />
+          )}
           <Button title="Envoyer autrement (SMS, WhatsApp…)" icon="share" variant="secondary" onPress={share} />
         </>
       )}
@@ -121,4 +146,6 @@ const styles = StyleSheet.create({
   done: { alignItems: 'center', gap: 10, marginVertical: 24 },
   check: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   center: { textAlign: 'center' },
+  sent: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 14, borderRadius: 14 },
+  sentText: { flex: 1, fontWeight: '600' },
 });
