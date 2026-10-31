@@ -1,0 +1,8 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;width:1080px;height:1920px;overflow:hidden}
+body{background:linear-gradient(160deg,#14B8A6 0%,#0F766E 50%,#0B5F58 100%);font-family:-apple-system,"SF Pro Display","Helvetica Neue",sans-serif;color:#fff;display:flex;flex-direction:column;align-items:center}
+h1{font-size:68px;line-height:1.15;letter-spacing:-1.5px;font-weight:800;text-align:center;margin:120px 80px 70px}
+.dot{display:inline-block;width:18px;height:18px;border-radius:50%;background:#FBBF24;margin-left:10px;vertical-align:middle}
+img{width:700px;border-radius:64px;box-shadow:0 40px 90px rgba(0,0,0,.35);border:10px solid rgba(255,255,255,.18)}
+</style></head><body><h1 id="t"></h1><img id="i"></body>
+<script>const p=new URLSearchParams(location.search);document.getElementById('t').innerHTML=p.get('t')+'<span class="dot"></span>';document.getElementById('i').src='../apple/'+p.get('i');</script></html>

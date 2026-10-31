@@ -1,0 +1,7 @@
+01|actus|Toute la vie de l’association
+02|evenement|Dites en un geste si vous venez
+03|sondage|Donnez votre avis en quelques secondes
+04|agenda|Tous les rendez-vous à venir
+05|offres|Les bons plans réservés aux adhérents
+06|annuaire|Retrouvez les membres de l’association
+07|actu|Ne ratez plus aucune nouvelle
