@@ -14,7 +14,7 @@ import { useBlockedIds, useContentMenu } from '@/lib/moderation';
 import { useMember } from '@/lib/session';
 import { useTheme } from '@/theme';
 
-const LIKED_COLOR = '#FF2D55';
+export const LIKED_COLOR = '#FF2D55';
 
 export function LikeButton({ kind, id, liked, count }: { kind: SocialKind; id: number; liked: boolean; count: number }) {
   const { colors } = useTheme();

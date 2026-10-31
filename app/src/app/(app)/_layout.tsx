@@ -3,6 +3,7 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GuidedTour } from '@/components/guided-tour';
 import { LaunchReveal } from '@/components/launch-reveal';
 import { NotificationObserver } from '@/components/notification-observer';
 import { ParticipationGate } from '@/components/participation-gate';
@@ -36,6 +37,7 @@ export default function AppLayout() {
       <NotificationObserver />
       <StatusBar style="light" />
       <LaunchReveal />
+      <GuidedTour />
       <PollGate />
       <ParticipationGate />
       <NativeTabs tintColor={colors.primary}>

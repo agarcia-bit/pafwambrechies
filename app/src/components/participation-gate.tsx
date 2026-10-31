@@ -12,6 +12,7 @@ import { formatDayLong, venue } from '@/lib/format';
 import { putOffForNow, REPONSE_LABELS, useParticipationQueue, type Reponse } from '@/lib/participation';
 import { usePollQueue } from '@/lib/poll-queue';
 import type { Evenement } from '@/lib/types';
+import { useTourOpen } from '@/lib/tour';
 import { useTheme } from '@/theme';
 
 const THANKS_DURATION_MS = 1700;
@@ -29,6 +30,8 @@ type Finished = { event: Evenement; reponse: Reponse };
  */
 export function ParticipationGate() {
   const queue = useParticipationQueue();
+  // The guided tour goes first: this screen waits for it to close.
+  const tourOpen = useTourOpen();
   const polls = usePollQueue();
   const blocked = polls.gated.length > 0 || !!polls.requested;
   // The event just answered: it stays on screen ("Merci") while the queue has already moved on.
@@ -51,7 +54,7 @@ export function ParticipationGate() {
 
   return (
     // Android back button and swipe-down do nothing: answer, or say "not sure yet".
-    <Modal visible={!!target} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => {}}>
+    <Modal visible={!!target && !tourOpen} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => {}}>
       {shown.reponse ? (
         <Thanks key={`thanks-${shown.event.id}`} event={shown.event} reponse={shown.reponse} />
       ) : (
