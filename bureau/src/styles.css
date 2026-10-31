@@ -270,3 +270,5 @@ button.danger { color: var(--bad); border-color: var(--bad-soft); } button.dange
 .modules { display: grid; gap: 12px; margin-top: 12px; } .modules .switch { align-items: flex-start; } .modules .switch .track { margin-top: 2px; }
 .color-field { display: flex; gap: 8px; } .color-field input[type=color] { width: 44px; padding: 2px; height: 38px; flex: 0 0 auto; }
 .save-bar { position: sticky; bottom: 0; padding: 12px 0; background: linear-gradient(to top, var(--bg) 70%, transparent); display: flex; justify-content: flex-end; }
+.gauge { display: grid; grid-template-columns: 90px 1fr auto; align-items: center; gap: 12px; margin-top: 10px; }
+th.num, td.num, .num { text-align: right; font-variant-numeric: tabular-nums; }

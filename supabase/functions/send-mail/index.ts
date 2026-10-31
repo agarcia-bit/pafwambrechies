@@ -83,8 +83,14 @@ Deno.serve(async (req) => {
     `<p style="color:#6b7280;font-size:13px;margin-top:24px">— ${escapeHtml(sender)}, pour ${escapeHtml(assoc)}</p></div>`;
 
   const failed = new Set<string>();
+  let rateLimited = false;
   for (let i = 0; i < to.length; i += BATCH) {
     const batch = to.slice(i, i + BATCH);
+    // Once the quota is reached, the next batches would be refused too.
+    if (rateLimited) {
+      batch.forEach((r) => failed.add(r.email));
+      continue;
+    }
     try {
       const res = await fetch("https://api.resend.com/emails/batch", {
         method: "POST",
@@ -99,7 +105,9 @@ Deno.serve(async (req) => {
         }))),
       });
       if (!res.ok) {
-        console.error("Resend error", res.status, await res.text());
+        const detail = await res.text();
+        console.error("Resend error", res.status, detail);
+        if (res.status === 429 || /quota|limit/i.test(detail)) rateLimited = true;
         batch.forEach((r) => failed.add(r.email));
       }
     } catch (err) {
@@ -119,5 +127,7 @@ Deno.serve(async (req) => {
     })));
   }
 
-  return json({ sent: to.length - failed.size, failed: failed.size });
+  // The failed addresses go back to the dashboard, which offers the sender's own mail app for them
+  // (daily quota reached, provider down...). "limit" tells the quota apart from other errors.
+  return json({ sent: to.length - failed.size, failed: failed.size, failed_emails: [...failed], limit: rateLimited });
 });
