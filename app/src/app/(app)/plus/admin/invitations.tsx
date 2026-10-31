@@ -11,6 +11,7 @@ import { showMessage } from '@/lib/confirm';
 import { formatDay, fullName, plural } from '@/lib/format';
 import {
   invitationMessage,
+  sendInvitationMail,
   useInvitations,
   useRemoveInvitation,
   useSignupCode,
@@ -43,7 +44,24 @@ export default function InvitationsScreen() {
     );
   }
 
-  // The bureau's own mail app sends it, with the members in hidden copy: nobody sees the others' addresses.
+  // Sent directly under the association's name (one message per person). If that is not possible,
+  // the bureau's own mail app, with the members in hidden copy: nobody sees the others' addresses.
+  async function invite(people: Invite[]) {
+    const result = await sendInvitationMail(people.map((i) => i.email), message);
+    if (result !== 'unavailable' && result.sent > 0) {
+      const failed = people.filter((i) => result.failed_emails?.includes(i.email));
+      showMessage(
+        'Invitation envoyée',
+        `${plural(result.sent, 'adhérent a', 'adhérents ont')} reçu l’invitation.` +
+          (failed.length ? ` ${failed.length} envoi${failed.length > 1 ? 's' : ''} en échec : votre messagerie va s’ouvrir pour ${failed.length > 1 ? 'eux' : 'lui'}.` : '')
+      );
+      if (failed.length) mail(failed);
+      return;
+    }
+    showMessage('Envoi direct impossible', 'Le message va s’ouvrir dans votre messagerie.');
+    mail(people);
+  }
+
   function sendMail(group: Invite[]) {
     const url =
       `mailto:?bcc=${group.map((i) => encodeURIComponent(i.email)).join(',')}` +
@@ -53,12 +71,12 @@ export default function InvitationsScreen() {
     );
   }
 
-  function mail() {
-    if (waiting.length <= MAIL_GROUP) return sendMail(waiting);
-    const groups = Array.from({ length: Math.ceil(waiting.length / MAIL_GROUP) }, (_, k) =>
-      waiting.slice(k * MAIL_GROUP, (k + 1) * MAIL_GROUP)
+  function mail(people: Invite[] = waiting) {
+    if (people.length <= MAIL_GROUP) return sendMail(people);
+    const groups = Array.from({ length: Math.ceil(people.length / MAIL_GROUP) }, (_, k) =>
+      people.slice(k * MAIL_GROUP, (k + 1) * MAIL_GROUP)
     );
-    Alert.alert('Envoyer par groupes', `${waiting.length} adhérents : le message est envoyé par groupes de ${MAIL_GROUP}.`, [
+    Alert.alert('Envoyer par groupes', `${people.length} adhérents : le message est envoyé par groupes de ${MAIL_GROUP}.`, [
       ...groups.map((group, k) => ({
         text: `Groupe ${k + 1} sur ${groups.length} (${group.length})`,
         onPress: () => sendMail(group),
@@ -69,6 +87,7 @@ export default function InvitationsScreen() {
 
   function manage(i: Invite) {
     Alert.alert(nameOf(i), i.email, [
+      { text: 'Envoyer l’invitation par e-mail', onPress: () => invite([i]) },
       {
         text: 'Retirer de la liste',
         style: 'destructive',
@@ -87,24 +106,35 @@ export default function InvitationsScreen() {
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
       <Text tone="secondary">
-        Importez la liste de vos adhérents : ils reçoivent l’invitation à installer l’app, et leur compte est relié à leur
-        fiche quand ils s’inscrivent avec la même adresse e-mail.
+        Ajoutez vos adhérents pour les inviter à installer l’app : leur compte est relié à leur fiche quand ils
+        s’inscrivent avec la même adresse e-mail.
       </Text>
-      <Button title="Importer une liste" icon="plus" onPress={() => router.push('/plus/admin/import')} />
+      <Button title="Ajouter un adhérent" icon="plus" onPress={() => router.push('/plus/admin/inviter')} />
+      <Button title="Importer une liste" icon="document" variant="secondary" onPress={() => router.push('/plus/admin/import')} />
       {waiting.length > 0 && (
         <>
-          <Button title={`Inviter par e-mail (${waiting.length})`} icon="mail" variant="secondary" onPress={mail} />
+          <Button
+            title={`Inviter par e-mail (${waiting.length})`}
+            icon="mail"
+            variant="secondary"
+            onPress={() =>
+              Alert.alert('Inviter par e-mail', `L’invitation sera envoyée à ${plural(waiting.length, 'adhérent', 'adhérents')}, au nom de l’association.`, [
+                { text: 'Annuler', style: 'cancel' },
+                { text: 'Envoyer', onPress: () => invite(waiting) },
+              ])
+            }
+          />
           <Button title="Partager l’invitation" icon="share" variant="plain" onPress={share} />
         </>
       )}
 
       {!invites.data.length && (
         <Text tone="secondary" style={styles.empty}>
-          Aucun adhérent importé pour l’instant.
+          Aucun adhérent ajouté pour l’instant.
         </Text>
       )}
       {waiting.length > 0 && (
-        <ListSection title={`Pas encore inscrits (${waiting.length})`} footer="Touchez un adhérent pour le retirer de la liste.">
+        <ListSection title={`Pas encore inscrits (${waiting.length})`} footer="Touchez un adhérent pour lui envoyer l’invitation ou le retirer de la liste.">
           {waiting.map((i) => (
             <ListRow
               key={i.email}

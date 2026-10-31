@@ -2,9 +2,9 @@ import { useSyncExternalStore } from 'react';
 
 import { useMember } from '@/lib/session';
 
-// News the member has read (opened, or marked from the feed), kept on this phone only, per member,
-// like the events marked as seen. Read news shrink to a single line in the feed. One shared store,
-// so opening a post updates its card in the feed at once.
+// News the member marked as read with the "Lu" button (opening a post does not mark it: each member
+// sorts their own feed), kept on this phone only, per member, like the events marked as seen. Read
+// news shrink to a single line in the feed.
 
 const MAX_REMEMBERED = 500;
 const storageKey = (memberId: string) => `allianceo.readActus.${memberId}`;

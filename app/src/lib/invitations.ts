@@ -103,3 +103,21 @@ export function invitationMessage(associationName: string, code: string | null):
     ].join('\n'),
   };
 }
+
+export type SendResult = { sent: number; failed: number; failed_emails?: string[] };
+
+/**
+ * Sends the invitation through the platform (send-mail function, Resend): under the association's
+ * name, one message per person, replies going to the sender. 'unavailable' when direct sending is
+ * not set up or fails entirely: the caller then offers the phone's mail app.
+ */
+export async function sendInvitationMail(
+  emails: string[],
+  message: { subject: string; body: string }
+): Promise<SendResult | 'unavailable'> {
+  const { data, error } = await supabase.functions.invoke('send-mail', {
+    body: { destinataires: emails.map((email) => ({ email })), sujet: message.subject, corps: message.body },
+  });
+  if (error) return 'unavailable';
+  return data as SendResult;
+}

@@ -299,7 +299,9 @@ export function SondageArt({ active }: { active: boolean }) {
   );
 }
 
-export function PlusArt({ active, rows }: { active: boolean; rows: { icon: IconName; label: string; highlight?: boolean }[] }) {
+export type PlusRow = { icon: IconName; label: string; detail?: string; highlight?: boolean };
+
+export function PlusArt({ active, rows }: { active: boolean; rows: PlusRow[] }) {
   const { colors } = useTheme();
   return (
     <MockCard active={active} style={styles.list}>
@@ -308,7 +310,14 @@ export function PlusArt({ active, rows }: { active: boolean; rows: { icon: IconN
           <View style={[styles.listIcon, { backgroundColor: colors.primarySoft }]}>
             <Icon name={r.icon} size={15} color={colors.primary} />
           </View>
-          <Text style={styles.spacer}>{r.label}</Text>
+          <View style={styles.spacer}>
+            <Text>{r.label}</Text>
+            {!!r.detail && (
+              <Text variant="footnote" tone="secondary" numberOfLines={1}>
+                {r.detail}
+              </Text>
+            )}
+          </View>
           {r.highlight ? (
             <Pulse active={active}>
               <Icon name="chevron" size={14} color={colors.primary} />
@@ -361,6 +370,6 @@ const styles = StyleSheet.create({
   option: { flexDirection: 'row', alignItems: 'center', height: 40, borderRadius: 12, paddingHorizontal: 12, overflow: 'hidden' },
   optionBar: { position: 'absolute', top: 0, left: 0, bottom: 0 },
   list: { paddingVertical: 2 },
-  listRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
+  listRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10 },
   listIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
 });

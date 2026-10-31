@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Modal, Platform, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, FadeInDown, useAnimatedStyle, useReducedMotion, withTiming } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { associationName } from '@/components/association';
 import {
@@ -12,11 +12,12 @@ import {
   AnnuaireArt,
   OffresArt,
   PlusArt,
+  type PlusRow,
   SondageArt,
   WelcomeArt,
 } from '@/components/tour-illustrations';
 import { Button } from '@/components/ui/button';
-import { Icon, type IconName } from '@/components/ui/icon';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { INTRO_HOLD_MS } from '@/lib/launch-state';
 import { useMember } from '@/lib/session';
@@ -37,10 +38,11 @@ const SETTLE = Easing.out(Easing.cubic);
  */
 export function GuidedTour() {
   const { profile, branding } = useMember();
-  const { modules, labels } = useTenantConfig();
+  const { modules, labels, cotisations } = useTenantConfig();
   const visible = useTourOpen();
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
   const scroller = useRef<ScrollViewInstance>(null);
   const [page, setPage] = useState(0);
@@ -60,13 +62,32 @@ export function GuidedTour() {
   }
 
   const name = associationName(branding) || 'votre association';
-  const plusRows: { icon: IconName; label: string; highlight?: boolean }[] = [
-    ...(modules.annuaire ? [{ icon: 'people' as const, label: 'Ma fiche annuaire', highlight: true }] : []),
-    ...(modules.offres ? [{ icon: 'tag' as const, label: 'Mes offres' }] : []),
-    ...(modules.idees ? [{ icon: 'lightbulb' as const, label: 'Boîte à idées' }] : []),
-    ...(modules.documents ? [{ icon: 'document' as const, label: 'Documents' }] : []),
-    { icon: 'info', label: 'Visite guidée' },
+  // The two last screens show the real rows of "Plus", with what each one is for.
+  const mySpace: PlusRow[] = [
+    ...(modules.annuaire ? [{ icon: 'people' as const, label: 'Ma fiche annuaire', detail: 'Photo, coordonnées, description', highlight: true }] : []),
+    ...(modules.offres ? [{ icon: 'tag' as const, label: 'Mes offres', detail: 'Proposer un bon plan aux adhérents' }] : []),
+    ...(cotisations.enabled ? [{ icon: 'card' as const, label: 'Ma cotisation', detail: 'Où en est votre adhésion' }] : []),
+    { icon: 'person', label: 'Mon compte', detail: 'Notifications, membres bloqués, suppression' },
   ];
+  const resources: PlusRow[] = [
+    ...(modules.idees ? [{ icon: 'lightbulb' as const, label: 'Boîte à idées', detail: 'Proposer, soutenir, commenter', highlight: true }] : []),
+    ...(modules.documents ? [{ icon: 'document' as const, label: 'Documents', detail: 'Statuts, comptes rendus, règlements…' }] : []),
+    ...(modules.liens ? [{ icon: 'link' as const, label: 'Liens utiles', detail: 'Les sites de l’association' }] : []),
+    { icon: 'info', label: 'Visite guidée', detail: 'Revoir cette présentation' },
+  ];
+  const spaceText = [
+    modules.annuaire && 'tenez votre fiche à jour',
+    modules.offres && 'proposez vos offres',
+    cotisations.enabled && 'suivez votre cotisation',
+  ].filter(Boolean) as string[];
+  const resourcesText = [
+    modules.idees && 'proposez vos idées et soutenez celles des autres',
+    modules.documents && 'consultez les documents de l’association',
+    modules.liens && 'retrouvez ses liens utiles',
+  ].filter(Boolean) as string[];
+  const sentence = (parts: string[]) =>
+    parts.length ? `${parts.slice(0, -1).join(', ')}${parts.length > 1 ? ' et ' : ''}${parts[parts.length - 1]}`.replace(/^./, (c) => c.toUpperCase()) + '.' : '';
+
   const steps: Step[] = [
     {
       key: 'welcome',
@@ -122,11 +143,17 @@ export function GuidedTour() {
       tip: modules.idees ? 'Une idée pour l’association ? Proposez-la dans la boîte à idées.' : undefined,
     },
     {
-      key: 'plus',
-      art: (active) => <PlusArt active={active} rows={plusRows} />,
-      title: 'Tout le reste, dans « Plus »',
-      text: 'Votre fiche, vos offres, les documents, votre compte et vos notifications.',
-      tip: 'Vous pourrez revoir cette visite à tout moment depuis « Plus ».',
+      key: 'mon-espace',
+      art: (active) => <PlusArt active={active} rows={mySpace} />,
+      title: 'Votre espace, dans « Plus »',
+      text: `${sentence(spaceText)} Dans « Mon compte » : vos notifications, les membres que vous avez bloqués, et la suppression de votre compte si besoin.`.trim(),
+    },
+    {
+      key: 'ressources',
+      art: (active) => <PlusArt active={active} rows={resources} />,
+      title: 'Les ressources de l’association',
+      text: resourcesText.length ? `Toujours dans « Plus » : ${resourcesText.join(', ')}.` : 'Toujours dans « Plus », tout ce que l’association met à votre disposition.',
+      tip: 'Vous pourrez revoir cette visite à tout moment : « Plus » > « Visite guidée ».',
     },
   ];
   const last = page === steps.length - 1;
@@ -145,7 +172,9 @@ export function GuidedTour() {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={finish}>
       <LinearGradient colors={[mix(colors.banner, '#FFFFFF', 0.12), colors.banner, mix(colors.banner, '#000000', 0.25)]} style={styles.screen}>
-        <SafeAreaView style={styles.screen} accessibilityViewIsModal>
+        <View
+          style={[styles.screen, { paddingTop: Math.max(insets.top, 20), paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
+          accessibilityViewIsModal>
           <View style={styles.top}>
             <View style={styles.progress} accessibilityLabel={`Étape ${page + 1} sur ${steps.length}`}>
               {steps.map((s, i) => (
@@ -212,7 +241,7 @@ export function GuidedTour() {
               style={styles.next}
             />
           </View>
-        </SafeAreaView>
+        </View>
       </LinearGradient>
     </Modal>
   );
@@ -237,7 +266,7 @@ const styles = StyleSheet.create({
   skip: { color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
   page: { flex: 1, paddingHorizontal: 24, paddingTop: 12 },
   art: { flex: 1, justifyContent: 'center' },
-  copy: { gap: 10, paddingBottom: 8 },
+  copy: { gap: 10, paddingBottom: 12 },
   title: { color: '#FFFFFF' },
   text: { color: 'rgba(255,255,255,0.9)', fontSize: 17, lineHeight: 25 },
   tip: {
@@ -251,7 +280,7 @@ const styles = StyleSheet.create({
   },
   tipIcon: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#FBBF24', alignItems: 'center', justifyContent: 'center' },
   tipText: { flex: 1, color: '#FFFFFF', lineHeight: 20 },
-  footer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12 },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingTop: 16 },
   back: {
     width: 50,
     height: 50,

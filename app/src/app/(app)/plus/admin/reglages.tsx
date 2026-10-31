@@ -12,6 +12,7 @@ import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
 import { adminErrorMessage, generateSignupCode, useSaveSettings, useSettings, type Settings } from '@/lib/admin';
 import { showMessage } from '@/lib/confirm';
+import { pickPhoto, uploadPhoto } from '@/lib/photos';
 import { useMember } from '@/lib/session';
 import { useTheme } from '@/theme';
 
@@ -34,10 +35,27 @@ export default function ReglagesScreen() {
 }
 
 function SettingsForm({ saved }: { saved: Settings }) {
-  const { branding } = useMember();
+  const { branding, profile } = useMember();
   const { colors } = useTheme();
   const save = useSaveSettings();
   const [s, setS] = useState<Settings>(saved);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  // Logo picked from the phone's photos: cut square, sent to the actus photos space (public, bureau
+  // and admins only), and its address goes in the field. Saved with the other settings.
+  async function chooseLogo() {
+    try {
+      const picked = await pickPhoto({ outputWidth: 512, crop: 'logo' });
+      if (!picked) return;
+      setUploadingLogo(true);
+      const url = await uploadPhoto(picked, 'actus-photos', `logos/${profile.tenant_id}`);
+      setS((current) => ({ ...current, tenant_logo_url: url }));
+    } catch {
+      showMessage('Envoi impossible', 'Vérifiez votre connexion, puis réessayez.');
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
   const [error, setError] = useState<string | null>(null);
   const set = (key: keyof Settings) => (value: string) => setS((current) => ({ ...current, [key]: value }));
   // Only a saved code works for signing up: never share one that is still being edited.
@@ -122,18 +140,28 @@ function SettingsForm({ saved }: { saved: Settings }) {
           onChange={set('tenant_primary_color')}
         />
         <View style={styles.logoRow}>
-          <Avatar name={s.tenant_name || associationName(branding)} uri={s.tenant_logo_url.trim() || null} size={48} />
+          <Avatar name={s.tenant_name || associationName(branding)} uri={s.tenant_logo_url.trim() || null} size={56} />
           <View style={styles.flex}>
-            <TextField
-              label="Logo (adresse de l’image, carrée)"
-              value={s.tenant_logo_url}
-              onChangeText={set('tenant_logo_url')}
-              placeholder="https://…/logo.png"
-              keyboardType="url"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+            <Text variant="subhead" style={styles.logoLabel}>
+              Logo
+            </Text>
+            <Text variant="footnote" tone="secondary">
+              Une image carrée, de préférence sur fond transparent.
+            </Text>
           </View>
+        </View>
+        <View style={styles.logoActions}>
+          <Button
+            compact
+            variant="secondary"
+            icon="photo"
+            title={s.tenant_logo_url.trim() ? 'Changer le logo' : 'Choisir une image'}
+            loading={uploadingLogo}
+            onPress={chooseLogo}
+          />
+          {!!s.tenant_logo_url.trim() && (
+            <Button compact variant="plain" title="Retirer" onPress={() => setS((c) => ({ ...c, tenant_logo_url: '' }))} />
+          )}
         </View>
       </Section>
 
@@ -255,6 +283,8 @@ function Section({ title, footer, children }: { title: string; footer?: string; 
 const styles = StyleSheet.create({
   section: { gap: 12, marginBottom: 12 },
   row: { flexDirection: 'row', gap: 12 },
-  logoRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
+  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  logoLabel: { fontWeight: '600' },
+  logoActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   flex: { flex: 1 },
 });

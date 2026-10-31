@@ -29,7 +29,7 @@ export default function AdminScreen() {
         <ListRow
           icon="people"
           title="Adhérents à inviter"
-          subtitle="Importer votre liste et inviter par e-mail"
+          subtitle="Ajouter un adhérent, importer une liste, inviter"
           onPress={() => router.push('/plus/admin/invitations')}
         />
         {config.cotisations.enabled && (

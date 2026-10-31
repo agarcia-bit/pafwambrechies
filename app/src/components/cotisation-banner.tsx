@@ -58,6 +58,7 @@ export function CotisationRow() {
 
   return (
     <ListRow
+      neutral
       icon="card"
       title="Ma cotisation"
       subtitle={status ? STATUS_LABELS[status] : undefined}

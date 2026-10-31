@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { PageProps } from '../App';
 import { Icon, Skeleton } from '../Icon';
-import { parseList, supabase, toast, useAsync } from '../lib';
+import { parseList, supabase, toast, uploadPhoto, useAsync } from '../lib';
 
 // Mêmes clés que l'écran Réglages de l'application (app_settings, une ligne par clé).
 const KEYS = ['signup_code', 'tenant_name', 'tenant_tagline', 'tenant_primary_color', 'tenant_secondary_color', 'tenant_logo_url', 'tenant_login_bg_url',
@@ -34,6 +34,17 @@ export function Reglages({ profile }: PageProps) {
   const [busy, setBusy] = useState(false);
   useEffect(() => { if (saved.data) setS(saved.data); }, [saved.data]);
   const set = (k: Key) => (v: string) => setS((x) => (x ? { ...x, [k]: v } : x));
+  // Logo choisi depuis l'ordinateur : recadré carré, envoyé dans les photos des actus (public), son
+  // adresse va dans le champ ; enregistré avec le reste des réglages.
+  const logoFile = useRef<HTMLInputElement>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  async function chooseLogo(file: File | undefined) {
+    if (!file) return;
+    setUploadingLogo(true);
+    try { set('tenant_logo_url')(await uploadPhoto(file, 'actus-photos', 512, 'logo', `logos/${profile.tenant_id}`)); toast('Logo ajouté : pensez à enregistrer'); }
+    catch (err) { toast((err as Error).message, 'error'); }
+    finally { setUploadingLogo(false); if (logoFile.current) logoFile.current.value = ''; }
+  }
   const on = (k: Key) => s![k].trim().toLowerCase() !== 'off';
 
   if (profile.role !== 'admin') return <p className="note">Les réglages de l’association sont réservés aux administrateurs.</p>;
@@ -69,7 +80,18 @@ export function Reglages({ profile }: PageProps) {
           <label>Sous-titre<input type="text" value={s.tenant_tagline} onChange={(e) => set('tenant_tagline')(e.target.value)} placeholder="Ex. : Les commerçants de Wambrechies" /></label>
           <div className="form-row">
             <label>Couleur principale<span className="color-field"><input type="color" value={/^#[0-9a-f]{6}$/i.test(s.tenant_primary_color) ? s.tenant_primary_color : '#4f46e5'} onChange={(e) => set('tenant_primary_color')(e.target.value)} /><input type="text" value={s.tenant_primary_color} onChange={(e) => set('tenant_primary_color')(e.target.value)} placeholder="#4F46E5" /></span></label>
-            <label>Logo (adresse d’une image carrée)<input type="url" value={s.tenant_logo_url} onChange={(e) => set('tenant_logo_url')(e.target.value)} placeholder="https://" /></label>
+          </div>
+          <div className="logo-field">
+            {s.tenant_logo_url.trim() ? <img src={s.tenant_logo_url} alt="Logo" /> : <span className="logo-empty">{(s.tenant_name || '?').slice(0, 1).toUpperCase()}</span>}
+            <div>
+              <strong>Logo</strong>
+              <span className="muted small">Une image carrée, de préférence sur fond transparent (PNG).</span>
+              <div className="actions">
+                <button type="button" onClick={() => logoFile.current?.click()} disabled={uploadingLogo}><Icon name="upload" size={15} /> {uploadingLogo ? 'Envoi…' : s.tenant_logo_url.trim() ? 'Changer le logo' : 'Choisir une image'}</button>
+                {!!s.tenant_logo_url.trim() && <button type="button" className="ghost" onClick={() => set('tenant_logo_url')('')}>Retirer</button>}
+              </div>
+            </div>
+            <input ref={logoFile} type="file" accept="image/*" hidden onChange={(e) => chooseLogo(e.target.files?.[0])} />
           </div>
         </div>
       </section>
