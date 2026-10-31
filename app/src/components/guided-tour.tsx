@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Modal, Platform, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, FadeInDown, useAnimatedStyle, useReducedMotion, withTiming } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { associationName } from '@/components/association';
 import {
@@ -41,6 +41,7 @@ export function GuidedTour() {
   const visible = useTourOpen();
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
   const scroller = useRef<ScrollViewInstance>(null);
   const [page, setPage] = useState(0);
@@ -145,7 +146,9 @@ export function GuidedTour() {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={finish}>
       <LinearGradient colors={[mix(colors.banner, '#FFFFFF', 0.12), colors.banner, mix(colors.banner, '#000000', 0.25)]} style={styles.screen}>
-        <SafeAreaView style={styles.screen} accessibilityViewIsModal>
+        <View
+          style={[styles.screen, { paddingTop: Math.max(insets.top, 20), paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
+          accessibilityViewIsModal>
           <View style={styles.top}>
             <View style={styles.progress} accessibilityLabel={`Étape ${page + 1} sur ${steps.length}`}>
               {steps.map((s, i) => (
@@ -212,7 +215,7 @@ export function GuidedTour() {
               style={styles.next}
             />
           </View>
-        </SafeAreaView>
+        </View>
       </LinearGradient>
     </Modal>
   );
@@ -237,7 +240,7 @@ const styles = StyleSheet.create({
   skip: { color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
   page: { flex: 1, paddingHorizontal: 24, paddingTop: 12 },
   art: { flex: 1, justifyContent: 'center' },
-  copy: { gap: 10, paddingBottom: 8 },
+  copy: { gap: 10, paddingBottom: 12 },
   title: { color: '#FFFFFF' },
   text: { color: 'rgba(255,255,255,0.9)', fontSize: 17, lineHeight: 25 },
   tip: {
@@ -251,7 +254,7 @@ const styles = StyleSheet.create({
   },
   tipIcon: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#FBBF24', alignItems: 'center', justifyContent: 'center' },
   tipText: { flex: 1, color: '#FFFFFF', lineHeight: 20 },
-  footer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12 },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingTop: 16 },
   back: {
     width: 50,
     height: 50,
