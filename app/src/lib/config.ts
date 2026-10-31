@@ -2,9 +2,9 @@
 export const SUPABASE_URL = 'https://ancwbfyjzaebxahtlqkm.supabase.co';
 export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_jCDrtwqzqjbsq0NEIwUbPQ_EFeoFaDh';
 
-// Allianceo's own pages (hosted with the PAF site until Allianceo has its own domain).
-export const PRIVACY_POLICY_URL = 'https://paf-wambrechies.netlify.app/allianceo-confidentialite.html';
-export const ACCOUNT_DELETION_URL = 'https://paf-wambrechies.netlify.app/allianceo-suppression-compte.html';
+// Allianceo's public pages (site/, served at monallianceo.fr): the stores link to them too.
+export const PRIVACY_POLICY_URL = 'https://monallianceo.fr/confidentialite';
+export const ACCOUNT_DELETION_URL = 'https://monallianceo.fr/suppression-compte';
 
 // Where members download the app (one link that opens the App Store or Google Play). To fill in
 // once the app is published: until then the invitation message only names the app.
