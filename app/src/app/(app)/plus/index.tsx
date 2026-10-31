@@ -6,6 +6,7 @@ import { AssociationBanner, associationName } from '@/components/association';
 import { CotisationRow } from '@/components/cotisation-banner';
 import { ListRow, ListSection } from '@/components/ui/list';
 import { fullName } from '@/lib/format';
+import { openTour } from '@/lib/tour';
 import { useMember } from '@/lib/session';
 import { useTenantConfig } from '@/lib/tenant-config';
 import { useBandListStyle } from '@/theme';
@@ -80,6 +81,7 @@ export default function PlusScreen() {
           subtitle={fullName(profile.prenom, profile.nom) || profile.email || undefined}
           onPress={() => router.push('/plus/compte')}
         />
+        <ListRow icon="info" title="Visite guidée" subtitle="Revoir la présentation de l’application" onPress={openTour} />
       </ListSection>
       </View>
     </ScrollView>
