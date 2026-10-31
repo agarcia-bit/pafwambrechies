@@ -3,7 +3,6 @@ import { RefreshControl, SectionList, StyleSheet, View } from 'react-native';
 
 import { DateTile } from '@/components/actu-visual';
 import { BandPill, BrandBand } from '@/components/brand-band';
-import { CoachTarget } from '@/components/coach-target';
 import { PressableCard } from '@/components/ui/card';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
@@ -41,11 +40,7 @@ export default function AgendaScreen() {
       }
       sections={byMonth(events.data ?? [])}
       keyExtractor={(ev) => String(ev.id)}
-      renderItem={({ item }) => (
-        <CoachTarget id="agenda-first" enabled={item.id === events.data?.[0]?.id}>
-          <EventRow event={item} />
-        </CoachTarget>
-      )}
+      renderItem={({ item }) => <EventRow event={item} />}
       renderSectionHeader={({ section }) => (
         <Text variant="headline" style={styles.sectionTitle}>
           {section.title}
