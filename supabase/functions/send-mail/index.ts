@@ -19,7 +19,7 @@ const MAIL_DOMAIN = Deno.env.get("MAIL_DOMAIN")?.trim().toLowerCase();
 /** "PAF Wambrechies" <paf-wambrechies@monallianceo.fr> */
 function senderFor(name: string, slug: string): string {
   const display = name.replace(/["<>\r\n]/g, "").trim() || "Allianceo";
-  const local = slug.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+  const local = slug.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "association";
   return `"${display}" <${MAIL_DOMAIN ? `${local}@${MAIL_DOMAIN}` : "onboarding@resend.dev"}>`;
 }
