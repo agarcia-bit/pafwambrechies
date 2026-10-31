@@ -9,7 +9,6 @@ import { PendingPolls } from '@/components/pending-polls';
 import { UpcomingEvents } from '@/components/upcoming-events';
 import { BrandBand } from '@/components/brand-band';
 import { ActuCard } from '@/components/cards';
-import { Button } from '@/components/ui/button';
 import { ChipBar } from '@/components/ui/chip-bar';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
@@ -35,7 +34,7 @@ export default function ActusScreen() {
   const actus = useActus(category);
   const { refreshing, onRefresh } = usePullToRefresh(actus.refetch);
   const items = actus.data?.pages.flat() ?? [];
-  const { isRead, markRead } = useReadActus();
+  const { isRead } = useReadActus();
   // Unread news first (newest first), then the ones already read, shrunk to one line.
   const unread = items.filter((a) => !isRead(a.id));
   const read = items.filter((a) => isRead(a.id));
@@ -72,11 +71,6 @@ export default function ActusScreen() {
           <PendingPolls />
           <PushOffer />
           {(category === 'Tous' || category === 'Événement') && <UpcomingEvents />}
-          {unread.length >= 2 && (
-            <View style={styles.readAll}>
-              <Button compact variant="plain" icon="check" title="Tout marquer comme lu" onPress={() => markRead(...unread.map((a) => a.id))} />
-            </View>
-          )}
         </View>
       }
       ListEmptyComponent={
@@ -108,5 +102,4 @@ const styles = StyleSheet.create({
   gap: { height: 12 },
   more: { marginTop: 16 },
   readHeader: { marginHorizontal: 20, marginTop: 8, marginBottom: 8, fontWeight: '600', letterSpacing: 0.5 },
-  readAll: { alignItems: 'flex-end', marginHorizontal: 8, marginBottom: -12 },
 });
