@@ -8,11 +8,13 @@ import { PendingPolls } from '@/components/pending-polls';
 import { UpcomingEvents } from '@/components/upcoming-events';
 import { BrandBand } from '@/components/brand-band';
 import { ActuCard } from '@/components/cards';
+import { Button } from '@/components/ui/button';
 import { ChipBar } from '@/components/ui/chip-bar';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { ACTU_CATEGORIES } from '@/lib/categories';
 import { useActus } from '@/lib/data';
+import { useReadActus } from '@/lib/read-actus';
 import { useMember } from '@/lib/session';
 import { useBandListStyle } from '@/theme';
 
@@ -31,6 +33,8 @@ export default function ActusScreen() {
   const actus = useActus(category);
   const { refreshing, onRefresh } = usePullToRefresh(actus.refetch);
   const items = actus.data?.pages.flat() ?? [];
+  const { isRead, markRead } = useReadActus();
+  const unread = items.filter((a) => !isRead(a.id));
 
   return (
     <FlatList
@@ -53,6 +57,11 @@ export default function ActusScreen() {
           <PendingPolls />
           <PushOffer />
           {(category === 'Tous' || category === 'Événement') && <UpcomingEvents />}
+          {unread.length >= 2 && (
+            <View style={styles.readAll}>
+              <Button compact variant="plain" icon="check" title="Tout marquer comme lu" onPress={() => markRead(...unread.map((a) => a.id))} />
+            </View>
+          )}
         </View>
       }
       ListEmptyComponent={
@@ -83,4 +92,5 @@ const styles = StyleSheet.create({
   header: { gap: 16, marginBottom: 16 },
   gap: { height: 12 },
   more: { marginTop: 16 },
+  readAll: { alignItems: 'flex-end', marginHorizontal: 8, marginBottom: -12 },
 });
