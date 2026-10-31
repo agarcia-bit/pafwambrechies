@@ -69,6 +69,7 @@ export default function InvitationsScreen() {
 
   function manage(i: Invite) {
     Alert.alert(nameOf(i), i.email, [
+      { text: 'Envoyer l’invitation par e-mail', onPress: () => sendMail([i]) },
       {
         text: 'Retirer de la liste',
         style: 'destructive',
@@ -87,10 +88,11 @@ export default function InvitationsScreen() {
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
       <Text tone="secondary">
-        Importez la liste de vos adhérents : ils reçoivent l’invitation à installer l’app, et leur compte est relié à leur
-        fiche quand ils s’inscrivent avec la même adresse e-mail.
+        Ajoutez vos adhérents pour les inviter à installer l’app : leur compte est relié à leur fiche quand ils
+        s’inscrivent avec la même adresse e-mail.
       </Text>
-      <Button title="Importer une liste" icon="plus" onPress={() => router.push('/plus/admin/import')} />
+      <Button title="Ajouter un adhérent" icon="plus" onPress={() => router.push('/plus/admin/inviter')} />
+      <Button title="Importer une liste" icon="document" variant="secondary" onPress={() => router.push('/plus/admin/import')} />
       {waiting.length > 0 && (
         <>
           <Button title={`Inviter par e-mail (${waiting.length})`} icon="mail" variant="secondary" onPress={mail} />
@@ -100,11 +102,11 @@ export default function InvitationsScreen() {
 
       {!invites.data.length && (
         <Text tone="secondary" style={styles.empty}>
-          Aucun adhérent importé pour l’instant.
+          Aucun adhérent ajouté pour l’instant.
         </Text>
       )}
       {waiting.length > 0 && (
-        <ListSection title={`Pas encore inscrits (${waiting.length})`} footer="Touchez un adhérent pour le retirer de la liste.">
+        <ListSection title={`Pas encore inscrits (${waiting.length})`} footer="Touchez un adhérent pour lui envoyer l’invitation ou le retirer de la liste.">
           {waiting.map((i) => (
             <ListRow
               key={i.email}

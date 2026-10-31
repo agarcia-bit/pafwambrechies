@@ -26,6 +26,24 @@ export function Membres({ profile, association }: PageProps) {
   const code = useAsync(async () => { const { data } = await supabase.rpc('get_signup_code'); return (data as string | null) || null; }, []);
   const [compose, setCompose] = useState<Recipient[] | null>(null);
   const [tab, setTab] = useState<'roles' | 'acces'>('roles');
+  // Un nouvel adhérent entre deux imports : ajouté à la liste comme un import, puis invité aussitôt.
+  const [newOne, setNewOne] = useState({ prenom: '', nom: '', email: '' });
+  const [adding, setAdding] = useState(false);
+  async function addOne(e: React.FormEvent) {
+    e.preventDefault();
+    const email = newOne.email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast('Adresse e-mail invalide', 'error');
+    setAdding(true);
+    const { data, error } = await supabase.rpc('importer_adherents', { p_rows: [{ prenom: newOne.prenom.trim(), nom: newOne.nom.trim(), email, valide_jusqu: '' }] });
+    setAdding(false);
+    if (error) return toast(error.message, 'error');
+    const r = data as { invites: number; deja_inscrits: number };
+    setNewOne({ prenom: '', nom: '', email: '' });
+    invites.reload();
+    if (r.deja_inscrits && !r.invites) return toast('Cette personne a déjà un compte dans l’app');
+    toast('Adhérent ajouté');
+    setCompose([{ email }]);
+  }
 
   async function setRole(m: Member, role: Role) {
     if (m.role === role) return;
@@ -101,13 +119,19 @@ export function Membres({ profile, association }: PageProps) {
             <div className="head">
               <div>
                 <h2>Pas encore inscrits</h2>
-                <span className="muted small">{waiting.length} adhérent{waiting.length > 1 ? 's' : ''} importé{waiting.length > 1 ? 's' : ''} sans compte dans l’app.</span>
+                <span className="muted small">{waiting.length} adhérent{waiting.length > 1 ? 's' : ''} sans compte dans l’app. Ajoutez un nouvel adhérent ci-dessous, ou une liste depuis « Importer ».</span>
               </div>
-              {waiting.length > 0 && <button className="primary" onClick={() => setCompose(waiting.map((i) => ({ email: i.email })))}><Icon name="mail" size={15} /> Envoyer l’invitation</button>}
+              {waiting.length > 0 && <button onClick={() => setCompose(waiting.map((i) => ({ email: i.email })))}><Icon name="mail" size={15} /> Inviter tout le monde</button>}
             </div>
+            <form className="add-one" onSubmit={addOne}>
+              <input type="text" placeholder="Prénom" value={newOne.prenom} onChange={(e) => setNewOne({ ...newOne, prenom: e.target.value })} />
+              <input type="text" placeholder="Nom" value={newOne.nom} onChange={(e) => setNewOne({ ...newOne, nom: e.target.value })} />
+              <input type="email" placeholder="E-mail" required value={newOne.email} onChange={(e) => setNewOne({ ...newOne, email: e.target.value })} />
+              <button className="primary" type="submit" disabled={adding}><Icon name="plus" size={15} /> {adding ? 'Ajout…' : 'Ajouter et inviter'}</button>
+            </form>
             {invites.loading && !invites.data ? <Skeleton lines={3} /> : !waiting.length ? <Empty icon="check" title="Tout le monde est inscrit" hint="Importez d’autres adhérents depuis « Importer »." /> : (
               <ul className="plain compact names">
-                {waiting.map((i) => <li key={i.email}>{fullName(i)}{i.prenom || i.nom ? <span className="muted"> · {i.email}</span> : null}<span className="muted small"> · importé {formatRelative(i.created_at)}</span></li>)}
+                {waiting.map((i) => <li key={i.email} className="invite-row"><span>{fullName(i)}{i.prenom || i.nom ? <span className="muted"> · {i.email}</span> : null}<span className="muted small"> · ajouté {formatRelative(i.created_at)}</span></span><button className="ghost" onClick={() => setCompose([{ email: i.email }])}><Icon name="mail" size={14} /> Inviter</button></li>)}
               </ul>
             )}
           </section>

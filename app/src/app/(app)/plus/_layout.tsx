@@ -50,6 +50,7 @@ export default function PlusLayout() {
         <Stack.Screen name="admin/invitations" options={{ title: 'Adhérents à inviter' }} />
         <Stack.Screen name="admin/document-nouveau" options={{ title: 'Nouveau document', presentation: 'modal' }} />
         <Stack.Screen name="admin/import" options={{ title: 'Importer des adhérents', presentation: 'modal' }} />
+        <Stack.Screen name="admin/inviter" options={{ title: 'Ajouter un adhérent', presentation: 'modal' }} />
       </Stack.Protected>
       <Stack.Protected guard={isAdmin}>
         <Stack.Screen name="admin/reglages" options={{ title: 'Réglages' }} />

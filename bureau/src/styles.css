@@ -279,3 +279,8 @@ th.num, td.num, .num { text-align: right; font-variant-numeric: tabular-nums; }
 .logo-field .logo-empty { display: grid; place-items: center; font-weight: 800; font-size: 26px; color: var(--text-2); }
 .logo-field > div { display: flex; flex-direction: column; gap: 4px; }
 .logo-field .actions { display: flex; gap: 8px; margin-top: 6px; }
+
+/* Membres et accès : ajouter un adhérent seul, inviter une personne */
+.add-one { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: 8px; margin: 4px 0 14px; }
+@media (max-width: 760px) { .add-one { grid-template-columns: 1fr 1fr; } }
+.invite-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
