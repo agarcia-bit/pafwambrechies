@@ -4,11 +4,11 @@
 // per recipient (nobody sees the other addresses), "reply-to" set to the sender.
 //
 // Sender: each association sends under its own name and address on the platform domain,
-// e.g. "PAF Wambrechies <paf-wambrechies@allianceo.fr>" (no mailbox needed: replies go to
+// e.g. "PAF Wambrechies <paf-wambrechies@monallianceo.fr>" (no mailbox needed: replies go to
 // the bureau member through reply-to).
 //
 // Secrets: RESEND_API_KEY (required), MAIL_DOMAIN (a domain verified in Resend, e.g.
-// "allianceo.fr"). Without MAIL_DOMAIN, Resend's test address is used (it only delivers to
+// "monallianceo.fr"). Without MAIL_DOMAIN, Resend's test address is used (it only delivers to
 // the Resend account owner). Without RESEND_API_KEY the function answers 501 and the
 // dashboard falls back to a mailto: link.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -16,7 +16,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const MAIL_DOMAIN = Deno.env.get("MAIL_DOMAIN")?.trim().toLowerCase();
 
-/** "PAF Wambrechies" <paf-wambrechies@allianceo.fr> */
+/** "PAF Wambrechies" <paf-wambrechies@monallianceo.fr> */
 function senderFor(name: string, slug: string): string {
   const display = name.replace(/["<>\r\n]/g, "").trim() || "Allianceo";
   const local = slug.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
