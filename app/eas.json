@@ -31,7 +31,8 @@
   "submit": {
     "production": {
       "ios": {
-        "language": "fr-FR"
+        "language": "fr-FR",
+        "ascAppId": "6829237313"
       },
       "android": {
         "track": "internal",
