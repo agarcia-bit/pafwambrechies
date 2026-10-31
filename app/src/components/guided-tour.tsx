@@ -1,11 +1,20 @@
 import * as Haptics from 'expo-haptics';
-import { useEffect, useRef, useState } from 'react';
-import { Modal, Platform, ScrollView, type ScrollViewInstance, StyleSheet, useWindowDimensions, View } from 'react-native';
-import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Modal, Platform, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, useWindowDimensions, View } from 'react-native';
+import Animated, { Easing, FadeInDown, useAnimatedStyle, useReducedMotion, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { associationName } from '@/components/association';
-import { Avatar } from '@/components/ui/avatar';
+import {
+  ActusArt,
+  AgendaArt,
+  AnnuaireArt,
+  OffresArt,
+  PlusArt,
+  SondageArt,
+  WelcomeArt,
+} from '@/components/tour-illustrations';
 import { Button } from '@/components/ui/button';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -14,13 +23,17 @@ import { useMember } from '@/lib/session';
 import { useTenantConfig } from '@/lib/tenant-config';
 import { closeTour, markTourDone, openTour, tourDone, useTourOpen } from '@/lib/tour';
 import { useTheme } from '@/theme';
+import { mix } from '@/theme/colors';
 
-type Step = { icon: IconName | 'logo'; title: string; text: string; tip?: string };
+type Step = { key: string; art: (active: boolean) => ReactNode; title: string; text: string; tip?: string };
+
+const SETTLE = Easing.out(Easing.cubic);
 
 /**
- * A few screens that show a member what the app offers, on the association's color. Only what
- * every member can do: the bureau and administration tools are not part of it. Shown the first
- * time the app opens on an account (on this phone), and again from "Plus" > "Visite guidée".
+ * A few screens that show a member what the app offers, each with a small mock-up of the real
+ * screen, on the association's color. Only what every member can do: the bureau and administration
+ * tools are not part of it. Shown the first time the app opens on an account (on this phone), and
+ * again from "Plus" > "Visite guidée".
  */
 export function GuidedTour() {
   const { profile, branding } = useMember();
@@ -47,66 +60,72 @@ export function GuidedTour() {
   }
 
   const name = associationName(branding) || 'votre association';
+  const plusRows: { icon: IconName; label: string; highlight?: boolean }[] = [
+    ...(modules.annuaire ? [{ icon: 'people' as const, label: 'Ma fiche annuaire', highlight: true }] : []),
+    ...(modules.offres ? [{ icon: 'tag' as const, label: 'Mes offres' }] : []),
+    ...(modules.idees ? [{ icon: 'lightbulb' as const, label: 'Boîte à idées' }] : []),
+    ...(modules.documents ? [{ icon: 'document' as const, label: 'Documents' }] : []),
+    { icon: 'info', label: 'Visite guidée' },
+  ];
   const steps: Step[] = [
     {
-      icon: 'logo',
+      key: 'welcome',
+      art: (active) => <WelcomeArt active={active} name={name} logo={branding?.tenant_logo_url} />,
       title: `Bienvenue dans ${name}`,
-      text: 'Voici en quelques écrans tout ce que vous trouverez dans l’application de votre association.',
+      text: 'Toute la vie de votre association, dans votre poche. Faisons le tour en une minute.',
     },
     {
-      icon: 'newspaper',
+      key: 'actus',
+      art: (active) => <ActusArt active={active} />,
       title: 'Les actus',
-      text: 'Les nouvelles de l’association arrivent dans le fil, avec une notification. Aimez-les, commentez-les, partagez-les.',
-      tip: 'Touchez « Lu » : l’actu se range en bas du fil, et vous voyez d’un coup d’œil ce qui est nouveau.',
+      text: 'Les nouvelles de l’association arrivent dans le fil, avec une notification. Aimez, commentez, partagez.',
+      tip: 'Touchez « Lu » : l’actu se range en bas, ce qui est nouveau reste en haut.',
     },
     ...(modules.agenda
       ? [
           {
-            icon: 'calendar' as const,
+            key: 'agenda',
+            art: (active: boolean) => <AgendaArt active={active} />,
             title: 'L’agenda',
             text: 'Tous les événements à venir, avec la date, l’heure et le lieu.',
-            tip: 'Dites en un geste si vous venez, et ajoutez l’événement à l’agenda de votre téléphone.',
+            tip: 'Dites en un geste si vous venez, et ajoutez l’événement à votre calendrier.',
           },
         ]
       : []),
     ...(modules.offres
       ? [
           {
-            icon: 'tag' as const,
+            key: 'offres',
+            art: (active: boolean) => <OffresArt active={active} />,
             title: labels.offres,
-            text: 'Les bons plans réservés aux adhérents.',
-            tip: 'Vous pouvez proposer les vôtres depuis « Plus » > « Mes offres » : le bureau les valide avant publication.',
+            text: 'Les bons plans réservés aux adhérents, entre membres de l’association.',
+            tip: 'Proposez les vôtres dans « Plus » > « Mes offres » : le bureau les valide.',
           },
         ]
       : []),
     ...(modules.annuaire
       ? [
           {
-            icon: 'people' as const,
+            key: 'annuaire',
+            art: (active: boolean) => <AnnuaireArt active={active} />,
             title: labels.annuaire,
-            text: 'Retrouvez les membres de l’association et leurs coordonnées.',
-            tip: 'Complétez votre propre fiche depuis « Plus » > « Ma fiche annuaire » : photo, coordonnées, description.',
+            text: 'Retrouvez les membres de l’association, appelez-les ou écrivez-leur en un geste.',
+            tip: 'Complétez votre fiche dans « Plus » > « Ma fiche annuaire ».',
           },
         ]
       : []),
     {
-      icon: 'poll',
+      key: 'sondage',
+      art: (active) => <SondageArt active={active} />,
       title: 'Votre avis compte',
-      text: 'Quand le bureau lance un sondage, il s’affiche à l’ouverture de l’application : une réponse suffit.',
-      tip: modules.idees ? 'Une idée pour l’association ? Proposez-la dans « Plus » > « Boîte à idées ».' : undefined,
+      text: 'Quand le bureau lance un sondage, il s’affiche à l’ouverture de l’application. Une réponse suffit.',
+      tip: modules.idees ? 'Une idée pour l’association ? Proposez-la dans la boîte à idées.' : undefined,
     },
     {
-      icon: 'more',
-      title: 'Et dans « Plus »',
-      text: [
-        modules.liens && 'les liens utiles',
-        modules.documents && 'les documents',
-        'votre compte et vos notifications',
-      ]
-        .filter(Boolean)
-        .join(', ')
-        .replace(/^./, (c) => `Retrouvez ${c}`)
-        .concat('.'),
+      key: 'plus',
+      art: (active) => <PlusArt active={active} rows={plusRows} />,
+      title: 'Tout le reste, dans « Plus »',
+      text: 'Votre fiche, vos offres, les documents, votre compte et vos notifications.',
       tip: 'Vous pourrez revoir cette visite à tout moment depuis « Plus ».',
     },
   ];
@@ -125,92 +144,121 @@ export function GuidedTour() {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={finish}>
-      <SafeAreaView style={[styles.screen, { backgroundColor: colors.banner }]} accessibilityViewIsModal>
-        <View style={styles.top}>
-          <Text variant="subhead" style={styles.counter}>
-            {page + 1} / {steps.length}
-          </Text>
-          {!last && <Button compact variant="lightPlain" title="Passer" onPress={finish} />}
-        </View>
-        <ScrollView
-          ref={scroller}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / width))}
-          style={styles.flex}>
-          {steps.map((step, i) => (
-            <View key={step.title} style={[styles.page, { width }]}>
-              <Animated.View
-                key={i === page ? `on-${i}` : `off-${i}`}
-                entering={reduceMotion || i !== page ? undefined : FadeInDown.duration(380)}
-                style={styles.pageInner}>
-                <View style={styles.badge}>
-                  {step.icon === 'logo' ? (
-                    <Avatar name={name} uri={branding?.tenant_logo_url} size={72} />
-                  ) : (
-                    <Icon name={step.icon} size={44} color="#FFFFFF" />
-                  )}
-                </View>
-                <Text variant="largeTitle" style={styles.title}>
-                  {step.title}
-                </Text>
-                <Text style={styles.text}>{step.text}</Text>
-                {!!step.tip && (
-                  <View style={styles.tip}>
-                    <Icon name="info" size={18} color="#FFFFFF" />
-                    <Text variant="subhead" style={styles.tipText}>
-                      {step.tip}
-                    </Text>
-                  </View>
-                )}
-              </Animated.View>
+      <LinearGradient colors={[mix(colors.banner, '#FFFFFF', 0.12), colors.banner, mix(colors.banner, '#000000', 0.25)]} style={styles.screen}>
+        <SafeAreaView style={styles.screen} accessibilityViewIsModal>
+          <View style={styles.top}>
+            <View style={styles.progress} accessibilityLabel={`Étape ${page + 1} sur ${steps.length}`}>
+              {steps.map((s, i) => (
+                <Segment key={s.key} done={i <= page} />
+              ))}
             </View>
-          ))}
-        </ScrollView>
-        <View style={styles.dots} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          {steps.map((step, i) => (
-            <View key={step.title} style={[styles.dot, i === page && styles.dotOn]} />
-          ))}
-        </View>
-        <View style={styles.footer}>
-          <Button variant="light" title={last ? 'C’est parti' : 'Suivant'} onPress={() => (last ? finish() : goTo(page + 1))} />
-          {page > 0 && <Button variant="lightPlain" title="Précédent" onPress={() => goTo(page - 1)} />}
-        </View>
-      </SafeAreaView>
+            {!last && (
+              <Pressable accessibilityRole="button" hitSlop={12} onPress={finish}>
+                <Text variant="subhead" style={styles.skip}>
+                  Passer
+                </Text>
+              </Pressable>
+            )}
+          </View>
+          <ScrollView
+            ref={scroller}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / width))}
+            style={styles.flex}>
+            {steps.map((step, i) => {
+              const active = i === page;
+              return (
+                <View key={step.key} style={[styles.page, { width }]}>
+                  <View style={styles.art}>{step.art(active)}</View>
+                  <Animated.View
+                    key={active ? 'on' : 'off'}
+                    entering={active && !reduceMotion ? FadeInDown.delay(120).duration(420).easing(SETTLE) : undefined}
+                    style={styles.copy}>
+                    <Text variant="title" style={styles.title}>
+                      {step.title}
+                    </Text>
+                    <Text style={styles.text}>{step.text}</Text>
+                    {!!step.tip && (
+                      <View style={styles.tip}>
+                        <View style={styles.tipIcon}>
+                          <Icon name="lightbulb" size={14} color="#0B5F58" />
+                        </View>
+                        <Text variant="subhead" style={styles.tipText}>
+                          {step.tip}
+                        </Text>
+                      </View>
+                    )}
+                  </Animated.View>
+                </View>
+              );
+            })}
+          </ScrollView>
+          <View style={styles.footer}>
+            {page > 0 && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Précédent"
+                onPress={() => goTo(page - 1)}
+                style={({ pressed }) => [styles.back, pressed && { opacity: 0.7 }]}>
+                <Icon name="chevronLeft" size={20} color="#FFFFFF" />
+              </Pressable>
+            )}
+            <Button
+              variant="light"
+              title={last ? 'C’est parti' : 'Suivant'}
+              onPress={() => (last ? finish() : goTo(page + 1))}
+              style={styles.next}
+            />
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
     </Modal>
+  );
+}
+
+function Segment({ done }: { done: boolean }) {
+  const fill = useAnimatedStyle(() => ({ width: withTiming(done ? '100%' : '0%', { duration: 350 }) }));
+  return (
+    <View style={styles.segment}>
+      <Animated.View style={[styles.segmentFill, fill]} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   flex: { flex: 1 },
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, minHeight: 44 },
-  counter: { color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
-  page: { flex: 1, justifyContent: 'center', paddingHorizontal: 28 },
-  pageInner: { gap: 18 },
-  badge: {
-    width: 96,
-    height: 96,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
+  top: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 20, paddingTop: 8, minHeight: 44 },
+  progress: { flex: 1, flexDirection: 'row', gap: 5 },
+  segment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.25)', overflow: 'hidden' },
+  segmentFill: { height: 4, borderRadius: 2, backgroundColor: '#FFFFFF' },
+  skip: { color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
+  page: { flex: 1, paddingHorizontal: 24, paddingTop: 12 },
+  art: { flex: 1, justifyContent: 'center' },
+  copy: { gap: 10, paddingBottom: 8 },
   title: { color: '#FFFFFF' },
-  text: { color: 'rgba(255,255,255,0.92)', fontSize: 18, lineHeight: 26 },
+  text: { color: 'rgba(255,255,255,0.9)', fontSize: 17, lineHeight: 25 },
   tip: {
     flexDirection: 'row',
     gap: 10,
-    alignItems: 'flex-start',
-    padding: 14,
+    alignItems: 'center',
+    marginTop: 4,
+    padding: 12,
     borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
-  tipText: { flex: 1, color: '#FFFFFF', lineHeight: 21 },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 8, paddingVertical: 16 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.35)' },
-  dotOn: { width: 22, backgroundColor: '#FFFFFF' },
-  footer: { paddingHorizontal: 20, paddingBottom: 12, gap: 6 },
+  tipIcon: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#FBBF24', alignItems: 'center', justifyContent: 'center' },
+  tipText: { flex: 1, color: '#FFFFFF', lineHeight: 20 },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12 },
+  back: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  next: { flex: 1 },
 });
