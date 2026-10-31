@@ -14,8 +14,8 @@ import { Toasts } from './Toasts';
 const PAGES = [
   { path: 'accueil', label: 'Vue d’ensemble', icon: 'home', sub: 'L’essentiel de votre association en un coup d’œil', el: Overview },
   { path: 'pilotage', label: 'Pilotage', icon: 'tasks', sub: 'Les actions du bureau et la liste des choses à faire', el: Pilotage },
-  { path: 'adherents', label: 'Adhérents', icon: 'users', sub: 'Cotisations, inscriptions et messages', el: Adherents },
-  { path: 'evenements', label: 'Événements', icon: 'calendar', sub: 'Qui vient, qui n’a pas répondu', el: Evenements },
+  { path: 'adherents', label: 'Adhérents', icon: 'users', sub: 'Cotisations, relances et messages', el: Adherents },
+  { path: 'evenements', label: 'Événements', icon: 'calendar', sub: 'Créez vos événements et suivez qui vient', el: Evenements },
   { path: 'documents', label: 'Documents', icon: 'file', sub: 'Les fichiers partagés avec les adhérents', el: Documents },
   { path: 'importer', label: 'Importer', icon: 'upload', sub: 'Ajoutez vos adhérents depuis un tableur', el: Importer },
 ] as const;
@@ -32,29 +32,24 @@ const useHash = () => {
 
 export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
+  // Après un code de récupération, la personne est connectée mais doit choisir un mot de passe.
+  const [recovery, setRecovery] = useState(false);
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    const { data } = supabase.auth.onAuthStateChange((e, s) => {
+      setSession(s);
+      if (e === 'PASSWORD_RECOVERY') setRecovery(true);
+      if (e === 'SIGNED_OUT') setRecovery(false);
+    });
     return () => data.subscription.unsubscribe();
   }, []);
   if (session === undefined) return <div className="center"><div className="card" style={{ width: 320 }}><Skeleton lines={4} /></div></div>;
-  if (!session) return <Login />;
+  if (!session) return <Login onRecovery={() => setRecovery(true)} />;
+  if (recovery) return <NewPassword onDone={() => setRecovery(false)} />;
   return <Shell userId={session.user.id} />;
 }
 
-function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError('');
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (error) setError('Adresse e-mail ou mot de passe incorrect.');
-    setBusy(false);
-  }
+function LoginPage({ children }: { children: React.ReactNode }) {
   return (
     <div className="login-page">
       <div className="login-brand">
@@ -67,17 +62,103 @@ function Login() {
           <li><Icon name="check" size={16} /> Les mêmes données que l’application</li>
         </ul>
       </div>
-      <div className="login-form">
-        <form onSubmit={submit}>
-          <h2>Connexion</h2>
-          <p className="muted">Réservé aux membres du bureau.</p>
-          <label>Adresse e-mail<input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
-          <label>Mot de passe<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
-          {error && <p className="error">{error}</p>}
-          <button className="primary big" disabled={busy}>{busy ? 'Connexion…' : 'Se connecter'}</button>
-        </form>
-      </div>
+      <div className="login-form">{children}</div>
     </div>
+  );
+}
+
+// Mot de passe oublié : un code à 8 chiffres par e-mail (même mécanisme que l'application,
+// sans lien de redirection à configurer), puis choix d'un nouveau mot de passe.
+function Login({ onRecovery }: { onRecovery: () => void }) {
+  const [step, setStep] = useState<'login' | 'forgot' | 'code'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function run(fn: () => Promise<{ error: { message: string } | null }>, onOk: () => void, msg: string) {
+    setBusy(true);
+    setError('');
+    const { error } = await fn();
+    setBusy(false);
+    if (error) return setError(msg);
+    onOk();
+  }
+  const login = (e: React.FormEvent) => { e.preventDefault(); run(() => supabase.auth.signInWithPassword({ email: email.trim(), password }), () => undefined, 'Adresse e-mail ou mot de passe incorrect.'); };
+  const askCode = (e: React.FormEvent) => { e.preventDefault(); run(() => supabase.auth.resetPasswordForEmail(email.trim()), () => setStep('code'), 'Impossible d’envoyer le code. Réessayez dans une minute.'); };
+  const checkCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    run(() => supabase.auth.verifyOtp({ email: email.trim(), token: code.replace(/\s/g, ''), type: 'recovery' }), onRecovery, 'Code incorrect ou expiré.');
+  };
+
+  if (step === 'forgot') return (
+    <LoginPage>
+      <form onSubmit={askCode}>
+        <h2>Mot de passe oublié</h2>
+        <p className="muted">Nous vous envoyons un code par e-mail pour choisir un nouveau mot de passe.</p>
+        <label>Adresse e-mail<input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus /></label>
+        {error && <p className="error">{error}</p>}
+        <button className="primary big" disabled={busy}>{busy ? 'Envoi…' : 'Recevoir un code'}</button>
+        <button type="button" className="link" onClick={() => { setStep('login'); setError(''); }}>← Retour à la connexion</button>
+      </form>
+    </LoginPage>
+  );
+  if (step === 'code') return (
+    <LoginPage>
+      <form onSubmit={checkCode}>
+        <h2>Saisissez le code</h2>
+        <p className="muted">Si un compte existe pour {email.trim()}, un e-mail avec un code vient de partir. Pensez aux courriers indésirables.</p>
+        <label>Code reçu par e-mail<input type="text" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} required autoFocus /></label>
+        {error && <p className="error">{error}</p>}
+        <button className="primary big" disabled={busy}>{busy ? 'Vérification…' : 'Continuer'}</button>
+        <button type="button" className="link" onClick={() => { setStep('forgot'); setError(''); }}>Renvoyer un code</button>
+      </form>
+    </LoginPage>
+  );
+  return (
+    <LoginPage>
+      <form onSubmit={login}>
+        <h2>Connexion</h2>
+        <p className="muted">Réservé aux membres du bureau.</p>
+        <label>Adresse e-mail<input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+        <label>Mot de passe<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
+        {error && <p className="error">{error}</p>}
+        <button className="primary big" disabled={busy}>{busy ? 'Connexion…' : 'Se connecter'}</button>
+        <button type="button" className="link" onClick={() => { setStep('forgot'); setError(''); }}>Mot de passe oublié ?</button>
+      </form>
+    </LoginPage>
+  );
+}
+
+function NewPassword({ onDone }: { onDone: () => void }) {
+  const [p1, setP1] = useState('');
+  const [p2, setP2] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (p1.length < 8) return setError('8 caractères minimum.');
+    if (p1 !== p2) return setError('Les deux mots de passe ne correspondent pas.');
+    setBusy(true);
+    setError('');
+    const { error } = await supabase.auth.updateUser({ password: p1 });
+    setBusy(false);
+    if (error) return setError(error.message);
+    onDone();
+  }
+  return (
+    <LoginPage>
+      <form onSubmit={submit}>
+        <h2>Nouveau mot de passe</h2>
+        <p className="muted">Choisissez un mot de passe d’au moins 8 caractères.</p>
+        <label>Nouveau mot de passe<input type="password" autoComplete="new-password" value={p1} onChange={(e) => setP1(e.target.value)} required autoFocus /></label>
+        <label>Confirmez-le<input type="password" autoComplete="new-password" value={p2} onChange={(e) => setP2(e.target.value)} required /></label>
+        {error && <p className="error">{error}</p>}
+        <button className="primary big" disabled={busy}>{busy ? 'Enregistrement…' : 'Enregistrer et continuer'}</button>
+        <button type="button" className="link" onClick={() => supabase.auth.signOut()}>Annuler</button>
+      </form>
+    </LoginPage>
   );
 }
 

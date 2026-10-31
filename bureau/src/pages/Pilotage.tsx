@@ -7,13 +7,13 @@ import {
   ACTION_STATUTS, dueLabel, isOverdue, loadBureau, nameOf, PRIORITES, supabase, today, toast, useAsync,
   type Action, type BureauMember, type Tache,
 } from '../lib';
-import { Calendrier, Chronologie, Equipe, Kanban, MyTasks, TONE, type CalEvent } from './PilotageViews';
+import { Chronologie, Equipe, SidePanel, TONE, type CalEvent } from './PilotageViews';
 
+// Deux vues suffisent : par date (que reste-t-il à faire ?) et par personne (qui fait quoi ?).
+// À droite, dans les deux cas : mes tâches et les prochaines dates.
 const VIEWS = [
   { key: 'chrono', label: 'Chronologie', icon: 'list', hint: 'Ce qui arrive, dans l’ordre' },
   { key: 'equipe', label: 'Équipe', icon: 'users', hint: 'Qui fait quoi' },
-  { key: 'cal', label: 'Calendrier', icon: 'calendar', hint: 'Le mois en un coup d’œil' },
-  { key: 'kanban', label: 'Kanban', icon: 'columns', hint: 'Par statut, à glisser' },
 ] as const;
 
 export function Pilotage({ profile }: PageProps) {
@@ -24,7 +24,7 @@ export function Pilotage({ profile }: PageProps) {
   }, []);
   const [onlyMe, setOnlyMe] = useState(false);
   const [open, setOpen] = useState<number | 'new' | null>(null);
-  const [view, setViewState] = useState<string>(() => { try { return localStorage.getItem('pilotage-vue') || 'chrono'; } catch { return 'chrono'; } });
+  const [view, setViewState] = useState<string>(() => { try { const v = localStorage.getItem('pilotage-vue'); return v === 'equipe' ? v : 'chrono'; } catch { return 'chrono'; } });
   const setView = (v: string) => { setViewState(v); try { localStorage.setItem('pilotage-vue', v); } catch { /* sans stockage */ } };
 
   const kpi = useMemo(() => {
@@ -101,15 +101,10 @@ export function Pilotage({ profile }: PageProps) {
         <button className="primary" onClick={() => setOpen('new')}><Icon name="plus" size={16} /> Nouvelle action</button>
       </div>
 
-      {view === 'chrono' && (
-        <div className="with-side">
-          <Chronologie {...props} />
-          <MyTasks {...props} actions={all.actions} taches={all.taches} />
-        </div>
-      )}
-      {view === 'equipe' && <Equipe {...props} />}
-      {view === 'cal' && <Calendrier {...props} events={agenda.data ?? []} />}
-      {view === 'kanban' && <Kanban {...props} />}
+      <div className="with-side">
+        {view === 'equipe' ? <Equipe {...props} /> : <Chronologie {...props} />}
+        <SidePanel {...props} actions={all.actions} taches={all.taches} events={agenda.data ?? []} />
+      </div>
 
       {open !== null && (
         <ActionDrawer

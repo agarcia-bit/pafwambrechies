@@ -73,6 +73,48 @@ export async function loadMembers(): Promise<MemberRow[]> {
   return [...joined, ...waiting];
 }
 
+// ── Réglages de cotisation (montant, libellé, campagne) ─────────────────────
+export type CotisConfig = { montant: string; libelle: string; url: string; ouverture: string; fin: string; module: boolean };
+export async function loadCotisConfig(): Promise<CotisConfig> {
+  const { data, error } = await supabase.rpc('get_my_branding');
+  if (error) throw error;
+  const b = (data ?? {}) as Record<string, string>;
+  return {
+    montant: b.cotisation_montant ?? '', libelle: b.cotisation_libelle ?? '', url: b.cotisation_url ?? '',
+    ouverture: b.cotisation_ouverture ?? '', fin: b.cotisation_fin ?? '', module: b.module_cotisations === 'on',
+  };
+}
+export const euros = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+
+// ── E-mails envoyés depuis l'espace bureau (fonction send-mail + historique) ─
+export type Recipient = { email: string; user_id?: string | null };
+export type SendResult = { sent: number; failed: number };
+
+/** Dernier envoi par adresse e-mail (vide tant que l'historique n'est pas en place). */
+export async function loadLastSends(): Promise<Record<string, string>> {
+  const { data, error } = await supabase.from('envoi_destinataires').select('email, envois(created_at)');
+  if (error) return {};
+  const last: Record<string, string> = {};
+  for (const r of (data ?? []) as any[]) {
+    const at = r.envois?.created_at as string | undefined;
+    if (at && (!last[r.email] || at > last[r.email])) last[r.email] = at;
+  }
+  return last;
+}
+
+/** Envoi par la fonction send-mail ; 'not_configured' quand aucun fournisseur n'est branché. */
+export async function sendMail(to: Recipient[], sujet: string, corps: string): Promise<SendResult | 'not_configured'> {
+  const { data, error } = await supabase.functions.invoke('send-mail', { body: { destinataires: to, sujet, corps } });
+  if (error) {
+    const status = (error as any).context?.status as number | undefined;
+    if (status === 501 || status === 404) return 'not_configured';
+    throw new Error(error.message);
+  }
+  return data as SendResult;
+}
+
+export const formatDateTime = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+
 // ── Messages de confirmation ────────────────────────────────────────────────
 export const toast = (message: string, kind: 'ok' | 'error' = 'ok') =>
   window.dispatchEvent(new CustomEvent('toast', { detail: { message, kind } }));

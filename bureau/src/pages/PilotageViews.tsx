@@ -69,12 +69,19 @@ function StatusSelect({ a, onMove }: { a: Action; onMove: (a: Action, s: string)
   );
 }
 
-// ── Mes tâches (panneau latéral de la chronologie) ──────────────────────────
+// ── Panneau latéral : mes tâches, puis les prochaines dates ─────────────────
 
-export function MyTasks({ taches, actions, members, me, onToggle }: ViewProps) {
+export type CalEvent = { id: number; titre: string; date: string };
+
+export function SidePanel({ taches, actions, members, me, onToggle, onOpen, events }: ViewProps & { events: CalEvent[] }) {
   const mine = taches.filter((t) => t.responsable === me && t.statut !== 'Terminé').sort(byDue);
   const late = mine.filter((t) => isOverdue(t.echeance, t.statut)).length;
   const actionOf = (id: number) => actions.find((a) => a.id === id);
+  // Les 30 prochains jours : actions du bureau et événements de l'agenda, mêlés par date.
+  const horizon = [
+    ...actions.filter((a) => a.statut !== 'Terminé' && a.date_action >= today()).map((a) => ({ k: 'a' + a.id, date: a.date_action, text: `${a.emoji || '📌'} ${a.titre}`, open: () => onOpen(a.id) })),
+    ...events.map((e) => ({ k: 'e' + e.id, date: e.date, text: e.titre, open: () => { location.hash = 'evenements'; } })),
+  ].filter((i) => daysUntil(i.date) <= 30).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
   return (
     <aside className="side-panel">
       <div className="side-head">
@@ -84,6 +91,19 @@ export function MyTasks({ taches, actions, members, me, onToggle }: ViewProps) {
       {mine.length ? (
         <ul className="task-list">{mine.map((t) => <TaskRow key={t.id} t={t} members={members} onToggle={onToggle} actionOf={actionOf} />)}</ul>
       ) : <Empty icon="sparkle" title="Rien pour vous" hint="Vos tâches apparaîtront ici." />}
+      <div className="side-head" style={{ marginTop: 18 }}>
+        <h3>30 prochains jours</h3>
+      </div>
+      {horizon.length ? (
+        <ul className="agenda-list">
+          {horizon.map((i) => (
+            <li key={i.k}>
+              <span className={'tl-date mini' + (i.k[0] === 'e' ? ' event' : '')}><b>{dayNum(i.date)}</b><span>{monthShort(i.date)}</span></span>
+              <button className="link" onClick={i.open}>{i.text}</button>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="muted small empty-line">Rien de prévu.</p>}
     </aside>
   );
 }
@@ -192,97 +212,6 @@ export function Equipe({ actions, taches, members, me, onOpen, onToggle }: ViewP
             {led.length > 0 && <div className="chip-row">{led.map((a) => <button key={a.id} className="chip-mini" onClick={() => onOpen(a.id)}>{a.emoji || '📌'} {a.titre}</button>)}</div>}
             {mine.length ? <ul className="task-list">{mine.map((t) => <TaskRow key={t.id} t={t} members={members} onToggle={onToggle} actionOf={actionOf} />)}</ul> : <p className="muted small empty-line">Aucune tâche ouverte.</p>}
           </section>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── 3. Calendrier ────────────────────────────────────────────────────────────
-
-export type CalEvent = { id: number; titre: string; date: string };
-
-export function Calendrier({ actions, taches, onOpen, events = [] }: ViewProps & { events?: CalEvent[] }) {
-  const [cursor, setCursor] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const y = cursor.getFullYear(), m = cursor.getMonth();
-  const offset = (new Date(y, m, 1).getDay() + 6) % 7;
-  const count = Math.ceil((offset + new Date(y, m + 1, 0).getDate()) / 7) * 7;
-  const days = Array.from({ length: count }, (_, i) => new Date(y, m, i - offset + 1));
-  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const title = cursor.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-
-  return (
-    <div className="card cal">
-      <div className="cal-head">
-        <h2>{title[0].toUpperCase() + title.slice(1)}</h2>
-        <div className="btn-group">
-          <button className="ghost" onClick={() => setCursor(new Date(y, m - 1, 1))} aria-label="Mois précédent"><Icon name="left" size={16} /></button>
-          <button className="ghost" onClick={() => { const d = new Date(); setCursor(new Date(d.getFullYear(), d.getMonth(), 1)); }}>Aujourd’hui</button>
-          <button className="ghost" onClick={() => setCursor(new Date(y, m + 1, 1))} aria-label="Mois suivant"><Icon name="right" size={16} /></button>
-        </div>
-      </div>
-      <div className="cal-grid">
-        {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((d) => <div key={d} className="cal-dow">{d}</div>)}
-        {days.map((d) => {
-          const key = iso(d);
-          const items = [
-            ...actions.filter((a) => a.date_action === key).map((a) => ({ k: 'a' + a.id, id: a.id, text: `${a.emoji || '📌'} ${a.titre}`, cls: 'action', done: a.statut === 'Terminé' })),
-            ...taches.filter((t) => t.echeance === key).map((t) => ({ k: 't' + t.id, id: t.action_id, text: t.libelle, cls: isOverdue(t.echeance, t.statut) ? 'late' : 'task', done: t.statut === 'Terminé' })),
-            ...events.filter((e) => e.date === key).map((e) => ({ k: 'e' + e.id, id: -1, text: e.titre, cls: 'event', done: false })),
-          ];
-          const shown = expanded === key ? items : items.slice(0, 3);
-          return (
-            <div key={key} className={'cal-day' + (d.getMonth() !== m ? ' off' : '') + (key === today() ? ' today' : '') + (d.getDay() === 0 || d.getDay() === 6 ? ' we' : '')}>
-              <span className="cal-num">{d.getDate()}</span>
-              {shown.map((i) => (
-                i.id >= 0
-                  ? <button key={i.k} className={'cal-chip ' + i.cls + (i.done ? ' done' : '')} onClick={() => onOpen(i.id)} title={i.text}>{i.text}</button>
-                  : <span key={i.k} className={'cal-chip ' + i.cls} title={i.text}>{i.text}</span>
-              ))}
-              {items.length > 3 && expanded !== key && <button className="ghost xs" onClick={() => setExpanded(key)}>+{items.length - 3}</button>}
-            </div>
-          );
-        })}
-      </div>
-      <div className="cal-legend muted small">
-        <span><i className="action" /> Action</span><span><i className="task" /> Tâche à rendre</span><span><i className="late" /> En retard</span><span><i className="event" /> Événement de l’agenda</span>
-      </div>
-    </div>
-  );
-}
-
-// ── 4. Kanban ────────────────────────────────────────────────────────────────
-
-export function Kanban({ actions, taches, members, onOpen, onMove }: ViewProps) {
-  const [drag, setDrag] = useState<number | null>(null);
-  const [over, setOver] = useState<string | null>(null);
-  return (
-    <div className="board">
-      {ACTION_STATUTS.map((s) => {
-        const col = actions.filter((a) => a.statut === s).sort((a, b) => a.date_action.localeCompare(b.date_action));
-        return (
-          <div
-            key={s}
-            className={'col' + (over === s ? ' over' : '')}
-            onDragOver={(e) => { e.preventDefault(); setOver(s); }}
-            onDragLeave={() => setOver(null)}
-            onDrop={() => { const a = actions.find((x) => x.id === drag); if (a) onMove(a, s); setDrag(null); setOver(null); }}>
-            <h3><span className={'dot ' + TONE[s]} />{s}<span className="muted">{col.length}</span></h3>
-            {col.map((a) => {
-              const list = taches.filter((t) => t.action_id === a.id);
-              const late = list.some((t) => isOverdue(t.echeance, t.statut));
-              return (
-                <div key={a.id} className={'action-card' + (drag === a.id ? ' dragging' : '')} draggable onDragStart={() => setDrag(a.id)} onDragEnd={() => setDrag(null)} onClick={() => onOpen(a.id)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onOpen(a.id)}>
-                  <div className="ac-title"><span className="emoji">{a.emoji || '📌'}</span>{a.titre}</div>
-                  <div className="muted small ac-meta"><Icon name="calendar" size={13} /> {dayNum(a.date_action)} {monthShort(a.date_action)}{a.budget ? ` · ${a.budget.toLocaleString('fr-FR')} €` : ''}{late && <span className="pill bad">retard</span>}</div>
-                  <Progress list={list} />
-                  <div className="ac-foot"><Avatar name={nameOf(members, a.referent)} size={22} /><span className="muted small">{nameOf(members, a.referent)}</span></div>
-                </div>
-              );
-            })}
-            {!col.length && <p className="muted small col-empty">Glissez une action ici</p>}
-          </div>
         );
       })}
     </div>
