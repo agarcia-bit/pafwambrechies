@@ -11,10 +11,10 @@ sont les limites des stores (les textes les respectent).
 | Éditeur | AGALUMY SAS |
 | Identifiant | `fr.agalumy.allianceo` |
 | Langue principale | Français (France) ; anglais en option |
-| Site d'assistance | https://agalumy.fr |
+| Site d'assistance | https://monallianceo.fr |
 | E-mail d'assistance | contact@agalumy.fr |
-| Politique de confidentialité | https://paf-wambrechies.netlify.app/allianceo-confidentialite.html |
-| Suppression de compte | https://paf-wambrechies.netlify.app/allianceo-suppression-compte.html |
+| Politique de confidentialité | https://monallianceo.fr/confidentialite |
+| Suppression de compte | https://monallianceo.fr/suppression-compte |
 | Prix | Gratuit (les associations sont clientes d'AGALUMY) |
 | Version | 1.0.0 |
 
@@ -46,7 +46,7 @@ Chaque association a son propre espace, à ses couleurs et à son nom. Pour le r
 POUR LES ADHÉRENTS
 
 • Actus : suivez les publications de l'association, avec photos, « j'aime » et commentaires. Une notification vous prévient des nouveautés.
-• Agenda : retrouvez les événements à venir, avec la date, l'heure et le lieu, et ajoutez-les à votre calendrier en un geste.
+• Agenda : retrouvez les événements à venir, avec la date, l'heure et le lieu. Dites en un geste si vous venez, et ajoutez-les à votre calendrier.
 • Offres : profitez des bons plans réservés aux adhérents, et proposez vous-même les vôtres : elles sont publiées après validation par le bureau.
 • Annuaire : retrouvez les membres de l'association et tenez à jour votre propre fiche : photo, coordonnées, description.
 • Sondages : donnez votre avis en quelques secondes. Une date limite peut être fixée, et vous êtes relancé si vous n'avez pas encore répondu.
@@ -59,7 +59,10 @@ POUR LE BUREAU ET LES ADMINISTRATEURS
 • Lancez des sondages (réponse obligatoire ou non) et consultez les résultats.
 • Modérez les contenus : les signalements arrivent sur votre téléphone, vous supprimez ou classez.
 • Gérez les membres et leurs rôles, le code d'accès et l'apparence de l'espace.
+• Voyez qui vient à chaque événement.
 • Suivez les actions et les tâches du bureau.
+
+Depuis un ordinateur, le bureau dispose aussi d'un espace web complet : suivi des cotisations, relances par e-mail au nom de l'association, import des adhérents, gestion des contenus et des réglages.
 
 UNE COMMUNAUTÉ RESPECTUEUSE
 
@@ -132,7 +135,7 @@ pour le **fonctionnement de l'app** uniquement :
 
 **Description complète** (4000) : la même que la description App Store ci-dessus.
 
-**Catégorie** : Réseaux sociaux (ou Style de vie). **Coordonnées** : contact@agalumy.fr, site https://agalumy.fr.
+**Catégorie** : Réseaux sociaux (ou Style de vie). **Coordonnées** : contact@agalumy.fr, site https://monallianceo.fr.
 
 **Classification du contenu (IARC)** : contenu généré par les utilisateurs : oui, avec signalement et blocage ; aucune
 violence, aucun contenu sexuel, aucune consommation de drogue ; pas d'achats ni de publicité.
@@ -144,7 +147,7 @@ violence, aucun contenu sexuel, aucune consommation de drogue ; pas d'achats ni 
 - Utilisation : fonctionnement de l'app et gestion du compte. Aucune publicité, aucune analyse, aucun partage avec des tiers
   à des fins commerciales (les prestataires d'hébergement et de notification ne comptent pas comme « partage »).
 - Données chiffrées en transit : **oui**. Suppression possible : **oui**, dans l'app et par l'adresse
-  https://paf-wambrechies.netlify.app/allianceo-suppression-compte.html
+  https://monallianceo.fr/suppression-compte
 
 ### Captures d'écran (téléphone, 1080 x 1920 px minimum, 2 à 8 images)
 
