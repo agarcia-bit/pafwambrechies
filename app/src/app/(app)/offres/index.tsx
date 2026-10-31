@@ -4,6 +4,7 @@ import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { BrandBand } from '@/components/brand-band';
 import { OfferTag } from '@/components/offer-tag';
+import { CoachTarget } from '@/components/coach-target';
 import { PressableCard } from '@/components/ui/card';
 import { ChipBar } from '@/components/ui/chip-bar';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -32,7 +33,11 @@ export default function OffresScreen() {
       style={bandStyle}
       data={items}
       keyExtractor={(o) => String(o.id)}
-      renderItem={({ item }) => <OffreCard offre={item} />}
+      renderItem={({ item, index }) => (
+        <CoachTarget id="offre-first" enabled={index === 0}>
+          <OffreCard offre={item} />
+        </CoachTarget>
+      )}
       contentInsetAdjustmentBehavior="never"
       contentContainerStyle={styles.content}
       ItemSeparatorComponent={Gap}

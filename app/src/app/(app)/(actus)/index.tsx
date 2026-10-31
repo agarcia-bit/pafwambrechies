@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 
@@ -8,6 +8,7 @@ import { ParticipationBanner } from '@/components/participation-banner';
 import { PendingPolls } from '@/components/pending-polls';
 import { UpcomingEvents } from '@/components/upcoming-events';
 import { BrandBand } from '@/components/brand-band';
+import { CoachTarget, useCoachReveal } from '@/components/coach-target';
 import { ActuCard } from '@/components/cards';
 import { ChipBar } from '@/components/ui/chip-bar';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -15,6 +16,7 @@ import { Text } from '@/components/ui/text';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { ACTU_CATEGORIES } from '@/lib/categories';
 import { useActus } from '@/lib/data';
+import type { Actu } from '@/lib/types';
 import { useReadActus } from '@/lib/read-actus';
 import { useMember } from '@/lib/session';
 import { useBandListStyle } from '@/theme';
@@ -33,6 +35,9 @@ export default function ActusScreen() {
   const bandStyle = useBandListStyle();
   const actus = useActus(category);
   const { refreshing, onRefresh } = usePullToRefresh(actus.refetch);
+  const list = useRef<Animated.FlatList<Actu>>(null);
+  // Guided tour: the first post comes up under the top of the screen.
+  useCoachReveal(['actu-card', 'actu-lu'], () => list.current?.scrollToIndex({ index: 0, viewOffset: 110, animated: true }));
   const items = actus.data?.pages.flat() ?? [];
   const { isRead } = useReadActus();
   // Unread news first (newest first), then the ones already read, shrunk to one line.
@@ -42,6 +47,7 @@ export default function ActusScreen() {
 
   return (
     <Animated.FlatList
+      ref={list}
       style={bandStyle}
       data={sorted}
       keyExtractor={(item) => String(item.id)}
@@ -53,7 +59,9 @@ export default function ActusScreen() {
               DÉJÀ LUES
             </Text>
           )}
-          <ActuCard actu={item} index={index} />
+          <CoachTarget id="actu-card" enabled={index === 0}>
+            <ActuCard actu={item} index={index} />
+          </CoachTarget>
         </View>
       )}
       contentInsetAdjustmentBehavior="never"

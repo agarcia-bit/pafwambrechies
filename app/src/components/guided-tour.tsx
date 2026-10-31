@@ -1,13 +1,12 @@
 import * as Haptics from 'expo-haptics';
-import { useEffect, useRef, useState } from 'react';
-import { Modal, Platform, ScrollView, type ScrollViewInstance, StyleSheet, useWindowDimensions, View } from 'react-native';
-import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { router, type Href } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Modal, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
+import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 
 import { associationName } from '@/components/association';
-import { Avatar } from '@/components/ui/avatar';
+import { measureTarget, revealTarget, type Rect } from '@/components/coach-target';
 import { Button } from '@/components/ui/button';
-import { Icon, type IconName } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { INTRO_HOLD_MS } from '@/lib/launch-state';
 import { useMember } from '@/lib/session';
@@ -15,202 +14,246 @@ import { useTenantConfig } from '@/lib/tenant-config';
 import { closeTour, markTourDone, openTour, tourDone, useTourOpen } from '@/lib/tour';
 import { useTheme } from '@/theme';
 
-type Step = { icon: IconName | 'logo'; title: string; text: string; tip?: string };
+type Step = { route: Href; target?: string; title: string; text: string };
+
+const DIM = 'rgba(0,0,0,0.62)';
+const PAD = 6; // space around the element lit up
+const SETTLE_MS = 550; // time for the screen to show and its cards to finish their entrance
+const RETRY_MS = 150;
+const GIVE_UP_MS = 2000; // element still missing (empty list...): the step is skipped
+const SCROLL_MS = 450; // time for a screen to scroll its element into view
 
 /**
- * A few screens that show a member what the app offers, on the association's color. Only what
- * every member can do: the bureau and administration tools are not part of it. Shown the first
- * time the app opens on an account (on this phone), and again from "Plus" > "Visite guidée".
+ * The guided tour, on the real app: each step opens the right tab, dims the screen and lights up
+ * the element it explains, with a bubble beside it. Only what every member can do: the bureau and
+ * administration tools are not part of it. The elements are marked with <CoachTarget>; a step whose
+ * element is not on screen (no offer yet, module turned off) is skipped. Shown the first time the
+ * app opens on an account (on this phone), and again from "Plus" > "Visite guidée".
  */
 export function GuidedTour() {
   const { profile, branding } = useMember();
   const { modules, labels } = useTenantConfig();
   const visible = useTourOpen();
-  const { colors } = useTheme();
-  const { width } = useWindowDimensions();
-  const reduceMotion = useReducedMotion();
-  const scroller = useRef<ScrollViewInstance>(null);
-  const [page, setPage] = useState(0);
 
-  // First launch on this account: wait for the opening animation, then show the tour.
+  // First launch on this account: wait for the opening animation, then start.
   useEffect(() => {
     if (tourDone(profile.id)) return;
     const timer = setTimeout(openTour, INTRO_HOLD_MS + 900);
     return () => clearTimeout(timer);
   }, [profile.id]);
 
-  // Each opening starts again from the first screen.
-  const [wasVisible, setWasVisible] = useState(visible);
-  if (visible !== wasVisible) {
-    setWasVisible(visible);
-    if (visible) setPage(0);
-  }
-
   const name = associationName(branding) || 'votre association';
   const steps: Step[] = [
     {
-      icon: 'logo',
+      route: '/',
       title: `Bienvenue dans ${name}`,
-      text: 'Voici en quelques écrans tout ce que vous trouverez dans l’application de votre association.',
+      text: 'Suivez le guide : en quelques étapes, on vous montre où trouver chaque chose dans l’application.',
     },
     {
-      icon: 'newspaper',
-      title: 'Les actus',
-      text: 'Les nouvelles de l’association arrivent dans le fil, avec une notification. Aimez-les, commentez-les, partagez-les.',
-      tip: 'Touchez « Lu » : l’actu se range en bas du fil, et vous voyez d’un coup d’œil ce qui est nouveau.',
+      route: '/',
+      target: 'actu-card',
+      title: 'Le fil d’actus',
+      text: 'Onglet « Actus », en bas de l’écran. Touchez une actu pour la lire en entier, l’aimer ou la commenter.',
+    },
+    {
+      route: '/',
+      target: 'actu-lu',
+      title: 'Rangez ce que vous avez lu',
+      text: 'Touchez « Lu » : l’actu se range en bas du fil, sous « Déjà lues ». Ce qui est nouveau reste en haut.',
     },
     ...(modules.agenda
       ? [
           {
-            icon: 'calendar' as const,
+            route: '/agenda' as Href,
+            target: 'agenda-first',
             title: 'L’agenda',
-            text: 'Tous les événements à venir, avec la date, l’heure et le lieu.',
-            tip: 'Dites en un geste si vous venez, et ajoutez l’événement à l’agenda de votre téléphone.',
+            text: 'Onglet « Agenda ». Touchez un événement pour dire si vous venez et l’ajouter à l’agenda de votre téléphone.',
           },
         ]
       : []),
     ...(modules.offres
       ? [
           {
-            icon: 'tag' as const,
+            route: '/offres' as Href,
+            target: 'offre-first',
             title: labels.offres,
-            text: 'Les bons plans réservés aux adhérents.',
-            tip: 'Vous pouvez proposer les vôtres depuis « Plus » > « Mes offres » : le bureau les valide avant publication.',
+            text: `Onglet « ${labels.offres} ». Les bons plans réservés aux adhérents : touchez-en un pour le détail.`,
           },
         ]
       : []),
     ...(modules.annuaire
       ? [
           {
-            icon: 'people' as const,
+            route: '/annuaire' as Href,
+            target: 'annuaire-search',
             title: labels.annuaire,
-            text: 'Retrouvez les membres de l’association et leurs coordonnées.',
-            tip: 'Complétez votre propre fiche depuis « Plus » > « Ma fiche annuaire » : photo, coordonnées, description.',
+            text: `Onglet « ${labels.annuaire} ». Cherchez un membre par son nom ou son activité, puis appelez-le ou écrivez-lui.`,
+          },
+          {
+            route: '/plus' as Href,
+            target: 'plus-fiche',
+            title: 'Votre fiche',
+            text: 'Dans l’onglet « Plus », complétez votre propre fiche : photo, coordonnées, description.',
+          },
+        ]
+      : []),
+    ...(modules.idees
+      ? [
+          {
+            route: '/plus' as Href,
+            target: 'plus-idees',
+            title: 'Une idée ?',
+            text: 'Proposez-la dans la boîte à idées : les autres membres peuvent la soutenir et la commenter.',
           },
         ]
       : []),
     {
-      icon: 'poll',
-      title: 'Votre avis compte',
-      text: 'Quand le bureau lance un sondage, il s’affiche à l’ouverture de l’application : une réponse suffit.',
-      tip: modules.idees ? 'Une idée pour l’association ? Proposez-la dans « Plus » > « Boîte à idées ».' : undefined,
-    },
-    {
-      icon: 'more',
-      title: 'Et dans « Plus »',
-      text: [
-        modules.liens && 'les liens utiles',
-        modules.documents && 'les documents',
-        'votre compte et vos notifications',
-      ]
-        .filter(Boolean)
-        .join(', ')
-        .replace(/^./, (c) => `Retrouvez ${c}`)
-        .concat('.'),
-      tip: 'Vous pourrez revoir cette visite à tout moment depuis « Plus ».',
+      route: '/plus',
+      target: 'plus-tour',
+      title: 'C’est à vous',
+      text: 'Vous pourrez revoir cette visite ici à tout moment. Quand le bureau lance un sondage, il s’affiche à l’ouverture de l’application.',
     },
   ];
-  const last = page === steps.length - 1;
 
-  function finish() {
-    markTourDone(profile.id);
+  if (!visible) return null;
+  return <Tour steps={steps} onDone={() => markTourDone(profile.id)} />;
+}
+
+function Tour({ steps, onDone }: { steps: Step[]; onDone: () => void }) {
+  const { colors } = useTheme();
+  const { width: W, height: H } = useWindowDimensions();
+  const reduceMotion = useReducedMotion();
+  const [index, setIndex] = useState(0);
+  // Measured element of the current step: null = no element (centered bubble), undefined = measuring.
+  const [measured, setMeasured] = useState<{ index: number; rect: Rect | null } | null>(null);
+  const rect: Rect | null | 'measuring' = measured?.index === index ? measured.rect : 'measuring';
+  const direction = useRef(1);
+  const step = steps[index];
+  const last = index === steps.length - 1;
+
+  const finish = useCallback(() => {
+    onDone();
     closeTour();
+    router.navigate('/');
+  }, [onDone]);
+
+  // Each step: open its tab, wait for the element to show, measure it; skip the step if it never shows.
+  useEffect(() => {
+    let cancelled = false;
+    router.navigate(steps[index].route);
+    const current = index;
+    if (!steps[index].target) {
+      const timer = setTimeout(() => !cancelled && setMeasured({ index: current, rect: null }), 0);
+      return () => {
+        cancelled = true;
+        clearTimeout(timer);
+      };
+    }
+    const started = Date.now();
+    const target = steps[index].target!;
+    let previous: Rect | null = null;
+    const attempt = async () => {
+      if (cancelled) return;
+      const found = await measureTarget(target);
+      if (cancelled) return;
+      // Lit up once it stands still: the screen may still be scrolling or animating its cards in.
+      const still = found && previous && Math.abs(found.x - previous.x) < 1 && Math.abs(found.y - previous.y) < 1;
+      previous = found;
+      if (found && still) setMeasured({ index: current, rect: found });
+      else if (Date.now() - started < GIVE_UP_MS + SCROLL_MS) setTimeout(attempt, RETRY_MS);
+      else {
+        const next = index + direction.current;
+        if (next >= 0 && next < steps.length) setIndex(next);
+        else finish();
+      }
+    };
+    // Once the screen is there, it scrolls the element into view (if it can), then the tour measures.
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      if (revealTarget(target)) setTimeout(attempt, SCROLL_MS);
+      else attempt();
+    }, SETTLE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index]);
+
+  function go(delta: number) {
+    if (Platform.OS !== 'web') Haptics.selectionAsync();
+    direction.current = delta;
+    const next = index + delta;
+    if (next >= steps.length) finish();
+    else if (next >= 0) setIndex(next);
   }
 
-  function goTo(next: number) {
-    if (Platform.OS !== 'web') Haptics.selectionAsync();
-    scroller.current?.scrollTo({ x: next * width, animated: true });
-    setPage(next);
-  }
+  const hole = rect && rect !== 'measuring'
+    ? { x: rect.x - PAD, y: rect.y - PAD, w: rect.width + PAD * 2, h: rect.height + PAD * 2 }
+    : null;
+  // Bubble under the element when it sits in the top half of the screen, above it otherwise.
+  const below = hole ? hole.y + hole.h / 2 < H / 2 : false;
+  const bubblePosition = !hole
+    ? { top: H * 0.3 }
+    : below
+      ? { top: hole.y + hole.h + 14 }
+      : { bottom: H - hole.y + 14 };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={finish}>
-      <SafeAreaView style={[styles.screen, { backgroundColor: colors.banner }]} accessibilityViewIsModal>
-        <View style={styles.top}>
-          <Text variant="subhead" style={styles.counter}>
-            {page + 1} / {steps.length}
-          </Text>
-          {!last && <Button compact variant="lightPlain" title="Passer" onPress={finish} />}
-        </View>
-        <ScrollView
-          ref={scroller}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / width))}
-          style={styles.flex}>
-          {steps.map((step, i) => (
-            <View key={step.title} style={[styles.page, { width }]}>
-              <Animated.View
-                key={i === page ? `on-${i}` : `off-${i}`}
-                entering={reduceMotion || i !== page ? undefined : FadeInDown.duration(380)}
-                style={styles.pageInner}>
-                <View style={styles.badge}>
-                  {step.icon === 'logo' ? (
-                    <Avatar name={name} uri={branding?.tenant_logo_url} size={72} />
-                  ) : (
-                    <Icon name={step.icon} size={44} color="#FFFFFF" />
-                  )}
-                </View>
-                <Text variant="largeTitle" style={styles.title}>
-                  {step.title}
-                </Text>
-                <Text style={styles.text}>{step.text}</Text>
-                {!!step.tip && (
-                  <View style={styles.tip}>
-                    <Icon name="info" size={18} color="#FFFFFF" />
-                    <Text variant="subhead" style={styles.tipText}>
-                      {step.tip}
-                    </Text>
-                  </View>
-                )}
-              </Animated.View>
+    <Modal visible transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={finish}>
+      <View style={StyleSheet.absoluteFill} accessibilityViewIsModal>
+        {hole ? (
+          <>
+            <View style={[styles.dim, { top: 0, left: 0, right: 0, height: Math.max(0, hole.y) }]} />
+            <View style={[styles.dim, { top: hole.y + hole.h, left: 0, right: 0, bottom: 0 }]} />
+            <View style={[styles.dim, { top: hole.y, left: 0, width: Math.max(0, hole.x), height: hole.h }]} />
+            <View style={[styles.dim, { top: hole.y, left: hole.x + hole.w, right: 0, height: hole.h }]} />
+            <Animated.View
+              key={`ring-${index}`}
+              entering={reduceMotion ? undefined : FadeIn.duration(250)}
+              pointerEvents="none"
+              style={[styles.ring, { top: hole.y, left: hole.x, width: hole.w, height: hole.h }]}
+            />
+          </>
+        ) : (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: DIM }]} />
+        )}
+        {rect !== 'measuring' && (
+          <Animated.View
+            key={`bubble-${index}`}
+            entering={reduceMotion ? undefined : FadeIn.duration(250)}
+            style={[styles.bubble, { backgroundColor: colors.card, width: Math.min(W - 32, 440), left: Math.max(16, (W - Math.min(W - 32, 440)) / 2) }, bubblePosition]}>
+            <Text variant="headline">{step.title}</Text>
+            <Text tone="secondary">{step.text}</Text>
+            <View style={styles.actions}>
+              <Text variant="footnote" tone="secondary" style={styles.counter}>
+                {index + 1} / {steps.length}
+              </Text>
+              {!last && <Button compact variant="plain" title="Passer" onPress={finish} />}
+              {index > 0 && <Button compact variant="secondary" title="Retour" onPress={() => go(-1)} />}
+              <Button compact title={last ? 'C’est parti' : 'Suivant'} onPress={() => go(1)} />
             </View>
-          ))}
-        </ScrollView>
-        <View style={styles.dots} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          {steps.map((step, i) => (
-            <View key={step.title} style={[styles.dot, i === page && styles.dotOn]} />
-          ))}
-        </View>
-        <View style={styles.footer}>
-          <Button variant="light" title={last ? 'C’est parti' : 'Suivant'} onPress={() => (last ? finish() : goTo(page + 1))} />
-          {page > 0 && <Button variant="lightPlain" title="Précédent" onPress={() => goTo(page - 1)} />}
-        </View>
-      </SafeAreaView>
+          </Animated.View>
+        )}
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  flex: { flex: 1 },
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, minHeight: 44 },
-  counter: { color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
-  page: { flex: 1, justifyContent: 'center', paddingHorizontal: 28 },
-  pageInner: { gap: 18 },
-  badge: {
-    width: 96,
-    height: 96,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
+  dim: { position: 'absolute', backgroundColor: DIM },
+  ring: { position: 'absolute', borderRadius: 16, borderWidth: 2, borderColor: '#FFFFFF' },
+  bubble: {
+    position: 'absolute',
+    borderRadius: 18,
+    padding: 18,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
-  title: { color: '#FFFFFF' },
-  text: { color: 'rgba(255,255,255,0.92)', fontSize: 18, lineHeight: 26 },
-  tip: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'flex-start',
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-  },
-  tipText: { flex: 1, color: '#FFFFFF', lineHeight: 21 },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 8, paddingVertical: 16 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.35)' },
-  dotOn: { width: 22, backgroundColor: '#FFFFFF' },
-  footer: { paddingHorizontal: 20, paddingBottom: 12, gap: 6 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
+  counter: { flex: 1 },
 });

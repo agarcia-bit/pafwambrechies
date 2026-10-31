@@ -4,6 +4,7 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { ActuPhoto, PostMeta, useCategoryHue } from '@/components/actu-visual';
+import { CoachTarget } from '@/components/coach-target';
 import { Entrance } from '@/components/entrance';
 import { CommentCount, LIKED_COLOR, LikeButton, ShareButton } from '@/components/social';
 import { Avatar } from '@/components/ui/avatar';
@@ -130,6 +131,7 @@ function UnreadActuCard({ actu, index, onRead }: { actu: Actu; index: number; on
             <CommentCount count={actu.actus_commentaires[0]?.count ?? 0} />
             <ShareButton message={preview ? `${actu.titre}\n\n${preview}` : actu.titre} />
             <View style={styles.spacer} />
+            <CoachTarget id="actu-lu" enabled={index === 0}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Marquer comme lue"
@@ -141,6 +143,7 @@ function UnreadActuCard({ actu, index, onRead }: { actu: Actu; index: number; on
                 Lu
               </Text>
             </Pressable>
+            </CoachTarget>
           </View>
         </View>
       </PressableCard>

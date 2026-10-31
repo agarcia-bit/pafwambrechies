@@ -5,6 +5,7 @@ import { FlatList, RefreshControl, StyleSheet, TextInput, View } from 'react-nat
 import { BrandBand } from '@/components/brand-band';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { CoachTarget } from '@/components/coach-target';
 import { PressableCard } from '@/components/ui/card';
 import { ChipBar } from '@/components/ui/chip-bar';
 import { Icon } from '@/components/ui/icon';
@@ -57,6 +58,7 @@ export default function AnnuaireScreen() {
                 <ChipBar onBand options={['Tous', ...categories.annuaire]} value={category} onChange={setCategory} />
               )}
             </BrandBand>
+            <CoachTarget id="annuaire-search">
             <TextInput
               value={search}
               onChangeText={setSearch}
@@ -67,6 +69,7 @@ export default function AnnuaireScreen() {
               returnKeyType="search"
               style={[styles.search, { backgroundColor: colors.fill, color: colors.text }]}
             />
+            </CoachTarget>
           </View>
         }
         ListEmptyComponent={
