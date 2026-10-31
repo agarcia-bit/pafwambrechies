@@ -14,9 +14,12 @@ export function Compose({ to, subject = '', body = '', onClose, onSent }: {
   const [sujet, setSujet] = useState(subject);
   const [corps, setCorps] = useState(body);
   const [busy, setBusy] = useState(false);
-  const [fallback, setFallback] = useState(false);
+  // Adresses à envoyer par la messagerie de la personne : toutes (envoi direct pas activé)
+  // ou seulement celles qui ont échoué (quota du jour atteint, panne du fournisseur).
+  const [fallback, setFallback] = useState<{ emails: string[]; reason: string } | null>(null);
   const emails = [...new Set(to.map((r) => r.email.trim().toLowerCase()).filter(Boolean))];
-  const groups = Array.from({ length: Math.ceil(emails.length / MAIL_GROUP) }, (_, k) => emails.slice(k * MAIL_GROUP, (k + 1) * MAIL_GROUP));
+  const rest = fallback?.emails ?? emails;
+  const groups = Array.from({ length: Math.ceil(rest.length / MAIL_GROUP) }, (_, k) => rest.slice(k * MAIL_GROUP, (k + 1) * MAIL_GROUP));
 
   async function send() {
     if (!sujet.trim() || !corps.trim()) return toast('Indiquez un sujet et un message.', 'error');
@@ -24,12 +27,21 @@ export function Compose({ to, subject = '', body = '', onClose, onSent }: {
     try {
       const r = await sendMail(to, sujet.trim(), corps.trim());
       if (r === 'not_configured') {
-        setFallback(true);
+        setFallback({ emails, reason: 'L’envoi direct n’est pas encore activé. Ouvrez votre messagerie avec les destinataires en copie cachée' });
         toast('L’envoi direct n’est pas encore activé : utilisez votre messagerie ci-dessous.', 'error');
         return;
       }
-      toast(r.failed ? `${r.sent} envoyé${r.sent > 1 ? 's' : ''}, ${r.failed} en échec` : `${r.sent} e-mail${r.sent > 1 ? 's' : ''} envoyé${r.sent > 1 ? 's' : ''}`, r.failed ? 'error' : 'ok');
-      onSent?.();
+      if (r.sent) onSent?.();
+      if (r.failed) {
+        const failed = r.failed_emails?.length ? r.failed_emails : emails;
+        setFallback({
+          emails: failed,
+          reason: `${r.sent} envoyé${r.sent > 1 ? 's' : ''}, ${r.failed} non parti${r.failed > 1 ? 's' : ''}${r.limit ? ' : la limite d’envoi du jour est atteinte' : ''}. Envoyez le reste depuis votre messagerie`,
+        });
+        toast(`${r.failed} e-mail${r.failed > 1 ? 's' : ''} non envoyé${r.failed > 1 ? 's' : ''} : finissez depuis votre messagerie`, 'error');
+        return;
+      }
+      toast(`${r.sent} e-mail${r.sent > 1 ? 's' : ''} envoyé${r.sent > 1 ? 's' : ''}`);
       onClose();
     } catch (e) {
       toast((e as Error).message, 'error');
@@ -47,7 +59,9 @@ export function Compose({ to, subject = '', body = '', onClose, onSent }: {
         <>
           <button onClick={onClose} disabled={busy}>Annuler</button>
           <span className="grow" />
-          <button className="primary" onClick={send} disabled={busy || !emails.length}><Icon name="mail" size={15} /> {busy ? 'Envoi…' : 'Envoyer'}</button>
+          {fallback
+            ? <button className="primary" onClick={onClose}>Terminé</button>
+            : <button className="primary" onClick={send} disabled={busy || !emails.length}><Icon name="mail" size={15} /> {busy ? 'Envoi…' : 'Envoyer'}</button>}
         </>
       }>
       <div className="form">
@@ -56,7 +70,7 @@ export function Compose({ to, subject = '', body = '', onClose, onSent }: {
       </div>
       {fallback && (
         <div className="note">
-          <p className="small">Ouvrez votre messagerie avec les destinataires en copie cachée{groups.length > 1 ? `, par groupes de ${MAIL_GROUP}` : ''} :</p>
+          <p className="small">{fallback.reason}{groups.length > 1 ? `, par groupes de ${MAIL_GROUP}` : ''} :</p>
           <div className="row" style={{ marginTop: 8 }}>
             {groups.map((g, k) => (
               <a key={k} className="button" href={mailto(g, sujet, corps)}>{groups.length > 1 ? `Groupe ${k + 1} (${g.length})` : 'Ouvrir ma messagerie'}</a>

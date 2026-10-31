@@ -5,6 +5,7 @@ import { fullName, supabase, useAsync, type Profile } from './lib';
 import { Adherents } from './pages/Adherents';
 import { Contenus } from './pages/Contenus';
 import { Documents } from './pages/Documents';
+import { Envois } from './pages/Envois';
 import { Evenements } from './pages/Evenements';
 import { Importer } from './pages/Importer';
 import { Membres } from './pages/Membres';
@@ -30,6 +31,7 @@ const PAGES: Page[] = [
   { path: 'documents', label: 'Documents', icon: 'file', sub: 'Les fichiers partagés avec les adhérents', el: Documents },
   { path: 'moderation', label: 'Modération', icon: 'alert', sub: 'Signalements et boîte à idées', el: Moderation },
   { path: 'membres', label: 'Membres et accès', icon: 'users', sub: 'Rôles, code d’accès et invitations', el: Membres, section: 'Administration' },
+  { path: 'envois', label: 'E-mails envoyés', icon: 'mail', sub: 'Historique et compteurs d’envoi', el: Envois },
   { path: 'importer', label: 'Importer', icon: 'upload', sub: 'Ajoutez vos adhérents depuis un tableur', el: Importer },
   { path: 'reglages', label: 'Réglages', icon: 'edit', sub: 'Identité, sections et vocabulaire de l’app', el: Reglages, admin: true },
 ];

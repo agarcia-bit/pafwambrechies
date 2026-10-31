@@ -136,7 +136,7 @@ export const euros = (n: number) => n.toLocaleString('fr-FR', { style: 'currency
 
 // ── E-mails envoyés depuis l'espace bureau (fonction send-mail + historique) ─
 export type Recipient = { email: string; user_id?: string | null };
-export type SendResult = { sent: number; failed: number };
+export type SendResult = { sent: number; failed: number; failed_emails?: string[]; limit?: boolean };
 
 /** Dernier envoi par adresse e-mail (vide tant que l'historique n'est pas en place). */
 export async function loadLastSends(): Promise<Record<string, string>> {
