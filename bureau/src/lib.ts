@@ -113,21 +113,26 @@ export const formatRelative = (iso: string) => {
 
 /** Redimensionne une image dans le navigateur et l'envoie dans un bucket public, comme l'application
  *  (le nom contient les dimensions : l'app s'en sert pour le ratio d'affichage). */
-export async function uploadPhoto(file: File, bucket: string, width: number, crop: boolean): Promise<string> {
+/** crop: true = 4:3 centré (annuaire) ; 'logo' = carré centré, en PNG (garde la transparence) ;
+ *  folder : sous-dossier du bucket. */
+export async function uploadPhoto(file: File, bucket: string, width: number, crop: boolean | 'logo', folder?: string): Promise<string> {
   const bmp = await createImageBitmap(file);
   const scale = Math.min(1, width / bmp.width);
   let sw = bmp.width, sh = bmp.height, sx = 0, sy = 0;
-  if (crop) { // 4:3, centré
-    if (sw / sh > 4 / 3) { sw = Math.round(sh * 4 / 3); sx = Math.round((bmp.width - sw) / 2); } else { sh = Math.round(sw * 3 / 4); sy = Math.round((bmp.height - sh) / 2); }
+  if (crop) { // 4:3 ou carré, centré
+    const ratio = crop === 'logo' ? 1 : 4 / 3;
+    if (sw / sh > ratio) { sw = Math.round(sh * ratio); sx = Math.round((bmp.width - sw) / 2); } else { sh = Math.round(sw / ratio); sy = Math.round((bmp.height - sh) / 2); }
   }
   const w = Math.round(sw * scale), h = Math.round(sh * scale);
   const canvas = document.createElement('canvas');
   canvas.width = w; canvas.height = h;
   canvas.getContext('2d')!.drawImage(bmp, sx, sy, sw, sh, 0, 0, w, h);
-  const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.85));
+  const png = crop === 'logo';
+  const type = png ? 'image/png' : 'image/jpeg';
+  const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, type, 0.85));
   if (!blob) throw new Error('Image illisible');
-  const path = `${Date.now()}-${Math.random().toString(36).slice(2)}-${w}x${h}.jpg`;
-  const { error } = await supabase.storage.from(bucket).upload(path, blob, { contentType: 'image/jpeg' });
+  const path = `${folder ? `${folder}/` : ''}${Date.now()}-${Math.random().toString(36).slice(2)}-${w}x${h}.${png ? 'png' : 'jpg'}`;
+  const { error } = await supabase.storage.from(bucket).upload(path, blob, { contentType: type });
   if (error) throw error;
   return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }

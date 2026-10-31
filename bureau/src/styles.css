@@ -272,3 +272,10 @@ button.danger { color: var(--bad); border-color: var(--bad-soft); } button.dange
 .save-bar { position: sticky; bottom: 0; padding: 12px 0; background: linear-gradient(to top, var(--bg) 70%, transparent); display: flex; justify-content: flex-end; }
 .gauge { display: grid; grid-template-columns: 90px 1fr auto; align-items: center; gap: 12px; margin-top: 10px; }
 th.num, td.num, .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Réglages : logo de l'association, choisi depuis l'ordinateur */
+.logo-field { display: flex; align-items: center; gap: 16px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; }
+.logo-field img, .logo-field .logo-empty { width: 64px; height: 64px; border-radius: 16px; object-fit: cover; flex: none; background: var(--neutral-soft); }
+.logo-field .logo-empty { display: grid; place-items: center; font-weight: 800; font-size: 26px; color: var(--text-2); }
+.logo-field > div { display: flex; flex-direction: column; gap: 4px; }
+.logo-field .actions { display: flex; gap: 8px; margin-top: 6px; }
