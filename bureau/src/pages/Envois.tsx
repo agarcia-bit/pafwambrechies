@@ -2,9 +2,9 @@ import type { PageProps } from '../App';
 import { Empty, Skeleton } from '../Icon';
 import { formatRelative, fullName, supabase, useAsync, type BureauMember } from '../lib';
 
-// Plan Resend en cours (gratuit) : limites partagées par toutes les associations.
+// Plan Resend en cours (Pro) : limites partagées par toutes les associations, null = pas de limite.
 // À mettre à jour en changeant de plan.
-const QUOTA = { jour: 100, mois: 3000 };
+const QUOTA: { jour: number | null; mois: number } = { jour: null, mois: 50000 };
 
 type Stat = { tenant_id: string; association: string; aujourd_hui: number; ce_mois: number; mois_precedent: number; total: number };
 type Envoi = { id: number; sujet: string; nb: number; created_at: string; envoye_par: string | null; envoi_destinataires: { statut: string }[] };
@@ -49,10 +49,10 @@ export function Envois({ profile }: PageProps) {
           <div className="head">
             <div>
               <h2>Toutes les associations</h2>
-              <span className="muted small">Visible par le propriétaire de la plateforme uniquement. Limites du plan Resend actuel, partagées par toutes : {QUOTA.jour} par jour, {QUOTA.mois.toLocaleString('fr-FR')} par mois.</span>
+              <span className="muted small">Visible par le propriétaire de la plateforme uniquement. Limites du plan Resend actuel, partagées par toutes : {QUOTA.jour ? `${QUOTA.jour} par jour, ` : ''}{QUOTA.mois.toLocaleString('fr-FR')} par mois.</span>
             </div>
           </div>
-          <Gauge label="Aujourd’hui" value={sum('aujourd_hui')} max={QUOTA.jour} />
+          {QUOTA.jour && <Gauge label="Aujourd’hui" value={sum('aujourd_hui')} max={QUOTA.jour} />}
           <Gauge label="Ce mois-ci" value={sum('ce_mois')} max={QUOTA.mois} />
           <table style={{ marginTop: 14 }}>
             <thead><tr><th>Association</th><th className="num">Aujourd’hui</th><th className="num">Ce mois</th><th className="num">Mois dernier</th><th className="num">Total</th></tr></thead>
