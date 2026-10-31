@@ -58,6 +58,16 @@ async function pushTo(tokens: { id: number; token: string }[], title: string, bo
   return sent;
 }
 
+// Title of every notification: the association's name (as it chose it in its settings).
+const names = new Map<string, string>();
+async function assocName(tenantId: string): Promise<string> {
+  if (!names.has(tenantId)) {
+    const { data } = await sb.rpc("branding_for_tenant", { p_tenant: tenantId });
+    names.set(tenantId, (data?.tenant_name || data?.name || "Votre association").trim());
+  }
+  return names.get(tenantId)!;
+}
+
 Deno.serve(async (req) => {
   if (!isServiceRole(req)) return new Response("Forbidden", { status: 403 });
   try {
@@ -83,8 +93,8 @@ Deno.serve(async (req) => {
           .in("user_id", users.slice(i, i + ID_CHUNK));
         devices.push(...(data ?? []));
       }
-      const title = libelle ? `Cotisation ${libelle} à renouveler` : "Cotisation à renouveler";
-      const sent = devices.length ? await pushTo(devices, title, "Pensez à renouveler votre adhésion.") : 0;
+      const body = libelle ? `Votre cotisation ${libelle} est à renouveler.` : "Votre cotisation est à renouveler.";
+      const sent = devices.length ? await pushTo(devices, await assocName(tenant), body) : 0;
       summary.push({ tenant, members: users.length, sent });
     }
     console.log(`[notify-cotisations] ${JSON.stringify(summary)}`);
