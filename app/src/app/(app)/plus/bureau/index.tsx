@@ -2,7 +2,7 @@ import { router, Stack } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
-import { ActionCard, openAction, StatutBadge, TaskRow } from '@/components/bureau';
+import { ActionCard, AnimatedTaskRow, openAction, StatutBadge } from '@/components/bureau';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -158,7 +158,7 @@ function Team({ data }: { data: BureauData }) {
                   TÂCHES ASSIGNÉES
                 </Text>
                 {g.taches.map((t) => (
-                  <TaskRow key={t.id} tache={t} members={data.members} />
+                  <AnimatedTaskRow key={t.id} tache={t} members={data.members} />
                 ))}
               </View>
             )}

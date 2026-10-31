@@ -1,6 +1,15 @@
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import Animated, {
+  FadeOutRight,
+  LinearTransition,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { ChoiceField, FieldView } from '@/components/form-fields';
 import { Avatar } from '@/components/ui/avatar';
@@ -67,7 +76,21 @@ export function openTache(actionId: number, id?: number) {
 export function TaskRow({ tache, members }: { tache: Tache; members: BureauMember[] }) {
   const { colors } = useTheme();
   const toggle = useToggleTache();
-  const done = tache.statut === DONE;
+  // Ticked a moment ago: shown as done (the check pops, the label is struck through) before the
+  // change is saved, so the row does not vanish at once from the lists that hide finished tasks.
+  const [ticking, setTicking] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+  const scale = useSharedValue(1);
+  const pop = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
+  const done = ticking || tache.statut === DONE;
+  const save = (next: boolean) =>
+    toggle.mutate(
+      { id: tache.id, done: next },
+      { onError: () => showMessage('Modification impossible', 'Vérifiez votre connexion.') }
+    );
   const late = isOverdue(tache.echeance, tache.statut);
   const meta = [tache.echeance && formatDayShort(tache.echeance), memberName(members, tache.responsable)]
     .filter(Boolean)
@@ -80,14 +103,24 @@ export function TaskRow({ tache, members }: { tache: Tache; members: BureauMembe
         accessibilityState={{ checked: done }}
         accessibilityLabel={tache.libelle}
         hitSlop={8}
+        disabled={ticking}
         onPress={() => {
-          if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          toggle.mutate(
-            { id: tache.id, done: !done },
-            { onError: () => showMessage('Modification impossible', 'Vérifiez votre connexion.') }
-          );
+          if (done) {
+            if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            save(false);
+            return;
+          }
+          if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          scale.set(withSequence(withSpring(1.35, { damping: 6, stiffness: 400 }), withSpring(1)));
+          setTicking(true);
+          timer.current = setTimeout(() => {
+            save(true);
+            setTicking(false);
+          }, 700);
         }}>
-        <Icon name={done ? 'checkCircle' : 'circle'} size={24} color={done ? colors.success : colors.textSecondary} />
+        <Animated.View style={pop}>
+          <Icon name={done ? 'checkCircle' : 'circle'} size={24} color={done ? colors.success : colors.textSecondary} />
+        </Animated.View>
       </Pressable>
       <Pressable
         accessibilityRole="button"
@@ -101,6 +134,15 @@ export function TaskRow({ tache, members }: { tache: Tache; members: BureauMembe
       </Pressable>
       {!done && tache.priorite === 'Haute' && <PrioriteBadge priorite={tache.priorite} />}
     </View>
+  );
+}
+
+/** A task row that slides away when it leaves a list (ticked in a list of open tasks). */
+export function AnimatedTaskRow({ tache, members }: { tache: Tache; members: BureauMember[] }) {
+  return (
+    <Animated.View exiting={FadeOutRight.duration(280)} layout={LinearTransition.duration(250)}>
+      <TaskRow tache={tache} members={members} />
+    </Animated.View>
   );
 }
 
@@ -151,11 +193,11 @@ export function ActionCard({
         </View>
       </Pressable>
       {shown.length > 0 && (
-        <View style={[styles.tasks, { borderTopColor: colors.separator }]}>
+        <Animated.View layout={LinearTransition.duration(250)} style={[styles.tasks, { borderTopColor: colors.separator }]}>
           {shown.map((t) => (
-            <TaskRow key={t.id} tache={t} members={members} />
+            <AnimatedTaskRow key={t.id} tache={t} members={members} />
           ))}
-        </View>
+        </Animated.View>
       )}
       {canAddTask && (
         <Button title="Nouvelle tâche" icon="plus" variant="plain" onPress={() => openTache(action.id)} />
