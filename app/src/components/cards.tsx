@@ -5,7 +5,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { ActuPhoto, PostMeta, useCategoryHue } from '@/components/actu-visual';
 import { Entrance } from '@/components/entrance';
-import { CommentCount, LikeButton, ShareButton } from '@/components/social';
+import { CommentCount, LIKED_COLOR, LikeButton, ShareButton } from '@/components/social';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Icon } from '@/components/ui/icon';
@@ -50,6 +50,9 @@ export function ActuCard({ actu, index = 99 }: { actu: Actu; index?: number }) {
 function ReadActuCard({ actu, onUnread }: { actu: Actu; onUnread: () => void }) {
   const { colors } = useTheme();
   const hue = useCategoryHue(actu.categorie);
+  const likes = actu.actus_likes[0]?.count ?? 0;
+  const comments = actu.actus_commentaires[0]?.count ?? 0;
+  const liked = actu.my_like.length > 0;
   return (
     <Animated.View entering={FadeIn.duration(200)}>
       <PressableCard style={styles.readCard} accessibilityLabel={`${actu.titre}, lue`} onPress={() => open(actu)}>
@@ -60,6 +63,20 @@ function ReadActuCard({ actu, onUnread }: { actu: Actu; onUnread: () => void }) 
           </Text>
           <Text variant="caption" tone="secondary" numberOfLines={1}>
             {actu.categorie} · {formatDayShort(actu.date_evenement ?? actu.date)}
+          </Text>
+        </View>
+        <View
+          style={styles.readStats}
+          accessible
+          accessibilityLabel={`${likes} j’aime, ${comments} commentaire${comments > 1 ? 's' : ''}`}>
+          <Icon name={liked ? 'heartFill' : 'heart'} size={13} color={liked ? LIKED_COLOR : colors.textSecondary} />
+          <Text variant="caption" tone="secondary" style={styles.readBadgeText}>
+            {likes}
+          </Text>
+          <View style={styles.statGap} />
+          <Icon name="comment" size={13} color={colors.textSecondary} />
+          <Text variant="caption" tone="secondary" style={styles.readBadgeText}>
+            {comments}
           </Text>
         </View>
         <Pressable
@@ -195,6 +212,8 @@ const styles = StyleSheet.create({
   readCard: { marginHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 14 },
   readDot: { width: 8, height: 8, borderRadius: 4 },
   readTitle: { fontWeight: '600' },
+  readStats: { flexDirection: 'row', alignItems: 'center', gap: 3, marginRight: 6 },
+  statGap: { width: 6 },
   readBadge: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   readBadgeText: { fontWeight: '600' },
   spacer: { flex: 1 },
