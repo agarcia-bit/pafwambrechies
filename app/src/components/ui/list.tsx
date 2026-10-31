@@ -45,6 +45,8 @@ type ListRowProps = {
   /** For choice lists: announced as selected by screen readers. */
   selected?: boolean;
   accessibilityHint?: string;
+  /** Grey icon instead of the association's color: settings rather than features. */
+  neutral?: boolean;
 };
 
 export function ListRow({
@@ -58,13 +60,14 @@ export function ListRow({
   hideChevron,
   selected,
   accessibilityHint,
+  neutral,
 }: ListRowProps) {
   const { colors } = useTheme();
-  const tone = destructive ? colors.danger : colors.primary;
+  const tone = destructive ? colors.danger : neutral ? colors.textSecondary : colors.primary;
   const content = (
     <>
       {icon && (
-        <View style={[styles.iconBox, { backgroundColor: destructive ? colors.fill : colors.primarySoft }]}>
+        <View style={[styles.iconBox, { backgroundColor: destructive || neutral ? colors.fill : colors.primarySoft }]}>
           <Icon name={icon} size={17} color={tone} />
         </View>
       )}
