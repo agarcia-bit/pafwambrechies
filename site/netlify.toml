@@ -1,0 +1,22 @@
+# Site public d'Allianceo (monallianceo.fr) : accueil et pages légales demandées par les stores.
+# Site Netlify séparé : « Base directory » = site, rien à construire.
+[build]
+  publish = "."
+
+# Anciennes adresses, au cas où un lien circulerait encore.
+[[redirects]]
+  from = "/allianceo-confidentialite.html"
+  to = "/confidentialite"
+  status = 301
+
+[[redirects]]
+  from = "/allianceo-suppression-compte.html"
+  to = "/suppression-compte"
+  status = 301
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
