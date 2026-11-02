@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 
 import type { PageProps } from '../App';
 import { Drawer } from '../Drawer';
+import { Thread, useUnread } from '../Discussion';
 import { Icon, Skeleton } from '../Icon';
 import {
   ACTION_STATUTS, dueLabel, isOverdue, loadBureau, nameOf, PRIORITES, supabase, today, toast, useAsync,
@@ -22,8 +23,10 @@ export function Pilotage({ profile }: PageProps) {
     const { data } = await supabase.from('evenements').select('id, titre, date').gte('date', today());
     return (data ?? []) as CalEvent[];
   }, []);
+  const unread = useUnread(profile.tenant_id);
   const [onlyMe, setOnlyMe] = useState(false);
-  const [open, setOpen] = useState<number | 'new' | null>(null);
+  // #pilotage?action=12 ouvre directement la fiche (lien depuis la page Discussion).
+  const [open, setOpen] = useState<number | 'new' | null>(() => Number(new URLSearchParams(location.hash.split('?')[1]).get('action')) || null);
   const [view, setViewState] = useState<string>(() => { try { const v = localStorage.getItem('pilotage-vue'); return v === 'equipe' ? v : 'chrono'; } catch { return 'chrono'; } });
   const setView = (v: string) => { setViewState(v); try { localStorage.setItem('pilotage-vue', v); } catch { /* sans stockage */ } };
 
@@ -70,7 +73,7 @@ export function Pilotage({ profile }: PageProps) {
     data.reload();
   }
 
-  const props = { actions, taches, members: all.members, me: profile.id, onOpen: setOpen, onToggle: toggle, onAddTask: addTask, onMove: moveAction };
+  const props = { actions, taches, members: all.members, me: profile.id, onOpen: setOpen, onToggle: toggle, onAddTask: addTask, onMove: moveAction, unread };
   const current = VIEWS.find((v) => v.key === view) ?? VIEWS[0];
 
   return (
@@ -111,9 +114,8 @@ export function Pilotage({ profile }: PageProps) {
           action={open === 'new' ? null : actionOf(open) ?? null}
           taches={open === 'new' ? [] : all.taches.filter((t) => t.action_id === open)}
           members={all.members}
-          me={profile.id}
-          tenant={profile.tenant_id}
-          onClose={() => setOpen(null)}
+          profile={profile}
+          onClose={() => { setOpen(null); if (location.hash.includes('?')) history.replaceState(null, '', '#pilotage'); }}
           onChanged={data.reload}
         />
       )}
@@ -127,9 +129,11 @@ function Kpi({ value, label, tone }: { value: number | string; label: string; to
 
 // ── Fiche d'une action ───────────────────────────────────────────────────────
 
-function ActionDrawer({ action, taches, members, me, tenant, onClose, onChanged }: {
-  action: Action | null; taches: Tache[]; members: BureauMember[]; me: string; tenant: string; onClose: () => void; onChanged: () => void;
+function ActionDrawer({ action, taches, members, profile, onClose, onChanged }: {
+  action: Action | null; taches: Tache[]; members: BureauMember[]; profile: PageProps['profile']; onClose: () => void; onChanged: () => void;
 }) {
+  const me = profile.id;
+  const tenant = profile.tenant_id;
   const [id, setId] = useState<number | null>(action?.id ?? null);
   const [f, setF] = useState({
     emoji: action?.emoji ?? '', titre: action?.titre ?? '', date_action: action?.date_action ?? today(),
@@ -254,6 +258,13 @@ function ActionDrawer({ action, taches, members, me, tenant, onClose, onChanged 
           </div>
         </section>
       ) : <p className="muted small">Créez l’action pour pouvoir lui ajouter des tâches.</p>}
+
+      {id && (
+        <section className="drawer-section">
+          <div className="section-head"><h3>Discussion</h3><span className="muted small">Bureau uniquement</span></div>
+          <Thread profile={profile} actionId={id} placeholder={`Écrire à propos de « ${f.titre || 'cette action'} »…`} />
+        </section>
+      )}
     </Drawer>
   );
 }
