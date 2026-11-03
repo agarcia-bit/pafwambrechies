@@ -10,7 +10,7 @@ import { Evenements } from './pages/Evenements';
 import { Importer } from './pages/Importer';
 import { Membres } from './pages/Membres';
 import { Moderation } from './pages/Moderation';
-import { Discussion, useUnread } from './Discussion';
+import { ChatPanel, useUnread } from './Discussion';
 import { Overview } from './pages/Overview';
 import { Pilotage } from './pages/Pilotage';
 import { Reglages } from './pages/Reglages';
@@ -22,7 +22,6 @@ type Page = { path: string; label: string; icon: string; sub: string; el: (p: Pa
 const PAGES: Page[] = [
   { path: 'accueil', label: 'Vue d’ensemble', icon: 'home', sub: 'L’essentiel de votre association en un coup d’œil', el: Overview },
   { path: 'pilotage', label: 'Pilotage', icon: 'tasks', sub: 'Les actions du bureau et la liste des choses à faire', el: Pilotage },
-  { path: 'discussion', label: 'Discussion', icon: 'chat', sub: 'Les échanges du bureau, ici et dans l’application', el: Discussion },
   { path: 'adherents', label: 'Adhérents', icon: 'users', sub: 'Cotisations, relances et messages', el: Adherents, section: 'Association' },
   { path: 'evenements', label: 'Événements', icon: 'calendar', sub: 'Créez vos événements et suivez qui vient', el: Evenements },
   { path: 'sondages', label: 'Sondages', icon: 'flag', sub: 'Posez une question à tous les adhérents', el: Sondages },
@@ -180,8 +179,18 @@ function NewPassword({ onDone }: { onDone: () => void }) {
   );
 }
 
+// La discussion du bureau reste ouverte à droite, sur toutes les pages (repliable).
+// Par défaut ouverte sur un grand écran ; le choix de chacun est retenu.
+const CHAT_KEY = 'discussion-ouverte';
+function initialChat() {
+  try { const v = localStorage.getItem(CHAT_KEY); if (v) return v === '1'; } catch { /* sans stockage */ }
+  return window.innerWidth >= 1280;
+}
+
 function Shell({ userId }: { userId: string }) {
   const hash = useHash();
+  const [chatOpen, setChatOpenState] = useState(initialChat);
+  const setChatOpen = (open: boolean) => { setChatOpenState(open); try { localStorage.setItem(CHAT_KEY, open ? '1' : '0'); } catch { /* sans stockage */ } };
   const me = useAsync(async () => {
     const { data, error } = await supabase.from('profiles').select('id, prenom, nom, email, role, tenant_id').eq('id', userId).single();
     if (error) throw error;
@@ -198,7 +207,7 @@ function Shell({ userId }: { userId: string }) {
   const page = pages.find((p) => p.path === hash) ?? pages[0];
   const Page = page.el;
   return (
-    <div className="shell">
+    <div className={'shell' + (chatOpen ? ' with-chat' : '')}>
       <Toasts />
       <aside className="nav">
         <div className="brand"><span className="logo sm">A</span><div>Allianceo<small>{association}</small></div></div>
@@ -206,7 +215,7 @@ function Shell({ userId }: { userId: string }) {
           {pages.map((p) => (
             <Fragment key={p.path}>
               {p.section && <div className="nav-label">{p.section}</div>}
-              <a href={'#' + p.path} className={p.path === page.path ? 'active' : ''}><Icon name={p.icon} size={17} />{p.label}{p.path === 'discussion' && <UnreadDot tenant={profile.tenant_id} />}</a>
+              <a href={'#' + p.path} className={p.path === page.path ? 'active' : ''}><Icon name={p.icon} size={17} />{p.label}</a>
             </Fragment>
           ))}
         </nav>
@@ -218,11 +227,19 @@ function Shell({ userId }: { userId: string }) {
       </aside>
       <main>
         <header className="page-head">
-          <h1>{page.label}</h1>
-          <p className="muted">{page.sub}</p>
+          <div>
+            <h1>{page.label}</h1>
+            <p className="muted">{page.sub}</p>
+          </div>
+          {!chatOpen && (
+            <button className="chat-toggle" onClick={() => setChatOpen(true)} title="Afficher la discussion du bureau">
+              <Icon name="chat" size={16} /> Discussion<UnreadDot tenant={profile.tenant_id} />
+            </button>
+          )}
         </header>
         <Page profile={profile} association={association} />
       </main>
+      {chatOpen && <ChatPanel profile={profile} onClose={() => setChatOpen(false)} />}
     </div>
   );
 }
@@ -231,7 +248,7 @@ function Shell({ userId }: { userId: string }) {
 function UnreadDot({ tenant }: { tenant: string }) {
   const unread = useUnread(tenant);
   const n = [...unread.values()].reduce((s, x) => s + x, 0);
-  return n > 0 ? <span className="unread nav-unread">{n > 99 ? '99+' : n}</span> : null;
+  return n > 0 ? <span className="unread">{n > 99 ? '99+' : n}</span> : null;
 }
 
 function Denied({ text }: { text: string }) {
