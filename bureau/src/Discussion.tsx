@@ -52,7 +52,7 @@ const dayLabel = (iso: string) => {
 };
 const timeLabel = (iso: string) => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-export function Thread({ profile, actionId, placeholder, tall }: { profile: Profile; actionId: number | null; placeholder?: string; tall?: boolean }) {
+export function Thread({ profile, actionId, placeholder, fill }: { profile: Profile; actionId: number | null; placeholder?: string; fill?: boolean }) {
   const fil = actionId ?? 0;
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [text, setText] = useState('');
@@ -114,7 +114,7 @@ export function Thread({ profile, actionId, placeholder, tall }: { profile: Prof
   }
 
   return (
-    <div className={'thread' + (tall ? ' tall' : '')}>
+    <div className={'thread' + (fill ? ' fill' : '')}>
       <div className="thread-list">
         {!messages ? <Skeleton lines={3} /> : !messages.length ? (
           <div className="thread-empty">
@@ -162,8 +162,9 @@ export function Thread({ profile, actionId, placeholder, tall }: { profile: Prof
   );
 }
 
-/** Page « Discussion » : le fil général, et le réglage des notifications sur le téléphone. */
-export function Discussion({ profile }: { profile: Profile }) {
+/** Volet de droite, présent sur toutes les pages : le fil général du bureau, les actions qui ont
+ *  de nouveaux messages, et le réglage des notifications sur le téléphone. */
+export function ChatPanel({ profile, onClose }: { profile: Profile; onClose: () => void }) {
   const [muted, setMuted] = useState<boolean | null>(null);
   const unread = useUnread(profile.tenant_id);
   const [titles, setTitles] = useState<Map<number, string>>(new Map());
@@ -179,38 +180,38 @@ export function Discussion({ profile }: { profile: Profile }) {
       .then(({ data }) => setMuted(!!data));
   }, [profile.tenant_id]);
 
-  async function toggleMute(on: boolean) {
-    setMuted(!on);
-    const { error } = on
-      ? await supabase.from('bureau_sourdine').delete().eq('user_id', profile.id).eq('tenant_id', profile.tenant_id)
-      : await supabase.from('bureau_sourdine').insert({ user_id: profile.id, tenant_id: profile.tenant_id });
-    if (error) { setMuted(on); return toast(error.message, 'error'); }
-    toast(on ? 'Notifications activées' : 'Notifications coupées');
+  async function toggleMute() {
+    const mute = !muted;
+    setMuted(mute);
+    const { error } = mute
+      ? await supabase.from('bureau_sourdine').insert({ user_id: profile.id, tenant_id: profile.tenant_id })
+      : await supabase.from('bureau_sourdine').delete().eq('user_id', profile.id).eq('tenant_id', profile.tenant_id);
+    if (error) { setMuted(!mute); return toast(error.message, 'error'); }
+    toast(mute ? 'Notifications du téléphone coupées' : 'Notifications du téléphone activées');
   }
 
   return (
-    <div className="card discussion">
-      <div className="head">
-        <div>
-          <h2>Fil du bureau</h2>
-          <p className="muted small" style={{ margin: 0 }}>Visible uniquement par le bureau et les administrateurs. Chaque action du Pilotage a aussi sa propre discussion.</p>
-        </div>
+    <aside className="chat-panel" aria-label="Discussion du bureau">
+      <div className="chat-head">
+        <Icon name="chat" size={18} />
+        <div className="grow"><strong>Discussion du bureau</strong><small>Bureau et administrateurs uniquement</small></div>
         {muted !== null && (
-          <label className="switch" title="Une notification sur votre téléphone à chaque nouveau message du bureau">
-            <input type="checkbox" checked={!muted} onChange={(e) => toggleMute(e.target.checked)} />
-            <span className="track" /><span>Notifications sur mon téléphone</span>
-          </label>
+          <button className={'icon-btn' + (muted ? ' muted' : '')} onClick={toggleMute}
+            aria-pressed={!muted} title={muted ? 'Notifications du téléphone coupées : cliquer pour les réactiver' : 'Notifications du téléphone activées : cliquer pour les couper'}>
+            <Icon name={muted ? 'bellOff' : 'bell'} size={16} />
+          </button>
         )}
+        <button className="icon-btn" onClick={onClose} aria-label="Masquer la discussion" title="Masquer la discussion"><Icon name="right" size={16} /></button>
       </div>
       {actionIds.length > 0 && (
         <div className="thread-elsewhere">
-          <span className="muted small">Nouveaux messages dans les actions :</span>
+          <span className="muted xs">Nouveau dans les actions :</span>
           {actionIds.map((id) => (
             <a key={id} className="chip-mini" href={`#pilotage?action=${id}`}>{titles.get(id) ?? 'Action'} <span className="unread">{unread.get(id)}</span></a>
           ))}
         </div>
       )}
-      <Thread profile={profile} actionId={null} tall />
-    </div>
+      <Thread profile={profile} actionId={null} fill />
+    </aside>
   );
 }
