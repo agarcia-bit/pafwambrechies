@@ -9,6 +9,8 @@ export type ViewProps = {
   onToggle: (t: Tache) => void;
   onAddTask: (a: Action, libelle: string) => void;
   onMove: (a: Action, statut: string) => void;
+  /** Messages non lus dans la discussion de chaque action. */
+  unread?: Map<number, number>;
 };
 
 export const TONE: Record<string, string> = { 'À faire': 'neutral', 'En cours': 'info', Bloqué: 'bad', Terminé: 'ok' };
@@ -57,8 +59,13 @@ function QuickAdd({ onAdd, placeholder = 'Ajouter une tâche…' }: { onAdd: (te
   );
 }
 
-function ActionTitle({ a, onOpen }: { a: Action; onOpen: (id: number) => void }) {
-  return <button className="action-title" onClick={() => onOpen(a.id)}><span className="emoji">{a.emoji || '📌'}</span>{a.titre}</button>;
+function ActionTitle({ a, onOpen, unread = 0 }: { a: Action; onOpen: (id: number) => void; unread?: number }) {
+  return (
+    <button className="action-title" onClick={() => onOpen(a.id)}>
+      <span className="emoji">{a.emoji || '📌'}</span>{a.titre}
+      {unread > 0 && <span className="unread" title={`${unread} message${unread > 1 ? 's' : ''} non lu${unread > 1 ? 's' : ''}`}>{unread}</span>}
+    </button>
+  );
 }
 
 function StatusSelect({ a, onMove }: { a: Action; onMove: (a: Action, s: string) => void }) {
@@ -110,7 +117,7 @@ export function SidePanel({ taches, actions, members, me, onToggle, onOpen, even
 
 // ── 1. Chronologie ───────────────────────────────────────────────────────────
 
-export function Chronologie({ actions, taches, members, onOpen, onToggle, onAddTask, onMove }: ViewProps) {
+export function Chronologie({ actions, taches, members, onOpen, onToggle, onAddTask, onMove, unread }: ViewProps) {
   const [showDone, setShowDone] = useState(false);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const flip = (id: number) => setExpanded((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -137,7 +144,7 @@ export function Chronologie({ actions, taches, members, onOpen, onToggle, onAddT
         <div className={'tl-date' + (d < 0 && a.statut !== 'Terminé' ? ' late' : '')}><b>{dayNum(a.date_action)}</b><span>{monthShort(a.date_action)}</span></div>
         <div className="tl-card">
           <div className="tl-row">
-            <ActionTitle a={a} onOpen={onOpen} />
+            <ActionTitle a={a} onOpen={onOpen} unread={unread?.get(a.id)} />
             <StatusSelect a={a} onMove={onMove} />
             <span className="grow" />
             <span className="who muted"><Avatar name={nameOf(members, a.referent)} size={22} />{nameOf(members, a.referent)}</span>

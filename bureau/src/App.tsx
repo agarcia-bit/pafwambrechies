@@ -10,6 +10,7 @@ import { Evenements } from './pages/Evenements';
 import { Importer } from './pages/Importer';
 import { Membres } from './pages/Membres';
 import { Moderation } from './pages/Moderation';
+import { Discussion, useUnread } from './Discussion';
 import { Overview } from './pages/Overview';
 import { Pilotage } from './pages/Pilotage';
 import { Reglages } from './pages/Reglages';
@@ -21,6 +22,7 @@ type Page = { path: string; label: string; icon: string; sub: string; el: (p: Pa
 const PAGES: Page[] = [
   { path: 'accueil', label: 'Vue d’ensemble', icon: 'home', sub: 'L’essentiel de votre association en un coup d’œil', el: Overview },
   { path: 'pilotage', label: 'Pilotage', icon: 'tasks', sub: 'Les actions du bureau et la liste des choses à faire', el: Pilotage },
+  { path: 'discussion', label: 'Discussion', icon: 'chat', sub: 'Les échanges du bureau, ici et dans l’application', el: Discussion },
   { path: 'adherents', label: 'Adhérents', icon: 'users', sub: 'Cotisations, relances et messages', el: Adherents, section: 'Association' },
   { path: 'evenements', label: 'Événements', icon: 'calendar', sub: 'Créez vos événements et suivez qui vient', el: Evenements },
   { path: 'sondages', label: 'Sondages', icon: 'flag', sub: 'Posez une question à tous les adhérents', el: Sondages },
@@ -204,7 +206,7 @@ function Shell({ userId }: { userId: string }) {
           {pages.map((p) => (
             <Fragment key={p.path}>
               {p.section && <div className="nav-label">{p.section}</div>}
-              <a href={'#' + p.path} className={p.path === page.path ? 'active' : ''}><Icon name={p.icon} size={17} />{p.label}</a>
+              <a href={'#' + p.path} className={p.path === page.path ? 'active' : ''}><Icon name={p.icon} size={17} />{p.label}{p.path === 'discussion' && <UnreadDot tenant={profile.tenant_id} />}</a>
             </Fragment>
           ))}
         </nav>
@@ -223,6 +225,13 @@ function Shell({ userId }: { userId: string }) {
       </main>
     </div>
   );
+}
+
+/** Messages non lus, tous fils confondus (général et actions). */
+function UnreadDot({ tenant }: { tenant: string }) {
+  const unread = useUnread(tenant);
+  const n = [...unread.values()].reduce((s, x) => s + x, 0);
+  return n > 0 ? <span className="unread nav-unread">{n > 99 ? '99+' : n}</span> : null;
 }
 
 function Denied({ text }: { text: string }) {

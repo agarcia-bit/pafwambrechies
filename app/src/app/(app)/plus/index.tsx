@@ -9,6 +9,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { ListRow, ListSection } from '@/components/ui/list';
 import { Text } from '@/components/ui/text';
+import { useBureauUnread } from '@/lib/bureau-chat';
 import { fullName } from '@/lib/format';
 import { openTour } from '@/lib/tour';
 import { useMember } from '@/lib/session';
@@ -23,6 +24,7 @@ export default function PlusScreen() {
   const { modules } = useTenantConfig();
   const bandStyle = useBandListStyle();
   const name = fullName(profile.prenom, profile.nom) || profile.email || 'Mon compte';
+  const unread = useBureauUnread();
   return (
     <ScrollView style={bandStyle} contentInsetAdjustmentBehavior="never">
       <BrandBand title="Plus" subtitle="Mon espace">
@@ -88,6 +90,13 @@ export default function PlusScreen() {
           <BureauBlock>
             {isBureau && (
               <>
+                <BureauRow
+                  icon="comment"
+                  title="Discussion du bureau"
+                  subtitle={unread.total ? `${unread.total} message${unread.total > 1 ? 's' : ''} non lu${unread.total > 1 ? 's' : ''}` : 'Échanger entre membres du bureau'}
+                  badge={unread.total}
+                  onPress={() => router.push('/plus/bureau/discussion')}
+                />
                 <BureauRow
                   icon="clipboard"
                   title="Pilotage bureau"
@@ -161,7 +170,19 @@ function BureauBlock({ children }: { children: ReactNode }) {
   );
 }
 
-function BureauRow({ icon, title, subtitle, onPress }: { icon: IconName; title: string; subtitle?: string; onPress: () => void }) {
+function BureauRow({
+  icon,
+  title,
+  subtitle,
+  badge,
+  onPress,
+}: {
+  icon: IconName;
+  title: string;
+  subtitle?: string;
+  badge?: number;
+  onPress: () => void;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -178,6 +199,13 @@ function BureauRow({ icon, title, subtitle, onPress }: { icon: IconName; title: 
           </Text>
         )}
       </View>
+      {!!badge && (
+        <View style={styles.badge}>
+          <Text variant="caption" style={styles.badgeText}>
+            {badge > 99 ? '99+' : badge}
+          </Text>
+        </View>
+      )}
       <Icon name="chevron" size={14} color="rgba(255,255,255,0.7)" />
     </Pressable>
   );
@@ -215,6 +243,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  badge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    backgroundColor: '#FBBF24',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { color: '#1F2937', fontWeight: '800' },
   white: { color: '#FFFFFF' },
   whiteSoft: { color: 'rgba(255,255,255,0.75)' },
 });

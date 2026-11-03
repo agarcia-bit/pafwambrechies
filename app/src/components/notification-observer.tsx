@@ -6,7 +6,8 @@ import { useEffect } from 'react';
  * Opens what a tapped push notification is about (sent by notify-new-actu): the actu
  * (data.actu_id), the event to answer (data.evenement_id), the feed for a new poll (data.sondage_id) or a dues reminder (data.cotisation),
  * where the poll or the reminder is pinned, or the reports screen for a new report
- * (data.signalement_id, for the bureau and the admins).
+ * (data.signalement_id, for the bureau and the admins), or the thread of a bureau message
+ * (data.bureau_fil: 0 = general thread, otherwise the action's id).
  */
 export function NotificationObserver() {
   const response = Notifications.useLastNotificationResponse();
@@ -23,6 +24,9 @@ export function NotificationObserver() {
     } else if (data?.signalement_id) {
       Notifications.clearLastNotificationResponse();
       router.push('/plus/admin/signalements');
+    } else if (data?.bureau_fil !== undefined) {
+      Notifications.clearLastNotificationResponse();
+      router.push({ pathname: '/plus/bureau/discussion', params: { fil: String(data.bureau_fil) } });
     } else if (data?.sondage_id || data?.cotisation) {
       Notifications.clearLastNotificationResponse();
       router.navigate('/');

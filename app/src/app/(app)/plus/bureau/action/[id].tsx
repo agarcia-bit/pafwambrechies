@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ActionFields, openTache, TaskRow } from '@/components/bureau';
+import { ListRow, ListSection } from '@/components/ui/list';
 import { FormScreen } from '@/components/form-screen';
 import { Button } from '@/components/ui/button';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -17,6 +18,7 @@ import {
   type ActionInput,
   type BureauData,
 } from '@/lib/bureau';
+import { useBureauUnread } from '@/lib/bureau-chat';
 import { confirmAction } from '@/lib/confirm';
 
 function editable(a: Action): ActionInput {
@@ -48,6 +50,7 @@ function ActionEditor({ action, data }: { action: Action; data: BureauData }) {
   const [error, setError] = useState<string | null>(null);
   const dirty = JSON.stringify(values) !== JSON.stringify(editable(action));
   const taches = tachesOf(data.taches, action.id);
+  const unread = useBureauUnread().counts.get(action.id) ?? 0;
 
   function submit() {
     if (!values.titre.trim()) {
@@ -93,6 +96,15 @@ function ActionEditor({ action, data }: { action: Action; data: BureauData }) {
         )}
         <Button title="Nouvelle tâche" icon="plus" variant="secondary" onPress={() => openTache(action.id)} />
       </View>
+
+      <ListSection title="Discussion">
+        <ListRow
+          icon="comment"
+          title="Discussion de l’action"
+          subtitle={unread ? `${unread} message${unread > 1 ? 's' : ''} non lu${unread > 1 ? 's' : ''}` : 'Échanger avec le bureau sur cette action'}
+          onPress={() => router.push({ pathname: '/plus/bureau/discussion', params: { fil: String(action.id) } })}
+        />
+      </ListSection>
 
       <Button title="Supprimer l’action" variant="destructive" onPress={destroy} loading={remove.isPending} />
     </FormScreen>
