@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -34,6 +35,8 @@ import { useMember } from '@/lib/session';
 import { useTheme } from '@/theme';
 
 const GROUP_MS = 5 * 60_000;
+/** Height of the native floating tab bar on iOS, which the screen's content runs under. */
+const TAB_BAR_HEIGHT = 60;
 
 function dayLabel(iso: string): string {
   const day = new Date(iso).toDateString();
@@ -66,6 +69,18 @@ export default function DiscussionScreen() {
   const list = useRef<FlatListInstance>(null);
   const [text, setText] = useState('');
   const canSend = !!text.trim() && !send.isPending;
+  // The floating tab bar (iOS) covers the bottom of the screen: the composer sits above it,
+  // except while the keyboard is up, which hides the tab bar.
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardOpen(true));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardOpen(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  const bottomPad = keyboardOpen ? 8 : insets.bottom + (Platform.OS === 'ios' ? TAB_BAR_HEIGHT : 8);
 
   // Opening the thread reads it.
   useEffect(() => {
@@ -133,7 +148,7 @@ export default function DiscussionScreen() {
           }}
         />
       )}
-      <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom - 6, 8) }]}>
+      <View style={[styles.composer, { paddingBottom: bottomPad }]}>
         <View style={[styles.inputRow, { backgroundColor: colors.card }]}>
           <TextInput
             value={text}
