@@ -4,12 +4,13 @@ import { Fragment, useEffect, useState } from 'react';
 import { clearAsyncCache, fullName, supabase, useAsync, type Profile } from './lib';
 import { Adherents } from './pages/Adherents';
 import { Contenus } from './pages/Contenus';
+import { Cotisations } from './pages/Cotisations';
 import { Documents } from './pages/Documents';
-import { Envois } from './pages/Envois';
 import { Evenements } from './pages/Evenements';
 import { Importer } from './pages/Importer';
-import { Membres } from './pages/Membres';
+import { Message } from './pages/Message';
 import { Moderation } from './pages/Moderation';
+import { SentOverlay } from './Compose';
 import { ChatPanel, useUnread } from './Discussion';
 import { Overview } from './pages/Overview';
 import { Pilotage } from './pages/Pilotage';
@@ -23,25 +24,28 @@ type Page = { path: string; label: string; icon: string; sub: string; el: (p: Pa
 const PAGES: Page[] = [
   { path: 'accueil', label: 'Vue d’ensemble', icon: 'home', sub: 'L’essentiel de votre association en un coup d’œil', el: Overview },
   { path: 'pilotage', label: 'Pilotage', icon: 'tasks', sub: 'Les actions du bureau et la liste des choses à faire', el: Pilotage },
-  { path: 'adherents', label: 'Adhérents et cotisations', icon: 'users', sub: 'Qui est à jour, les paiements, les relances et les messages', el: Adherents, section: 'Association' },
+  { path: 'adherents', label: 'Adhérents', icon: 'users', sub: 'Qui fait partie de l’association, leurs rôles et leur accès à l’app', el: Adherents, section: 'Association' },
+  { path: 'cotisations', label: 'Cotisations', icon: 'euro', sub: 'Qui est à jour, les paiements et les relances', el: Cotisations },
+  { path: 'message', label: 'Envoyer un message', icon: 'mail', sub: 'Un e-mail à tous les adhérents ou à quelques-uns, au nom de l’association', el: Message },
   { path: 'evenements', label: 'Événements', icon: 'calendar', sub: 'Créez vos événements et suivez qui vient', el: Evenements },
   { path: 'sondages', label: 'Sondages', icon: 'flag', sub: 'Posez une question à tous les adhérents', el: Sondages },
   { path: 'actus', label: 'Actus', icon: 'sparkle', sub: 'Ce que les adhérents voient dans leur fil', el: (p) => <Contenus kind="actus" {...p} />, section: 'Contenus de l’app' },
-  { path: 'offres', label: 'Offres', icon: 'euro', sub: 'Les bons plans proposés aux adhérents', el: (p) => <Contenus kind="offres" {...p} /> },
+  { path: 'offres', label: 'Offres', icon: 'tag', sub: 'Les bons plans proposés aux adhérents', el: (p) => <Contenus kind="offres" {...p} /> },
   { path: 'annuaire', label: 'Annuaire', icon: 'user', sub: 'Les fiches visibles dans l’app', el: (p) => <Contenus kind="annuaire" {...p} /> },
   { path: 'liens', label: 'Liens utiles', icon: 'external', sub: 'Sites et ressources partagés', el: (p) => <Contenus kind="liens" {...p} /> },
   { path: 'documents', label: 'Documents', icon: 'file', sub: 'Les fichiers partagés avec les adhérents', el: Documents },
   { path: 'moderation', label: 'Modération', icon: 'alert', sub: 'Signalements et boîte à idées', el: Moderation },
-  { path: 'membres', label: 'Membres et accès', icon: 'users', sub: 'Rôles, code d’accès et invitations', el: Membres, section: 'Administration' },
-  { path: 'envois', label: 'E-mails envoyés', icon: 'mail', sub: 'Historique et compteurs d’envoi', el: Envois },
-  { path: 'importer', label: 'Importer', icon: 'upload', sub: 'Ajoutez vos adhérents depuis un tableur', el: Importer },
+  { path: 'importer', label: 'Importer', icon: 'upload', sub: 'Ajoutez vos adhérents depuis un tableur', el: Importer, section: 'Administration' },
   { path: 'reglages', label: 'Réglages', icon: 'edit', sub: 'Identité, sections et vocabulaire de l’app', el: Reglages, admin: true },
 ];
 
+// Anciennes adresses (liens qui circulent encore).
+const ALIAS: Record<string, string> = { membres: 'adherents', envois: 'message' };
+const current = () => { const h = location.hash.slice(1).split('?')[0] || 'accueil'; return ALIAS[h] ?? h; };
 const useHash = () => {
-  const [hash, setHash] = useState(location.hash.slice(1).split('?')[0] || 'accueil');
+  const [hash, setHash] = useState(current);
   useEffect(() => {
-    const on = () => setHash(location.hash.slice(1).split('?')[0] || 'accueil');
+    const on = () => setHash(current());
     addEventListener('hashchange', on);
     return () => removeEventListener('hashchange', on);
   }, []);
@@ -227,6 +231,7 @@ function Shell({ userId }: { userId: string }) {
   return (
     <div className={'shell' + (chatOpen ? ' with-chat' : '')}>
       <Toasts />
+      <SentOverlay />
       <aside className="nav">
         <div className="nav-brand">
           {logo ? <img className="logo sm" src={logo} alt="" /> : <span className="logo sm">{association.slice(0, 1).toUpperCase()}</span>}
@@ -258,7 +263,9 @@ function Shell({ userId }: { userId: string }) {
             </button>
           )}
         </header>
-        <Page profile={profile} association={association} />
+        <div className="page" key={page.path}>
+          <Page profile={profile} association={association} />
+        </div>
       </main>
       {chatOpen && <ChatPanel profile={profile} onClose={() => setChatOpen(false)} />}
     </div>

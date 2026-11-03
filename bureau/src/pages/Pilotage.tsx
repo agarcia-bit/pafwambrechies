@@ -58,11 +58,15 @@ export function Pilotage({ profile }: PageProps) {
   const taches = onlyMe ? all.taches.filter((t) => t.responsable === profile.id) : all.taches;
   const actions = onlyMe ? all.actions.filter((a) => a.referent === profile.id || taches.some((t) => t.action_id === a.id)) : all.actions;
 
+  const [leaving, setLeaving] = useState<Set<number>>(new Set());
   async function toggle(t: Tache) {
-    const { error } = await supabase.from('taches').update({ statut: t.statut === 'Terminé' ? 'À faire' : 'Terminé' }).eq('id', t.id);
-    if (error) return toast(error.message, 'error');
-    if (t.statut !== 'Terminé') toast('Tâche terminée ✓');
-    data.reload();
+    const finishing = t.statut !== 'Terminé';
+    if (finishing) setLeaving((s) => new Set(s).add(t.id));
+    const { error } = await supabase.from('taches').update({ statut: finishing ? 'Terminé' : 'À faire' }).eq('id', t.id);
+    if (error) { setLeaving((s) => { const n = new Set(s); n.delete(t.id); return n; }); return toast(error.message, 'error'); }
+    if (finishing) toast('Tâche terminée ✓');
+    // Le temps que la ligne se coche et s'efface (animation row-out).
+    setTimeout(() => { data.reload(); setLeaving((s) => { const n = new Set(s); n.delete(t.id); return n; }); }, finishing ? 650 : 0);
   }
   async function addTask(a: Action, libelle: string) {
     const { error } = await supabase.from('taches').insert({ action_id: a.id, tenant_id: profile.tenant_id, libelle, responsable: a.referent });
@@ -78,7 +82,7 @@ export function Pilotage({ profile }: PageProps) {
     data.reload();
   }
 
-  const props = { actions, taches, members: all.members, me: profile.id, onOpen: setOpen, onToggle: toggle, onAddTask: addTask, onMove: moveAction, unread };
+  const props = { actions, taches, members: all.members, me: profile.id, onOpen: setOpen, onToggle: toggle, onAddTask: addTask, onMove: moveAction, unread, leaving };
   const current = VIEWS.find((v) => v.key === view) ?? VIEWS[0];
 
   return (

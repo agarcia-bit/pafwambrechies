@@ -11,6 +11,8 @@ export type ViewProps = {
   onMove: (a: Action, statut: string) => void;
   /** Messages non lus dans la discussion de chaque action. */
   unread?: Map<number, number>;
+  /** Tâches qu'on vient de terminer : cochées, en train de s'effacer. */
+  leaving?: Set<number>;
 };
 
 export const TONE: Record<string, string> = { 'À faire': 'neutral', 'En cours': 'info', Bloqué: 'bad', Terminé: 'ok' };
@@ -31,13 +33,13 @@ function Progress({ list }: { list: Tache[] }) {
   );
 }
 
-function TaskRow({ t, members, onToggle, who, actionOf }: { t: Tache; members: BureauMember[]; onToggle: (t: Tache) => void; who?: boolean; actionOf?: (id: number) => Action | undefined }) {
-  const done = t.statut === 'Terminé';
+function TaskRow({ t, members, onToggle, who, actionOf, leaving }: { t: Tache; members: BureauMember[]; onToggle: (t: Tache) => void; who?: boolean; actionOf?: (id: number) => Action | undefined; leaving?: boolean }) {
+  const done = t.statut === 'Terminé' || !!leaving;
   const late = isOverdue(t.echeance, t.statut);
   const a = actionOf?.(t.action_id);
   return (
-    <li className={'task' + (done ? ' done' : '')}>
-      <button className={'check' + (done ? ' on' : '')} aria-label={done ? 'Rouvrir' : 'Terminer'} onClick={() => onToggle(t)}>{done && <Icon name="check" size={12} />}</button>
+    <li className={'task' + (done ? ' done' : '') + (leaving ? ' row-out' : '')}>
+      <button className={'check' + (done ? ' on' : '')} aria-label={done ? 'Rouvrir' : 'Terminer'} disabled={leaving} onClick={() => onToggle(t)}>{done && <Icon name="check" size={12} />}</button>
       <div className="grow">
         <div className="task-title">{t.libelle}{t.priorite === 'Haute' && !done && <span className="pill bad">Haute</span>}</div>
         {(who || a) && <div className="task-meta muted">{a && <span>{a.emoji || '📌'} {a.titre}</span>}{who && a && ' · '}{who && nameOf(members, t.responsable)}</div>}
@@ -80,7 +82,7 @@ function StatusSelect({ a, onMove }: { a: Action; onMove: (a: Action, s: string)
 
 export type CalEvent = { id: number; titre: string; date: string };
 
-export function SidePanel({ taches, actions, members, me, onToggle, onOpen, events }: ViewProps & { events: CalEvent[] }) {
+export function SidePanel({ taches, actions, members, me, onToggle, onOpen, events, leaving }: ViewProps & { events: CalEvent[] }) {
   const mine = taches.filter((t) => t.responsable === me && t.statut !== 'Terminé').sort(byDue);
   const late = mine.filter((t) => isOverdue(t.echeance, t.statut)).length;
   const actionOf = (id: number) => actions.find((a) => a.id === id);
@@ -96,7 +98,7 @@ export function SidePanel({ taches, actions, members, me, onToggle, onOpen, even
         <span className={'pill ' + (late ? 'bad' : mine.length ? 'brand' : 'neutral')}>{late ? `${late} en retard` : `${mine.length} à faire`}</span>
       </div>
       {mine.length ? (
-        <ul className="task-list">{mine.map((t) => <TaskRow key={t.id} t={t} members={members} onToggle={onToggle} actionOf={actionOf} />)}</ul>
+        <ul className="task-list">{mine.map((t) => <TaskRow key={t.id} t={t} members={members} onToggle={onToggle} actionOf={actionOf} leaving={leaving?.has(t.id)} />)}</ul>
       ) : <Empty icon="sparkle" title="Rien pour vous" hint="Vos tâches apparaîtront ici." />}
       <div className="side-head" style={{ marginTop: 18 }}>
         <h3>30 prochains jours</h3>
@@ -117,7 +119,7 @@ export function SidePanel({ taches, actions, members, me, onToggle, onOpen, even
 
 // ── 1. Chronologie ───────────────────────────────────────────────────────────
 
-export function Chronologie({ actions, taches, members, onOpen, onToggle, onAddTask, onMove, unread }: ViewProps) {
+export function Chronologie({ actions, taches, members, onOpen, onToggle, onAddTask, onMove, unread, leaving }: ViewProps) {
   const [showDone, setShowDone] = useState(false);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const flip = (id: number) => setExpanded((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -159,7 +161,7 @@ export function Chronologie({ actions, taches, members, onOpen, onToggle, onAddT
           <Progress list={list} />
           {isOpen && (
             <>
-              {openT.length > 0 && <ul className="task-list">{openT.map((t) => <TaskRow key={t.id} t={t} members={members} onToggle={onToggle} who />)}</ul>}
+              {openT.length > 0 && <ul className="task-list">{openT.map((t) => <TaskRow key={t.id} t={t} members={members} onToggle={onToggle} who leaving={leaving?.has(t.id)} />)}</ul>}
               <QuickAdd onAdd={(text) => onAddTask(a, text)} />
             </>
           )}
@@ -190,7 +192,7 @@ export function Chronologie({ actions, taches, members, onOpen, onToggle, onAddT
 
 // ── 2. Équipe ────────────────────────────────────────────────────────────────
 
-export function Equipe({ actions, taches, members, me, onOpen, onToggle }: ViewProps) {
+export function Equipe({ actions, taches, members, me, onOpen, onToggle, leaving }: ViewProps) {
   const people = [
     ...members.filter((m) => m.is_bureau).map((m) => ({ id: m.id as string | null, name: nameOf(members, m.id) })),
     { id: null, name: 'Non assigné' },
@@ -217,7 +219,7 @@ export function Equipe({ actions, taches, members, me, onOpen, onToggle }: ViewP
             </div>
             <div className="load" aria-hidden><span style={{ width: `${(mine.length / max) * 100}%` }} className={late ? 'bad' : ''} /></div>
             {led.length > 0 && <div className="chip-row">{led.map((a) => <button key={a.id} className="chip-mini" onClick={() => onOpen(a.id)}>{a.emoji || '📌'} {a.titre}</button>)}</div>}
-            {mine.length ? <ul className="task-list">{mine.map((t) => <TaskRow key={t.id} t={t} members={members} onToggle={onToggle} actionOf={actionOf} />)}</ul> : <p className="muted small empty-line">Aucune tâche ouverte.</p>}
+            {mine.length ? <ul className="task-list">{mine.map((t) => <TaskRow key={t.id} t={t} members={members} onToggle={onToggle} actionOf={actionOf} leaving={leaving?.has(t.id)} />)}</ul> : <p className="muted small empty-line">Aucune tâche ouverte.</p>}
           </section>
         );
       })}
