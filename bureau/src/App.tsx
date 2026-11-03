@@ -228,7 +228,7 @@ function Shell({ userId }: { userId: string }) {
     <div className={'shell' + (chatOpen ? ' with-chat' : '')}>
       <Toasts />
       <aside className="nav">
-        <div className="brand">
+        <div className="nav-brand">
           {logo ? <img className="logo sm" src={logo} alt="" /> : <span className="logo sm">{association.slice(0, 1).toUpperCase()}</span>}
           <div className="grow">{association}<small>Espace bureau</small></div>
         </div>
