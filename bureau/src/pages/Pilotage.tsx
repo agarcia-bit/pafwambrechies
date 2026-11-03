@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { PageProps } from '../App';
 import { Drawer } from '../Drawer';
 import { Thread, useUnread } from '../Discussion';
 import { Icon, Skeleton } from '../Icon';
 import {
-  ACTION_STATUTS, dueLabel, isOverdue, loadBureau, nameOf, PRIORITES, supabase, today, toast, useAsync,
+  ACTION_STATUTS, dueLabel, hashParam, isOverdue, loadBureau, nameOf, PRIORITES, supabase, today, toast, useAsync,
   type Action, type BureauMember, type Tache,
 } from '../lib';
 import { Chronologie, Equipe, SidePanel, TONE, type CalEvent } from './PilotageViews';
@@ -26,7 +26,12 @@ export function Pilotage({ profile }: PageProps) {
   const unread = useUnread(profile.tenant_id);
   const [onlyMe, setOnlyMe] = useState(false);
   // #pilotage?action=12 ouvre directement la fiche (lien depuis la page Discussion).
-  const [open, setOpen] = useState<number | 'new' | null>(() => Number(new URLSearchParams(location.hash.split('?')[1]).get('action')) || null);
+  const [open, setOpen] = useState<number | 'new' | null>(() => Number(hashParam('action')) || null);
+  useEffect(() => {
+    const on = () => { const id = Number(hashParam('action')); if (id) setOpen(id); };
+    addEventListener('hashchange', on);
+    return () => removeEventListener('hashchange', on);
+  }, []);
   const [view, setViewState] = useState<string>(() => { try { const v = localStorage.getItem('pilotage-vue'); return v === 'equipe' ? v : 'chrono'; } catch { return 'chrono'; } });
   const setView = (v: string) => { setViewState(v); try { localStorage.setItem('pilotage-vue', v); } catch { /* sans stockage */ } };
 
@@ -53,11 +58,15 @@ export function Pilotage({ profile }: PageProps) {
   const taches = onlyMe ? all.taches.filter((t) => t.responsable === profile.id) : all.taches;
   const actions = onlyMe ? all.actions.filter((a) => a.referent === profile.id || taches.some((t) => t.action_id === a.id)) : all.actions;
 
+  const [leaving, setLeaving] = useState<Set<number>>(new Set());
   async function toggle(t: Tache) {
-    const { error } = await supabase.from('taches').update({ statut: t.statut === 'Terminé' ? 'À faire' : 'Terminé' }).eq('id', t.id);
-    if (error) return toast(error.message, 'error');
-    if (t.statut !== 'Terminé') toast('Tâche terminée ✓');
-    data.reload();
+    const finishing = t.statut !== 'Terminé';
+    if (finishing) setLeaving((s) => new Set(s).add(t.id));
+    const { error } = await supabase.from('taches').update({ statut: finishing ? 'Terminé' : 'À faire' }).eq('id', t.id);
+    if (error) { setLeaving((s) => { const n = new Set(s); n.delete(t.id); return n; }); return toast(error.message, 'error'); }
+    if (finishing) toast('Tâche terminée ✓');
+    // Le temps que la ligne se coche et s'efface (animation row-out).
+    setTimeout(() => { data.reload(); setLeaving((s) => { const n = new Set(s); n.delete(t.id); return n; }); }, finishing ? 650 : 0);
   }
   async function addTask(a: Action, libelle: string) {
     const { error } = await supabase.from('taches').insert({ action_id: a.id, tenant_id: profile.tenant_id, libelle, responsable: a.referent });
@@ -73,7 +82,7 @@ export function Pilotage({ profile }: PageProps) {
     data.reload();
   }
 
-  const props = { actions, taches, members: all.members, me: profile.id, onOpen: setOpen, onToggle: toggle, onAddTask: addTask, onMove: moveAction, unread };
+  const props = { actions, taches, members: all.members, me: profile.id, onOpen: setOpen, onToggle: toggle, onAddTask: addTask, onMove: moveAction, unread, leaving };
   const current = VIEWS.find((v) => v.key === view) ?? VIEWS[0];
 
   return (

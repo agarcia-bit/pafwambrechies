@@ -72,7 +72,7 @@ export function Documents({ profile }: PageProps) {
         <input ref={input} type="file" multiple hidden onChange={(e) => e.target.files && upload(e.target.files)} />
       </div>
       {message && <p className="error">{message}</p>}
-      {docs.loading ? <div className="card"><Skeleton lines={4} /></div> : docs.error ? <p className="error">{docs.error}</p> : (
+      {docs.loading && !docs.data ? <div className="card"><Skeleton lines={4} /></div> : docs.error ? <p className="error">{docs.error}</p> : (
         <div className="card flush">
           <table>
             <thead><tr><th>Document</th><th>Catégorie</th><th>Ajouté le</th><th>Taille</th><th /></tr></thead>

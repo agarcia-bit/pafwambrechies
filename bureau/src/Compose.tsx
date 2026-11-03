@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Drawer } from './Drawer';
 import { Icon } from './Icon';
@@ -6,10 +6,12 @@ import { mailto, sendMail, toast, type Recipient } from './lib';
 
 const MAIL_GROUP = 50; // au-delà, les messageries refusent le mailto:
 
-/** Rédaction d'un e-mail aux adhérents : envoi direct par la fonction send-mail,
- *  ou, tant qu'elle n'est pas configurée, par la messagerie de la personne (mailto:). */
-export function Compose({ to, subject = '', body = '', onClose, onSent }: {
-  to: Recipient[]; subject?: string; body?: string; onClose: () => void; onSent?: () => void;
+/** Sujet, message et envoi : au nom de l'association par la fonction send-mail, ou, tant
+ *  qu'elle n'est pas configurée (ou pour ce qui n'est pas parti), par la messagerie de la personne. */
+export function MailForm({ to, subject = '', body = '', onClose, onSent, inline }: {
+  to: Recipient[]; subject?: string; body?: string; onClose: () => void; onSent?: (sent: number) => void;
+  /** Dans une page (pas un volet) : pas de bouton « Annuler », champs plus hauts. */
+  inline?: boolean;
 }) {
   const [sujet, setSujet] = useState(subject);
   const [corps, setCorps] = useState(body);
@@ -31,7 +33,7 @@ export function Compose({ to, subject = '', body = '', onClose, onSent }: {
         toast('L’envoi direct n’est pas encore activé : utilisez votre messagerie ci-dessous.', 'error');
         return;
       }
-      if (r.sent) onSent?.();
+      if (r.sent) { onSent?.(r.sent); celebrateSend(r.sent); }
       if (r.failed) {
         const failed = r.failed_emails?.length ? r.failed_emails : emails;
         setFallback({
@@ -41,7 +43,8 @@ export function Compose({ to, subject = '', body = '', onClose, onSent }: {
         toast(`${r.failed} e-mail${r.failed > 1 ? 's' : ''} non envoyé${r.failed > 1 ? 's' : ''} : finissez depuis votre messagerie`, 'error');
         return;
       }
-      toast(`${r.sent} e-mail${r.sent > 1 ? 's' : ''} envoyé${r.sent > 1 ? 's' : ''}`);
+      setSujet(subject);
+      setCorps(body);
       onClose();
     } catch (e) {
       toast((e as Error).message, 'error');
@@ -51,22 +54,11 @@ export function Compose({ to, subject = '', body = '', onClose, onSent }: {
   }
 
   return (
-    <Drawer
-      title={emails.length === 1 ? `Écrire à ${emails[0]}` : `Écrire à ${emails.length} personnes`}
-      subtitle="Envoyé au nom de l’association. Chaque personne reçoit son propre e-mail ; les réponses vous arrivent directement."
-      onClose={onClose}
-      footer={
-        <>
-          <button onClick={onClose} disabled={busy}>Annuler</button>
-          <span className="grow" />
-          {fallback
-            ? <button className="primary" onClick={onClose}>Terminé</button>
-            : <button className="primary" onClick={send} disabled={busy || !emails.length}><Icon name="mail" size={15} /> {busy ? 'Envoi…' : 'Envoyer'}</button>}
-        </>
-      }>
+    <>
       <div className="form">
-        <label>Sujet<input type="text" value={sujet} onChange={(e) => setSujet(e.target.value)} placeholder="Ex. : Cotisation 2027" autoFocus /></label>
-        <label>Message<textarea className="plain-text" rows={10} value={corps} onChange={(e) => setCorps(e.target.value)} placeholder="Bonjour,&#10;&#10;…" /></label>
+        <label>Sujet<input type="text" value={sujet} onChange={(e) => setSujet(e.target.value)} placeholder="Ex. : Cotisation 2027" autoFocus={!inline} /></label>
+        <label>Message<textarea className="plain-text" rows={inline ? 12 : 10} value={corps} onChange={(e) => setCorps(e.target.value)} placeholder="Bonjour,&#10;&#10;…" /></label>
+        <p className="muted small" style={{ margin: 0 }}>Envoyé au nom de l’association, signé de son nom. Chaque personne reçoit son propre e-mail, sans voir les autres destinataires.</p>
       </div>
       {fallback && (
         <div className="note">
@@ -79,6 +71,79 @@ export function Compose({ to, subject = '', body = '', onClose, onSent }: {
         </div>
       )}
       {!emails.length && <p className="muted small">Aucune adresse e-mail parmi les personnes choisies.</p>}
+      <div className={'row mail-actions' + (inline ? '' : ' in-drawer')}>
+        {!inline && <button onClick={onClose} disabled={busy}>Annuler</button>}
+        <span className="grow" />
+        {fallback
+          ? <button className="primary" onClick={onClose}>Terminé</button>
+          : <button className={'primary send-btn' + (busy ? ' busy' : '')} onClick={send} disabled={busy || !emails.length}>
+              <Icon name="send" size={15} /> {busy ? 'Envoi…' : emails.length > 1 ? `Envoyer à ${emails.length} personnes` : 'Envoyer'}
+            </button>}
+      </div>
+    </>
+  );
+}
+
+/** Le formulaire dans un volet, pour écrire à quelques personnes depuis une liste. */
+export function Compose({ to, subject, body, onClose, onSent }: {
+  to: Recipient[]; subject?: string; body?: string; onClose: () => void; onSent?: () => void;
+}) {
+  const emails = [...new Set(to.map((r) => r.email.trim().toLowerCase()).filter(Boolean))];
+  return (
+    <Drawer title={emails.length === 1 ? `Écrire à ${emails[0]}` : `Écrire à ${emails.length} personnes`} subtitle="Au nom de l’association." onClose={onClose}>
+      <MailForm to={to} subject={subject} body={body} onClose={onClose} onSent={onSent} />
     </Drawer>
+  );
+}
+
+// ── « C'est parti » : l'enveloppe se ferme, décolle, et le compte s'affiche ────────────────
+// Déclenché par celebrateSend(n) après un envoi réussi, d'où qu'il parte ; affiché par
+// <SentOverlay /> monté une fois dans l'application.
+
+const SENT_EVENT = 'mail-sent';
+export const celebrateSend = (sent: number) => dispatchEvent(new CustomEvent(SENT_EVENT, { detail: sent }));
+
+export function SentOverlay() {
+  const [sent, setSent] = useState<number | null>(null);
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    const on = (e: Event) => setSent((e as CustomEvent<number>).detail);
+    addEventListener(SENT_EVENT, on);
+    return () => removeEventListener(SENT_EVENT, on);
+  }, []);
+  // Le compteur monte pendant que l'enveloppe s'éloigne, puis tout s'efface.
+  useEffect(() => {
+    if (sent === null) return;
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setShown(reduced ? sent : 0);
+    const start = performance.now() + 900;
+    let raf = 0;
+    const tick = (now: number) => {
+      const p = Math.min(1, Math.max(0, (now - start) / 600));
+      setShown(Math.round(sent * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    if (!reduced) raf = requestAnimationFrame(tick);
+    const end = setTimeout(() => setSent(null), reduced ? 1400 : 2600);
+    return () => { cancelAnimationFrame(raf); clearTimeout(end); };
+  }, [sent]);
+  if (sent === null) return null;
+  return (
+    <div className="sent-overlay" role="status" aria-live="polite" onClick={() => setSent(null)}>
+      <div className="sent-scene">
+        <div className="sent-trail" aria-hidden>{Array.from({ length: 7 }, (_, i) => <i key={i} style={{ animationDelay: `${0.55 + i * 0.06}s` }} />)}</div>
+        <div className="sent-envelope" aria-hidden>
+          <div className="env-back" />
+          <div className="env-letter"><i /><i /><i /></div>
+          <div className="env-front" />
+          <div className="env-flap" />
+        </div>
+        <div className="sent-burst" aria-hidden>{Array.from({ length: 12 }, (_, i) => <i key={i} style={{ '--r': `rotate(${i * 30}deg)` } as React.CSSProperties} />)}</div>
+        <div className="sent-text">
+          <strong>{shown.toLocaleString('fr-FR')}</strong>
+          <span>{sent > 1 ? 'e-mails envoyés' : 'e-mail envoyé'}</span>
+        </div>
+      </div>
+    </div>
   );
 }

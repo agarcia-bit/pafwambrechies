@@ -1,6 +1,8 @@
+import { useState } from 'react';
+
 import type { PageProps } from '../App';
 import { Empty, Icon, Skeleton } from '../Icon';
-import { cotisStatus, daysUntil, dueLabel, formatDay, fullName, isOverdue, loadBureau, loadMembers, supabase, today, useAsync } from '../lib';
+import { cotisStatus, daysUntil, dueLabel, formatDay, fullName, isOverdue, loadBureau, loadMembers, supabase, toast, today, useAsync } from '../lib';
 
 export function Overview({ profile }: PageProps) {
   const members = useAsync(loadMembers, []);
@@ -11,7 +13,20 @@ export function Overview({ profile }: PageProps) {
     return data as { id: number; titre: string; date: string; participation: boolean }[];
   }, []);
 
-  if (members.loading) return <><div className="stats">{[0,1,2,3].map((i) => <div key={i} className="card stat"><Skeleton lines={2} /></div>)}</div><div className="card"><Skeleton lines={5} /></div></>;
+  // Cocher une tâche ici la termine, comme dans le Pilotage : elle reste cochée un instant, puis disparaît.
+  const [ticked, setTicked] = useState<Set<number>>(new Set());
+  async function finish(id: number) {
+    setTicked((s) => new Set(s).add(id));
+    const { error } = await supabase.from('taches').update({ statut: 'Terminé' }).eq('id', id);
+    if (error) {
+      setTicked((s) => { const n = new Set(s); n.delete(id); return n; });
+      return toast(error.message, 'error');
+    }
+    toast('Tâche terminée ✓');
+    setTimeout(bureau.reload, 700);
+  }
+
+  if (members.loading && !members.data) return <><div className="stats">{[0,1,2,3].map((i) => <div key={i} className="card stat"><Skeleton lines={2} /></div>)}</div><div className="card"><Skeleton lines={5} /></div></>;
   if (members.error) return <p className="error">{members.error}</p>;
   const all = members.data!;
   const waiting = all.filter((m) => !m.inscrit);
@@ -26,19 +41,20 @@ export function Overview({ profile }: PageProps) {
   const mine = openTasks.filter((t) => t.responsable === profile.id).sort((x, y) => (x.echeance ?? '9999').localeCompare(y.echeance ?? '9999'));
   const hour = new Date().getHours();
 
+
   return (
     <>
       <p className="hello">{hour < 18 ? 'Bonjour' : 'Bonsoir'} {profile.prenom ?? ''} 👋</p>
       <div className="stats">
         <Stat icon="users" tone="brand" label="Adhérents" value={all.length} href="#adherents" />
-        <Stat icon="check" tone="ok" label="Cotisations à jour" value={upToDate} href="#adherents" />
-        <Stat icon="alert" tone={toChase ? 'warn' : 'ok'} label="À relancer" value={toChase} href="#adherents?filtre=a_relancer" />
-        <Stat icon="mail" tone="info" label="Pas encore inscrits" value={waiting.length} href="#adherents?filtre=non_inscrits" />
+        <Stat icon="check" tone="ok" label="Cotisations à jour" value={upToDate} href="#cotisations?filtre=a_jour" />
+        <Stat icon="alert" tone={toChase ? 'warn' : 'ok'} label="À relancer" value={toChase} href="#cotisations?filtre=a_relancer" />
+        <Stat icon="mail" tone="info" label="Pas encore inscrits" value={waiting.length} href="#adherents?onglet=acces" />
       </div>
 
       <div className="grid2">
         <section className="card">
-          <div className="head"><h2>Cotisations</h2><a href="#adherents?filtre=a_relancer">Voir les adhérents à relancer →</a></div>
+          <div className="head"><h2>Cotisations</h2><a href="#cotisations?filtre=a_relancer">Voir les adhérents à relancer →</a></div>
           <div className="donut-wrap">
             <Donut parts={[{ v: upToDate, c: 'var(--ok)' }, { v: expired, c: 'var(--bad)' }, { v: never, c: 'var(--line-strong)' }]} label={all.length ? `${Math.round((upToDate / all.length) * 100)} %` : '—'} />
             <ul className="legend">
@@ -54,8 +70,10 @@ export function Overview({ profile }: PageProps) {
           {bureau.loading && !b ? <Skeleton lines={3} /> : mine.length ? (
             <ul className="todo compact">
               {mine.slice(0, 5).map((t) => (
-                <li key={t.id}>
-                  <span className="check static" />
+                <li key={t.id} className={ticked.has(t.id) ? 'done row-out' : ''}>
+                  <button className={'check' + (ticked.has(t.id) ? ' on' : '')} aria-label="Terminer la tâche" title="Terminer la tâche" disabled={ticked.has(t.id)} onClick={() => finish(t.id)}>
+                    {ticked.has(t.id) && <Icon name="check" size={12} />}
+                  </button>
                   <div className="grow"><div className="t-title">{t.libelle}</div></div>
                   {t.echeance && <span className={'due' + (isOverdue(t.echeance, t.statut) ? ' late' : '')}>{dueLabel(t.echeance)}</span>}
                 </li>
@@ -73,9 +91,11 @@ export function Overview({ profile }: PageProps) {
                 const d = daysUntil(e.date);
                 return (
                   <li key={e.id}>
+                    <a className="row-link" href={`#evenements?id=${e.id}`}>
                     <span className="date-chip"><b>{new Date(e.date + 'T00:00:00').getDate()}</b>{new Date(e.date + 'T00:00:00').toLocaleDateString('fr-FR', { month: 'short' })}</span>
                     <span className="grow">{e.titre}</span>
                     <span className="muted small">{d === 0 ? 'aujourd’hui' : d === 1 ? 'demain' : `dans ${d} j`}</span>
+                    </a>
                   </li>
                 );
               })}

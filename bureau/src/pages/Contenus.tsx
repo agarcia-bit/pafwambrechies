@@ -20,7 +20,7 @@ export function Contenus({ kind, profile }: PageProps & { kind: keyof typeof COL
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<number | 'new' | null>(null);
 
-  if ((rows.loading && !rows.data) || config.loading) return <div className="card"><Skeleton lines={6} /></div>;
+  if ((rows.loading && !rows.data) || (config.loading && !config.data)) return <div className="card"><Skeleton lines={6} /></div>;
   if (rows.error) return <p className="error">{rows.error}</p>;
   const all = rows.data!;
   const needle = q.trim().toLowerCase();

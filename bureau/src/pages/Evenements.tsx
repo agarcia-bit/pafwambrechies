@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { PageProps } from '../App';
 import { Compose } from '../Compose';
 import { Drawer } from '../Drawer';
 import { Empty, Icon, Skeleton } from '../Icon';
-import { daysUntil, formatDay, fullName, loadMembers, supabase, today, toast, useAsync, type Recipient } from '../lib';
+import { daysUntil, formatDay, fullName, hashParam, loadMembers, supabase, today, toast, useAsync, type Recipient } from '../lib';
 
 type Ev = { id: number; titre: string; date: string; heure: string | null; lieu: string | null; description: string | null; participation: boolean };
 type Reponse = 'present' | 'absent' | 'indecis';
@@ -12,7 +12,13 @@ type Member = { id: string | null; prenom: string | null; nom: string | null; em
 
 export function Evenements({ profile }: PageProps) {
   const [past, setPast] = useState(false);
-  const [open, setOpen] = useState<number | 'new' | null>(null);
+  // #evenements?id=12 ouvre directement l'événement (liens de la vue d'ensemble et du Pilotage).
+  const [open, setOpen] = useState<number | 'new' | null>(() => Number(hashParam('id')) || null);
+  useEffect(() => {
+    const on = () => { const id = Number(hashParam('id')); if (id) setOpen(id); };
+    addEventListener('hashchange', on);
+    return () => removeEventListener('hashchange', on);
+  }, []);
   // Tout est chargé en trois requêtes, quel que soit le nombre d'événements.
   const data = useAsync(async () => {
     const [ev, rep, members] = await Promise.all([

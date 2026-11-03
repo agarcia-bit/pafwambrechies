@@ -1,11 +1,13 @@
 // Sends an e-mail from the bureau to members (bureau web dashboard) and records it in
 // public.envois / envoi_destinataires (supabase/envois.sql). Called with the member's JWT:
 // the caller must be bureau or admin of their association. Provider: Resend, one message
-// per recipient (nobody sees the other addresses), "reply-to" set to the sender.
+// per recipient (nobody sees the other addresses).
 //
 // Sender: each association sends under its own name and address on the platform domain,
-// e.g. "PAF Wambrechies <paf-wambrechies@monallianceo.fr>" (no mailbox needed: replies go to
-// the bureau member through reply-to).
+// e.g. "PAF Wambrechies <paf-wambrechies@monallianceo.fr>", and signs with its name only: never
+// the bureau member's, so a phone does not offer to answer their personal address. Replies go
+// to the association's contact address (setting contact_email) when there is one; otherwise
+// the message asks not to reply, as the platform address has no mailbox.
 //
 // Secrets: RESEND_API_KEY (required), MAIL_DOMAIN (a domain verified in Resend, e.g.
 // "monallianceo.fr"). Without MAIL_DOMAIN, Resend's test address is used (it only delivers to
@@ -71,16 +73,18 @@ Deno.serve(async (req) => {
 
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const { data: tenant } = await sb.from("tenants").select("name, slug").eq("id", profile.tenant_id).single();
-  const { data: branding } = await sb.from("app_settings").select("value")
-    .eq("tenant_id", profile.tenant_id).eq("key", "tenant_name").maybeSingle();
-  const sender = [profile.prenom, profile.nom].filter(Boolean).join(" ") || profile.email || "Le bureau";
+  const { data: settings } = await sb.from("app_settings").select("key, value")
+    .eq("tenant_id", profile.tenant_id).in("key", ["tenant_name", "contact_email"]);
+  const setting = (key: string) => settings?.find((s) => s.key === key)?.value?.trim() ?? "";
   // The name the association chose in its settings, else the platform's record.
-  const assoc = branding?.value?.trim() || tenant?.name || "Votre association";
+  const assoc = setting("tenant_name") || tenant?.name || "Votre association";
+  const contact = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(setting("contact_email")) ? setting("contact_email") : null;
   const from = senderFor(assoc, tenant?.slug ?? "");
-  const text = `${corps}\n\n—\n${sender}, pour ${assoc}`;
+  const footer = contact ? assoc : `${assoc} · Merci de ne pas répondre directement à cet e-mail.`;
+  const text = `${corps}\n\n—\n${footer}`;
   const html = `<div style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.55;color:#1f2937">` +
     `<p>${escapeHtml(corps).replace(/\n/g, "<br>")}</p>` +
-    `<p style="color:#6b7280;font-size:13px;margin-top:24px">— ${escapeHtml(sender)}, pour ${escapeHtml(assoc)}</p></div>`;
+    `<p style="color:#6b7280;font-size:13px;margin-top:24px">— ${escapeHtml(footer)}</p></div>`;
 
   const failed = new Set<string>();
   let rateLimited = false;
@@ -98,7 +102,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify(batch.map((r) => ({
           from,
           to: [r.email],
-          reply_to: profile.email ?? undefined,
+          ...(contact ? { reply_to: contact } : {}),
           subject: sujet,
           text,
           html,
