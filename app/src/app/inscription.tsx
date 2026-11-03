@@ -91,11 +91,24 @@ function AccountForm({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  // The member is on the bureau's list: their name comes from it, they only add a password.
+  const [found, setFound] = useState<string | null>(null);
   const name = association.tenant_name || association.name;
   const { colors } = useTheme();
   const { labels } = tenantConfig(association);
   // The association chooses what this field is called: a company, or a plain last name.
   const isCompany = /entreprise|société|societe|raison/i.test(labels.nom);
+
+  async function prefill() {
+    const address = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address) || address === found) return;
+    const { data } = await supabase.rpc('signup_prefill', { p_code: code, p_email: address });
+    const row = data as { prenom: string | null; nom: string | null } | null;
+    if (!row) return;
+    setFound(address);
+    if (row.prenom && !prenom.trim()) setPrenom(row.prenom);
+    if (row.nom && !nom.trim()) setNom(row.nom);
+  }
 
   async function signUp() {
     if (!prenom.trim() || !nom.trim() || !email.trim() || !password) {
@@ -155,6 +168,11 @@ function AccountForm({
       </Card>
       <Button title="Ce n’est pas mon association" variant="plain" onPress={onChangeCode} />
 
+      {found && (
+        <Text variant="footnote" tone="secondary">
+          Vous êtes sur la liste de {name} : votre prénom et votre nom sont pré-remplis, vérifiez-les.
+        </Text>
+      )}
       <TextField label="Prénom" value={prenom} onChangeText={setPrenom} autoComplete="given-name" textContentType="givenName" />
       <TextField
         label={labels.nom}
@@ -172,6 +190,8 @@ function AccountForm({
         autoCorrect={false}
         autoComplete="email"
         keyboardType="email-address"
+        onBlur={prefill}
+        onSubmitEditing={prefill}
         textContentType="username"
       />
       <TextField
