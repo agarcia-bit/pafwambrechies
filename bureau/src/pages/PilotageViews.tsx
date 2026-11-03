@@ -87,7 +87,7 @@ export function SidePanel({ taches, actions, members, me, onToggle, onOpen, even
   // Les 30 prochains jours : actions du bureau et événements de l'agenda, mêlés par date.
   const horizon = [
     ...actions.filter((a) => a.statut !== 'Terminé' && a.date_action >= today()).map((a) => ({ k: 'a' + a.id, date: a.date_action, text: `${a.emoji || '📌'} ${a.titre}`, open: () => onOpen(a.id) })),
-    ...events.map((e) => ({ k: 'e' + e.id, date: e.date, text: e.titre, open: () => { location.hash = 'evenements'; } })),
+    ...events.map((e) => ({ k: 'e' + e.id, date: e.date, text: e.titre, open: () => { location.hash = `evenements?id=${e.id}`; } })),
   ].filter((i) => daysUntil(i.date) <= 30).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
   return (
     <aside className="side-panel">

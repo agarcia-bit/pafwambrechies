@@ -9,7 +9,7 @@ import {
   today, toast, useAsync, type CotisConfig, type MemberRow, type Recipient,
 } from '../lib';
 
-type Filter = 'tous' | 'a_relancer' | 'non_inscrits';
+type Filter = 'tous' | 'a_jour' | 'a_relancer' | 'non_inscrits';
 type SortKey = 'nom' | 'cotisation';
 const PAGE = 50;
 
@@ -33,7 +33,7 @@ export function Adherents({ profile }: PageProps) {
   // Un lien « À relancer » de la vue d'ensemble arrive avec ?filtre=a_relancer
   useEffect(() => {
     const f = new URLSearchParams(location.hash.split('?')[1] ?? '').get('filtre');
-    if (f === 'a_relancer' || f === 'non_inscrits') setFilter(f);
+    if (f === 'a_jour' || f === 'a_relancer' || f === 'non_inscrits') setFilter(f);
   }, []);
   useEffect(() => setPage(0), [q, filter, sort]);
   // La date proposée pour le pointage suit la campagne en cours.
@@ -43,6 +43,7 @@ export function Adherents({ profile }: PageProps) {
     const needle = q.trim().toLowerCase();
     const list = (members.data ?? []).filter((m) => {
       if (filter === 'a_relancer' && cotisStatus(m.valide_jusqu) === 'a_jour') return false;
+      if (filter === 'a_jour' && cotisStatus(m.valide_jusqu) !== 'a_jour') return false;
       if (filter === 'non_inscrits' && m.inscrit) return false;
       return !needle || `${fullName(m)} ${m.email ?? ''}`.toLowerCase().includes(needle);
     });
@@ -133,7 +134,7 @@ export function Adherents({ profile }: PageProps) {
       <div className="toolbar">
         <div className="search"><Icon name="search" size={16} /><input type="search" placeholder="Rechercher un nom ou un e-mail" value={q} onChange={(e) => setQ(e.target.value)} /></div>
         <div className="chips">
-          {([['tous', `Tous (${all.length})`], ['a_relancer', `À relancer (${all.length - upToDate.length})`], ['non_inscrits', `Pas inscrits (${all.filter((m) => !m.inscrit).length})`]] as [Filter, string][]).map(([k, l]) => (
+          {([['tous', `Tous (${all.length})`], ['a_jour', `À jour (${upToDate.length})`], ['a_relancer', `À relancer (${all.length - upToDate.length})`], ['non_inscrits', `Pas inscrits (${all.filter((m) => !m.inscrit).length})`]] as [Filter, string][]).map(([k, l]) => (
             <button key={k} className={filter === k ? 'chip on' : 'chip'} onClick={() => setFilter(k)}>{l}</button>
           ))}
         </div>

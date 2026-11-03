@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { PageProps } from '../App';
 import { Drawer } from '../Drawer';
 import { Thread, useUnread } from '../Discussion';
 import { Icon, Skeleton } from '../Icon';
 import {
-  ACTION_STATUTS, dueLabel, isOverdue, loadBureau, nameOf, PRIORITES, supabase, today, toast, useAsync,
+  ACTION_STATUTS, dueLabel, hashParam, isOverdue, loadBureau, nameOf, PRIORITES, supabase, today, toast, useAsync,
   type Action, type BureauMember, type Tache,
 } from '../lib';
 import { Chronologie, Equipe, SidePanel, TONE, type CalEvent } from './PilotageViews';
@@ -26,7 +26,12 @@ export function Pilotage({ profile }: PageProps) {
   const unread = useUnread(profile.tenant_id);
   const [onlyMe, setOnlyMe] = useState(false);
   // #pilotage?action=12 ouvre directement la fiche (lien depuis la page Discussion).
-  const [open, setOpen] = useState<number | 'new' | null>(() => Number(new URLSearchParams(location.hash.split('?')[1]).get('action')) || null);
+  const [open, setOpen] = useState<number | 'new' | null>(() => Number(hashParam('action')) || null);
+  useEffect(() => {
+    const on = () => { const id = Number(hashParam('action')); if (id) setOpen(id); };
+    addEventListener('hashchange', on);
+    return () => removeEventListener('hashchange', on);
+  }, []);
   const [view, setViewState] = useState<string>(() => { try { const v = localStorage.getItem('pilotage-vue'); return v === 'equipe' ? v : 'chrono'; } catch { return 'chrono'; } });
   const setView = (v: string) => { setViewState(v); try { localStorage.setItem('pilotage-vue', v); } catch { /* sans stockage */ } };
 

@@ -339,3 +339,5 @@ main { container-type: inline-size; }
 
 .cotis-card { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; border-left: 4px solid var(--brand); }
 .cotis-card h2 { margin-bottom: 2px; }
+.row-link { display: flex; align-items: center; gap: 12px; width: 100%; color: inherit; text-decoration: none; border-radius: 8px; }
+.row-link:hover { text-decoration: none; background: var(--panel-2); } .row-link:hover .grow { color: var(--brand); }

@@ -36,6 +36,9 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
   return { ...state, reload };
 }
 
+/** Paramètre de l'adresse après le « ? » du hash (#page?cle=valeur). */
+export const hashParam = (name: string) => new URLSearchParams(location.hash.split('?')[1] ?? '').get(name);
+
 export const fullName = (p: { prenom?: string | null; nom?: string | null; email?: string | null }) =>
   [p.prenom, p.nom].filter(Boolean).join(' ') || p.email || '—';
 

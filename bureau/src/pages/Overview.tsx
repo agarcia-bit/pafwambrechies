@@ -13,6 +13,19 @@ export function Overview({ profile }: PageProps) {
     return data as { id: number; titre: string; date: string; participation: boolean }[];
   }, []);
 
+  // Cocher une tâche ici la termine, comme dans le Pilotage : elle reste cochée un instant, puis disparaît.
+  const [ticked, setTicked] = useState<Set<number>>(new Set());
+  async function finish(id: number) {
+    setTicked((s) => new Set(s).add(id));
+    const { error } = await supabase.from('taches').update({ statut: 'Terminé' }).eq('id', id);
+    if (error) {
+      setTicked((s) => { const n = new Set(s); n.delete(id); return n; });
+      return toast(error.message, 'error');
+    }
+    toast('Tâche terminée ✓');
+    setTimeout(bureau.reload, 700);
+  }
+
   if (members.loading && !members.data) return <><div className="stats">{[0,1,2,3].map((i) => <div key={i} className="card stat"><Skeleton lines={2} /></div>)}</div><div className="card"><Skeleton lines={5} /></div></>;
   if (members.error) return <p className="error">{members.error}</p>;
   const all = members.data!;
@@ -28,25 +41,13 @@ export function Overview({ profile }: PageProps) {
   const mine = openTasks.filter((t) => t.responsable === profile.id).sort((x, y) => (x.echeance ?? '9999').localeCompare(y.echeance ?? '9999'));
   const hour = new Date().getHours();
 
-  // Cocher une tâche ici la termine, comme dans le Pilotage : elle reste cochée un instant, puis disparaît.
-  const [ticked, setTicked] = useState<Set<number>>(new Set());
-  async function finish(id: number) {
-    setTicked((s) => new Set(s).add(id));
-    const { error } = await supabase.from('taches').update({ statut: 'Terminé' }).eq('id', id);
-    if (error) {
-      setTicked((s) => { const n = new Set(s); n.delete(id); return n; });
-      return toast(error.message, 'error');
-    }
-    toast('Tâche terminée ✓');
-    setTimeout(bureau.reload, 700);
-  }
 
   return (
     <>
       <p className="hello">{hour < 18 ? 'Bonjour' : 'Bonsoir'} {profile.prenom ?? ''} 👋</p>
       <div className="stats">
         <Stat icon="users" tone="brand" label="Adhérents" value={all.length} href="#adherents" />
-        <Stat icon="check" tone="ok" label="Cotisations à jour" value={upToDate} href="#adherents" />
+        <Stat icon="check" tone="ok" label="Cotisations à jour" value={upToDate} href="#adherents?filtre=a_jour" />
         <Stat icon="alert" tone={toChase ? 'warn' : 'ok'} label="À relancer" value={toChase} href="#adherents?filtre=a_relancer" />
         <Stat icon="mail" tone="info" label="Pas encore inscrits" value={waiting.length} href="#adherents?filtre=non_inscrits" />
       </div>
@@ -90,9 +91,11 @@ export function Overview({ profile }: PageProps) {
                 const d = daysUntil(e.date);
                 return (
                   <li key={e.id}>
+                    <a className="row-link" href={`#evenements?id=${e.id}`}>
                     <span className="date-chip"><b>{new Date(e.date + 'T00:00:00').getDate()}</b>{new Date(e.date + 'T00:00:00').toLocaleDateString('fr-FR', { month: 'short' })}</span>
                     <span className="grow">{e.titre}</span>
                     <span className="muted small">{d === 0 ? 'aujourd’hui' : d === 1 ? 'demain' : `dans ${d} j`}</span>
+                    </a>
                   </li>
                 );
               })}
