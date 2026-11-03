@@ -16,6 +16,7 @@ import { Pilotage } from './pages/Pilotage';
 import { Reglages } from './pages/Reglages';
 import { Sondages } from './pages/Sondages';
 import { Avatar, Icon, Skeleton } from './Icon';
+import { applyBranding } from './theme';
 import { Toasts } from './Toasts';
 
 type Page = { path: string; label: string; icon: string; sub: string; el: (p: PageProps) => JSX.Element; section?: string; admin?: boolean };
@@ -194,13 +195,30 @@ function Shell({ userId }: { userId: string }) {
   const me = useAsync(async () => {
     const { data, error } = await supabase.from('profiles').select('id, prenom, nom, email, role, tenant_id').eq('id', userId).single();
     if (error) throw error;
-    const { data: t } = await supabase.from('tenants').select('name').eq('id', data.tenant_id).maybeSingle();
-    return { profile: data as Profile, association: (t?.name as string | undefined) ?? 'Mon association' };
+    const [{ data: t }, { data: b }] = await Promise.all([
+      supabase.from('tenants').select('name').eq('id', data.tenant_id).maybeSingle(),
+      supabase.rpc('get_my_branding'),
+    ]);
+    const branding = (b ?? {}) as Record<string, string | undefined>;
+    return {
+      profile: data as Profile,
+      association: branding.tenant_name?.trim() || (t?.name as string | undefined) || 'Mon association',
+      logo: branding.tenant_logo_url?.trim() || null,
+      colors: { primary: branding.tenant_primary_color, banner: branding.tenant_secondary_color },
+    };
   }, [userId]);
+  // Les couleurs de l'association, comme dans l'app ; à nouveau après un changement dans les Réglages.
+  const colors = me.data?.colors;
+  useEffect(() => { if (colors) applyBranding(colors.primary, colors.banner); }, [colors]);
+  const reloadMe = me.reload;
+  useEffect(() => {
+    addEventListener('branding-change', reloadMe);
+    return () => removeEventListener('branding-change', reloadMe);
+  }, [reloadMe]);
 
-  if (me.loading) return <div className="center"><div className="card" style={{ width: 320 }}><Skeleton lines={4} /></div></div>;
+  if (me.loading && !me.data) return <div className="center"><div className="card" style={{ width: 320 }}><Skeleton lines={4} /></div></div>;
   if (!me.data) return <Denied text="Impossible de charger votre profil." />;
-  const { profile, association } = me.data;
+  const { profile, association, logo } = me.data;
   if (profile.role === 'adherent') return <Denied text="Cet espace est réservé au bureau. Utilisez l’application sur votre téléphone." />;
 
   const pages = PAGES.filter((p) => !p.admin || profile.role === 'admin');
@@ -210,7 +228,10 @@ function Shell({ userId }: { userId: string }) {
     <div className={'shell' + (chatOpen ? ' with-chat' : '')}>
       <Toasts />
       <aside className="nav">
-        <div className="brand"><span className="logo sm">A</span><div>Allianceo<small>{association}</small></div></div>
+        <div className="brand">
+          {logo ? <img className="logo sm" src={logo} alt="" /> : <span className="logo sm">{association.slice(0, 1).toUpperCase()}</span>}
+          <div className="grow">{association}<small>Espace bureau</small></div>
+        </div>
         <nav>
           {pages.map((p) => (
             <Fragment key={p.path}>
