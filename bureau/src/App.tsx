@@ -1,7 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { Fragment, useEffect, useState } from 'react';
 
-import { fullName, supabase, useAsync, type Profile } from './lib';
+import { clearAsyncCache, fullName, supabase, useAsync, type Profile } from './lib';
 import { Adherents } from './pages/Adherents';
 import { Contenus } from './pages/Contenus';
 import { Documents } from './pages/Documents';
@@ -57,7 +57,7 @@ export function App() {
     const { data } = supabase.auth.onAuthStateChange((e, s) => {
       setSession(s);
       if (e === 'PASSWORD_RECOVERY') setRecovery(true);
-      if (e === 'SIGNED_OUT') setRecovery(false);
+      if (e === 'SIGNED_OUT') { setRecovery(false); clearAsyncCache(); }
     });
     return () => data.subscription.unsubscribe();
   }, []);

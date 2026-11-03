@@ -330,3 +330,9 @@ th.num, td.num, .num { text-align: right; font-variant-numeric: tabular-nums; }
 /* La page rétrécit quand la discussion est ouverte : le panneau latéral du Pilotage passe dessous. */
 main { container-type: inline-size; }
 @container (max-width: 900px) { .with-side { grid-template-columns: 1fr; } .side-panel { position: static; } }
+/* « Mes tâches » de la vue d'ensemble */
+.todo { list-style: none; margin: 0; padding: 0; }
+.todo li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); transition: opacity .3s; } .todo li:last-child { border: 0; }
+.todo li.done { opacity: .55; } .todo li.done .t-title { text-decoration: line-through; }
+.todo .check { margin-top: 0; cursor: pointer; } .todo .check:disabled { cursor: default; }
+.t-title { font-weight: 500; }

@@ -7,7 +7,7 @@ import { parseList, supabase, toast, uploadPhoto, useAsync } from '../lib';
 // Mêmes clés que l'écran Réglages de l'application (app_settings, une ligne par clé).
 const KEYS = ['signup_code', 'tenant_name', 'tenant_tagline', 'tenant_primary_color', 'tenant_secondary_color', 'tenant_logo_url', 'tenant_login_bg_url',
   'module_annuaire', 'module_offres', 'module_agenda', 'module_idees', 'module_liens', 'module_documents',
-  'label_annuaire', 'label_offres', 'label_nom', 'annuaire_categories', 'offres_categories', 'module_cotisations'] as const;
+  'label_annuaire', 'label_offres', 'label_nom', 'annuaire_categories', 'offres_categories', 'module_cotisations', 'contact_email'] as const;
 type Key = (typeof KEYS)[number];
 type Settings = Record<Key, string>;
 const MODULES: { key: Key; label: string; hint: string }[] = [
@@ -79,6 +79,10 @@ export function Reglages({ profile }: PageProps) {
         <div className="form">
           <label>Nom de l’association<input type="text" value={s.tenant_name} onChange={(e) => set('tenant_name')(e.target.value)} /></label>
           <label>Sous-titre<input type="text" value={s.tenant_tagline} onChange={(e) => set('tenant_tagline')(e.target.value)} placeholder="Ex. : Les commerçants de Wambrechies" /></label>
+          <label>Adresse e-mail de contact de l’association
+            <input type="email" value={s.contact_email} onChange={(e) => set('contact_email')(e.target.value)} placeholder="Ex. : contact@mon-association.fr" />
+            <small className="muted">Les e-mails envoyés depuis Allianceo sont signés du nom de l’association ; les réponses des adhérents arrivent à cette adresse. Laissée vide, les e-mails demandent de ne pas y répondre.</small>
+          </label>
           <div className="form-row">
             <label>Couleur principale<span className="color-field"><input type="color" value={/^#[0-9a-f]{6}$/i.test(s.tenant_primary_color) ? s.tenant_primary_color : '#4f46e5'} onChange={(e) => set('tenant_primary_color')(e.target.value)} /><input type="text" value={s.tenant_primary_color} onChange={(e) => set('tenant_primary_color')(e.target.value)} placeholder="#4F46E5" /></span></label>
           </div>

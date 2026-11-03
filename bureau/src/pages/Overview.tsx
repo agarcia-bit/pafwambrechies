@@ -1,6 +1,8 @@
+import { useState } from 'react';
+
 import type { PageProps } from '../App';
 import { Empty, Icon, Skeleton } from '../Icon';
-import { cotisStatus, daysUntil, dueLabel, formatDay, fullName, isOverdue, loadBureau, loadMembers, supabase, today, useAsync } from '../lib';
+import { cotisStatus, daysUntil, dueLabel, formatDay, fullName, isOverdue, loadBureau, loadMembers, supabase, toast, today, useAsync } from '../lib';
 
 export function Overview({ profile }: PageProps) {
   const members = useAsync(loadMembers, []);
@@ -11,7 +13,7 @@ export function Overview({ profile }: PageProps) {
     return data as { id: number; titre: string; date: string; participation: boolean }[];
   }, []);
 
-  if (members.loading) return <><div className="stats">{[0,1,2,3].map((i) => <div key={i} className="card stat"><Skeleton lines={2} /></div>)}</div><div className="card"><Skeleton lines={5} /></div></>;
+  if (members.loading && !members.data) return <><div className="stats">{[0,1,2,3].map((i) => <div key={i} className="card stat"><Skeleton lines={2} /></div>)}</div><div className="card"><Skeleton lines={5} /></div></>;
   if (members.error) return <p className="error">{members.error}</p>;
   const all = members.data!;
   const waiting = all.filter((m) => !m.inscrit);
@@ -25,6 +27,19 @@ export function Overview({ profile }: PageProps) {
   const late = openTasks.filter((t) => isOverdue(t.echeance, t.statut));
   const mine = openTasks.filter((t) => t.responsable === profile.id).sort((x, y) => (x.echeance ?? '9999').localeCompare(y.echeance ?? '9999'));
   const hour = new Date().getHours();
+
+  // Cocher une tâche ici la termine, comme dans le Pilotage : elle reste cochée un instant, puis disparaît.
+  const [ticked, setTicked] = useState<Set<number>>(new Set());
+  async function finish(id: number) {
+    setTicked((s) => new Set(s).add(id));
+    const { error } = await supabase.from('taches').update({ statut: 'Terminé' }).eq('id', id);
+    if (error) {
+      setTicked((s) => { const n = new Set(s); n.delete(id); return n; });
+      return toast(error.message, 'error');
+    }
+    toast('Tâche terminée ✓');
+    setTimeout(bureau.reload, 700);
+  }
 
   return (
     <>
@@ -54,8 +69,10 @@ export function Overview({ profile }: PageProps) {
           {bureau.loading && !b ? <Skeleton lines={3} /> : mine.length ? (
             <ul className="todo compact">
               {mine.slice(0, 5).map((t) => (
-                <li key={t.id}>
-                  <span className="check static" />
+                <li key={t.id} className={ticked.has(t.id) ? 'done' : ''}>
+                  <button className={'check' + (ticked.has(t.id) ? ' on' : '')} aria-label="Terminer la tâche" title="Terminer la tâche" disabled={ticked.has(t.id)} onClick={() => finish(t.id)}>
+                    {ticked.has(t.id) && <Icon name="check" size={12} />}
+                  </button>
                   <div className="grow"><div className="t-title">{t.libelle}</div></div>
                   {t.echeance && <span className={'due' + (isOverdue(t.echeance, t.statut) ? ' late' : '')}>{dueLabel(t.echeance)}</span>}
                 </li>

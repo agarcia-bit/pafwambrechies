@@ -10,21 +10,28 @@ export const supabase = createClient(
 export type Role = 'adherent' | 'bureau' | 'admin';
 export type Profile = { id: string; prenom: string | null; nom: string | null; email: string | null; role: Role; tenant_id: string };
 
+// Dernier résultat de chaque chargement, gardé le temps de la session : en revenant sur une page,
+// elle s'affiche tout de suite avec ces données, puis se met à jour en arrière-plan.
+const cache = new Map<string, unknown>();
+export const clearAsyncCache = () => cache.clear();
+
 export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
-  const [state, setState] = useState<{ data?: T; error?: string; loading: boolean }>({ loading: true });
+  const key = fn.toString() + JSON.stringify(deps);
+  const [state, setState] = useState<{ data?: T; error?: string; loading: boolean }>(() =>
+    cache.has(key) ? { data: cache.get(key) as T, loading: false } : { loading: true });
   const [tick, setTick] = useState(0);
   useEffect(() => {
     let live = true;
     setState((s) => ({ ...s, loading: true }));
     fn().then(
-      (data) => live && setState({ data, loading: false }),
-      (e) => live && setState({ error: e?.message ?? 'Erreur', loading: false })
+      (data) => { cache.set(key, data); if (live) setState({ data, loading: false }); },
+      (e) => live && setState((s) => ({ data: s.data, error: e?.message ?? 'Erreur', loading: false }))
     );
     return () => {
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...deps, tick]);
+  }, [key, tick]);
   const reload = useCallback(() => setTick((t) => t + 1), []);
   return { ...state, reload };
 }
