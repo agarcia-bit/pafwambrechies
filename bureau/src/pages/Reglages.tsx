@@ -59,6 +59,7 @@ export function Reglages({ profile }: PageProps) {
     if (error) return toast(error.message, 'error');
     toast('Réglages enregistrés : l’app se met à jour au prochain lancement');
     saved.reload();
+    dispatchEvent(new Event('branding-change'));
   }
 
   return (
