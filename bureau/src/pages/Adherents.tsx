@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import type { PageProps } from '../App';
 import { Compose } from '../Compose';
 import { Drawer as Panel } from '../Drawer';
 import { Avatar, Empty, Icon, Skeleton } from '../Icon';
@@ -14,7 +15,7 @@ const PAGE = 50;
 
 const asRecipient = (m: MemberRow): Recipient => ({ email: m.email!, user_id: m.id });
 
-export function Adherents() {
+export function Adherents({ profile }: PageProps) {
   const members = useAsync(loadMembers, []);
   const config = useAsync(loadCotisConfig, []);
   const sends = useAsync(loadLastSends, []);
@@ -110,10 +111,24 @@ export function Adherents() {
         {montant > 0 && <Kpi value={euros(montant)} label={`cotisation${config.data?.libelle ? ' ' + config.data.libelle : ''}`} />}
         {montant > 0 && <Kpi value={euros(upToDate.length * montant)} label="encaissé (à jour × montant)" tone="brand" />}
         {montant > 0 && all.length - upToDate.length > 0 && <Kpi value={euros((all.length - upToDate.length) * montant)} label="à encaisser" tone="warn" />}
-        <button className="kpi kpi-btn" onClick={() => setSettings(true)} title="Montant, libellé, campagne de renouvellement">
-          <Icon name="edit" size={16} /><span>{montant > 0 ? 'Réglages' : 'Définir le montant'}</span>
-        </button>
       </div>
+
+      {/* La cotisation en clair : ce qui est demandé, la campagne, et comment pointer un paiement. */}
+      <section className="card cotis-card">
+        <div className="grow">
+          <h2>Cotisation{config.data?.libelle ? ` ${config.data.libelle}` : ''}</h2>
+          <p className="muted small">
+            {montant > 0 ? euros(montant) : 'Montant non défini'}
+            {config.data?.ouverture && config.data?.fin ? ` · campagne de renouvellement du ${formatDay(config.data.ouverture)} au ${formatDay(config.data.fin)}` : ' · pas de campagne de renouvellement'}
+            {config.data?.url ? ' · paiement en ligne activé' : ''}
+          </p>
+          <p className="small" style={{ margin: '6px 0 0' }}>Pour enregistrer un paiement : cochez des adhérents dans la liste puis « Marquer payé », ou cliquez sur un adhérent.</p>
+          {config.data && !config.data.module && (
+            <p className="note small" style={{ margin: '8px 0 0' }}>Les adhérents ne voient pas encore leur cotisation dans l’application : {profile.role === 'admin' ? <>activez la section « Cotisations » dans <a href="#reglages">Réglages</a>.</> : 'un administrateur peut activer la section « Cotisations » dans les Réglages.'}</p>
+          )}
+        </div>
+        <button className="primary" onClick={() => setSettings(true)}><Icon name="edit" size={15} /> {montant > 0 ? 'Montant et campagne' : 'Définir la cotisation'}</button>
+      </section>
 
       <div className="toolbar">
         <div className="search"><Icon name="search" size={16} /><input type="search" placeholder="Rechercher un nom ou un e-mail" value={q} onChange={(e) => setQ(e.target.value)} /></div>
@@ -279,7 +294,7 @@ function SettingsDrawer({ config, onClose, onChanged }: { config?: CotisConfig; 
           <label>Ouverture<input type="date" value={f.ouverture} onChange={(e) => set('ouverture', e.target.value)} /></label>
           <label>Valable jusqu’au<input type="date" value={f.fin} onChange={(e) => set('fin', e.target.value)} /></label>
         </div>
-        {!config?.module && <p className="note small">Le module Cotisations n’est pas activé pour l’application : les adhérents ne voient pas encore leur situation. Un administrateur peut l’activer depuis les réglages de l’app.</p>}
+        {!config?.module && <p className="note small">Le module Cotisations n’est pas activé pour l’application : les adhérents ne voient pas encore leur situation. Un administrateur peut l’activer dans Réglages, rubrique « Sections de l’app ».</p>}
       </div>
     </Panel>
   );

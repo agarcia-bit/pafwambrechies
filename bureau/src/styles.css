@@ -336,3 +336,6 @@ main { container-type: inline-size; }
 .todo li.done { opacity: .55; } .todo li.done .t-title { text-decoration: line-through; }
 .todo .check { margin-top: 0; cursor: pointer; } .todo .check:disabled { cursor: default; }
 .t-title { font-weight: 500; }
+
+.cotis-card { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; border-left: 4px solid var(--brand); }
+.cotis-card h2 { margin-bottom: 2px; }

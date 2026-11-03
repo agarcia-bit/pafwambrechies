@@ -23,7 +23,7 @@ type Page = { path: string; label: string; icon: string; sub: string; el: (p: Pa
 const PAGES: Page[] = [
   { path: 'accueil', label: 'Vue d’ensemble', icon: 'home', sub: 'L’essentiel de votre association en un coup d’œil', el: Overview },
   { path: 'pilotage', label: 'Pilotage', icon: 'tasks', sub: 'Les actions du bureau et la liste des choses à faire', el: Pilotage },
-  { path: 'adherents', label: 'Adhérents', icon: 'users', sub: 'Cotisations, relances et messages', el: Adherents, section: 'Association' },
+  { path: 'adherents', label: 'Adhérents et cotisations', icon: 'users', sub: 'Qui est à jour, les paiements, les relances et les messages', el: Adherents, section: 'Association' },
   { path: 'evenements', label: 'Événements', icon: 'calendar', sub: 'Créez vos événements et suivez qui vient', el: Evenements },
   { path: 'sondages', label: 'Sondages', icon: 'flag', sub: 'Posez une question à tous les adhérents', el: Sondages },
   { path: 'actus', label: 'Actus', icon: 'sparkle', sub: 'Ce que les adhérents voient dans leur fil', el: (p) => <Contenus kind="actus" {...p} />, section: 'Contenus de l’app' },
