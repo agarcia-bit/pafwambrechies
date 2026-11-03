@@ -26,14 +26,16 @@ export function MailForm({ to, subject = '', body = '', onClose, onSent, inline 
   async function send() {
     if (!sujet.trim() || !corps.trim()) return toast('Indiquez un sujet et un message.', 'error');
     setBusy(true);
+    startSending(emails.length);
     try {
       const r = await sendMail(to, sujet.trim(), corps.trim());
       if (r === 'not_configured') {
+        cancelSending();
         setFallback({ emails, reason: 'L’envoi direct n’est pas encore activé. Ouvrez votre messagerie avec les destinataires en copie cachée' });
         toast('L’envoi direct n’est pas encore activé : utilisez votre messagerie ci-dessous.', 'error');
         return;
       }
-      if (r.sent) { onSent?.(r.sent); celebrateSend(r.sent); }
+      if (r.sent) { onSent?.(r.sent); finishSending(r.sent); } else cancelSending();
       if (r.failed) {
         const failed = r.failed_emails?.length ? r.failed_emails : emails;
         setFallback({
@@ -47,6 +49,7 @@ export function MailForm({ to, subject = '', body = '', onClose, onSent, inline 
       setCorps(body);
       onClose();
     } catch (e) {
+      cancelSending();
       toast((e as Error).message, 'error');
     } finally {
       setBusy(false);
@@ -96,24 +99,31 @@ export function Compose({ to, subject, body, onClose, onSent }: {
   );
 }
 
-// ── « C'est parti » : l'enveloppe se ferme, décolle, et le compte s'affiche ────────────────
-// Déclenché par celebrateSend(n) après un envoi réussi, d'où qu'il parte ; affiché par
+// ── L'envoi en images ──────────────────────────────────────────────────────────────────
+// Dès le clic : des courriers se rangent dans leurs enveloppes, le temps que le serveur
+// réponde (startSending). Puis l'enveloppe se ferme, décolle, et le compte s'affiche
+// (finishSending) ; ou tout s'efface si rien n'est parti (cancelSending). Affiché par
 // <SentOverlay /> monté une fois dans l'application.
 
-const SENT_EVENT = 'mail-sent';
-export const celebrateSend = (sent: number) => dispatchEvent(new CustomEvent(SENT_EVENT, { detail: sent }));
+const SEND_EVENT = 'mail-send';
+type SendPhase = { phase: 'sending'; n: number } | { phase: 'sent'; n: number } | null;
+const emit = (detail: SendPhase) => dispatchEvent(new CustomEvent(SEND_EVENT, { detail }));
+export const startSending = (n: number) => emit({ phase: 'sending', n });
+export const finishSending = (sent: number) => emit({ phase: 'sent', n: sent });
+export const cancelSending = () => emit(null);
 
 export function SentOverlay() {
-  const [sent, setSent] = useState<number | null>(null);
+  const [state, setState] = useState<SendPhase>(null);
   const [shown, setShown] = useState(0);
   useEffect(() => {
-    const on = (e: Event) => setSent((e as CustomEvent<number>).detail);
-    addEventListener(SENT_EVENT, on);
-    return () => removeEventListener(SENT_EVENT, on);
+    const on = (e: Event) => setState((e as CustomEvent<SendPhase>).detail);
+    addEventListener(SEND_EVENT, on);
+    return () => removeEventListener(SEND_EVENT, on);
   }, []);
   // Le compteur monte pendant que l'enveloppe s'éloigne, puis tout s'efface.
   useEffect(() => {
-    if (sent === null) return;
+    if (state?.phase !== 'sent') return;
+    const sent = state.n;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     setShown(reduced ? sent : 0);
     const start = performance.now() + 900;
@@ -124,13 +134,33 @@ export function SentOverlay() {
       if (p < 1) raf = requestAnimationFrame(tick);
     };
     if (!reduced) raf = requestAnimationFrame(tick);
-    const end = setTimeout(() => setSent(null), reduced ? 1400 : 2600);
+    const end = setTimeout(() => setState(null), reduced ? 1400 : 2600);
     return () => { cancelAnimationFrame(raf); clearTimeout(end); };
-  }, [sent]);
-  if (sent === null) return null;
+  }, [state]);
+  if (!state) return null;
+  if (state.phase === 'sending') {
+    return (
+      <div className="sent-overlay" role="status" aria-live="polite">
+        <div className="sending-scene" aria-hidden>
+          <div className="sending-row">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="mini-env">
+                <div className="env-back" />
+                <div className="env-letter"><i /><i /><i /></div>
+                <div className="env-front" />
+                <div className="env-flap" />
+              </div>
+            ))}
+          </div>
+          <div className="sending-text">Envoi en cours<span className="dots" /><small>{state.n > 1 ? `${state.n} courriers à préparer` : '1 courrier à préparer'}</small></div>
+        </div>
+      </div>
+    );
+  }
+  const sent = state.n;
   return (
-    <div className="sent-overlay" role="status" aria-live="polite" onClick={() => setSent(null)}>
-      <div className="sent-scene">
+    <div className="sent-overlay" role="status" aria-live="polite" onClick={() => setState(null)}>
+      <div className="sent-scene" key="sent">
         <div className="sent-trail" aria-hidden>{Array.from({ length: 7 }, (_, i) => <i key={i} style={{ animationDelay: `${0.55 + i * 0.06}s` }} />)}</div>
         <div className="sent-envelope" aria-hidden>
           <div className="env-back" />
