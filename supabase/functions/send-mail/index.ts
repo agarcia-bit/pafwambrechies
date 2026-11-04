@@ -46,6 +46,11 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method" }, 405);
   if (!RESEND_API_KEY) return json({ error: "not_configured" }, 501);
 
+  // Time spent at each step, in the function's logs (never an address or a message).
+  const started = performance.now();
+  const steps: string[] = [];
+  const step = (name: string) => steps.push(`${name}=${Math.round(performance.now() - started)}ms`);
+
   // Who is calling: a client bound to the caller's JWT, so RLS and auth.uid() apply.
   const auth = req.headers.get("Authorization") ?? "";
   const asUser = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -55,6 +60,7 @@ Deno.serve(async (req) => {
   if (!user) return json({ error: "unauthorized" }, 401);
   const { data: profile } = await asUser.from("profiles").select("prenom, nom, email, role, tenant_id").eq("id", user.id).single();
   if (!profile || !["bureau", "admin"].includes(profile.role)) return json({ error: "forbidden" }, 403);
+  step("profile");
 
   let body: { destinataires?: Recipient[]; sujet?: string; corps?: string };
   try {
@@ -72,9 +78,12 @@ Deno.serve(async (req) => {
   if (to.length > MAX_RECIPIENTS) return json({ error: "too_many" }, 400);
 
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const { data: tenant } = await sb.from("tenants").select("name, slug").eq("id", profile.tenant_id).single();
-  const { data: settings } = await sb.from("app_settings").select("key, value")
-    .eq("tenant_id", profile.tenant_id).in("key", ["tenant_name", "contact_email"]);
+  const [{ data: tenant }, { data: settings }] = await Promise.all([
+    sb.from("tenants").select("name, slug").eq("id", profile.tenant_id).single(),
+    sb.from("app_settings").select("key, value")
+      .eq("tenant_id", profile.tenant_id).in("key", ["tenant_name", "contact_email"]),
+  ]);
+  step("association");
   const setting = (key: string) => settings?.find((s) => s.key === key)?.value?.trim() ?? "";
   // The name the association chose in its settings, else the platform's record.
   const assoc = setting("tenant_name") || tenant?.name || "Votre association";
@@ -120,6 +129,8 @@ Deno.serve(async (req) => {
     }
   }
 
+  step("resend");
+
   // History (best effort: a logging problem must not hide a sent e-mail).
   const { data: envoi } = await sb.from("envois")
     .insert({ tenant_id: profile.tenant_id, envoye_par: user.id, sujet, corps, nb: to.length - failed.size })
@@ -130,6 +141,9 @@ Deno.serve(async (req) => {
       statut: failed.has(r.email) ? "echec" : "envoye",
     })));
   }
+
+  step("history");
+  console.log(`send-mail timing recipients=${to.length} ${steps.join(" ")}`);
 
   // The failed addresses go back to the dashboard, which offers the sender's own mail app for them
   // (daily quota reached, provider down...). "limit" tells the quota apart from other errors.
