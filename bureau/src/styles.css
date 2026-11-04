@@ -441,8 +441,9 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--brand); cu
 @keyframes burst { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; transform: var(--r, rotate(0)) translateY(-120px) scaleY(.3); } }
 .sending-text { position: absolute; left: 0; right: 0; bottom: 30px; color: #fff; text-align: center; font-weight: 600; font-size: 16px; }
 .sending-text small { display: block; font-weight: 400; opacity: .8; margin-top: 4px; font-size: 13px; font-variant-numeric: tabular-nums; }
-.sending-text .dots::after { content: ''; animation: dots 1.2s steps(4) infinite; }
-@keyframes dots { to { content: '…'; } }
+.sending-label { display: inline-flex; align-items: center; gap: 9px; }
+.sending-spin { width: 15px; height: 15px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; animation: sending-spin .8s linear infinite; }
+@keyframes sending-spin { to { transform: rotate(360deg); } }
 .sent-text { position: absolute; left: 0; right: 0; bottom: 30px; text-align: center; color: #fff; opacity: 0; animation: text-in .5s .45s cubic-bezier(.2,.8,.2,1) forwards; }
 @keyframes text-in { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
 .sent-text strong { display: block; font-size: 56px; font-weight: 800; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
@@ -450,7 +451,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--brand); cu
 @media (prefers-reduced-motion: reduce) {
   .page, .tab-pane, .pop-in, .check.on svg, .audience.on .radio::after { animation: none; }
   .row-out { animation: none; opacity: .4; }
-  .sent-envelope, .sent-envelope .env-letter, .sent-envelope .env-flap, .sent-trail i, .sent-burst i, .sending-text .dots::after { animation: none; }
+  .sent-envelope, .sent-envelope .env-letter, .sent-envelope .env-flap, .sent-trail i, .sent-burst i, .sending-spin { animation: none; }
   .sent-envelope.fly, .sent-trail i, .sent-burst i { opacity: 0; }
   .sent-text { animation: none; opacity: 1; } .sent-overlay, .sent-overlay.closing { animation: none; }
 }

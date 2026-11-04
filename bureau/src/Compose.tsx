@@ -178,7 +178,7 @@ export function SentOverlay() {
           </div>
         ) : (
           <div className="sending-text">
-            Envoi en cours<span className="dots" />
+            <span className="sending-label"><span className="sending-spin" />Envoi en cours</span>
             <small>{state.n > 1 ? `${state.n} courriers` : '1 courrier'}</small>
           </div>
         )}
