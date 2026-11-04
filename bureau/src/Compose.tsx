@@ -100,11 +100,11 @@ export function Compose({ to, subject, body, onClose, onSent }: {
 }
 
 // ── L'envoi en images ──────────────────────────────────────────────────────────────────
-// Dès le clic : un courrier glisse dans l'enveloppe, le rabat se ferme, s'ouvre, un autre
-// courrier arrive… en boucle, tant que le serveur n'a pas répondu (startSending). À la
-// réponse, l'enveloppe décolle et le compte des envois défile (finishSending) ; ou tout
-// s'efface si rien n'est parti (cancelSending). Affiché par <SentOverlay /> monté une fois
-// dans l'application.
+// Dès le clic : le courrier entre dans l'enveloppe et le rabat se ferme ; si le serveur n'a
+// pas encore répondu, le rabat se rouvre et un autre courrier arrive, en boucle (startSending).
+// La réponse attend que l'enveloppe soit fermée : elle décolle alors et le compte des envois
+// défile (finishSending). Tout s'efface si rien n'est parti (cancelSending). Affiché par
+// <SentOverlay /> monté une fois dans l'application.
 
 const SEND_EVENT = 'mail-send';
 type SendPhase = { phase: 'sending'; n: number } | { phase: 'sent'; n: number } | null;
@@ -113,21 +113,41 @@ export const startSending = (n: number) => emit({ phase: 'sending', n });
 export const finishSending = (sent: number) => emit({ phase: 'sent', n: sent });
 export const cancelSending = () => emit(null);
 
+// La boucle de styles.css (letter-cycle, flap-cycle) : l'enveloppe est fermée de 0,8 s à 1,58 s.
+const CYCLE_MS = 2400;
+const CLOSED_FROM_MS = 800;
+const CLOSED_TO_MS = 1580;
+/** Le temps à attendre pour que l'enveloppe soit fermée, `elapsed` ms après le début de la boucle. */
+function untilClosed(elapsed: number) {
+  const t = elapsed % CYCLE_MS;
+  if (t < CLOSED_FROM_MS) return CLOSED_FROM_MS - t;
+  return t <= CLOSED_TO_MS ? 0 : CYCLE_MS - t + CLOSED_FROM_MS;
+}
+
 export function SentOverlay() {
   const [state, setState] = useState<SendPhase>(null);
   const [shown, setShown] = useState(0);
   useEffect(() => {
-    const on = (e: Event) => setState((e as CustomEvent<SendPhase>).detail);
+    let startedAt = 0;
+    let pending: ReturnType<typeof setTimeout> | undefined;
+    const on = (e: Event) => {
+      const next = (e as CustomEvent<SendPhase>).detail;
+      clearTimeout(pending);
+      if (next?.phase === 'sending') startedAt = performance.now();
+      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (next?.phase === 'sent' && !reduced) pending = setTimeout(() => setState(next), untilClosed(performance.now() - startedAt));
+      else setState(next);
+    };
     addEventListener(SEND_EVENT, on);
-    return () => removeEventListener(SEND_EVENT, on);
+    return () => { clearTimeout(pending); removeEventListener(SEND_EVENT, on); };
   }, []);
-  // À la réponse : le compteur monte pendant que l'enveloppe s'éloigne, puis tout s'efface.
+  // Le compteur monte pendant que l'enveloppe s'éloigne, puis tout s'efface.
   useEffect(() => {
     if (state?.phase !== 'sent') return;
     const sent = state.n;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     setShown(reduced ? sent : 0);
-    const start = performance.now() + 800;
+    const start = performance.now() + 100;
     let raf = 0;
     const tick = (now: number) => {
       const p = Math.min(1, Math.max(0, (now - start) / 600));
@@ -135,7 +155,7 @@ export function SentOverlay() {
       if (p < 1) raf = requestAnimationFrame(tick);
     };
     if (!reduced) raf = requestAnimationFrame(tick);
-    const end = setTimeout(() => setState(null), reduced ? 1400 : 2600);
+    const end = setTimeout(() => setState(null), reduced ? 1400 : 1800);
     return () => { cancelAnimationFrame(raf); clearTimeout(end); };
   }, [state]);
   if (!state) return null;
@@ -143,7 +163,7 @@ export function SentOverlay() {
   return (
     <div className={'sent-overlay' + (sent ? ' closing' : '')} role="status" aria-live="polite" onClick={() => sent && setState(null)}>
       <div className="sent-scene">
-        {sent && <div className="sent-trail" aria-hidden>{Array.from({ length: 7 }, (_, i) => <i key={i} style={{ animationDelay: `${0.5 + i * 0.06}s` }} />)}</div>}
+        {sent && <div className="sent-trail" aria-hidden>{Array.from({ length: 7 }, (_, i) => <i key={i} style={{ animationDelay: `${i * 0.06}s` }} />)}</div>}
         <div className={'sent-envelope ' + (sent ? 'fly' : 'waiting')} aria-hidden>
           <div className="env-back" />
           <div className="env-letter"><i /><i /><i /></div>
