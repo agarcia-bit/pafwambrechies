@@ -17,7 +17,7 @@ import { ACTU_CATEGORIES } from '@/lib/categories';
 import { useActus } from '@/lib/data';
 import { useReadActus } from '@/lib/read-actus';
 import { useMember } from '@/lib/session';
-import { useBandListStyle } from '@/theme';
+import { useBandListStyle, useTheme } from '@/theme';
 
 /** "Bonjour Andy" in the morning and afternoon, "Bonsoir Andy" from 6 pm. */
 function greeting(firstName: string | null): string {
@@ -31,6 +31,7 @@ export default function ActusScreen() {
   const [category, setCategory] = useState<Category>('Tous');
   const { branding, profile } = useMember();
   const bandStyle = useBandListStyle();
+  const { colors } = useTheme();
   const actus = useActus(category);
   const { refreshing, onRefresh } = usePullToRefresh(actus.refetch);
   const items = actus.data?.pages.flat() ?? [];
@@ -40,55 +41,60 @@ export default function ActusScreen() {
   const read = items.filter((a) => isRead(a.id));
   const sorted = [...unread, ...read];
 
+  // The band (title, greeting, filters) and the dues reminder stay on screen: only the feed scrolls.
   return (
-    <Animated.FlatList
-      style={bandStyle}
-      data={sorted}
-      keyExtractor={(item) => String(item.id)}
-      itemLayoutAnimation={LinearTransition.duration(250)}
-      renderItem={({ item, index }) => (
-        <View>
-          {index === unread.length && (
-            <Text variant="footnote" tone="secondary" style={styles.readHeader}>
-              DÉJÀ LUES
-            </Text>
-          )}
-          <ActuCard actu={item} index={index} />
-        </View>
-      )}
-      contentInsetAdjustmentBehavior="never"
-      contentContainerStyle={styles.content}
-      ItemSeparatorComponent={Gap}
-      ListHeaderComponent={
-        <View style={styles.header}>
-          <BrandBand
-            subtitle={greeting(profile.prenom)}
-            title={(branding?.tenant_name ?? branding?.name ?? 'Actus').toUpperCase()}>
-            <ChipBar onBand options={ACTU_CATEGORIES} value={category} onChange={setCategory} />
-          </BrandBand>
-          <CotisationBanner />
-          <ParticipationBanner />
-          <PendingPolls />
-          <PushOffer />
-          {(category === 'Tous' || category === 'Événement') && <UpcomingEvents />}
-        </View>
-      }
-      ListEmptyComponent={
-        actus.isPending ? (
-          <LoadingState />
-        ) : actus.isError ? (
-          <ErrorState onRetry={actus.refetch} />
-        ) : (
-          <EmptyState icon="newspaper" title="Aucune actualité" message="Les publications de votre association apparaîtront ici." />
-        )
-      }
-      ListFooterComponent={actus.isFetchingNextPage ? <ActivityIndicator style={styles.more} /> : undefined}
-      onEndReached={() => {
-        if (actus.hasNextPage && !actus.isFetchingNextPage) actus.fetchNextPage();
-      }}
-      onEndReachedThreshold={0.5}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />}
-    />
+    <View style={[styles.screen, bandStyle]}>
+      <View style={styles.fixed}>
+        <BrandBand
+          subtitle={greeting(profile.prenom)}
+          title={(branding?.tenant_name ?? branding?.name ?? 'Actus').toUpperCase()}>
+          <ChipBar onBand options={ACTU_CATEGORIES} value={category} onChange={setCategory} />
+        </BrandBand>
+        <CotisationBanner />
+      </View>
+      <Animated.FlatList
+        style={styles.list}
+        data={sorted}
+        keyExtractor={(item) => String(item.id)}
+        itemLayoutAnimation={LinearTransition.duration(250)}
+        renderItem={({ item, index }) => (
+          <View>
+            {index === unread.length && (
+              <Text variant="footnote" tone="secondary" style={styles.readHeader}>
+                DÉJÀ LUES
+              </Text>
+            )}
+            <ActuCard actu={item} index={index} />
+          </View>
+        )}
+        contentInsetAdjustmentBehavior="never"
+        contentContainerStyle={styles.content}
+        ItemSeparatorComponent={Gap}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <ParticipationBanner />
+            <PendingPolls />
+            <PushOffer />
+            {(category === 'Tous' || category === 'Événement') && <UpcomingEvents />}
+          </View>
+        }
+        ListEmptyComponent={
+          actus.isPending ? (
+            <LoadingState />
+          ) : actus.isError ? (
+            <ErrorState onRetry={actus.refetch} />
+          ) : (
+            <EmptyState icon="newspaper" title="Aucune actualité" message="Les publications de votre association apparaîtront ici." />
+          )
+        }
+        ListFooterComponent={actus.isFetchingNextPage ? <ActivityIndicator style={styles.more} /> : undefined}
+        onEndReached={() => {
+          if (actus.hasNextPage && !actus.isFetchingNextPage) actus.fetchNextPage();
+        }}
+        onEndReachedThreshold={0.5}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textSecondary} />}
+      />
+    </View>
   );
 }
 
@@ -97,7 +103,10 @@ function Gap() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingTop: 0, paddingBottom: 32 },
+  screen: { flex: 1 },
+  fixed: { gap: 16 },
+  list: { flex: 1 },
+  content: { paddingTop: 16, paddingBottom: 32 },
   header: { gap: 16, marginBottom: 16 },
   gap: { height: 12 },
   more: { marginTop: 16 },
