@@ -17,7 +17,7 @@ import { ACTU_CATEGORIES } from '@/lib/categories';
 import { useActus } from '@/lib/data';
 import { useReadActus } from '@/lib/read-actus';
 import { useMember } from '@/lib/session';
-import { useBandListStyle, useTheme } from '@/theme';
+import { useTheme } from '@/theme';
 
 /** "Bonjour Andy" in the morning and afternoon, "Bonsoir Andy" from 6 pm. */
 function greeting(firstName: string | null): string {
@@ -30,7 +30,6 @@ type Category = (typeof ACTU_CATEGORIES)[number];
 export default function ActusScreen() {
   const [category, setCategory] = useState<Category>('Tous');
   const { branding, profile } = useMember();
-  const bandStyle = useBandListStyle();
   const { colors } = useTheme();
   const actus = useActus(category);
   const { refreshing, onRefresh } = usePullToRefresh(actus.refetch);
@@ -43,7 +42,7 @@ export default function ActusScreen() {
 
   // The band (title, greeting, filters) and the dues reminder stay on screen: only the feed scrolls.
   return (
-    <View style={[styles.screen, bandStyle]}>
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <View style={styles.fixed}>
         <BrandBand
           subtitle={greeting(profile.prenom)}
