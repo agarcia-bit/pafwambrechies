@@ -100,10 +100,11 @@ export function Compose({ to, subject, body, onClose, onSent }: {
 }
 
 // ── L'envoi en images ──────────────────────────────────────────────────────────────────
-// Dès le clic : des courriers se rangent dans leurs enveloppes, le temps que le serveur
-// réponde (startSending). Puis l'enveloppe se ferme, décolle, et le compte s'affiche
-// (finishSending) ; ou tout s'efface si rien n'est parti (cancelSending). Affiché par
-// <SentOverlay /> monté une fois dans l'application.
+// Dès le clic : un courrier glisse dans l'enveloppe, le rabat se ferme, s'ouvre, un autre
+// courrier arrive… en boucle, tant que le serveur n'a pas répondu (startSending). À la
+// réponse, l'enveloppe décolle et le compte des envois défile (finishSending) ; ou tout
+// s'efface si rien n'est parti (cancelSending). Affiché par <SentOverlay /> monté une fois
+// dans l'application.
 
 const SEND_EVENT = 'mail-send';
 type SendPhase = { phase: 'sending'; n: number } | { phase: 'sent'; n: number } | null;
@@ -112,42 +113,24 @@ export const startSending = (n: number) => emit({ phase: 'sending', n });
 export const finishSending = (sent: number) => emit({ phase: 'sent', n: sent });
 export const cancelSending = () => emit(null);
 
-const MAX_ENVELOPES = 12; // au-delà, la rangée affiche « + n »
-const PACK_EVERY_MS = 950;
-
 export function SentOverlay() {
   const [state, setState] = useState<SendPhase>(null);
-  const [packed, setPacked] = useState(0);
   const [shown, setShown] = useState(0);
   useEffect(() => {
-    const on = (e: Event) => {
-      const next = (e as CustomEvent<SendPhase>).detail;
-      setState((prev) => {
-        // Un nouvel envoi repart de zéro ; passer à « envoyé » garde les enveloppes préparées.
-        if (!next || next.phase === 'sending' || prev?.phase !== 'sending') setPacked(next?.phase === 'sending' ? 1 : 0);
-        return next;
-      });
-    };
+    const on = (e: Event) => setState((e as CustomEvent<SendPhase>).detail);
     addEventListener(SEND_EVENT, on);
     return () => removeEventListener(SEND_EVENT, on);
   }, []);
-  // Tant que le serveur n'a pas répondu, une enveloppe de plus toutes les secondes environ.
-  useEffect(() => {
-    if (state?.phase !== 'sending') return;
-    const n = state.n;
-    const timer = setInterval(() => setPacked((p) => Math.min(n, p + 1)), PACK_EVERY_MS);
-    return () => clearInterval(timer);
-  }, [state]);
-  // À la réponse : les enveloppes décollent, le compteur monte, puis tout s'efface.
+  // À la réponse : le compteur monte pendant que l'enveloppe s'éloigne, puis tout s'efface.
   useEffect(() => {
     if (state?.phase !== 'sent') return;
     const sent = state.n;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     setShown(reduced ? sent : 0);
-    const start = performance.now() + 650;
+    const start = performance.now() + 800;
     let raf = 0;
     const tick = (now: number) => {
-      const p = Math.min(1, Math.max(0, (now - start) / 700));
+      const p = Math.min(1, Math.max(0, (now - start) / 600));
       setShown(Math.round(sent * (1 - Math.pow(1 - p, 3))));
       if (p < 1) raf = requestAnimationFrame(tick);
     };
@@ -157,22 +140,17 @@ export function SentOverlay() {
   }, [state]);
   if (!state) return null;
   const sent = state.phase === 'sent';
-  const visible = Math.min(packed, MAX_ENVELOPES);
-  const more = packed - visible;
   return (
     <div className={'sent-overlay' + (sent ? ' closing' : '')} role="status" aria-live="polite" onClick={() => sent && setState(null)}>
-      <div className="pack-scene">
-        <div className="pack-row" aria-hidden>
-          {Array.from({ length: visible }, (_, i) => (
-            <div key={i} className={'env' + (sent ? ' fly' : '')} style={sent ? { animationDelay: `${i * 0.06}s` } : undefined}>
-              <div className="env-back" />
-              <div className="env-letter"><i /><i /><i /></div>
-              <div className="env-front" />
-              <div className="env-flap" />
-            </div>
-          ))}
-          {more > 0 && <span className={'pack-more' + (sent ? ' fly' : '')}>+ {more}</span>}
+      <div className="sent-scene">
+        {sent && <div className="sent-trail" aria-hidden>{Array.from({ length: 7 }, (_, i) => <i key={i} style={{ animationDelay: `${0.5 + i * 0.06}s` }} />)}</div>}
+        <div className={'sent-envelope ' + (sent ? 'fly' : 'waiting')} aria-hidden>
+          <div className="env-back" />
+          <div className="env-letter"><i /><i /><i /></div>
+          <div className="env-front" />
+          <div className="env-flap" />
         </div>
+        {sent && <div className="sent-burst" aria-hidden>{Array.from({ length: 12 }, (_, i) => <i key={i} style={{ '--r': `rotate(${i * 30}deg)` } as React.CSSProperties} />)}</div>}
         {sent ? (
           <div className="sent-text">
             <strong>{shown.toLocaleString('fr-FR')}</strong>
@@ -180,8 +158,8 @@ export function SentOverlay() {
           </div>
         ) : (
           <div className="sending-text">
-            {packed < state.n ? <>Préparation des courriers<span className="dots" /></> : <>Envoi en cours<span className="dots" /></>}
-            <small>{packed} sur {state.n}</small>
+            Envoi en cours<span className="dots" />
+            <small>{state.n > 1 ? `${state.n} courriers` : '1 courrier'}</small>
           </div>
         )}
       </div>
