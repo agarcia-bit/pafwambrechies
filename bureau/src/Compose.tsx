@@ -101,7 +101,7 @@ export function Compose({ to, subject, body, onClose, onSent }: {
 
 // ── L'envoi en images ──────────────────────────────────────────────────────────────────
 // Dès le clic : le courrier entre dans l'enveloppe et le rabat se ferme ; si le serveur n'a
-// pas encore répondu, le rabat se rouvre et un autre courrier arrive, en boucle (startSending).
+// pas encore répondu, l'enveloppe s'écarte et une autre arrive, en boucle (startSending).
 // La réponse attend que l'enveloppe soit fermée : elle décolle alors et le compte des envois
 // défile (finishSending). Tout s'efface si rien n'est parti (cancelSending). Affiché par
 // <SentOverlay /> monté une fois dans l'application.
@@ -113,10 +113,10 @@ export const startSending = (n: number) => emit({ phase: 'sending', n });
 export const finishSending = (sent: number) => emit({ phase: 'sent', n: sent });
 export const cancelSending = () => emit(null);
 
-// La boucle de styles.css (letter-cycle, flap-cycle) : l'enveloppe est fermée de 0,8 s à 1,58 s.
+// La boucle de styles.css (env-cycle, flap-cycle) : l'enveloppe est fermée de 1,16 s à 2,03 s.
 const CYCLE_MS = 2400;
-const CLOSED_FROM_MS = 800;
-const CLOSED_TO_MS = 1580;
+const CLOSED_FROM_MS = 1160;
+const CLOSED_TO_MS = 2030;
 /** Le temps à attendre pour que l'enveloppe soit fermée, `elapsed` ms après le début de la boucle. */
 function untilClosed(elapsed: number) {
   const t = elapsed % CYCLE_MS;
