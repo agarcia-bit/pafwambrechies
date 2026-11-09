@@ -70,11 +70,14 @@ export async function disablePush(): Promise<void> {
   await unregisterToken();
 }
 
-/** After sign-in: keeps the token current when the member already allowed notifications. */
+/** After sign-in and once a day: keeps the token current when the member allowed notifications,
+ *  and forgets it once they turned them off in the phone's settings, so that the bureau's
+ *  engagement page (supabase/engagement.sql) does not count them as reachable. */
 export async function syncPush(): Promise<void> {
   if (!pushAvailable() || localStorage.getItem(DISABLED_KEY)) return;
   const { status } = await Notifications.getPermissionsAsync();
   if (status === 'granted') await registerToken();
+  else await unregisterToken();
 }
 
 /** Before sign-out: the next member using this phone must not get this member's notifications. */

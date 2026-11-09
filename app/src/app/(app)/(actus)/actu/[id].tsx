@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
+import { useRef } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,7 +11,9 @@ import { LinkedText } from '@/components/ui/linked-text';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { useActu, useAuteurs } from '@/lib/data';
+import { useNoterLecture } from '@/lib/engagement';
 import { formatDayLong } from '@/lib/format';
+import { useClavierOuvert } from '@/hooks/use-clavier-ouvert';
 import { useTheme } from '@/theme';
 import { mix } from '@/theme/colors';
 
@@ -20,18 +22,11 @@ import { mix } from '@/theme/colors';
 export default function ActuScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const actu = useActu(Number(id));
+  useNoterLecture(Number(id));
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollViewInstance>(null);
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-  useEffect(() => {
-    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardOpen(true));
-    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardOpen(false));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
+  const keyboardOpen = useClavierOuvert();
   const auteurs = useAuteurs();
   const hue = useCategoryHue(actu.data?.categorie ?? '');
   const heroColor = mix(hue, '#000000', 0.15);

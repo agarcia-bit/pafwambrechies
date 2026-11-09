@@ -540,3 +540,13 @@ table.clickable tbody tr:hover, tr.sel { background: color-mix(in srgb, var(--br
 .cotis-card { border-left: 0; background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 9%, var(--panel)), var(--panel) 60%); }
 .audience { border-radius: 14px; }
 .empty-icon { width: 54px; height: 54px; background: color-mix(in srgb, var(--brand) 8%, var(--neutral-soft)); color: var(--brand); }
+
+/* ── Engagement : les actifs semaine par semaine, et le tableau qui défile sur petit écran ── */
+.semaines { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; align-items: end; height: 150px; margin-top: 10px; }
+.semaine { display: grid; grid-template-rows: auto 1fr auto; justify-items: center; height: 100%; gap: 4px; min-width: 0; }
+.semaine-nombre { font-size: 12px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; min-height: 15px; }
+.semaine-barre { align-self: end; width: 100%; max-width: 34px; min-height: 3px; border-radius: 8px 8px 3px 3px; background: linear-gradient(var(--brand), color-mix(in srgb, var(--brand) 70%, transparent)); transition: height .4s cubic-bezier(.2,.8,.2,1); }
+.semaine-date { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.engagement-tableau { overflow-x: auto; }
+.engagement-tableau table { min-width: 980px; } .engagement-tableau td, .engagement-tableau th { white-space: nowrap; }
+@media (max-width: 700px) { .semaines { gap: 4px; } .semaine-date { font-size: 9px; } }

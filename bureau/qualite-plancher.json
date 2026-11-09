@@ -1,0 +1,77 @@
+{
+ "version": 1,
+ "seuils": {
+  "fonction": 80,
+  "profondeur": 4,
+  "doublon": 8
+ },
+ "dossiers": [
+  "src"
+ ],
+ "fonctions": [
+  {
+   "fichier": "src/Discussion.tsx",
+   "nom": "Thread",
+   "lignes": 104,
+   "profondeur": 4
+  },
+  {
+   "fichier": "src/import-adherents.ts",
+   "nom": "parseImport",
+   "lignes": 96,
+   "profondeur": 4
+  },
+  {
+   "fichier": "src/pages/Adherents.tsx",
+   "nom": "Adherents",
+   "lignes": 137,
+   "profondeur": 5
+  },
+  {
+   "fichier": "src/pages/Cotisations.tsx",
+   "nom": "Cotisations",
+   "lignes": 175,
+   "profondeur": 4
+  },
+  {
+   "fichier": "src/pages/Envois.tsx",
+   "nom": "Envois",
+   "lignes": 79,
+   "profondeur": 5
+  },
+  {
+   "fichier": "src/pages/Overview.tsx",
+   "nom": "Overview",
+   "lignes": 104,
+   "profondeur": 4
+  },
+  {
+   "fichier": "src/pages/Pilotage.tsx",
+   "nom": "Pilotage",
+   "lignes": 105,
+   "profondeur": 3
+  },
+  {
+   "fichier": "src/pages/Pilotage.tsx",
+   "nom": "ActionDrawer",
+   "lignes": 134,
+   "profondeur": 3
+  },
+  {
+   "fichier": "src/pages/Reglages.tsx",
+   "nom": "Reglages",
+   "lignes": 116,
+   "profondeur": 3
+  },
+  {
+   "fichier": "src/pages/Sondages.tsx",
+   "nom": "Sondages",
+   "lignes": 81,
+   "profondeur": 3
+  }
+ ],
+ "doublons": {
+  "total": 0,
+  "parFichier": {}
+ }
+}

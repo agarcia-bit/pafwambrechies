@@ -4,6 +4,7 @@ import type { PageProps } from '../App';
 import { Compose } from '../Compose';
 import { Avatar, Empty, Icon, Skeleton } from '../Icon';
 import { formatRelative, fullName, hashParam, supabase, toast, useAsync, type Recipient, type Role } from '../lib';
+import { Kpi } from '../components/ui/Kpi';
 
 type Member = { id: string; email: string | null; prenom: string | null; nom: string | null; role: Role };
 type Invite = { email: string; prenom: string | null; nom: string | null; created_at: string; user_id: string | null; joined_at: string | null };
@@ -70,10 +71,10 @@ export function Adherents({ profile, association }: PageProps) {
   return (
     <>
       <div className="kpis">
-        <Kpi value={registered.length + waiting.length} label="adhérents" />
-        <Kpi value={registered.length} label="inscrits sur l’app" tone="ok" />
-        <Kpi value={waiting.length} label={waiting.length > 1 ? 'pas encore inscrits' : 'pas encore inscrit'} tone={waiting.length ? 'warn' : 'ok'} />
-        <Kpi value={bureau.length} label="membres du bureau" tone="brand" />
+        <Kpi valeur={registered.length + waiting.length} libelle="adhérents" />
+        <Kpi valeur={registered.length} libelle="inscrits sur l’app" ton="ok" />
+        <Kpi valeur={waiting.length} libelle={waiting.length > 1 ? 'pas encore inscrits' : 'pas encore inscrit'} ton={waiting.length ? 'warn' : 'ok'} />
+        <Kpi valeur={bureau.length} libelle="membres du bureau" ton="brand" />
       </div>
 
       <div className="toolbar">
@@ -156,6 +157,3 @@ export function Adherents({ profile, association }: PageProps) {
   );
 }
 
-function Kpi({ value, label, tone }: { value: number; label: string; tone?: string }) {
-  return <div className={'kpi ' + (tone ?? '')}><strong>{value}</strong><span>{label}</span></div>;
-}
