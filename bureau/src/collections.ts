@@ -94,7 +94,9 @@ const annuaire: Collection = {
     adresse: orNull(v.adresse), telephone: orNull(v.telephone), email: orNull(v.email), linkedin: orNull(v.linkedin), instagram: orNull(v.instagram),
     description: orNull(v.description), photo_url: orNull(v.photo_url),
   }),
-  describe: (r) => ({ title: str(r.nom_entreprise), subtitle: [[str(r.prenom_contact), str(r.nom_contact)].filter(Boolean).join(' '), str(r.categorie)].filter(Boolean).join(' · '), image: r.photo_url ? str(r.photo_url) : null }),
+  describe: (r) => ({ title: str(r.nom_entreprise), subtitle: [[str(r.prenom_contact), str(r.nom_contact)].filter(Boolean).join(' '), str(r.categorie)].filter(Boolean).join(' · '), image: r.photo_url ? str(r.photo_url) : null,
+    // Fiche préparée par l'import : elle revient à l'adhérent dès son inscription.
+    ...(r.user_id ? {} : { flag: 'Pas encore inscrit', flagTone: 'neutral' }) }),
 };
 
 const liens: Collection = {

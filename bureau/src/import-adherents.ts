@@ -4,7 +4,10 @@
 // is one (other columns, like a birth date or a phone, are left out), otherwise by their content: the
 // one with "@" is the e-mail, recent or future dates are the dues, capitals are the family name.
 
-export type ImportRow = { prenom: string; nom: string; email: string; valide_jusqu: string };
+export type ImportRow = { prenom: string; nom: string; email: string; valide_jusqu: string; fiche?: Fiche };
+// La fiche d'annuaire préremplie à l'import : seulement les colonnes présentes dans le tableau.
+export type ChampFiche = 'entreprise' | 'categorie' | 'telephone' | 'adresse' | 'description' | 'linkedin' | 'instagram';
+export type Fiche = Partial<Record<ChampFiche, string>>;
 export type ImportLineError = { line: number; text: string; reason: string };
 export type ParsedImport = { rows: ImportRow[]; errors: ImportLineError[] };
 
@@ -64,6 +67,43 @@ function fieldOfHeader(header: string): Field | 'ignore' | null {
   if (/prenom|first/.test(h)) return 'prenom';
   if (/^nom|last|famille|surname|name/.test(h)) return 'nom';
   return 'ignore';
+}
+
+// Reconnues seulement par leur en-tête : sans en-tête, rien ne distingue une entreprise d'un nom.
+const EN_TETES_FICHE: [ChampFiche, RegExp][] = [
+  ['linkedin', /linkedin/],
+  ['instagram', /instagram/],
+  ['entreprise', /entreprise|societe|raison sociale|enseigne|commerce|structure|organisation/],
+  ['categorie', /categorie|activite|secteur|metier/],
+  ['telephone', /^tel|telephone|portable|mobile|gsm/],
+  ['adresse', /adresse|ville|code postal|^cp$|commune/],
+  ['description', /description|presentation|a propos/],
+];
+
+function champFicheDeLEnTete(entete: string): ChampFiche | null {
+  const h = plain(entete).replace(/[’']/g, ' ');
+  return h ? (EN_TETES_FICHE.find(([, motif]) => motif.test(h))?.[0] ?? null) : null;
+}
+
+type ColonnesFiche = Map<ChampFiche, number[]>;
+
+/** Les colonnes de la fiche ; l'adresse peut tenir sur plusieurs (rue, code postal, ville). */
+function colonnesFiche(entete: string[] | null): ColonnesFiche {
+  const colonnes: ColonnesFiche = new Map();
+  entete?.forEach((titre, i) => {
+    const champ = champFicheDeLEnTete(titre);
+    if (champ) colonnes.set(champ, [...(colonnes.get(champ) ?? []), i]);
+  });
+  return colonnes;
+}
+
+function lireFiche(cellules: string[], colonnes: ColonnesFiche): Fiche | undefined {
+  const fiche: Fiche = {};
+  for (const [champ, indices] of colonnes) {
+    const valeur = indices.map((i) => (cellules[i] ?? '').trim()).filter(Boolean).join(', ');
+    if (valeur) fiche[champ] = valeur;
+  }
+  return Object.keys(fiche).length ? fiche : undefined;
 }
 
 /** "14/09/2026", "14-09-26" or "2026-09-14" as "2026-09-14", or null when it is not a date. */
@@ -147,9 +187,10 @@ export function parseImport(input: string): ParsedImport {
   const column = (i: number) => body.map((l) => (l.cells[i] ?? '').trim()).filter(Boolean);
 
   const columns: Partial<Record<Field, number>> = {};
-  const ignored = new Set<number>();
+  const fiche = colonnesFiche(header);
+  const ignored = new Set<number>([...fiche.values()].flat());
   header?.forEach((h, i) => {
-    const field = fieldOfHeader(h);
+    const field = ignored.has(i) ? 'ignore' : fieldOfHeader(h);
     if (field === 'ignore') ignored.add(i);
     else if (field && columns[field] === undefined) columns[field] = i;
   });
@@ -224,7 +265,7 @@ export function parseImport(input: string): ParsedImport {
       columns.complet !== undefined
         ? splitFullName(cell(cells, 'complet'))
         : { prenom: cell(cells, 'prenom'), nom: cell(cells, 'nom') };
-    rows.push({ prenom: tidyName(names.prenom), nom: tidyName(names.nom), email, valide_jusqu });
+    rows.push({ prenom: tidyName(names.prenom), nom: tidyName(names.nom), email, valide_jusqu, fiche: lireFiche(cells, fiche) });
   }
   return { rows, errors };
 }

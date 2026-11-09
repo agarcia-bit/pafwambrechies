@@ -2,9 +2,13 @@ import { useMemo, useRef, useState } from 'react';
 
 import { Icon } from '../Icon';
 import { formatDay, supabase } from '../lib';
-import { parseImport } from '../import-adherents';
+import { parseImport, type Fiche } from '../import-adherents';
 
-type Result = { invites: number; deja_inscrits: number; cotisations: number; ignores: number };
+type Result = { invites: number; deja_inscrits: number; cotisations: number; ignores: number; fiches?: number };
+
+/** Ce que la fiche d'annuaire contiendra, en une ligne : l'entreprise d'abord, puis le reste. */
+const resumerFiche = (fiche: Fiche | undefined) =>
+  fiche ? [fiche.entreprise, fiche.categorie, fiche.telephone].filter(Boolean).join(' · ') || 'Préremplie' : 'Nom et e-mail';
 
 export function Importer() {
   const [text, setText] = useState('');
@@ -31,7 +35,7 @@ export function Importer() {
 
   return (
     <>
-      <p className="muted">Déposez un fichier CSV exporté d’Excel, Numbers ou Google Sheets, ou collez les lignes directement. Colonnes reconnues : prénom, nom, e-mail, et la date de fin de cotisation (facultative).</p>
+      <p className="muted">Déposez un fichier CSV exporté d’Excel, Numbers ou Google Sheets, ou collez les lignes directement. Colonnes reconnues : prénom, nom, e-mail, et la date de fin de cotisation (facultative). Pour préremplir l’annuaire, ajoutez si vous voulez : entreprise, activité, téléphone, adresse (ou code postal et ville), description, LinkedIn, Instagram. Chaque adhérent y a sa fiche dès l’import, et n’aura plus qu’à ajouter sa photo.</p>
       <div className="drop"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) readFile(f); }}>
@@ -45,7 +49,7 @@ export function Importer() {
 
       {result && (
         <div className="card ok">
-          <strong>Import terminé.</strong> {result.invites} adhérent{result.invites > 1 ? 's' : ''} ajouté{result.invites > 1 ? 's' : ''} à inviter, {result.cotisations} cotisation{result.cotisations > 1 ? 's' : ''} enregistrée{result.cotisations > 1 ? 's' : ''}
+          <strong>Import terminé.</strong> {result.invites} adhérent{result.invites > 1 ? 's' : ''} ajouté{result.invites > 1 ? 's' : ''} à inviter, {result.cotisations} cotisation{result.cotisations > 1 ? 's' : ''} enregistrée{result.cotisations > 1 ? 's' : ''}{result.fiches ? `, ${result.fiches} fiche${result.fiches > 1 ? 's' : ''} d’annuaire créée${result.fiches > 1 ? 's' : ''}` : ''}
           {result.deja_inscrits ? `, ${result.deja_inscrits} déjà inscrit${result.deja_inscrits > 1 ? 's' : ''}` : ''}{result.ignores ? `, ${result.ignores} ignoré${result.ignores > 1 ? 's' : ''}` : ''}. <a href="#adherents">Voir les adhérents</a>
         </div>
       )}
@@ -65,10 +69,10 @@ export function Importer() {
           )}
           <div className="card flush">
             <table>
-              <thead><tr><th>Prénom</th><th>Nom</th><th>E-mail</th><th>Cotisation jusqu’au</th></tr></thead>
+              <thead><tr><th>Prénom</th><th>Nom</th><th>E-mail</th><th>Cotisation jusqu’au</th><th>Fiche d’annuaire</th></tr></thead>
               <tbody>
                 {parsed.rows.slice(0, 200).map((r) => (
-                  <tr key={r.email}><td>{r.prenom}</td><td>{r.nom}</td><td className="muted">{r.email}</td><td className="muted">{r.valide_jusqu ? formatDay(r.valide_jusqu) : '—'}</td></tr>
+                  <tr key={r.email}><td>{r.prenom}</td><td>{r.nom}</td><td className="muted">{r.email}</td><td className="muted">{r.valide_jusqu ? formatDay(r.valide_jusqu) : '—'}</td><td className="muted">{resumerFiche(r.fiche)}</td></tr>
                 ))}
               </tbody>
             </table>
