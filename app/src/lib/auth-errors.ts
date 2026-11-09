@@ -30,8 +30,9 @@ export function authErrorMessage(error: AuthError, context?: 'code'): string {
     case 'over_email_send_rate_limit':
       return 'Trop de tentatives. Réessayez dans quelques minutes.';
     case 'unexpected_failure':
-      // handle_new_user rejects the signup when the access code is not valid.
-      return "Code d'accès invalide. Vérifiez-le auprès de votre association.";
+      // handle_new_user rejects the signup when the access code is not valid, or when the
+      // association only accepts the addresses on its member list.
+      return "Inscription refusée : code d'accès invalide, ou adresse absente de la liste des adhérents. Vérifiez auprès de votre association.";
     default:
       return error.message || 'Une erreur est survenue. Réessayez.';
   }

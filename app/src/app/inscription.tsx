@@ -121,7 +121,24 @@ function AccountForm({
     }
     setLoading(true);
     setError(null);
-    // handle_new_user re-checks the code server-side and attaches the profile to its association.
+    // When the association restricts signup to its member list, say so before creating anything.
+    const { data: eligibility, error: eligibilityError } = await supabase.rpc('signup_eligibility', {
+      p_code: code,
+      p_email: email.trim(),
+    });
+    if (eligibilityError?.message?.includes('too_many_attempts')) {
+      setLoading(false);
+      setError('Trop d’essais. Patientez quelques minutes avant de réessayer.');
+      return;
+    }
+    if (eligibility === 'not_on_list') {
+      setLoading(false);
+      setError(
+        `Cette adresse n’est pas sur la liste des adhérents de ${name}. Utilisez l’adresse où vous avez reçu l’invitation, ou demandez au bureau de vous ajouter.`
+      );
+      return;
+    }
+    // handle_new_user re-checks the code (and the list) server-side and attaches the profile to its association.
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,

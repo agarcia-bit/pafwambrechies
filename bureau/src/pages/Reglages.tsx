@@ -7,7 +7,7 @@ import { parseList, supabase, toast, uploadPhoto, useAsync } from '../lib';
 // Mêmes clés que l'écran Réglages de l'application (app_settings, une ligne par clé).
 const KEYS = ['signup_code', 'tenant_name', 'tenant_tagline', 'tenant_primary_color', 'tenant_secondary_color', 'tenant_logo_url', 'tenant_login_bg_url',
   'module_annuaire', 'module_offres', 'module_agenda', 'module_idees', 'module_liens', 'module_documents',
-  'label_annuaire', 'label_offres', 'label_nom', 'annuaire_categories', 'offres_categories', 'module_cotisations', 'contact_email'] as const;
+  'label_annuaire', 'label_offres', 'label_nom', 'annuaire_categories', 'offres_categories', 'module_cotisations', 'contact_email', 'inscription_sur_liste'] as const;
 type Key = (typeof KEYS)[number];
 type Settings = Record<Key, string>;
 const MODULES: { key: Key; label: string; hint: string }[] = [
@@ -71,6 +71,7 @@ export function Reglages({ profile }: PageProps) {
           <input type="text" value={s.signup_code} onChange={(e) => set('signup_code')(e.target.value.toUpperCase())} style={{ fontFamily: 'ui-monospace, monospace', letterSpacing: '.08em', maxWidth: 200 }} aria-label="Code d’accès" />
           <button type="button" onClick={() => set('signup_code')(newCode())}><Icon name="sparkle" size={15} /> Générer</button>
         </div>
+        <label className="switch" style={{ marginTop: 14 }}><input type="checkbox" checked={s.inscription_sur_liste.trim().toLowerCase() === 'on'} onChange={(e) => set('inscription_sur_liste')(e.target.checked ? 'on' : '')} /><span className="track" /><span><strong>Réservé aux adhérents de la liste</strong><br /><span className="muted small">Le code ne suffit plus : l’adresse e-mail doit être dans la liste des adhérents (import ou « Ajouter et inviter »).</span></span></label>
       </section>
 
       <section className="card">
