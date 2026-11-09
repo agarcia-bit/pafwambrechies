@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -32,6 +31,7 @@ import {
 } from '@/lib/bureau-chat';
 import { confirmAction, showMessage } from '@/lib/confirm';
 import { useMember } from '@/lib/session';
+import { useClavierOuvert } from '@/hooks/use-clavier-ouvert';
 import { useTheme } from '@/theme';
 
 const GROUP_MS = 5 * 60_000;
@@ -71,15 +71,7 @@ export default function DiscussionScreen() {
   const canSend = !!text.trim() && !send.isPending;
   // The floating tab bar (iOS) covers the bottom of the screen: the composer sits above it,
   // except while the keyboard is up, which hides the tab bar.
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-  useEffect(() => {
-    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardOpen(true));
-    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardOpen(false));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
+  const keyboardOpen = useClavierOuvert();
   const bottomPad = keyboardOpen ? 8 : insets.bottom + (Platform.OS === 'ios' ? TAB_BAR_HEIGHT : 8);
 
   // Opening the thread reads it.

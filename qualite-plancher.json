@@ -1,0 +1,187 @@
+{
+ "version": 1,
+ "seuils": {
+  "fonction": 80,
+  "profondeur": 4,
+  "doublon": 8
+ },
+ "dossiers": [
+  "scripts",
+  "app",
+  "supabase/functions"
+ ],
+ "fonctions": [
+  {
+   "fichier": "app/src/app/(app)/(actus)/actu/[id].tsx",
+   "nom": "ActuScreen",
+   "lignes": 110,
+   "profondeur": 3
+  },
+  {
+   "fichier": "app/src/app/(app)/annuaire/[id].tsx",
+   "nom": "CommercantScreen",
+   "lignes": 93,
+   "profondeur": 2
+  },
+  {
+   "fichier": "app/src/app/(app)/plus/admin/[collection]/edit.tsx",
+   "nom": "EditForm",
+   "lignes": 103,
+   "profondeur": 3
+  },
+  {
+   "fichier": "app/src/app/(app)/plus/admin/import.tsx",
+   "nom": "ImportScreen",
+   "lignes": 96,
+   "profondeur": 3
+  },
+  {
+   "fichier": "app/src/app/(app)/plus/admin/invitations.tsx",
+   "nom": "InvitationsScreen",
+   "lignes": 136,
+   "profondeur": 4
+  },
+  {
+   "fichier": "app/src/app/(app)/plus/admin/reglages.tsx",
+   "nom": "SettingsForm",
+   "lignes": 221,
+   "profondeur": 3
+  },
+  {
+   "fichier": "app/src/app/(app)/plus/admin/sondages/[id].tsx",
+   "nom": "Results",
+   "lignes": 91,
+   "profondeur": 2
+  },
+  {
+   "fichier": "app/src/app/(app)/plus/admin/sondages/nouveau.tsx",
+   "nom": "NouveauSondageScreen",
+   "lignes": 113,
+   "profondeur": 2
+  },
+  {
+   "fichier": "app/src/app/(app)/plus/bureau/discussion.tsx",
+   "nom": "DiscussionScreen",
+   "lignes": 118,
+   "profondeur": 5
+  },
+  {
+   "fichier": "app/src/app/(app)/plus/compte.tsx",
+   "nom": "CompteScreen",
+   "lignes": 94,
+   "profondeur": 4
+  },
+  {
+   "fichier": "app/src/app/(app)/plus/index.tsx",
+   "nom": "PlusScreen",
+   "lignes": 103,
+   "profondeur": 2
+  },
+  {
+   "fichier": "app/src/app/connexion.tsx",
+   "nom": "ConnexionScreen",
+   "lignes": 91,
+   "profondeur": 2
+  },
+  {
+   "fichier": "app/src/app/inscription.tsx",
+   "nom": "AccountForm",
+   "lignes": 157,
+   "profondeur": 3
+  },
+  {
+   "fichier": "app/src/app/mot-de-passe-oublie.tsx",
+   "nom": "MotDePasseOublieScreen",
+   "lignes": 105,
+   "profondeur": 2
+  },
+  {
+   "fichier": "app/src/components/guided-tour.tsx",
+   "nom": "GuidedTour",
+   "lignes": 203,
+   "profondeur": 2
+  },
+  {
+   "fichier": "app/src/components/notification-observer.tsx",
+   "nom": "NotificationObserver",
+   "lignes": 24,
+   "profondeur": 6
+  },
+  {
+   "fichier": "app/src/components/notification-observer.tsx",
+   "nom": "(rappel useEffect)",
+   "lignes": 20,
+   "profondeur": 5
+  },
+  {
+   "fichier": "app/src/components/poll-gate.tsx",
+   "nom": "PollScreen",
+   "lignes": 101,
+   "profondeur": 3
+  },
+  {
+   "fichier": "app/src/lib/import-adherents.ts",
+   "nom": "parseImport",
+   "lignes": 96,
+   "profondeur": 4
+  },
+  {
+   "fichier": "supabase/functions/notify-bureau-message/index.ts",
+   "nom": "(rappel serve)",
+   "lignes": 64,
+   "profondeur": 5
+  },
+  {
+   "fichier": "supabase/functions/notify-cotisations/index.ts",
+   "nom": "pushTo",
+   "lignes": 34,
+   "profondeur": 5
+  },
+  {
+   "fichier": "supabase/functions/notify-evenements/index.ts",
+   "nom": "pushTo",
+   "lignes": 34,
+   "profondeur": 5
+  },
+  {
+   "fichier": "supabase/functions/notify-new-actu/index.ts",
+   "nom": "sendExpoPush",
+   "lignes": 53,
+   "profondeur": 5
+  },
+  {
+   "fichier": "supabase/functions/notify-new-report/index.ts",
+   "nom": "(rappel serve)",
+   "lignes": 59,
+   "profondeur": 5
+  },
+  {
+   "fichier": "supabase/functions/notify-poll-deadlines/index.ts",
+   "nom": "pushTo",
+   "lignes": 34,
+   "profondeur": 5
+  },
+  {
+   "fichier": "supabase/functions/send-mail/index.ts",
+   "nom": "(rappel serve)",
+   "lignes": 88,
+   "profondeur": 4
+  }
+ ],
+ "doublons": {
+  "total": 295,
+  "parFichier": {
+   "app/src/app/(app)/(actus)/actu/[id].tsx": 9,
+   "app/src/app/(app)/plus/bureau/discussion.tsx": 9,
+   "app/src/app/connexion.tsx": 11,
+   "app/src/app/inscription.tsx": 8,
+   "app/src/app/mot-de-passe-oublie.tsx": 11,
+   "supabase/functions/notify-bureau-message/index.ts": 29,
+   "supabase/functions/notify-cotisations/index.ts": 54,
+   "supabase/functions/notify-evenements/index.ts": 61,
+   "supabase/functions/notify-new-actu/index.ts": 10,
+   "supabase/functions/notify-new-report/index.ts": 29,
+   "supabase/functions/notify-poll-deadlines/index.ts": 64
+  }
+ }
+}

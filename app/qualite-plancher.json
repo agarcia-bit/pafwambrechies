@@ -1,0 +1,137 @@
+{
+ "version": 1,
+ "seuils": {
+  "fonction": 80,
+  "profondeur": 4,
+  "doublon": 8
+ },
+ "dossiers": [
+  "src"
+ ],
+ "fonctions": [
+  {
+   "fichier": "src/app/(app)/(actus)/actu/[id].tsx",
+   "nom": "ActuScreen",
+   "lignes": 110,
+   "profondeur": 3
+  },
+  {
+   "fichier": "src/app/(app)/annuaire/[id].tsx",
+   "nom": "CommercantScreen",
+   "lignes": 93,
+   "profondeur": 2
+  },
+  {
+   "fichier": "src/app/(app)/plus/admin/[collection]/edit.tsx",
+   "nom": "EditForm",
+   "lignes": 103,
+   "profondeur": 3
+  },
+  {
+   "fichier": "src/app/(app)/plus/admin/import.tsx",
+   "nom": "ImportScreen",
+   "lignes": 96,
+   "profondeur": 3
+  },
+  {
+   "fichier": "src/app/(app)/plus/admin/invitations.tsx",
+   "nom": "InvitationsScreen",
+   "lignes": 136,
+   "profondeur": 4
+  },
+  {
+   "fichier": "src/app/(app)/plus/admin/reglages.tsx",
+   "nom": "SettingsForm",
+   "lignes": 221,
+   "profondeur": 3
+  },
+  {
+   "fichier": "src/app/(app)/plus/admin/sondages/[id].tsx",
+   "nom": "Results",
+   "lignes": 91,
+   "profondeur": 2
+  },
+  {
+   "fichier": "src/app/(app)/plus/admin/sondages/nouveau.tsx",
+   "nom": "NouveauSondageScreen",
+   "lignes": 113,
+   "profondeur": 2
+  },
+  {
+   "fichier": "src/app/(app)/plus/bureau/discussion.tsx",
+   "nom": "DiscussionScreen",
+   "lignes": 118,
+   "profondeur": 5
+  },
+  {
+   "fichier": "src/app/(app)/plus/compte.tsx",
+   "nom": "CompteScreen",
+   "lignes": 94,
+   "profondeur": 4
+  },
+  {
+   "fichier": "src/app/(app)/plus/index.tsx",
+   "nom": "PlusScreen",
+   "lignes": 103,
+   "profondeur": 2
+  },
+  {
+   "fichier": "src/app/connexion.tsx",
+   "nom": "ConnexionScreen",
+   "lignes": 91,
+   "profondeur": 2
+  },
+  {
+   "fichier": "src/app/inscription.tsx",
+   "nom": "AccountForm",
+   "lignes": 157,
+   "profondeur": 3
+  },
+  {
+   "fichier": "src/app/mot-de-passe-oublie.tsx",
+   "nom": "MotDePasseOublieScreen",
+   "lignes": 105,
+   "profondeur": 2
+  },
+  {
+   "fichier": "src/components/guided-tour.tsx",
+   "nom": "GuidedTour",
+   "lignes": 203,
+   "profondeur": 2
+  },
+  {
+   "fichier": "src/components/notification-observer.tsx",
+   "nom": "NotificationObserver",
+   "lignes": 24,
+   "profondeur": 6
+  },
+  {
+   "fichier": "src/components/notification-observer.tsx",
+   "nom": "(rappel useEffect)",
+   "lignes": 20,
+   "profondeur": 5
+  },
+  {
+   "fichier": "src/components/poll-gate.tsx",
+   "nom": "PollScreen",
+   "lignes": 101,
+   "profondeur": 3
+  },
+  {
+   "fichier": "src/lib/import-adherents.ts",
+   "nom": "parseImport",
+   "lignes": 96,
+   "profondeur": 4
+  }
+ ],
+ "doublons": {
+  "total": 48,
+  "parFichier": {
+   "src/app/(app)/(actus)/actu/[id].tsx": 9,
+   "src/app/(app)/plus/bureau/discussion.tsx": 9,
+   "src/app/connexion.tsx": 11,
+   "src/app/inscription.tsx": 8,
+   "src/app/mot-de-passe-oublie.tsx": 11
+  }
+ }
+}

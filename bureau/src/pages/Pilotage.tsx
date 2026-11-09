@@ -9,6 +9,7 @@ import {
   type Action, type BureauMember, type Tache,
 } from '../lib';
 import { Chronologie, Equipe, SidePanel, TONE, type CalEvent } from './PilotageViews';
+import { Kpi } from '../components/ui/Kpi';
 
 // Deux vues suffisent : par date (que reste-t-il à faire ?) et par personne (qui fait quoi ?).
 // À droite, dans les deux cas : mes tâches et les prochaines dates.
@@ -88,12 +89,12 @@ export function Pilotage({ profile }: PageProps) {
   return (
     <>
       <div className="kpis">
-        <Kpi value={kpi!.aVenir} label="actions à venir" />
-        <Kpi value={kpi!.enCours} label="en cours" tone="info" />
-        {kpi!.bloque > 0 && <Kpi value={kpi!.bloque} label={kpi!.bloque > 1 ? 'bloquées' : 'bloquée'} tone="bad" />}
-        <Kpi value={kpi!.retard} label={kpi!.retard > 1 ? 'tâches en retard' : 'tâche en retard'} tone={kpi!.retard ? 'bad' : 'ok'} />
-        <Kpi value={kpi!.mine} label={kpi!.mine > 1 ? 'tâches pour moi' : 'tâche pour moi'} tone="brand" />
-        {kpi!.budget > 0 && <Kpi value={`${kpi!.budget.toLocaleString('fr-FR')} €`} label="budget engagé" />}
+        <Kpi valeur={kpi!.aVenir} libelle="actions à venir" />
+        <Kpi valeur={kpi!.enCours} libelle="en cours" ton="info" />
+        {kpi!.bloque > 0 && <Kpi valeur={kpi!.bloque} libelle={kpi!.bloque > 1 ? 'bloquées' : 'bloquée'} ton="bad" />}
+        <Kpi valeur={kpi!.retard} libelle={kpi!.retard > 1 ? 'tâches en retard' : 'tâche en retard'} ton={kpi!.retard ? 'bad' : 'ok'} />
+        <Kpi valeur={kpi!.mine} libelle={kpi!.mine > 1 ? 'tâches pour moi' : 'tâche pour moi'} ton="brand" />
+        {kpi!.budget > 0 && <Kpi valeur={`${kpi!.budget.toLocaleString('fr-FR')} €`} libelle="budget engagé" />}
       </div>
 
       <div className="view-bar">
@@ -132,9 +133,6 @@ export function Pilotage({ profile }: PageProps) {
   );
 }
 
-function Kpi({ value, label, tone }: { value: number | string; label: string; tone?: string }) {
-  return <div className={'kpi ' + (tone ?? '')}><strong>{value}</strong><span>{label}</span></div>;
-}
 
 // ── Fiche d'une action ───────────────────────────────────────────────────────
 

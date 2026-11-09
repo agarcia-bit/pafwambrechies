@@ -11,6 +11,7 @@ import { PollGate } from '@/components/poll-gate';
 import { Button } from '@/components/ui/button';
 import { ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
+import { NoteurDeVisite } from '@/lib/engagement';
 import { useSession } from '@/lib/session';
 import { tenantConfig } from '@/lib/tenant-config';
 import { useTheme } from '@/theme';
@@ -35,6 +36,7 @@ export default function AppLayout() {
   return (
     <>
       <NotificationObserver />
+      <NoteurDeVisite />
       <StatusBar style="light" />
       <LaunchReveal />
       <GuidedTour />

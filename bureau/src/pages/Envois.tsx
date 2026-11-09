@@ -1,6 +1,7 @@
 import type { PageProps } from '../App';
 import { Empty, Skeleton } from '../Icon';
 import { formatRelative, fullName, supabase, useAsync, type BureauMember } from '../lib';
+import { Kpi } from '../components/ui/Kpi';
 
 // Plan Resend en cours (Pro) : limites partagées par toutes les associations, null = pas de limite.
 // À mettre à jour en changeant de plan.
@@ -37,10 +38,10 @@ export function Envois({ profile }: PageProps) {
       {stats.error && <p className="note small">Les compteurs ne sont pas encore disponibles (script <code>envois_stats.sql</code> à appliquer).</p>}
       {mine && (
         <div className="kpis">
-          <Kpi value={mine.aujourd_hui} label="aujourd’hui" />
-          <Kpi value={mine.ce_mois} label="ce mois-ci" tone="brand" />
-          <Kpi value={mine.mois_precedent} label="le mois dernier" />
-          <Kpi value={mine.total} label="depuis le début" />
+          <Kpi valeur={mine.aujourd_hui} libelle="aujourd’hui" />
+          <Kpi valeur={mine.ce_mois} libelle="ce mois-ci" ton="brand" />
+          <Kpi valeur={mine.mois_precedent} libelle="le mois dernier" />
+          <Kpi valeur={mine.total} libelle="depuis le début" />
         </div>
       )}
 
@@ -95,9 +96,6 @@ export function Envois({ profile }: PageProps) {
   );
 }
 
-function Kpi({ value, label, tone }: { value: number; label: string; tone?: string }) {
-  return <div className={'kpi ' + (tone ?? '')}><strong>{value.toLocaleString('fr-FR')}</strong><span>{label}</span></div>;
-}
 
 function Gauge({ label, value, max }: { label: string; value: number; max: number }) {
   const pct = Math.min(100, (value / max) * 100);

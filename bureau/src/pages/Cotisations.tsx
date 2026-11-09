@@ -8,6 +8,7 @@ import {
   addOneYear, cotisStatus, euros, formatDateTime, formatDay, fullName, loadCotisConfig, loadLastSends, loadMembers, STATUS_LABEL, supabase,
   today, toast, useAsync, type CotisConfig, type MemberRow, type Recipient,
 } from '../lib';
+import { Kpi } from '../components/ui/Kpi';
 
 type Filter = 'tous' | 'a_jour' | 'a_relancer' | 'non_inscrits';
 type SortKey = 'nom' | 'cotisation';
@@ -106,12 +107,12 @@ export function Cotisations({ profile }: PageProps) {
   return (
     <>
       <div className="kpis">
-        <Kpi value={all.length} label="adhérents" />
-        <Kpi value={upToDate.length} label="à jour" tone="ok" />
-        <Kpi value={all.length - upToDate.length} label="à relancer" tone={all.length - upToDate.length ? 'warn' : 'ok'} />
-        {montant > 0 && <Kpi value={euros(montant)} label={`cotisation${config.data?.libelle ? ' ' + config.data.libelle : ''}`} />}
-        {montant > 0 && <Kpi value={euros(upToDate.length * montant)} label="encaissé (à jour × montant)" tone="brand" />}
-        {montant > 0 && all.length - upToDate.length > 0 && <Kpi value={euros((all.length - upToDate.length) * montant)} label="à encaisser" tone="warn" />}
+        <Kpi valeur={all.length} libelle="adhérents" />
+        <Kpi valeur={upToDate.length} libelle="à jour" ton="ok" />
+        <Kpi valeur={all.length - upToDate.length} libelle="à relancer" ton={all.length - upToDate.length ? 'warn' : 'ok'} />
+        {montant > 0 && <Kpi valeur={euros(montant)} libelle={`cotisation${config.data?.libelle ? ' ' + config.data.libelle : ''}`} />}
+        {montant > 0 && <Kpi valeur={euros(upToDate.length * montant)} libelle="encaissé (à jour × montant)" ton="brand" />}
+        {montant > 0 && all.length - upToDate.length > 0 && <Kpi valeur={euros((all.length - upToDate.length) * montant)} libelle="à encaisser" ton="warn" />}
       </div>
 
       {/* La cotisation en clair : ce qui est demandé, la campagne, et comment pointer un paiement. */}
@@ -204,9 +205,6 @@ export function Cotisations({ profile }: PageProps) {
   );
 }
 
-function Kpi({ value, label, tone }: { value: number | string; label: string; tone?: string }) {
-  return <div className={'kpi ' + (tone ?? '')}><strong>{value}</strong><span>{label}</span></div>;
-}
 
 // ── Fiche d'un adhérent ──────────────────────────────────────────────────────
 
