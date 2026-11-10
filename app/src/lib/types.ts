@@ -107,6 +107,8 @@ export type Evenement = {
   id: number;
   titre: string;
   date: string;
+  /** Dernier jour d'un événement sur plusieurs jours (supabase/evenements_plusieurs_jours.sql). */
+  date_fin?: string | null;
   heure: string | null;
   lieu: string | null;
   description: string | null;

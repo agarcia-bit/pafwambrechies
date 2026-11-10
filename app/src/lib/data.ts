@@ -294,7 +294,13 @@ export function useEvenements() {
     queryKey: ['evenements'],
     queryFn: async () =>
       unwrap<Evenement[]>(
-        await supabase.from('evenements').select('*').gte('date', todayISO()).order('date').order('heure')
+        await supabase
+          .from('evenements')
+          .select('*')
+          // Un événement sur plusieurs jours reste à venir jusqu'à son dernier jour.
+          .or(`date.gte.${todayISO()},date_fin.gte.${todayISO()}`)
+          .order('date')
+          .order('heure')
       ),
   });
 }

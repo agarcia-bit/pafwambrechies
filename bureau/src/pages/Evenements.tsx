@@ -4,10 +4,13 @@ import type { PageProps } from '../App';
 import { Compose } from '../Compose';
 import { Drawer } from '../Drawer';
 import { Empty, Icon, Skeleton } from '../Icon';
-import { daysUntil, formatDay, fullName, hashParam, loadMembers, supabase, today, toast, useAsync, type Recipient } from '../lib';
+import { daysUntil, fullName, hashParam, loadMembers, supabase, today, toast, useAsync, type Recipient } from '../lib';
+import { compterPresentsParJour, estPasse, estSurPlusieursJours, formatJourCourt, formatPeriode, joursDeLEvenement, resumerJoursChoisis } from '../periode';
 
-type Ev = { id: number; titre: string; date: string; heure: string | null; lieu: string | null; description: string | null; participation: boolean };
+type Ev = { id: number; titre: string; date: string; date_fin: string | null; heure: string | null; lieu: string | null; description: string | null; participation: boolean };
 type Reponse = 'present' | 'absent' | 'indecis';
+/** Pour un événement sur plusieurs jours, le présent peut préciser ses jours et laisser un mot. */
+type SaReponse = { reponse: Reponse; jours: string[] | null; precision: string | null };
 type Member = { id: string | null; prenom: string | null; nom: string | null; email: string | null };
 
 export function Evenements({ profile }: PageProps) {
@@ -22,21 +25,21 @@ export function Evenements({ profile }: PageProps) {
   // Tout est chargé en trois requêtes, quel que soit le nombre d'événements.
   const data = useAsync(async () => {
     const [ev, rep, members] = await Promise.all([
-      supabase.from('evenements').select('id, titre, date, heure, lieu, description, participation').order('date').order('heure'),
-      supabase.from('evenement_reponses').select('evenement_id, user_id, reponse'),
+      supabase.from('evenements').select('id, titre, date, date_fin, heure, lieu, description, participation').order('date').order('heure'),
+      supabase.from('evenement_reponses').select('evenement_id, user_id, reponse, jours, precision'),
       loadMembers(),
     ]);
     if (ev.error) throw ev.error;
     if (rep.error) throw rep.error;
-    const answers: Record<number, Record<string, Reponse>> = {};
-    for (const r of rep.data as { evenement_id: number; user_id: string; reponse: Reponse }[]) (answers[r.evenement_id] ??= {})[r.user_id] = r.reponse;
+    const answers: Record<number, Record<string, SaReponse>> = {};
+    for (const { evenement_id, user_id, ...reponse } of rep.data as ({ evenement_id: number; user_id: string } & SaReponse)[]) (answers[evenement_id] ??= {})[user_id] = reponse;
     return { events: ev.data as Ev[], answers, members: members.filter((m) => m.inscrit) };
   }, []);
 
   if (data.loading && !data.data) return <div className="card"><Skeleton lines={5} /></div>;
   if (data.error) return <p className="error">{data.error}</p>;
   const { events, answers, members } = data.data!;
-  const list = events.filter((e) => (past ? e.date < today() : e.date >= today()));
+  const list = events.filter((e) => estPasse(e) === past);
   if (past) list.reverse();
   const current = open === 'new' ? null : open === null ? undefined : events.find((e) => e.id === open) ?? undefined;
 
@@ -44,8 +47,8 @@ export function Evenements({ profile }: PageProps) {
     <>
       <div className="toolbar">
         <div className="chips">
-          <button className={!past ? 'chip on' : 'chip'} onClick={() => setPast(false)}>À venir ({events.filter((e) => e.date >= today()).length})</button>
-          <button className={past ? 'chip on' : 'chip'} onClick={() => setPast(true)}>Passés ({events.filter((e) => e.date < today()).length})</button>
+          <button className={!past ? 'chip on' : 'chip'} onClick={() => setPast(false)}>À venir ({events.filter((e) => !estPasse(e)).length})</button>
+          <button className={past ? 'chip on' : 'chip'} onClick={() => setPast(true)}>Passés ({events.filter(estPasse).length})</button>
         </div>
         <button className="push primary" onClick={() => setOpen('new')}><Icon name="plus" size={16} /> Nouvel événement</button>
       </div>
@@ -61,18 +64,18 @@ export function Evenements({ profile }: PageProps) {
   );
 }
 
-function EventCard({ e, answers, members, onEdit }: { e: Ev; answers: Record<string, Reponse>; members: Member[]; onEdit: () => void }) {
+function EventCard({ e, answers, members, onEdit }: { e: Ev; answers: Record<string, SaReponse>; members: Member[]; onEdit: () => void }) {
   const [openCol, setOpenCol] = useState<'present' | 'absent' | 'silence' | null>(null);
   const [compose, setCompose] = useState(false);
   const groups = {
-    present: members.filter((m) => answers[m.id!] === 'present'),
-    absent: members.filter((m) => answers[m.id!] === 'absent'),
-    silence: members.filter((m) => !answers[m.id!] || answers[m.id!] === 'indecis'),
+    present: members.filter((m) => answers[m.id!]?.reponse === 'present'),
+    absent: members.filter((m) => answers[m.id!]?.reponse === 'absent'),
+    silence: members.filter((m) => !answers[m.id!] || answers[m.id!].reponse === 'indecis'),
   };
   const total = members.length || 1;
   const silent: Recipient[] = groups.silence.filter((m) => m.email).map((m) => ({ email: m.email!, user_id: m.id }));
   const d = daysUntil(e.date);
-  const when = d === 0 ? 'aujourd’hui' : d === 1 ? 'demain' : d > 0 ? `dans ${d} jours` : `il y a ${-d} jours`;
+  const when = d === 0 ? 'aujourd’hui' : d === 1 ? 'demain' : d > 0 ? `dans ${d} jours` : !estPasse(e) ? 'en cours' : `il y a ${-d} jours`;
 
   const cols: { key: 'present' | 'absent' | 'silence'; label: string; tone: string }[] = [
     { key: 'present', label: 'Présents', tone: 'ok' },
@@ -85,10 +88,10 @@ function EventCard({ e, answers, members, onEdit }: { e: Ev; answers: Record<str
       <div className="head">
         <div>
           <h2>{e.titre}</h2>
-          <span className="muted">{formatDay(e.date)}{e.heure ? ` · ${e.heure}` : ''} · {when}{e.lieu ? ` · ${e.lieu}` : ''}</span>
+          <span className="muted">{formatPeriode(e)}{e.heure ? ` · ${e.heure}` : ''} · {when}{e.lieu ? ` · ${e.lieu}` : ''}</span>
         </div>
         <div className="btn-group">
-          {e.participation && d >= 0 && silent.length > 0 && (
+          {e.participation && !estPasse(e) && silent.length > 0 && (
             <button onClick={() => setCompose(true)}><Icon name="mail" size={15} /> Relancer les {silent.length} silencieux</button>
           )}
           <button className="icon-btn" onClick={onEdit} aria-label="Modifier" title="Modifier"><Icon name="edit" /></button>
@@ -110,9 +113,10 @@ function EventCard({ e, answers, members, onEdit }: { e: Ev; answers: Record<str
               </button>
             ))}
           </div>
+          {estSurPlusieursJours(e) && <PresentsParJour e={e} answers={answers} />}
           {openCol && (
             <ul className="plain compact names">
-              {groups[openCol].map((m) => <li key={m.id}>{fullName(m)}</li>)}
+              {groups[openCol].map((m) => <li key={m.id}>{fullName(m)}{openCol === 'present' && estSurPlusieursJours(e) && <DetailDeLaPresence reponse={answers[m.id!]} />}</li>)}
               {!groups[openCol].length && <li className="muted">Personne.</li>}
             </ul>
           )}
@@ -122,12 +126,21 @@ function EventCard({ e, answers, members, onEdit }: { e: Ev; answers: Record<str
         <Compose
           to={silent}
           subject={`Seras-tu présent·e : ${e.titre} ?`}
-          body={`Bonjour,\n\nPeux-tu répondre dans l’application pour « ${e.titre} » (${formatDay(e.date)}${e.lieu ? `, ${e.lieu}` : ''}) ?\n\nMerci !`}
+          body={`Bonjour,\n\nPeux-tu répondre dans l’application pour « ${e.titre} » (${formatPeriode(e)}${e.lieu ? `, ${e.lieu}` : ''}) ?\n\nMerci !`}
           onClose={() => setCompose(false)}
         />
       )}
     </section>
   );
+}
+
+function PresentsParJour({ e, answers }: { e: Ev; answers: Record<string, SaReponse> }) {
+  const parJour = compterPresentsParJour(joursDeLEvenement(e), Object.values(answers));
+  return <p className="muted small">Présents par jour : {parJour.map(({ jour, presents }) => `${formatJourCourt(jour)} : ${presents}`).join(' · ')}</p>;
+}
+
+function DetailDeLaPresence({ reponse }: { reponse: SaReponse }) {
+  return <span className="muted"> — {resumerJoursChoisis(reponse.jours)}{reponse.precision ? ` · « ${reponse.precision} »` : ''}</span>;
 }
 
 // ── Création / modification ──────────────────────────────────────────────────
@@ -139,7 +152,7 @@ const joinHeure = (debut: string, fin: string) => (debut && fin ? `${debut} – 
 function EventDrawer({ e, tenant, onClose, onChanged }: { e: Ev | null; tenant: string; onClose: () => void; onChanged: () => void }) {
   const h = splitHeure(e?.heure ?? null);
   const [f, setF] = useState({
-    titre: e?.titre ?? '', date: e?.date ?? today(), debut: e ? h.debut : '19:00', fin: e ? h.fin : '', lieu: e?.lieu ?? '',
+    titre: e?.titre ?? '', date: e?.date ?? today(), date_fin: e?.date_fin ?? '', debut: e ? h.debut : '19:00', fin: e ? h.fin : '', lieu: e?.lieu ?? '',
     description: e?.description ?? '', participation: e?.participation ?? true,
   });
   const [busy, setBusy] = useState(false);
@@ -147,8 +160,9 @@ function EventDrawer({ e, tenant, onClose, onChanged }: { e: Ev | null; tenant: 
 
   async function save() {
     if (!f.titre.trim() || !f.date) return toast('Le titre et la date sont obligatoires.', 'error');
+    if (f.date_fin && f.date_fin <= f.date) return toast('La date de fin doit être après la date de début (laissez-la vide pour un seul jour).', 'error');
     setBusy(true);
-    const row = { titre: f.titre.trim(), date: f.date, heure: joinHeure(f.debut, f.fin), lieu: f.lieu.trim() || null, description: f.description.trim() || null, participation: f.participation };
+    const row = { titre: f.titre.trim(), date: f.date, date_fin: f.date_fin || null, heure: joinHeure(f.debut, f.fin), lieu: f.lieu.trim() || null, description: f.description.trim() || null, participation: f.participation };
     const { error } = e
       ? await supabase.from('evenements').update(row).eq('id', e.id)
       : await supabase.from('evenements').insert({ ...row, tenant_id: tenant });
@@ -186,6 +200,7 @@ function EventDrawer({ e, tenant, onClose, onChanged }: { e: Ev | null; tenant: 
         <label>Titre<input type="text" value={f.titre} onChange={(ev) => set('titre', ev.target.value)} placeholder="Ex. : Assemblée générale" autoFocus /></label>
         <div className="form-row">
           <label>Date<input type="date" value={f.date} onChange={(ev) => set('date', ev.target.value)} /></label>
+          <label>Date de fin <span className="muted small">(facultatif)</span><input type="date" value={f.date_fin} min={f.date} onChange={(ev) => set('date_fin', ev.target.value)} /></label>
           <label>Début<input type="time" value={f.debut} onChange={(ev) => set('debut', ev.target.value)} /></label>
           <label>Fin<input type="time" value={f.fin} onChange={(ev) => set('fin', ev.target.value)} /></label>
         </div>

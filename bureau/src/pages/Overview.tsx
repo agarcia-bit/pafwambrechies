@@ -3,15 +3,11 @@ import { useState } from 'react';
 import type { PageProps } from '../App';
 import { Empty, Icon, Skeleton } from '../Icon';
 import { cotisStatus, daysUntil, dueLabel, formatDay, fullName, isOverdue, loadBureau, loadMembers, supabase, toast, today, useAsync } from '../lib';
+import { filtreNonTermines } from '../periode';
 
 export function Overview({ profile }: PageProps) {
   const members = useAsync(loadMembers, []);
   const bureau = useAsync(loadBureau, []);
-  const events = useAsync(async () => {
-    const { data, error } = await supabase.from('evenements').select('id, titre, date, participation').gte('date', today()).order('date').limit(4);
-    if (error) throw error;
-    return data as { id: number; titre: string; date: string; participation: boolean }[];
-  }, []);
 
   // Cocher une tâche ici la termine, comme dans le Pilotage : elle reste cochée un instant, puis disparaît.
   const [ticked, setTicked] = useState<Set<number>>(new Set());
@@ -83,25 +79,7 @@ export function Overview({ profile }: PageProps) {
           {late.length > 0 && <p className="note-bad"><Icon name="alert" size={15} /> {late.length} tâche{late.length > 1 ? 's' : ''} en retard dans le bureau</p>}
         </section>
 
-        <section className="card">
-          <div className="head"><h2>Prochains événements</h2><a href="#evenements">Tout voir →</a></div>
-          {events.data?.length ? (
-            <ul className="plain">
-              {events.data.map((e) => {
-                const d = daysUntil(e.date);
-                return (
-                  <li key={e.id}>
-                    <a className="row-link" href={`#evenements?id=${e.id}`}>
-                    <span className="date-chip"><b>{new Date(e.date + 'T00:00:00').getDate()}</b>{new Date(e.date + 'T00:00:00').toLocaleDateString('fr-FR', { month: 'short' })}</span>
-                    <span className="grow">{e.titre}</span>
-                    <span className="muted small">{d === 0 ? 'aujourd’hui' : d === 1 ? 'demain' : `dans ${d} j`}</span>
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : <Empty icon="calendar" title="Aucun événement à venir" />}
-        </section>
+        <ProchainsEvenements />
 
         <section className="card">
           <div className="head"><h2>À relancer en priorité</h2></div>
@@ -142,5 +120,37 @@ function Donut({ parts, label }: { parts: { v: number; c: string }[]; label: str
       })}
       <text x="70" y="76" textAnchor="middle" fontSize="22" fontWeight="700" fill="var(--text)">{label}</text>
     </svg>
+  );
+}
+
+/** Les quatre prochains événements, y compris ceux en cours sur plusieurs jours. */
+function ProchainsEvenements() {
+  const events = useAsync(async () => {
+    const { data, error } = await supabase.from('evenements').select('id, titre, date, date_fin').or(filtreNonTermines()).order('date').limit(4);
+    if (error) throw error;
+    return data as { id: number; titre: string; date: string; date_fin: string | null }[];
+  }, []);
+  return (
+    <section className="card">
+      <div className="head"><h2>Prochains événements</h2><a href="#evenements">Tout voir →</a></div>
+      {events.data?.length ? (
+        <ul className="plain">
+          {events.data.map((e) => <LigneEvenement key={e.id} e={e} />)}
+        </ul>
+      ) : <Empty icon="calendar" title="Aucun événement à venir" />}
+    </section>
+  );
+}
+
+function LigneEvenement({ e }: { e: { id: number; titre: string; date: string } }) {
+  const d = daysUntil(e.date);
+  return (
+    <li>
+      <a className="row-link" href={`#evenements?id=${e.id}`}>
+        <span className="date-chip"><b>{new Date(e.date + 'T00:00:00').getDate()}</b>{new Date(e.date + 'T00:00:00').toLocaleDateString('fr-FR', { month: 'short' })}</span>
+        <span className="grow">{e.titre}</span>
+        <span className="muted small">{d < 0 ? 'en cours' : d === 0 ? 'aujourd’hui' : d === 1 ? 'demain' : `dans ${d} j`}</span>
+      </a>
+    </li>
   );
 }

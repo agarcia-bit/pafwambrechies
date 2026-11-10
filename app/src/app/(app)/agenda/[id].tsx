@@ -10,8 +10,9 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { addToCalendar } from '@/lib/calendar';
 import { ACTU_HUES } from '@/lib/categories';
 import { useEvenements } from '@/lib/data';
-import { formatDayLong, venue } from '@/lib/format';
+import { venue } from '@/lib/format';
 import { mapsUrl, openLink } from '@/lib/links';
+import { formatPeriode } from '@/lib/periode';
 import { mix } from '@/theme/colors';
 
 // Hero in the event color (date tile and title), then the practical details on a white
@@ -51,7 +52,7 @@ export default function EvenementScreen() {
       }>
       <Rise>
         <DetailCard>
-          <DetailRow icon="calendar" text={formatDayLong(ev.date)} />
+          <DetailRow icon="calendar" text={formatPeriode(ev)} />
           {!!ev.heure && <DetailRow icon="clock" text={ev.heure} />}
           {!!place && (
             <DetailRow icon="location" text={place} hint="Itinéraire" onPress={() => openLink(mapsUrl(place), { inApp: false })} />
