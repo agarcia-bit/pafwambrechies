@@ -48,6 +48,8 @@ export type Collection = {
   describe: (row: Row) => { title: string; subtitle: string; image?: string | null; flag?: string };
   /** Column holding the item's photo and the storage bucket it is uploaded to. */
   photo?: { key: string; bucket: string; width: number; /** Cut to 4:3 (the directory shows 4:3); posts keep their own format. */ crop: boolean };
+  /** La colonne qui désigne l'adhérent auteur, quand un adhérent propose lui-même (défaut : user_id). */
+  colonneAuteur?: string;
   /** Shown under the form when creating. */
   createHint?: string;
   /** Recomputes dependent fields after a change. */
@@ -64,6 +66,15 @@ function addOneHour(time: string): string {
   return `${String((h + 1) % 24).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
 }
 
+/** Ce qu'un adhérent propose (offre, actu) attend la validation du bureau avant d'être visible. */
+const STATUT_PROPOSITION: Field = {
+  key: 'statut',
+  label: 'Statut',
+  type: 'choice',
+  options: ['publiee', 'en_attente'],
+  labels: { publiee: 'Publiée', en_attente: 'En attente de validation' },
+};
+
 const actus: Collection = {
   key: 'actus',
   icon: 'newspaper',
@@ -72,7 +83,8 @@ const actus: Collection = {
   editTitle: 'Modifier l’actu',
   addLabel: 'Publier une actu',
   empty: 'Aucune actu publiée.',
-  memberQueries: ['actus', 'actu'],
+  memberQueries: ['actus', 'actu', 'mes-actus'],
+  colonneAuteur: 'auteur_id',
   order: [
     { column: 'date', ascending: false },
     { column: 'id', ascending: false },
@@ -83,9 +95,10 @@ const actus: Collection = {
     { key: 'date_evenement', label: 'Date de l’événement (facultatif)', type: 'date' },
     { key: 'contenu', label: 'Contenu', type: 'multiline' },
     { key: 'image_url', label: 'Photo', type: 'photo' },
+    STATUT_PROPOSITION,
   ],
   photo: { key: 'image_url', bucket: 'actus-photos', width: 1200, crop: false },
-  defaults: () => ({ titre: '', categorie: 'Actu Asso', date_evenement: '', contenu: '', date: todayISO(), image_url: '' }),
+  defaults: () => ({ titre: '', categorie: 'Actu Asso', date_evenement: '', contenu: '', date: todayISO(), image_url: '', statut: 'publiee' }),
   toValues: (r) => ({
     titre: str(r.titre),
     categorie: str(r.categorie),
@@ -93,9 +106,11 @@ const actus: Collection = {
     contenu: str(r.contenu),
     date: str(r.date),
     image_url: str(r.image_url),
+    statut: str(r.statut),
   }),
   // The date stays the publication day, as in the web app.
   toPayload: (v) => ({
+    ...(v.statut ? { statut: v.statut } : {}),
     titre: v.titre.trim(),
     categorie: v.categorie,
     date_evenement: orNull(v.date_evenement),
@@ -107,6 +122,7 @@ const actus: Collection = {
     title: str(r.titre),
     subtitle: `${formatDay(str(r.date))} · ${str(r.categorie)}`,
     image: r.image_url ? str(r.image_url) : undefined,
+    flag: r.statut === 'en_attente' ? 'À valider' : undefined,
   }),
   createHint: 'Les adhérents qui ont activé les notifications seront prévenus dès la publication.',
 };
@@ -129,13 +145,7 @@ const offres: Collection = {
     { key: 'expiration', label: 'Date limite', type: 'date' },
     { key: 'tag', label: 'Étiquette', type: 'text', placeholder: '-10 %, Offert…' },
     { key: 'categorie', label: 'Catégorie', type: 'choice', required: true, options: [] },
-    {
-      key: 'statut',
-      label: 'Statut',
-      type: 'choice',
-      options: ['publiee', 'en_attente'],
-      labels: { publiee: 'Publiée', en_attente: 'En attente de validation' },
-    },
+    STATUT_PROPOSITION,
   ],
   defaults: () => ({ commercant: '', titre: '', description: '', expiration: '', tag: '', categorie: DEFAULT_CATEGORY, statut: 'publiee' }),
   toValues: (r) => ({

@@ -56,6 +56,8 @@ export function useActus(category: string) {
         .from('actus')
         .select(ACTU_FIELDS)
         .eq('my_like.user_id', profile.id)
+        // Le bureau voit aussi les propositions en attente : elles n'ont pas leur place dans le fil.
+        .eq('statut', 'publiee')
         .order('date', { ascending: false })
         .order('id', { ascending: false })
         .range(pageParam * PAGE_SIZE, pageParam * PAGE_SIZE + PAGE_SIZE - 1);
@@ -254,6 +256,19 @@ export function useMyFiche() {
       if (!claimed) return null;
       return unwrap<Commercant | null>(await supabase.from('annuaire').select('*').eq('id', claimed).maybeSingle());
     },
+    retry: false,
+  });
+}
+
+/** Les actus que l'adhérent a proposées, en attente ou publiées (les plus récentes d'abord). */
+export function useMesActus() {
+  const { profile } = useMember();
+  return useQuery({
+    queryKey: ['mes-actus', profile.id],
+    queryFn: async () =>
+      unwrap<Actu[]>(
+        await supabase.from('actus').select('*').eq('auteur_id', profile.id).order('created_at', { ascending: false })
+      ),
     retry: false,
   });
 }

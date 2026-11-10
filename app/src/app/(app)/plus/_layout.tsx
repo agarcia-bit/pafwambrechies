@@ -23,6 +23,8 @@ export default function PlusLayout() {
       <Stack.Protected guard={modules.documents}>
         <Stack.Screen name="documents" options={{ title: 'Documents' }} />
       </Stack.Protected>
+      <Stack.Screen name="mes-actus/index" options={{ title: 'Mes actus' }} />
+      <Stack.Screen name="mes-actus/edit" options={{ presentation: 'modal' }} />
       <Stack.Protected guard={modules.offres}>
         <Stack.Screen name="mes-offres/index" options={{ title: 'Mes offres' }} />
         <Stack.Screen name="mes-offres/edit" options={{ presentation: 'modal' }} />

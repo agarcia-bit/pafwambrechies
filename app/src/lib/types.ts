@@ -58,6 +58,8 @@ export type Actu = {
   date_evenement: string | null;
   /** Bureau member or admin who published it (null for older posts). */
   auteur_id: string | null;
+  /** Une actu proposée par un adhérent reste 'en_attente' jusqu'à sa publication par le bureau. */
+  statut?: 'publiee' | 'en_attente';
   actus_likes: Count;
   actus_commentaires: Count;
   my_like: MyLike;
