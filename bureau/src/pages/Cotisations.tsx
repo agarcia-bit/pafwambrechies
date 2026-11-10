@@ -176,7 +176,7 @@ export function Cotisations({ profile }: PageProps) {
                 <tr key={m.key} onClick={() => setOpen(m.key)} className={m.key === open ? 'sel' : ''}>
                   <td onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Sélectionner ${fullName(m)}`} checked={picked.has(m.key)} onChange={() => toggle(m.key)} /></td>
                   <td><span className="who"><Avatar name={fullName(m)} />{fullName(m)}{m.role && m.role !== 'adherent' && <span className="tag">{m.role}</span>}</span></td>
-                  <td className="muted">{m.email}</td>
+                  <td className="muted cellule-email" title={m.email ?? undefined}>{m.email}</td>
                   <td><span className={'badge ' + status}>{STATUS_LABEL[status]}</span>{m.valide_jusqu && <span className="muted"> {formatDay(m.valide_jusqu)}</span>}</td>
                   <td className="muted">{m.email && last[m.email] ? formatDateTime(last[m.email]) : '—'}</td>
                   <td>{m.inscrit ? <span className="badge ok">Inscrit</span> : <span className="badge neutral">En attente</span>}</td>

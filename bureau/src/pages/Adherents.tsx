@@ -99,7 +99,7 @@ export function Adherents({ profile, association }: PageProps) {
                   {members.data!.map((m) => (
                     <tr key={m.id}>
                       <td><span className="who"><Avatar name={fullName(m)} />{fullName(m)}{m.id === profile.id && <span className="pill brand">moi</span>}</span></td>
-                      <td className="muted">{m.email}</td>
+                      <td className="muted cellule-email" title={m.email ?? undefined}>{m.email}</td>
                       <td>
                         {isAdmin && m.id !== profile.id
                           ? <select className={'status ' + (m.role === 'admin' ? 'bad' : m.role === 'bureau' ? 'info' : 'neutral')} value={m.role} onChange={(e) => setRole(m, e.target.value as Role)} aria-label={`Rôle de ${fullName(m)}`}>
