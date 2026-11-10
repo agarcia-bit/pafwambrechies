@@ -8,6 +8,7 @@ import {
   ACTION_STATUTS, dueLabel, hashParam, isOverdue, loadBureau, nameOf, PRIORITES, supabase, today, toast, useAsync,
   type Action, type BureauMember, type Tache,
 } from '../lib';
+import { filtreNonTermines } from '../periode';
 import { Chronologie, Equipe, SidePanel, TONE, type CalEvent } from './PilotageViews';
 import { Kpi } from '../components/ui/Kpi';
 
@@ -21,7 +22,7 @@ const VIEWS = [
 export function Pilotage({ profile }: PageProps) {
   const data = useAsync(loadBureau, []);
   const agenda = useAsync(async () => {
-    const { data } = await supabase.from('evenements').select('id, titre, date').gte('date', today());
+    const { data } = await supabase.from('evenements').select('id, titre, date').or(filtreNonTermines());
     return (data ?? []) as CalEvent[];
   }, []);
   const unread = useUnread(profile.tenant_id);

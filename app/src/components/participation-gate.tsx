@@ -4,12 +4,14 @@ import Animated, { Easing, FadeIn, FadeInDown, FadeInUp, ZoomIn, useReducedMotio
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DateTile } from '@/components/actu-visual';
+import { ChoixDesJours, type JoursChoisis } from '@/components/choix-des-jours';
 import { useAnswerHandler } from '@/components/participation';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { formatDayLong, venue } from '@/lib/format';
+import { venue } from '@/lib/format';
 import { putOffForNow, REPONSE_LABELS, useParticipationQueue, type Reponse } from '@/lib/participation';
+import { estSurPlusieursJours, formatPeriode } from '@/lib/periode';
 import { usePollQueue } from '@/lib/poll-queue';
 import type { Evenement } from '@/lib/types';
 import { useTourOpen } from '@/lib/tour';
@@ -95,9 +97,13 @@ function EventQuestion({ event: ev, onAnswered }: { event: Evenement; onAnswered
   const busy = pending?.evenementId === ev.id;
   const rise = (delay: number) => (reduceMotion ? undefined : FadeInDown.delay(delay).duration(520).easing(SETTLE));
 
-  function answer(reponse: Reponse) {
+  // Pour un événement sur plusieurs jours, « Présent » demande d'abord quels jours.
+  const [choixDesJours, setChoixDesJours] = useState(false);
+
+  function answer(reponse: Reponse, jours?: JoursChoisis) {
+    if (reponse === 'present' && !jours && estSurPlusieursJours(ev)) return setChoixDesJours(true);
     // "Not sure yet": the question comes back at the next launch.
-    send(ev.id, reponse, () => {
+    send({ evenementId: ev.id, reponse, ...jours }, () => {
       if (reponse === 'indecis') putOffForNow(ev.id);
       onAnswered(reponse);
     });
@@ -124,34 +130,60 @@ function EventQuestion({ event: ev, onAnswered }: { event: Evenement; onAnswered
             {ev.titre}
           </Text>
           <Text tone="secondary" style={styles.title}>
-            {[formatDayLong(ev.date), ev.heure, place].filter(Boolean).join(' · ')}
+            {[formatPeriode(ev), ev.heure, place].filter(Boolean).join(' · ')}
           </Text>
         </Animated.View>
       </ScrollView>
       <Animated.View entering={reduceMotion ? undefined : FadeInUp.delay(520).duration(450).easing(SETTLE)} style={styles.footer}>
-        <Button
-          title="Présent"
-          icon="checkCircle"
-          loading={busy && pending?.reponse === 'present'}
-          disabled={busy}
-          onPress={() => answer('present')}
-        />
-        <Button
-          title="Absent"
-          variant="secondary"
-          loading={busy && pending?.reponse === 'absent'}
-          disabled={busy}
-          onPress={() => answer('absent')}
-        />
-        <Button
-          title="Je ne sais pas encore"
-          variant="plain"
-          loading={busy && pending?.reponse === 'indecis'}
-          disabled={busy}
-          onPress={() => answer('indecis')}
-        />
+        {choixDesJours ? (
+          <ChoixDesJours
+            event={ev}
+            enCours={busy}
+            onValider={(jours) => answer('present', jours)}
+            onAnnuler={() => setChoixDesJours(false)}
+          />
+        ) : (
+          <ReponsesPossibles busy={busy} enAttente={pending?.reponse} onRepondre={(reponse) => answer(reponse)} />
+        )}
       </Animated.View>
     </SafeAreaView>
+  );
+}
+
+/** Présent, Absent, et plus discret « Je ne sais pas encore ». */
+function ReponsesPossibles({
+  busy,
+  enAttente,
+  onRepondre,
+}: {
+  busy: boolean;
+  enAttente?: Reponse;
+  onRepondre: (reponse: Reponse) => void;
+}) {
+  return (
+    <>
+      <Button
+        title="Présent"
+        icon="checkCircle"
+        loading={busy && enAttente === 'present'}
+        disabled={busy}
+        onPress={() => onRepondre('present')}
+      />
+      <Button
+        title="Absent"
+        variant="secondary"
+        loading={busy && enAttente === 'absent'}
+        disabled={busy}
+        onPress={() => onRepondre('absent')}
+      />
+      <Button
+        title="Je ne sais pas encore"
+        variant="plain"
+        loading={busy && enAttente === 'indecis'}
+        disabled={busy}
+        onPress={() => onRepondre('indecis')}
+      />
+    </>
   );
 }
 

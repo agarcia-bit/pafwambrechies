@@ -21,6 +21,10 @@ export const REPONSE_LABELS: Record<Reponse, string> = {
   indecis: 'Je ne sais pas encore',
 };
 
+/** La réponse d'un adhérent ; pour un événement sur plusieurs jours, il peut préciser ses jours
+ * (aucun = toute la durée) et ajouter un mot écrit à la main. */
+export type MaReponse = { reponse: Reponse; jours: string[] | null; precision: string | null };
+
 /** Days before the event from which the members are asked. */
 export const ASK_DAYS = 7;
 
@@ -31,30 +35,42 @@ export function useMyReponses() {
   const { profile } = useMember();
   return useQuery({
     queryKey: ['participation', 'mine', profile.id],
-    queryFn: async (): Promise<Record<number, Reponse>> => {
+    queryFn: async (): Promise<Record<number, MaReponse>> => {
       const { data, error } = await supabase
         .from('evenement_reponses')
-        .select('evenement_id, reponse')
+        .select('evenement_id, reponse, jours, precision')
         .eq('user_id', profile.id);
       if (error) throw error;
-      return Object.fromEntries((data as { evenement_id: number; reponse: Reponse }[]).map((r) => [r.evenement_id, r.reponse]));
+      return Object.fromEntries(
+        (data as ({ evenement_id: number } & MaReponse)[]).map(({ evenement_id, ...reponse }) => [evenement_id, reponse])
+      );
     },
     // The feed must not break (nor keep retrying) if the answers are unavailable.
     retry: false,
   });
 }
 
+export type ReponseAEnvoyer = {
+  evenementId: number;
+  reponse: Reponse;
+  jours?: string[] | null;
+  precision?: string | null;
+};
+
 export function useAnswerEvenement() {
   const { profile } = useMember();
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ evenementId, reponse }: { evenementId: number; reponse: Reponse }) => {
+    mutationFn: async ({ evenementId, reponse, jours = null, precision = null }: ReponseAEnvoyer) => {
       const { error } = await supabase.from('evenement_reponses').upsert(
         {
           evenement_id: evenementId,
           tenant_id: profile.tenant_id,
           user_id: profile.id,
           reponse,
+          // Les jours et la précision ne valent que pour une présence.
+          jours: reponse === 'present' && jours?.length ? jours : null,
+          precision: reponse === 'present' ? precision?.trim() || null : null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'evenement_id,user_id' }
@@ -68,9 +84,10 @@ export function useAnswerEvenement() {
 // ── What the member is asked ─────────────────────────────────────────────────
 
 /** Pure: the events asking for an answer within a week that the member has not settled. */
-export function eventsToAnswer(events: Evenement[], answers: Record<number, Reponse>): Evenement[] {
+export function eventsToAnswer(events: Evenement[], answers: Record<number, MaReponse>): Evenement[] {
   return events.filter(
-    (ev) => ev.participation && daysUntil(ev.date) <= ASK_DAYS && (!answers[ev.id] || answers[ev.id] === 'indecis')
+    (ev) =>
+      ev.participation && daysUntil(ev.date) <= ASK_DAYS && (!answers[ev.id] || answers[ev.id].reponse === 'indecis')
   );
 }
 
@@ -104,7 +121,14 @@ export function useParticipationQueue() {
 
 // ── Bureau ───────────────────────────────────────────────────────────────────
 
-export type Participant = { id: string; prenom: string | null; nom: string | null; reponse: Reponse | null };
+export type Participant = {
+  id: string;
+  prenom: string | null;
+  nom: string | null;
+  reponse: Reponse | null;
+  jours: string[] | null;
+  precision: string | null;
+};
 
 /** Every member of the association with their answer to an event (bureau and admins only). */
 export function useParticipants(evenementId: number) {

@@ -4,6 +4,7 @@ import { getRandomBytes } from 'expo-crypto';
 import type { IconName } from '@/components/ui/icon';
 import { ACTU_CATEGORIES } from '@/lib/categories';
 import { formatDay, fullName, todayISO } from '@/lib/format';
+import { dernierJour, formatPeriode } from '@/lib/periode';
 import { uploadPhoto, type PickedPhoto } from '@/lib/photos';
 import { useMember } from '@/lib/session';
 import { DEFAULT_CATEGORY, parseList, useTenantConfig, type ModuleKey, type TenantConfig } from '@/lib/tenant-config';
@@ -175,6 +176,7 @@ const evenements: Collection = {
   fields: [
     { key: 'titre', label: 'Titre', type: 'text', required: true },
     { key: 'date', label: 'Date', type: 'date', required: true },
+    { key: 'date_fin', label: 'Date de fin (facultatif, sur plusieurs jours)', type: 'date' },
     { key: 'debut', label: 'Début', type: 'time' },
     { key: 'fin', label: 'Fin', type: 'time' },
     { key: 'lieu', label: 'Lieu', type: 'text', placeholder: 'Ex : Salle des fêtes' },
@@ -187,13 +189,14 @@ const evenements: Collection = {
       labels: { non: 'Non', oui: 'Oui, avec rappels aux adhérents' },
     },
   ],
-  defaults: () => ({ titre: '', date: todayISO(), debut: '09:00', fin: '10:00', lieu: '', description: '', participation: 'oui' }),
+  defaults: () => ({ titre: '', date: todayISO(), date_fin: '', debut: '09:00', fin: '10:00', lieu: '', description: '', participation: 'oui' }),
   // "heure" is stored as text: "09:00 – 10:00", like the web app does.
   toValues: (r) => {
     const [debut = '09:00', fin = '10:00'] = str(r.heure).match(/\d{1,2}:\d{2}/g) ?? [];
     return {
       titre: str(r.titre),
       date: str(r.date),
+      date_fin: str(r.date_fin),
       debut: pad(debut),
       fin: pad(fin),
       lieu: str(r.lieu),
@@ -204,6 +207,8 @@ const evenements: Collection = {
   toPayload: (v) => ({
     titre: v.titre.trim(),
     date: v.date,
+    // Une date de fin égale ou antérieure au début ne veut rien dire : l'événement tient en un jour.
+    date_fin: v.date_fin && v.date_fin > v.date ? v.date_fin : null,
     heure: v.debut && v.fin ? `${v.debut} – ${v.fin}` : v.debut || v.fin || null,
     lieu: orNull(v.lieu),
     description: orNull(v.description),
@@ -212,8 +217,10 @@ const evenements: Collection = {
   derive: (changed, v) => (changed === 'debut' ? { ...v, fin: addOneHour(v.debut) } : v),
   describe: (r) => ({
     title: str(r.titre),
-    subtitle: [formatDay(str(r.date)), str(r.heure), str(r.lieu)].filter(Boolean).join(' · '),
-    flag: str(r.date) < todayISO() ? 'Passé' : r.participation ? 'Réponses demandées' : undefined,
+    subtitle: [formatPeriode({ date: str(r.date), date_fin: str(r.date_fin) }), str(r.heure), str(r.lieu)]
+      .filter(Boolean)
+      .join(' · '),
+    flag: dernierJour({ date: str(r.date), date_fin: str(r.date_fin) }) < todayISO() ? 'Passé' : r.participation ? 'Réponses demandées' : undefined,
   }),
 };
 

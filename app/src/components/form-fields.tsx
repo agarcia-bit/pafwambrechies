@@ -63,6 +63,7 @@ export function ChoiceField({
   value,
   onChange,
   format = (option) => option,
+  estChoisi = (option) => option === value,
 }: {
   label: string;
   options: readonly string[];
@@ -70,6 +71,8 @@ export function ChoiceField({
   onChange: (value: string) => void;
   /** Label of an option when it is not the value itself (e.g. a member id). */
   format?: (option: string) => string;
+  /** Pour un choix multiple : dit si une option est cochée (sinon, seule `value` l'est). */
+  estChoisi?: (option: string) => boolean;
 }) {
   const { colors } = useTheme();
   return (
@@ -77,7 +80,7 @@ export function ChoiceField({
       <FieldLabel>{label}</FieldLabel>
       <View style={styles.choices}>
         {options.map((option) => {
-          const selected = option === value;
+          const selected = estChoisi(option);
           return (
             <Pressable
               key={option}
