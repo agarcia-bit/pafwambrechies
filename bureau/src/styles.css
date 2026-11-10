@@ -108,7 +108,7 @@ select.status.neutral { background-color: var(--neutral-soft); color: var(--text
 
 /* ── Structure ───────────────────────────────────────────────────────────── */
 .shell { display: grid; grid-template-columns: 236px 1fr; min-height: 100vh; }
-aside.nav { background: var(--panel); border-right: 1px solid var(--line); padding: 16px 12px; display: flex; flex-direction: column; gap: 18px; position: sticky; top: 0; height: 100vh; }
+aside.nav { background: var(--panel); border-right: 1px solid var(--line); padding: 16px 12px; display: flex; flex-direction: column; gap: 18px; position: sticky; top: 0; height: 100vh; overflow-y: auto; overscroll-behavior: contain; }
 .nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; padding: 12px; letter-spacing: -.01em; background: var(--banner, var(--brand)); color: #fff; border-radius: 12px; line-height: 1.25; }
 .nav-brand .grow { overflow: hidden; text-overflow: ellipsis; }
 .nav-brand small { display: block; font-weight: 500; color: rgba(255,255,255,.75); font-size: 11.5px; letter-spacing: 0; margin-top: 2px; }
@@ -228,7 +228,7 @@ ul.names { columns: 2 220px; margin-top: 10px; list-style: none; padding: 0; } u
 @media (max-width: 860px) {
   .login-page { grid-template-columns: 1fr; } .login-brand { padding: 32px 24px; } .login-brand h1 { font-size: 30px; } .login-brand ul { display: none; }
   .shell { grid-template-columns: 1fr; }
-  aside.nav { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; }
+  aside.nav { position: static; height: auto; overflow: visible; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; }
   nav { display: flex; overflow-x: auto; flex: 1 1 100%; order: 3; gap: 2px; } nav a { white-space: nowrap; padding: 7px 10px; } nav .nav-label { display: none; }
   .me { order: 2; margin-left: auto; border: 0; padding: 0; } .me .grow { display: none; }
   main { padding: 18px 16px 50px; }
