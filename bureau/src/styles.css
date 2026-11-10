@@ -35,7 +35,7 @@ a { color: var(--brand); text-decoration: none; } a:hover { text-decoration: und
 
 /* ── Surfaces ────────────────────────────────────────────────────────────── */
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow-1); }
-.card.flush { padding: 0; overflow: hidden; } .card.ok { border-color: var(--ok); }
+.card.flush { padding: 0; overflow-x: auto; overflow-y: hidden; } .card.ok { border-color: var(--ok); }
 .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
 .empty { display: grid; justify-items: center; text-align: center; gap: 6px; padding: 34px 16px; color: var(--text-2); }
@@ -550,3 +550,8 @@ table.clickable tbody tr:hover, tr.sel { background: color-mix(in srgb, var(--br
 .engagement-tableau { overflow-x: auto; }
 .engagement-tableau table { min-width: 980px; } .engagement-tableau td, .engagement-tableau th { white-space: nowrap; }
 @media (max-width: 700px) { .semaines { gap: 4px; } .semaine-date { font-size: 9px; } }
+
+/* Tableaux : une adresse trop longue est coupée (complète au survol) plutôt que d'élargir le tableau,
+   et un badge ne passe jamais sur deux lignes. */
+td.cellule-email { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+td .badge { white-space: nowrap; }
