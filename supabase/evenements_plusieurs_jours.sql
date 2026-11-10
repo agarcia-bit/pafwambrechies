@@ -69,7 +69,7 @@ create policy "Members change their answer"
 -- Le bureau voit aussi les jours choisis et la précision : la forme du résultat change.
 drop function if exists public.evenement_participants(bigint);
 create function public.evenement_participants(p_evenement bigint)
-returns table (id uuid, prenom text, nom text, reponse text, jours date[], precision text)
+returns table (id uuid, prenom text, nom text, reponse text, jours date[], "precision" text)
 language sql
 security definer
 stable
