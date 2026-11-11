@@ -285,11 +285,12 @@ const liens: Collection = {
     { key: 'titre', label: 'Titre', type: 'text', required: true },
     { key: 'url', label: 'Adresse du site', type: 'url', required: true, placeholder: 'https://…' },
     { key: 'description', label: 'Description', type: 'text' },
+    { key: 'categorie', label: 'Catégorie (facultatif)', type: 'text', placeholder: 'Mairie, Partenaires…' },
   ],
-  defaults: () => ({ titre: '', url: '', description: '' }),
-  toValues: (r) => ({ titre: str(r.titre), url: str(r.url), description: str(r.description) }),
-  toPayload: (v) => ({ titre: v.titre.trim(), url: v.url.trim(), description: orNull(v.description) }),
-  describe: (r) => ({ title: str(r.titre), subtitle: str(r.url) }),
+  defaults: () => ({ titre: '', url: '', description: '', categorie: '' }),
+  toValues: (r) => ({ titre: str(r.titre), url: str(r.url), description: str(r.description), categorie: str(r.categorie) }),
+  toPayload: (v) => ({ titre: v.titre.trim(), url: v.url.trim(), description: orNull(v.description), categorie: orNull(v.categorie) }),
+  describe: (r) => ({ title: str(r.titre), subtitle: [str(r.categorie), str(r.url)].filter(Boolean).join(' · ') }),
 };
 
 export const COLLECTIONS = { actus, offres, evenements, annuaire, liens } satisfies Record<Collection['key'], Collection>;
