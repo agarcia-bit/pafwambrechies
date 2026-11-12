@@ -136,4 +136,5 @@ export type Lien = {
   titre: string;
   url: string;
   description: string | null;
+  categorie?: string | null;
 };

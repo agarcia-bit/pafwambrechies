@@ -9,19 +9,11 @@ import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { confirmAction, showMessage } from '@/lib/confirm';
 import { fileSize, openDocument, useDocuments, useRemoveDocument, type Doc } from '@/lib/documents';
 import { formatDay } from '@/lib/format';
+import { grouperParCategorie } from '@/lib/grouper-par-categorie';
 import { useMember } from '@/lib/session';
 import { useTheme } from '@/theme';
 
-const OTHER = 'Autres documents';
-
-function group(docs: Doc[]): { title?: string; docs: Doc[] }[] {
-  if (!docs.some((d) => d.categorie)) return [{ docs }];
-  const byCategory = new Map<string, Doc[]>();
-  for (const d of docs) byCategory.set(d.categorie ?? OTHER, [...(byCategory.get(d.categorie ?? OTHER) ?? []), d]);
-  return [...byCategory]
-    .sort(([a], [b]) => (a === OTHER ? 1 : b === OTHER ? -1 : a.localeCompare(b, 'fr')))
-    .map(([title, list]) => ({ title, docs: list }));
-}
+const SANS_CATEGORIE = 'Autres documents';
 
 export default function DocumentsScreen() {
   const docs = useDocuments();
@@ -59,9 +51,9 @@ export default function DocumentsScreen() {
           message={isBureau ? 'Ajoutez les statuts, comptes rendus ou formulaires à partager.' : undefined}
         />
       ) : (
-        group(docs.data).map((g) => (
-          <ListSection key={g.title ?? 'all'} title={g.title}>
-            {g.docs.map((d) => (
+        grouperParCategorie(docs.data, SANS_CATEGORIE).map((g) => (
+          <ListSection key={g.titre ?? 'all'} title={g.titre}>
+            {g.elements.map((d) => (
               <ListRow
                 key={d.id}
                 icon="document"

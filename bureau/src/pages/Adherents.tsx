@@ -144,9 +144,7 @@ export function Adherents({ profile, association }: PageProps) {
               <button className="primary" type="submit" disabled={adding}><Icon name="plus" size={15} /> {adding ? 'Ajout…' : 'Ajouter et inviter'}</button>
             </form>
             {invites.loading && !invites.data ? <Skeleton lines={3} /> : !waiting.length ? <Empty icon="check" title="Tout le monde est inscrit" hint="Importez d’autres adhérents depuis « Importer »." /> : (
-              <ul className="plain compact names">
-                {waiting.map((i) => <li key={i.email} className="invite-row"><span>{fullName(i)}{i.prenom || i.nom ? <span className="muted"> · {i.email}</span> : null}<span className="muted small"> · ajouté {formatRelative(i.created_at)}</span></span><button className="ghost" onClick={() => setCompose([{ email: i.email }])}><Icon name="mail" size={14} /> Inviter</button></li>)}
-              </ul>
+              <ListeEnAttente enAttente={waiting} onInviter={(email) => setCompose([{ email }])} onRetire={invites.reload} />
             )}
           </section>
         </>
@@ -157,3 +155,28 @@ export function Adherents({ profile, association }: PageProps) {
   );
 }
 
+
+/** Les adhérents sans compte : les inviter un par un, ou retirer ceux qui ne font plus partie de l'association. */
+function ListeEnAttente({ enAttente, onInviter, onRetire }: { enAttente: Invite[]; onInviter: (email: string) => void; onRetire: () => void }) {
+  async function retirerDeLaListe(invite: Invite) {
+    // Sa fiche d'annuaire, s'il en a une, reste en place : on ne retire que l'accès à l'app.
+    if (!confirm(`Retirer ${fullName(invite)} de la liste ? Il ne pourra plus créer de compte dans l’app. Sa fiche d’annuaire n’est pas touchée.`)) return;
+    const { error } = await supabase.rpc('retirer_invitation', { p_email: invite.email });
+    if (error) return toast(error.message, 'error');
+    toast(`${fullName(invite)} retiré de la liste`);
+    onRetire();
+  }
+  return (
+    <ul className="plain compact names">
+      {enAttente.map((invite) => (
+        <li key={invite.email} className="invite-row">
+          <span>{fullName(invite)}{invite.prenom || invite.nom ? <span className="muted"> · {invite.email}</span> : null}<span className="muted small"> · ajouté {formatRelative(invite.created_at)}</span></span>
+          <span className="invite-actions">
+            <button className="ghost" onClick={() => onInviter(invite.email)}><Icon name="mail" size={14} /> Inviter</button>
+            <button className="icon-btn danger" title="Retirer de la liste" aria-label={`Retirer ${fullName(invite)} de la liste`} onClick={() => retirerDeLaListe(invite)}><Icon name="trash" size={15} /></button>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}

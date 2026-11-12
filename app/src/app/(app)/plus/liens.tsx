@@ -5,8 +5,11 @@ import { ListRow, ListSection } from '@/components/ui/list';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useLiens } from '@/lib/data';
+import { grouperParCategorie } from '@/lib/grouper-par-categorie';
 import { externalUrl, openLink } from '@/lib/links';
 import { useTheme } from '@/theme';
+
+const SANS_CATEGORIE = 'Autres liens';
 
 export default function LiensScreen() {
   const liens = useLiens();
@@ -25,23 +28,25 @@ export default function LiensScreen() {
       ) : !liens.data.length ? (
         <EmptyState icon="link" title="Aucun lien pour le moment" />
       ) : (
-        <ListSection>
-          {liens.data.map((l) => (
-            <ListRow
-              key={l.id}
-              icon="link"
-              title={l.titre}
-              subtitle={l.description ?? undefined}
-              onPress={() => openLink(externalUrl(l.url))}
-              right={<Icon name="external" size={16} color={colors.textSecondary} />}
-            />
-          ))}
-        </ListSection>
+        grouperParCategorie(liens.data, SANS_CATEGORIE).map((g) => (
+          <ListSection key={g.titre ?? 'all'} title={g.titre}>
+            {g.elements.map((l) => (
+              <ListRow
+                key={l.id}
+                icon="link"
+                title={l.titre}
+                subtitle={l.description ?? undefined}
+                onPress={() => openLink(externalUrl(l.url))}
+                right={<Icon name="external" size={16} color={colors.textSecondary} />}
+              />
+            ))}
+          </ListSection>
+        ))
       )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16, paddingBottom: 40, flexGrow: 1 },
+  content: { padding: 16, paddingBottom: 40, gap: 20, flexGrow: 1 },
 });
