@@ -3,15 +3,14 @@ import { useState } from 'react';
 import type { PageProps } from '../App';
 import { Kpi } from '../components/ui/Kpi';
 import {
-  chargerEngagement, classerEngagement, compterParStatut, completerSemaines, PERIODE_JOURS, STATUTS,
+  calculerNote, chargerEngagement, classerEngagement, compterParStatut, completerSemaines, PERIODE_JOURS, STATUTS,
   type Engagement as Donnees, type MembreEngagement, type Statut,
 } from '../engagement';
 import { Avatar, Empty, Skeleton } from '../Icon';
 import { formatDay, fullName, useAsync } from '../lib';
+import { BarreDeNote, FicheEngagement } from './FicheEngagement';
 
 const NOMBRE_SEMAINES = 12;
-// Les décrochés d'abord : c'est avec eux que le bureau veut reprendre contact.
-const ORDRE: Statut[] = ['decroche', 'jamais_vu', 'occasionnel', 'actif'];
 const infoStatut = (cle: Statut) => STATUTS.find((s) => s.cle === cle)!;
 
 /** Qui ouvre l'app, lit, réagit et propose : pour savoir avec qui reprendre contact. */
@@ -77,41 +76,36 @@ function GraphiqueSemaines({ semaines, total }: { semaines: { semaine: string; a
 }
 
 function TableauMembres({ donnees, filtre }: { donnees: Donnees; filtre: Statut | 'tous' }) {
-  const membres = donnees.membres
-    .map((membre) => ({ membre, statut: classerEngagement(membre) }))
+  const [ouvert, setOuvert] = useState<MembreEngagement | null>(null);
+  // De la meilleure note à la plus basse : les derniers sont ceux avec qui reprendre contact.
+  const lignes = donnees.membres
+    .map((membre) => ({ membre, statut: classerEngagement(membre), note: calculerNote(membre, donnees.actus_publiees).note }))
     .filter((ligne) => filtre === 'tous' || ligne.statut === filtre)
-    .sort((a, b) => ORDRE.indexOf(a.statut) - ORDRE.indexOf(b.statut) || fullName(a.membre).localeCompare(fullName(b.membre), 'fr'));
-  if (!membres.length) return <Empty icon="users" title="Personne dans cette catégorie" />;
+    .sort((a, b) => b.note - a.note || fullName(a.membre).localeCompare(fullName(b.membre), 'fr'));
+  if (!lignes.length) return <Empty icon="users" title="Personne dans cette catégorie" />;
   return (
     <div className="card flush engagement-tableau">
       <table>
         <thead>
-          <tr>
-            <th>Adhérent</th><th>Statut</th><th className="num">Visites</th><th>Dernière visite</th>
-            <th className="num" title={`Sur ${donnees.actus_publiees} actu(s) publiée(s) en ${PERIODE_JOURS} jours`}>Actus lues</th>
-            <th className="num">Likes</th><th className="num">Comment.</th><th className="num">Sondages</th><th className="num">Événements</th>
-            <th className="num">Idées</th><th className="num">Offres</th><th>Annuaire</th><th>Notifs</th>
-          </tr>
+          <tr><th>Adhérent</th><th>Note</th><th>Statut</th><th>Dernière visite</th></tr>
         </thead>
-        <tbody>{membres.map(({ membre, statut }) => <LigneMembre key={membre.id} membre={membre} statut={statut} actusPubliees={donnees.actus_publiees} />)}</tbody>
+        <tbody>
+          {lignes.map(({ membre, statut, note }) => <LigneMembre key={membre.id} membre={membre} statut={statut} note={note} onOuvrir={() => setOuvert(membre)} />)}
+        </tbody>
       </table>
+      {ouvert && <FicheEngagement membre={ouvert} actusPubliees={donnees.actus_publiees} onClose={() => setOuvert(null)} />}
     </div>
   );
 }
 
-function LigneMembre({ membre, statut, actusPubliees }: { membre: MembreEngagement; statut: Statut; actusPubliees: number }) {
+function LigneMembre({ membre, statut, note, onOuvrir }: { membre: MembreEngagement; statut: Statut; note: number; onOuvrir: () => void }) {
   const info = infoStatut(statut);
-  const chiffre = (n: number) => <td className={'num' + (n ? '' : ' muted')}>{n}</td>;
   return (
-    <tr>
+    <tr className="ligne-cliquable" tabIndex={0} onClick={onOuvrir} onKeyDown={(e) => e.key === 'Enter' && onOuvrir()} title="Voir le détail">
       <td><span className="who"><Avatar name={fullName(membre)} />{fullName(membre)}</span></td>
+      <td><BarreDeNote note={note} /></td>
       <td><span className={'badge ' + info.ton} title={info.aide}>{info.libelle}</span></td>
-      {chiffre(membre.jours_visite)}
       <td className="muted">{membre.derniere_visite ? formatDay(membre.derniere_visite) : '—'}</td>
-      <td className={'num' + (membre.actus_lues ? '' : ' muted')}>{membre.actus_lues}{actusPubliees ? ` / ${actusPubliees}` : ''}</td>
-      {chiffre(membre.likes)}{chiffre(membre.commentaires)}{chiffre(membre.sondages)}{chiffre(membre.evenements)}{chiffre(membre.idees)}{chiffre(membre.offres)}
-      <td>{membre.fiche_annuaire ? <span className="badge ok">Oui</span> : <span className="muted">Non</span>}</td>
-      <td>{membre.notifications ? <span className="badge ok">Activées</span> : <span className="muted">Non</span>}</td>
     </tr>
   );
 }
