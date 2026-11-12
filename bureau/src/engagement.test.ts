@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 // Le client Supabase n'a pas à exister pour tester les règles de calcul.
 vi.mock('./lib', () => ({ supabase: {} }));
 
-import { classerEngagement, compterInteractions, compterParStatut, completerSemaines, SEUIL_ACTIF, type MembreEngagement } from './engagement';
+import {
+  calculerNote, classerEngagement, compterInteractions, compterParStatut, completerSemaines, SEUIL_ACTIF, tonDeLaNote, type MembreEngagement,
+} from './engagement';
 
 const membre = (jours_visite: number, derniere_visite: string | null) => ({ jours_visite, derniere_visite });
 
@@ -53,5 +55,37 @@ describe('completerSemaines', () => {
   it('rattache un dimanche à la semaine commencée le lundi précédent', () => {
     const dimanche = new Date(2026, 10, 15);
     expect(completerSemaines([], 1, dimanche)).toEqual([{ semaine: '2026-11-09', actifs: 0 }]);
+  });
+});
+
+const complet = (champs: Partial<MembreEngagement> = {}): MembreEngagement => ({
+  id: 'a', prenom: 'Anne', nom: null, role: 'adherent', inscrit_le: '2026-10-01', jours_visite: 0, derniere_visite: null,
+  actus_lues: 0, likes: 0, commentaires: 0, sondages: 0, evenements: 0, idees: 0, offres: 0,
+  fiche_annuaire: false, notifications: false, ...champs,
+});
+
+describe('calculerNote', () => {
+  it('donne 0 à un adhérent qui n’a rien fait', () => {
+    expect(calculerNote(complet(), 5)).toEqual({ venir: 0, lire: 0, participer: 0, profil: 0, note: 0 });
+  });
+  it('donne 100 à un adhérent au maximum partout, sans dépasser', () => {
+    const detail = calculerNote(complet({ jours_visite: 30, actus_lues: 9, commentaires: 50, fiche_annuaire: true, notifications: true }), 5);
+    expect(detail).toEqual({ venir: 40, lire: 20, participer: 30, profil: 10, note: 100 });
+  });
+  it('compte chaque action selon son poids', () => {
+    // 2 likes (2) + 1 sondage (2) + 1 commentaire (3) = 7
+    expect(calculerNote(complet({ likes: 2, sondages: 1, commentaires: 1 }), 0).participer).toBe(7);
+  });
+  it('ramène la note sur 100 quand aucune actu n’a été publiée', () => {
+    // 6 jours sur 12 = 20 ; profil complet = 10 ; (20 + 10) / 80 = 38 %
+    const detail = calculerNote(complet({ jours_visite: 6, fiche_annuaire: true, notifications: true }), 0);
+    expect(detail.lire).toBeNull();
+    expect(detail.note).toBe(38);
+  });
+});
+
+describe('tonDeLaNote', () => {
+  it('colore en vert, bleu ou orange', () => {
+    expect([tonDeLaNote(60), tonDeLaNote(59), tonDeLaNote(30), tonDeLaNote(29)]).toEqual(['ok', 'info', 'info', 'warn']);
   });
 });

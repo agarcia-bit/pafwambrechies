@@ -568,3 +568,19 @@ td .badge { white-space: nowrap; }
 .actions-groupe button { display: inline-flex; align-items: center; gap: 6px; }
 .enregistrer-groupe { display: flex; flex-wrap: wrap; gap: 8px; }
 .enregistrer-groupe input { flex: 1 1 200px; min-width: 0; }
+
+/* Engagement : note sur 100, lignes cliquables et fiche détaillée */
+.note-engagement { display: inline-flex; align-items: center; gap: 8px; min-width: 120px; }
+.note-engagement strong { font-variant-numeric: tabular-nums; min-width: 26px; text-align: right; }
+.note-piste { flex: 1; height: 6px; border-radius: 99px; background: var(--neutral-soft); overflow: hidden; }
+.note-piste span { display: block; height: 100%; border-radius: 99px; background: currentColor; }
+.note-engagement.ok { color: var(--ok); } .note-engagement.info { color: var(--info); } .note-engagement.warn { color: var(--warn); }
+tr.ligne-cliquable { cursor: pointer; } tr.ligne-cliquable:hover td, tr.ligne-cliquable:focus-visible td { background: var(--panel-2); }
+.fiche-note { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.fiche-note .note-engagement { flex: 1; } .fiche-note .note-engagement strong { font-size: 28px; min-width: 44px; }
+.fiche-note .note-piste { height: 10px; }
+.fiche-titre { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 20px 0 6px; }
+.fiche-lignes li + li { border-top: 1px solid var(--line); }
+.fiche-ligne { display: flex; align-items: center; gap: 12px; padding: 8px 0; font-size: 13.5px; }
+.fiche-ligne small { display: block; font-size: 12px; }
+.fiche-points { font-variant-numeric: tabular-nums; font-weight: 650; white-space: nowrap; }
