@@ -54,6 +54,42 @@ export function compterInteractions(membre: MembreEngagement): number {
   return membre.likes + membre.commentaires + membre.sondages + membre.evenements + membre.idees + membre.offres;
 }
 
+// ── Note d'engagement sur 100 ────────────────────────────────────────────────
+// Venir compte le plus (on ne participe pas sans ouvrir l'app), puis participer, lire, et un profil complet.
+
+export const BAREME = { venir: 40, lire: 20, participer: 30, profil: 10 } as const;
+/** Environ trois visites par semaine sur la période : le maximum de « Venir ». */
+export const JOURS_POUR_LE_MAXIMUM = 12;
+/** Ce que rapporte chaque action : écrire compte plus qu'un simple like. */
+export const POINTS_PAR_ACTION = { likes: 1, sondages: 2, evenements: 2, commentaires: 3, idees: 3, offres: 3 } as const;
+
+export type DetailNote = {
+  venir: number;
+  /** Null quand aucune actu n'a été publiée sur la période : la lecture ne compte alors pas. */
+  lire: number | null;
+  participer: number;
+  profil: number;
+  note: number;
+};
+
+const borner = (valeur: number, maximum: number) => Math.min(maximum, Math.max(0, valeur));
+
+export function calculerNote(membre: MembreEngagement, actusPubliees: number): DetailNote {
+  const venir = Math.round(borner(membre.jours_visite / JOURS_POUR_LE_MAXIMUM, 1) * BAREME.venir);
+  const lire = actusPubliees > 0 ? Math.round(borner(membre.actus_lues / actusPubliees, 1) * BAREME.lire) : null;
+  const pointsDActions = (Object.keys(POINTS_PAR_ACTION) as (keyof typeof POINTS_PAR_ACTION)[])
+    .reduce((total, action) => total + membre[action] * POINTS_PAR_ACTION[action], 0);
+  const participer = borner(pointsDActions, BAREME.participer);
+  const profil = (membre.fiche_annuaire ? BAREME.profil / 2 : 0) + (membre.notifications ? BAREME.profil / 2 : 0);
+  // Sans actu à lire, la note se ramène sur 100 avec les trois autres parties.
+  const surCombien = lire === null ? 100 - BAREME.lire : 100;
+  const note = Math.round(((venir + (lire ?? 0) + participer + profil) / surCombien) * 100);
+  return { venir, lire, participer, profil, note };
+}
+
+/** La couleur d'une note : vert, bleu ou orange. */
+export const tonDeLaNote = (note: number) => (note >= 60 ? 'ok' : note >= 30 ? 'info' : 'warn');
+
 export function compterParStatut(membres: Pick<MembreEngagement, 'jours_visite' | 'derniere_visite'>[]): Record<Statut, number> {
   const comptes: Record<Statut, number> = { actif: 0, occasionnel: 0, decroche: 0, jamais_vu: 0 };
   for (const membre of membres) comptes[classerEngagement(membre)] += 1;
