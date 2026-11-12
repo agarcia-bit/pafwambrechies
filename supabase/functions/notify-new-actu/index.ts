@@ -1,7 +1,8 @@
-// Notifies the members of an association when it publishes a new actu or launches
-// a new poll (the payload's table tells which): web push (PAF PWA) and Expo push
+// Notifies the members of an association when it publishes a new actu, launches a new poll or
+// adds an event to the agenda (the payload's table tells which): web push (PAF PWA) and Expo push
 // (Allianceo native app, iOS + Android).
-// Called by the on_new_actu / on_new_sondage database webhooks with the service_role key, and by
+// Called by the on_new_actu / on_new_sondage / on_new_evenement database webhooks with the
+// service_role key, and by
 // on_actu_publiee when the bureau publishes an actu proposed by a member. A proposal itself
 // (statut 'en_attente') only tells the bureau and the admins: it is not public yet.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -133,6 +134,35 @@ async function sendExpoPush(tenantId: string, n: Notification, seulement?: strin
 
 const truncate = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
 
+type Evenement = { date: string; date_fin?: string | null; participation?: boolean; titre?: string };
+
+const dernierJour = (ev: Evenement) => (ev.date_fin && ev.date_fin > ev.date ? ev.date_fin : ev.date);
+const aujourdhuiAParis = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" });
+/** « sam. 12 déc. » */
+const jourCourt = (iso: string) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+
+/** « Nouvel événement : Apéro de Noël · sam. 12 déc. · Venez-vous ? » */
+function texteEvenement(ev: Evenement): string {
+  const quand = dernierJour(ev) > ev.date ? `du ${jourCourt(ev.date)} au ${jourCourt(dernierJour(ev))}` : jourCourt(ev.date);
+  return [`Nouvel événement : ${ev.titre ?? ""}`, quand, ev.participation ? "Venez-vous ?" : ""].filter(Boolean).join(" · ");
+}
+
+// deno-lint-ignore no-explicit-any
+function notificationDuContenu(table: string, record: any, assoc: string): Notification {
+  if (table === "sondages") {
+    return { title: assoc, body: truncate(`Nouveau sondage : ${record.question ?? ""}`, 160), data: { sondage_id: record.id } };
+  }
+  if (table === "evenements") {
+    return { title: assoc, body: truncate(texteEvenement(record), 160), data: { evenement_id: record.id } };
+  }
+  return {
+    title: assoc,
+    body: truncate(record.titre ? `Nouvelle actu : ${record.titre}` : "Nouvelle actu", 160),
+    data: { actu_id: record.id },
+  };
+}
+
 Deno.serve(async (req) => {
   if (!isServiceRole(req)) return new Response("Forbidden", { status: 403 });
   try {
@@ -156,22 +186,16 @@ Deno.serve(async (req) => {
       console.log(`[notify-new-actu] proposition ${branding?.slug}: expo ${JSON.stringify(expo)}`);
       return Response.json({ expo });
     }
-    const notification: Notification = payload.table === "sondages"
-      ? {
-        title: assoc,
-        body: truncate(`Nouveau sondage : ${record.question ?? ""}`, 160),
-        data: { sondage_id: record.id },
-      }
-      : {
-        title: assoc,
-        body: truncate(record.titre ? `Nouvelle actu : ${record.titre}` : "Nouvelle actu", 160),
-        data: { actu_id: record.id },
-      };
+    // Un événement déjà terminé (saisi après coup) ne mérite pas d'alerte.
+    if (payload.table === "evenements" && dernierJour(record) < aujourdhuiAParis()) {
+      return Response.json({ ignore: "evenement passe" });
+    }
+    const notification = notificationDuContenu(payload.table, record, assoc);
 
-    // Polls only exist in the Allianceo app: the PAF web app has nothing to open.
+    // Polls and events only exist in the Allianceo app: the PAF web app has nothing to open.
     const noWeb: Outcome = { sent: 0, failed: 0, removed: 0 };
     const [web, expo] = await Promise.all([
-      payload.table === "sondages" ? noWeb : sendWebPush(record.tenant_id, notification),
+      payload.table === "actus" ? sendWebPush(record.tenant_id, notification) : noWeb,
       sendExpoPush(record.tenant_id, notification),
     ]);
     console.log(`[notify-new-actu] ${payload.table} ${branding?.slug}: web ${JSON.stringify(web)}, expo ${JSON.stringify(expo)}`);
