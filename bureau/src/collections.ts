@@ -28,6 +28,9 @@ const str = (v: unknown) => (v == null ? '' : String(v));
 const orNull = (v: string | undefined) => v?.trim() || null;
 export const ACTU_CATEGORIES = ['Actu Asso', 'Infos pratiques', 'Événement', 'Membres'] as const;
 
+/** Ce qu'un adhérent propose (actu, offre) n'est visible de tous qu'une fois publié par le bureau. */
+const STATUT_PROPOSITION: Field = { key: 'statut', label: 'Statut', type: 'choice', options: ['publiee', 'en_attente'], labels: { publiee: 'Publiée', en_attente: 'En attente de validation' }, half: true };
+
 const actus: Collection = {
   key: 'actus', title: 'Actus', newTitle: 'Nouvelle actu', addLabel: 'Publier une actu', empty: 'Aucune actu publiée.',
   order: [{ column: 'date', ascending: false }, { column: 'id', ascending: false }],
@@ -37,13 +40,17 @@ const actus: Collection = {
     { key: 'date_evenement', label: 'Date de l’événement (facultatif)', type: 'date', half: true },
     { key: 'contenu', label: 'Contenu', type: 'multiline' },
     { key: 'image_url', label: 'Photo', type: 'photo' },
+    STATUT_PROPOSITION,
   ],
   photo: { key: 'image_url', bucket: 'actus-photos', width: 1200, crop: false },
-  defaults: () => ({ titre: '', categorie: 'Actu Asso', date_evenement: '', contenu: '', date: today(), image_url: '' }),
-  toValues: (r) => ({ titre: str(r.titre), categorie: str(r.categorie), date_evenement: str(r.date_evenement), contenu: str(r.contenu), date: str(r.date), image_url: str(r.image_url) }),
+  defaults: () => ({ titre: '', categorie: 'Actu Asso', date_evenement: '', contenu: '', date: today(), image_url: '', statut: 'publiee' }),
+  toValues: (r) => ({ titre: str(r.titre), categorie: str(r.categorie), date_evenement: str(r.date_evenement), contenu: str(r.contenu), date: str(r.date), image_url: str(r.image_url), statut: str(r.statut) }),
   // La date reste le jour de publication.
-  toPayload: (v) => ({ titre: v.titre.trim(), categorie: v.categorie, date_evenement: orNull(v.date_evenement), contenu: orNull(v.contenu), date: v.date || today(), image_url: orNull(v.image_url) }),
-  describe: (r) => ({ title: str(r.titre), subtitle: `${formatDay(str(r.date))} · ${str(r.categorie)}`, image: r.image_url ? str(r.image_url) : undefined }),
+  toPayload: (v) => ({ ...(v.statut ? { statut: v.statut } : {}), titre: v.titre.trim(), categorie: v.categorie, date_evenement: orNull(v.date_evenement), contenu: orNull(v.contenu), date: v.date || today(), image_url: orNull(v.image_url) }),
+  describe: (r) => ({
+    title: str(r.titre), subtitle: `${formatDay(str(r.date))} · ${str(r.categorie)}`, image: r.image_url ? str(r.image_url) : undefined,
+    flag: r.statut === 'en_attente' ? 'Proposée par un adhérent · à valider' : undefined, flagTone: 'warn',
+  }),
   createHint: 'Les adhérents qui ont activé les notifications seront prévenus dès la publication.',
 };
 
@@ -57,7 +64,7 @@ const offres: Collection = {
     { key: 'expiration', label: 'Date limite', type: 'date', half: true },
     { key: 'tag', label: 'Étiquette', type: 'text', placeholder: '-10 %, Offert…', half: true },
     { key: 'categorie', label: 'Catégorie', type: 'choice', required: true, options: [], half: true },
-    { key: 'statut', label: 'Statut', type: 'choice', options: ['publiee', 'en_attente'], labels: { publiee: 'Publiée', en_attente: 'En attente de validation' }, half: true },
+    STATUT_PROPOSITION,
   ],
   defaults: () => ({ commercant: '', titre: '', description: '', expiration: '', tag: '', categorie: DEFAULT_CATEGORY, statut: 'publiee' }),
   toValues: (r) => ({ commercant: str(r.commercant), titre: str(r.titre), description: str(r.description), expiration: str(r.expiration), tag: str(r.tag), categorie: str(r.categorie) || DEFAULT_CATEGORY, statut: str(r.statut) }),

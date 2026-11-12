@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type MouseEvent } from 'react';
 
 import type { PageProps } from '../App';
 import { COLLECTIONS, withConfig, type Collection, type Field, type Row, type Values } from '../collections';
@@ -24,7 +24,9 @@ export function Contenus({ kind, profile }: PageProps & { kind: keyof typeof COL
   if (rows.error) return <p className="error">{rows.error}</p>;
   const all = rows.data!;
   const needle = q.trim().toLowerCase();
-  const list = needle ? all.filter((r) => Object.values(r).some((v) => typeof v === 'string' && v.toLowerCase().includes(needle))) : all;
+  const found = needle ? all.filter((r) => Object.values(r).some((v) => typeof v === 'string' && v.toLowerCase().includes(needle))) : all;
+  // Les propositions à valider passent en tête.
+  const list = [...found.filter(estAValider), ...found.filter((r) => !estAValider(r))];
   const current = open === 'new' ? null : open === null ? undefined : all.find((r) => r.id === open) ?? undefined;
   const moduleOff = kind !== 'actus' && config.data && !config.data.modules[kind];
 
@@ -41,20 +43,7 @@ export function Contenus({ kind, profile }: PageProps & { kind: keyof typeof COL
       ) : (
         <div className="card flush">
           <ul className="items">
-            {list.map((r) => {
-              const d = c.describe(r);
-              return (
-                <li key={r.id} className="item" onClick={() => setOpen(r.id)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setOpen(r.id)}>
-                  {c.photo && (d.image ? <img className="thumb" src={d.image} alt="" /> : <span className="thumb empty"><Icon name="file" size={18} /></span>)}
-                  <div className="grow">
-                    <strong>{d.title}</strong>
-                    <div className="muted small">{d.subtitle}</div>
-                  </div>
-                  {d.flag && <span className={'pill ' + (d.flagTone ?? 'neutral')}>{d.flag}</span>}
-                  <Icon name="right" size={16} />
-                </li>
-              );
-            })}
+            {list.map((r) => <LigneContenu key={r.id} c={c} r={r} onOuvrir={() => setOpen(r.id)} onPublie={rows.reload} />)}
           </ul>
         </div>
       )}
@@ -62,6 +51,35 @@ export function Contenus({ kind, profile }: PageProps & { kind: keyof typeof COL
         <ItemDrawer c={c} row={current} tenant={profile.tenant_id} onClose={() => setOpen(null)} onChanged={rows.reload} />
       )}
     </>
+  );
+}
+
+const estAValider = (r: Row) => r.statut === 'en_attente';
+
+function LigneContenu({ c, r, onOuvrir, onPublie }: { c: Collection; r: Row; onOuvrir: () => void; onPublie: () => void }) {
+  const d = c.describe(r);
+  const [enCours, setEnCours] = useState(false);
+  // Publier d'un clic : les adhérents sont prévenus (notification) dès que la proposition passe en « publiée ».
+  async function publier(e: MouseEvent) {
+    e.stopPropagation();
+    setEnCours(true);
+    const { error } = await supabase.from(c.key).update({ statut: 'publiee' }).eq('id', r.id);
+    setEnCours(false);
+    if (error) return toast(error.message, 'error');
+    toast('Publiée ✓');
+    onPublie();
+  }
+  return (
+    <li className="item" onClick={onOuvrir} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onOuvrir()}>
+      {c.photo && (d.image ? <img className="thumb" src={d.image} alt="" /> : <span className="thumb empty"><Icon name="file" size={18} /></span>)}
+      <div className="grow">
+        <strong>{d.title}</strong>
+        <div className="muted small">{d.subtitle}</div>
+      </div>
+      {d.flag && <span className={'pill ' + (d.flagTone ?? 'neutral')}>{d.flag}</span>}
+      {estAValider(r) && <button className="primary" onClick={publier} disabled={enCours}>{enCours ? 'Publication…' : 'Publier'}</button>}
+      <Icon name="right" size={16} />
+    </li>
   );
 }
 

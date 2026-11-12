@@ -88,7 +88,7 @@ export function EditForm({
         id: row?.id,
         values,
         photo,
-        extra: own ? { user_id: own.memberId } : undefined,
+        extra: own ? { [c.colonneAuteur ?? 'user_id']: own.memberId } : undefined,
         photoFolder: own?.memberId,
       },
       { onSuccess: () => router.back(), onError: (e) => setError(adminErrorMessage(e)) }

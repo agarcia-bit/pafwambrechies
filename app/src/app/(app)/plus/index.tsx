@@ -33,34 +33,7 @@ export default function PlusScreen() {
       <View style={styles.content}>
         <AssociationBanner />
 
-        {(modules.idees || modules.liens || modules.documents) && (
-          <ListSection title="Communauté">
-            {modules.idees && (
-              <ListRow
-                icon="lightbulb"
-                title="Boîte à idées"
-                subtitle="Proposer, soutenir et commenter des idées"
-                onPress={() => router.push('/plus/idees')}
-              />
-            )}
-            {modules.documents && (
-              <ListRow
-                icon="document"
-                title="Documents"
-                subtitle="Statuts, comptes rendus, règlements…"
-                onPress={() => router.push('/plus/documents')}
-              />
-            )}
-            {modules.liens && (
-              <ListRow
-                icon="link"
-                title="Liens utiles"
-                subtitle="Les sites de l’association"
-                onPress={() => router.push('/plus/liens')}
-              />
-            )}
-          </ListSection>
-        )}
+        <SectionCommunaute />
 
         <ListSection title="Mon espace">
           <ProfileRow name={name} onPress={() => router.push('/plus/compte')} />
@@ -73,6 +46,13 @@ export default function PlusScreen() {
               onPress={() => router.push('/plus/ma-fiche')}
             />
           )}
+          <ListRow
+            neutral
+            icon="newspaper"
+            title="Mes actus"
+            subtitle="Proposer une actu aux adhérents"
+            onPress={() => router.push('/plus/mes-actus')}
+          />
           {modules.offres && (
             <ListRow
               neutral
@@ -127,6 +107,40 @@ export default function PlusScreen() {
 }
 
 /** First row of "Mon espace": the member, like the account card of the phone's settings. */
+/** Ce que l'association propose au-delà des onglets : idées, documents, liens. */
+function SectionCommunaute() {
+  const { modules } = useTenantConfig();
+  if (!modules.idees && !modules.liens && !modules.documents) return null;
+  return (
+    <ListSection title="Communauté">
+      {modules.idees && (
+        <ListRow
+          icon="lightbulb"
+          title="Boîte à idées"
+          subtitle="Proposer, soutenir et commenter des idées"
+          onPress={() => router.push('/plus/idees')}
+        />
+      )}
+      {modules.documents && (
+        <ListRow
+          icon="document"
+          title="Documents"
+          subtitle="Statuts, comptes rendus, règlements…"
+          onPress={() => router.push('/plus/documents')}
+        />
+      )}
+      {modules.liens && (
+        <ListRow
+          icon="link"
+          title="Liens utiles"
+          subtitle="Les sites de l’association"
+          onPress={() => router.push('/plus/liens')}
+        />
+      )}
+    </ListSection>
+  );
+}
+
 function ProfileRow({ name, onPress }: { name: string; onPress: () => void }) {
   const { colors } = useTheme();
   return (

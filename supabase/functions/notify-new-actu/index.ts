@@ -1,7 +1,9 @@
 // Notifies the members of an association when it publishes a new actu or launches
 // a new poll (the payload's table tells which): web push (PAF PWA) and Expo push
 // (Allianceo native app, iOS + Android).
-// Called by the on_new_actu / on_new_sondage database webhooks with the service_role key.
+// Called by the on_new_actu / on_new_sondage database webhooks with the service_role key, and by
+// on_actu_publiee when the bureau publishes an actu proposed by a member. A proposal itself
+// (statut 'en_attente') only tells the bureau and the admins: it is not public yet.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "https://esm.sh/web-push@3.6.7"; // npm:web-push crashes the edge runtime
 
@@ -67,11 +69,17 @@ async function sendWebPush(tenantId: string, n: Notification): Promise<Outcome> 
   return { sent: subs.length - failed - gone.length, failed, removed: gone.length };
 }
 
-async function sendExpoPush(tenantId: string, n: Notification): Promise<Outcome> {
-  const { data: devices, error } = await sb
-    .from("device_tokens")
-    .select("id, token")
-    .eq("tenant_id", tenantId);
+/** Les membres du bureau et les admins, sauf l'auteur de la proposition. */
+async function idsDuBureau(tenantId: string, sauf: string | null): Promise<string[]> {
+  const { data, error } = await sb.from("profiles").select("id").eq("tenant_id", tenantId).in("role", ["bureau", "admin"]);
+  if (error) throw error;
+  return (data ?? []).map((p) => p.id).filter((id) => id !== sauf);
+}
+
+async function sendExpoPush(tenantId: string, n: Notification, seulement?: string[]): Promise<Outcome> {
+  let query = sb.from("device_tokens").select("id, token").eq("tenant_id", tenantId);
+  if (seulement) query = query.in("user_id", seulement);
+  const { data: devices, error } = await query;
   if (error) throw error;
 
   const batches = [];
@@ -135,6 +143,19 @@ Deno.serve(async (req) => {
     const { data: branding } = await sb.rpc("branding_for_tenant", { p_tenant: record.tenant_id });
     // The association's name on the first line, what is new on the second.
     const assoc = (branding?.tenant_name || branding?.name || "Votre association").trim();
+
+    if (payload.table === "actus" && record.statut === "en_attente") {
+      const bureau = await idsDuBureau(record.tenant_id, record.auteur_id ?? null);
+      const expo = bureau.length
+        ? await sendExpoPush(record.tenant_id, {
+          title: assoc,
+          body: truncate(`Actu proposée, à valider : ${record.titre ?? ""}`, 160),
+          data: { actu_id: record.id },
+        }, bureau)
+        : { sent: 0, failed: 0, removed: 0 };
+      console.log(`[notify-new-actu] proposition ${branding?.slug}: expo ${JSON.stringify(expo)}`);
+      return Response.json({ expo });
+    }
     const notification: Notification = payload.table === "sondages"
       ? {
         title: assoc,
