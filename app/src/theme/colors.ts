@@ -20,6 +20,8 @@ export type Palette = {
   fill: string;
   danger: string;
   success: string;
+  /** « À surveiller » : réponse « Je ne sais pas encore ». */
+  warning: string;
 };
 
 // iOS system colors (grouped backgrounds), used on every platform.
@@ -33,6 +35,7 @@ const BASE: Record<Scheme, Omit<Palette, 'primary' | 'onPrimary' | 'primarySoft'
     fill: '#DADAE1',
     danger: '#FF3B30',
     success: '#34C759',
+    warning: '#FF9500',
   },
   dark: {
     background: '#000000',
@@ -43,6 +46,7 @@ const BASE: Record<Scheme, Omit<Palette, 'primary' | 'onPrimary' | 'primarySoft'
     fill: '#2C2C2E',
     danger: '#FF453A',
     success: '#30D158',
+    warning: '#FF9F0A',
   },
 };
 

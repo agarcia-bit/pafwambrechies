@@ -5,6 +5,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { ChoixDesJours } from '@/components/choix-des-jours';
+import { useCouleursDeReponse } from '@/components/couleurs-de-reponse';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -59,6 +60,7 @@ export function ParticipationBlock({ event: ev }: { event: Evenement }) {
   const mine = useMyReponses();
   const { pending, send } = useAnswerHandler();
   const confirmation = useConfirmationBreve();
+  const couleurs = useCouleursDeReponse();
   // Pour un événement sur plusieurs jours, « Présent » ouvre d'abord le choix des jours.
   const [choixOuvert, setChoixOuvert] = useState(false);
   if (!ev.participation) return null;
@@ -92,6 +94,7 @@ export function ParticipationBlock({ event: ev }: { event: Evenement }) {
               key={reponse}
               title={REPONSE_LABELS[reponse]}
               variant={current?.reponse === reponse ? 'primary' : 'secondary'}
+              teinte={couleurs[reponse]}
               icon={current?.reponse === reponse ? 'checkCircle' : undefined}
               loading={pending?.evenementId === ev.id && pending.reponse === reponse}
               onPress={() => (plusieursJours && reponse === 'present' ? setChoixOuvert(true) : envoyer({ reponse }))}
