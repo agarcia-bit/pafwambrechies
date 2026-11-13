@@ -5,10 +5,10 @@ import { Compose } from '../Compose';
 import { Avatar, Empty, Icon, Skeleton } from '../Icon';
 import { formatRelative, fullName, hashParam, supabase, toast, useAsync, type Recipient, type Role } from '../lib';
 import { Kpi } from '../components/ui/Kpi';
+import { ROLE_LABELS, TableauDesRoles, type MembreInscrit } from './TableauDesRoles';
 
-type Member = { id: string; email: string | null; prenom: string | null; nom: string | null; role: Role };
+type Member = MembreInscrit;
 type Invite = { email: string; prenom: string | null; nom: string | null; created_at: string; user_id: string | null; joined_at: string | null };
-const ROLE_LABELS: Record<Role, string> = { adherent: 'Adhérent', bureau: 'Bureau', admin: 'Administrateur' };
 const ROLE_ORDER: Record<Role, number> = { admin: 0, bureau: 1, adherent: 2 };
 
 /** Les adhérents : qui a un compte et avec quel rôle, et comment les autres rejoignent l'app (code d'accès, invitations). */
@@ -92,27 +92,8 @@ export function Adherents({ profile, association }: PageProps) {
         : (
           <>
             {!isAdmin && <p className="note small">Seuls les administrateurs peuvent changer les rôles. Vous voyez la liste en lecture.</p>}
-            <div className="card flush">
-              <table>
-                <thead><tr><th>Adhérent</th><th>E-mail</th><th>Rôle</th></tr></thead>
-                <tbody>
-                  {members.data!.map((m) => (
-                    <tr key={m.id}>
-                      <td><span className="who"><Avatar name={fullName(m)} />{fullName(m)}{m.id === profile.id && <span className="pill brand">moi</span>}</span></td>
-                      <td className="muted cellule-email" title={m.email ?? undefined}>{m.email}</td>
-                      <td>
-                        {isAdmin && m.id !== profile.id
-                          ? <select className={'status ' + (m.role === 'admin' ? 'bad' : m.role === 'bureau' ? 'info' : 'neutral')} value={m.role} onChange={(e) => setRole(m, e.target.value as Role)} aria-label={`Rôle de ${fullName(m)}`}>
-                              {(Object.keys(ROLE_LABELS) as Role[]).map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-                            </select>
-                          : <span className={'badge ' + (m.role === 'admin' ? 'bad' : m.role === 'bureau' ? 'info' : 'neutral')}>{ROLE_LABELS[m.role]}</span>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="muted small">Adhérent : l’application seulement. Bureau : en plus, cet espace et les contenus. Administrateur : en plus, les rôles et les réglages de l’association. Les cotisations se gèrent dans l’onglet <a href="#cotisations">Cotisations</a>.</p>
+            <TableauDesRoles membres={members.data!} moi={profile.id} estAdmin={isAdmin} onChangerRole={setRole} />
+            <p className="muted small">La fonction (Président, Trésorier…) s’affiche à côté du nom dans l’espace bureau ; tapez-la puis quittez le champ pour l’enregistrer. Adhérent : l’application seulement. Bureau : en plus, cet espace et les contenus. Administrateur : en plus, les rôles et les réglages de l’association. Les cotisations se gèrent dans l’onglet <a href="#cotisations">Cotisations</a>.</p>
           </>
         )
       )}
