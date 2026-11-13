@@ -161,9 +161,17 @@ function FieldInput({ f, value, onChange, photo, categories, autoFocus }: { f: F
       </div>
     );
   }
-  if (f.type === 'choice') return (
-    <label>{f.label}<select value={value} onChange={(e) => onChange(e.target.value)}>{(f.options ?? []).map((o) => <option key={o} value={o}>{f.labels?.[o] ?? o}</option>)}</select></label>
-  );
+  if (f.type === 'choice') {
+    // Une valeur hors de la liste (« Général » d'une fiche importée) s'affiche telle quelle : sans
+    // elle, le menu montrerait la première option alors que la fiche garde l'ancienne valeur.
+    const horsListe = !!value && !(f.options ?? []).includes(value);
+    return (
+      <label>{f.label}<select value={value} onChange={(e) => onChange(e.target.value)} className={horsListe ? 'a-choisir' : undefined}>
+        {horsListe && <option value={value}>{value} (à remplacer)</option>}
+        {(f.options ?? []).map((o) => <option key={o} value={o}>{f.labels?.[o] ?? o}</option>)}
+      </select></label>
+    );
+  }
   if (f.type === 'categorie') return <label>{f.label}<ChampCategorie valeur={value} categories={categories} onChange={onChange} placeholder={f.placeholder} /></label>;
   if (f.type === 'multiline') return <label>{f.label}<textarea className="plain-text" rows={6} value={value} onChange={(e) => onChange(e.target.value)} placeholder={f.placeholder} /></label>;
   const type = f.type === 'phone' ? 'tel' : f.type === 'url' ? 'text' : f.type;
