@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { useCallback, useEffect, useState } from 'react';
 
+import { nomAvecFonction } from './fonction-bureau';
+
 // Valeurs publiques (identiques à l'app) : la clé publiable n'ouvre que ce que les règles RLS autorisent.
 export const supabase = createClient(
   'https://ancwbfyjzaebxahtlqkm.supabase.co',
@@ -194,25 +196,35 @@ export const TACHE_STATUTS = ['À faire', 'En cours', 'Terminé'] as const;
 export const PRIORITES = ['Haute', 'Moyenne', 'Basse'] as const;
 export type Action = { id: number; emoji: string | null; titre: string; date_action: string; referent: string | null; statut: (typeof ACTION_STATUTS)[number]; budget: number | null };
 export type Tache = { id: number; action_id: number; libelle: string; responsable: string | null; echeance: string | null; statut: (typeof TACHE_STATUTS)[number]; priorite: (typeof PRIORITES)[number] };
-export type BureauMember = { id: string; prenom: string | null; nom: string | null; is_bureau: boolean };
+export type BureauMember = { id: string; prenom: string | null; nom: string | null; is_bureau: boolean; fonction?: string | null };
+
+/** Les fonctions au bureau, par identifiant de membre (supabase/fonction_bureau.sql). */
+export async function chargerFonctions(): Promise<Map<string, string>> {
+  const { data, error } = await supabase.rpc('fonctions_du_bureau');
+  // Script pas encore appliqué : les noms s'affichent seuls plutôt que de casser l'écran.
+  if (error) return new Map();
+  return new Map((data as { id: string; fonction: string }[]).map((f) => [f.id, f.fonction]));
+}
 
 export async function loadBureau() {
-  const [actions, taches, members] = await Promise.all([
+  const [actions, taches, members, fonctions] = await Promise.all([
     supabase.from('actions').select('id, emoji, titre, date_action, referent, statut, budget').order('date_action'),
     supabase.from('taches').select('id, action_id, libelle, responsable, echeance, statut, priorite'),
     supabase.rpc('bureau_members'),
+    chargerFonctions(),
   ]);
   if (actions.error) throw actions.error;
   if (taches.error) throw taches.error;
   if (members.error) throw members.error;
-  return { actions: actions.data as Action[], taches: taches.data as Tache[], members: members.data as BureauMember[] };
+  const membres = (members.data as BureauMember[]).map((m) => ({ ...m, fonction: fonctions.get(m.id) ?? null }));
+  return { actions: actions.data as Action[], taches: taches.data as Tache[], members: membres };
 }
 
 export const isOverdue = (day: string | null, statut: string) => !!day && statut !== 'Terminé' && day < today();
 export const nameOf = (members: BureauMember[], id: string | null) => {
   if (!id) return 'Non assigné';
   const m = members.find((x) => x.id === id);
-  return m ? fullName(m) : 'Ancien membre';
+  return m ? nomAvecFonction(fullName(m), m.fonction) : 'Ancien membre';
 };
 export function dueLabel(day: string | null) {
   if (!day) return '';
