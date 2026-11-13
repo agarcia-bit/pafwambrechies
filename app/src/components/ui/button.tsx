@@ -14,11 +14,16 @@ type ButtonProps = {
   /** Smaller, for actions inside a card. */
   compact?: boolean;
   style?: StyleProp<ViewStyle>;
+  /**
+   * Couleur propre au bouton (code « #RRGGBB »), par exemple pour les réponses à un événement :
+   * pleine en « primary », pâle avec le texte coloré sinon.
+   */
+  teinte?: string;
 };
 
-export function Button({ title, onPress, variant = 'primary', icon, loading, disabled, compact, style }: ButtonProps) {
+export function Button({ title, onPress, variant = 'primary', icon, loading, disabled, compact, style, teinte }: ButtonProps) {
   const { colors } = useTheme();
-  const { background, foreground } = {
+  const { background, foreground } = teinte ? couleursDeLaTeinte(teinte, variant === 'primary') : {
     primary: { background: colors.primary, foreground: colors.onPrimary },
     secondary: { background: colors.primarySoft, foreground: colors.primary },
     plain: { background: 'transparent', foreground: colors.primary },
@@ -56,6 +61,10 @@ export function Button({ title, onPress, variant = 'primary', icon, loading, dis
     </Pressable>
   );
 }
+
+/** Pleine (texte blanc) ou pâle (fond à 15 %, texte coloré). */
+const couleursDeLaTeinte = (teinte: string, estPlein: boolean) =>
+  estPlein ? { background: teinte, foreground: '#FFFFFF' } : { background: `${teinte}26`, foreground: teinte };
 
 const styles = StyleSheet.create({
   button: {

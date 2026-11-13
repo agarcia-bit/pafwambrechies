@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DateTile } from '@/components/actu-visual';
 import { ChoixDesJours, type JoursChoisis } from '@/components/choix-des-jours';
 import { useAnswerHandler } from '@/components/participation';
+import { useCouleursDeReponse } from '@/components/couleurs-de-reponse';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -150,7 +151,7 @@ function EventQuestion({ event: ev, onAnswered }: { event: Evenement; onAnswered
   );
 }
 
-/** Présent, Absent, et plus discret « Je ne sais pas encore ». */
+/** Présent, Absent ou « Je ne sais pas encore », chacun dans sa couleur. */
 function ReponsesPossibles({
   busy,
   enAttente,
@@ -160,11 +161,14 @@ function ReponsesPossibles({
   enAttente?: Reponse;
   onRepondre: (reponse: Reponse) => void;
 }) {
+  const couleurs = useCouleursDeReponse();
   return (
     <>
       <Button
         title="Présent"
         icon="checkCircle"
+        variant="secondary"
+        teinte={couleurs.present}
         loading={busy && enAttente === 'present'}
         disabled={busy}
         onPress={() => onRepondre('present')}
@@ -172,13 +176,15 @@ function ReponsesPossibles({
       <Button
         title="Absent"
         variant="secondary"
+        teinte={couleurs.absent}
         loading={busy && enAttente === 'absent'}
         disabled={busy}
         onPress={() => onRepondre('absent')}
       />
       <Button
         title="Je ne sais pas encore"
-        variant="plain"
+        variant="secondary"
+        teinte={couleurs.indecis}
         loading={busy && enAttente === 'indecis'}
         disabled={busy}
         onPress={() => onRepondre('indecis')}
