@@ -5,6 +5,7 @@ import { Compose } from '../Compose';
 import { Avatar, Empty, Icon, Skeleton } from '../Icon';
 import { formatRelative, fullName, hashParam, supabase, toast, useAsync, type Recipient, type Role } from '../lib';
 import { Kpi } from '../components/ui/Kpi';
+import { FormulaireNouvelAdherent } from './FormulaireNouvelAdherent';
 import { ROLE_LABELS, TableauDesRoles, type MembreInscrit } from './TableauDesRoles';
 
 type Member = MembreInscrit;
@@ -28,25 +29,6 @@ export function Adherents({ profile, association }: PageProps) {
   const [compose, setCompose] = useState<Recipient[] | null>(null);
   // #adherents?onglet=acces ouvre directement l'accès à l'app (lien de la vue d'ensemble).
   const [tab, setTab] = useState<'roles' | 'acces'>(() => (hashParam('onglet') === 'acces' ? 'acces' : 'roles'));
-  // Un nouvel adhérent entre deux imports : ajouté à la liste comme un import, puis invité aussitôt.
-  const [newOne, setNewOne] = useState({ prenom: '', nom: '', email: '' });
-  const [adding, setAdding] = useState(false);
-  async function addOne(e: React.FormEvent) {
-    e.preventDefault();
-    const email = newOne.email.trim().toLowerCase();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast('Adresse e-mail invalide', 'error');
-    setAdding(true);
-    const { data, error } = await supabase.rpc('importer_adherents', { p_rows: [{ prenom: newOne.prenom.trim(), nom: newOne.nom.trim(), email, valide_jusqu: '' }] });
-    setAdding(false);
-    if (error) return toast(error.message, 'error');
-    const r = data as { invites: number; deja_inscrits: number };
-    setNewOne({ prenom: '', nom: '', email: '' });
-    invites.reload();
-    if (r.deja_inscrits && !r.invites) return toast('Cette personne a déjà un compte dans l’app');
-    toast('Adhérent ajouté');
-    setCompose([{ email }]);
-  }
-
   async function setRole(m: Member, role: Role) {
     if (m.role === role) return;
     if (role !== 'admin' && m.role === 'admin' && !confirm(`Retirer les droits d’administration de ${fullName(m)} ?`)) return;
@@ -118,12 +100,7 @@ export function Adherents({ profile, association }: PageProps) {
               </div>
               {waiting.length > 0 && <button onClick={() => setCompose(waiting.map((i) => ({ email: i.email })))}><Icon name="mail" size={15} /> Inviter tout le monde</button>}
             </div>
-            <form className="add-one" onSubmit={addOne}>
-              <input type="text" placeholder="Prénom" value={newOne.prenom} onChange={(e) => setNewOne({ ...newOne, prenom: e.target.value })} />
-              <input type="text" placeholder="Nom" value={newOne.nom} onChange={(e) => setNewOne({ ...newOne, nom: e.target.value })} />
-              <input type="email" placeholder="E-mail" required value={newOne.email} onChange={(e) => setNewOne({ ...newOne, email: e.target.value })} />
-              <button className="primary" type="submit" disabled={adding}><Icon name="plus" size={15} /> {adding ? 'Ajout…' : 'Ajouter et inviter'}</button>
-            </form>
+            <FormulaireNouvelAdherent onAjoute={(email) => { invites.reload(); setCompose([{ email }]); }} />
             {invites.loading && !invites.data ? <Skeleton lines={3} /> : !waiting.length ? <Empty icon="check" title="Tout le monde est inscrit" hint="Importez d’autres adhérents depuis « Importer »." /> : (
               <ListeEnAttente enAttente={waiting} onInviter={(email) => setCompose([{ email }])} onRetire={invites.reload} />
             )}

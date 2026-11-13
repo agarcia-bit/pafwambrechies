@@ -4,6 +4,7 @@ import type { PageProps } from '../App';
 import { categoriesUtilisees, reprendreCategorieExistante } from '../categories-libres';
 import { COLLECTIONS, withConfig, type Collection, type Field, type Row, type Values } from '../collections';
 import { ChampCategorie } from '../components/ui/ChampCategorie';
+import { PersonnesDeLEntreprise } from './PersonnesDeLEntreprise';
 import { Drawer } from '../Drawer';
 import { Empty, Icon, Skeleton } from '../Icon';
 import { loadTenantConfig, supabase, toast, uploadPhoto, useAsync } from '../lib';
@@ -135,6 +136,7 @@ function ItemDrawer({ c, row, tenant, categories, onClose, onChanged }: { c: Col
           </div>
         ))}
       </div>
+      {c.key === 'annuaire' && row && <PersonnesDeLEntreprise fiche={row} />}
     </Drawer>
   );
 }

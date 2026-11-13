@@ -9,12 +9,13 @@ import { ListRow, ListSection } from '@/components/ui/list';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { LinkedText } from '@/components/ui/linked-text';
 import { Text } from '@/components/ui/text';
-import { useAnnuaire } from '@/lib/data';
-import { fullName } from '@/lib/format';
+import { nomsDesContacts } from '@/lib/contacts-fiche';
+import { useAnnuaire, useColleguesDeLaFiche } from '@/lib/data';
 import { useContentMenu } from '@/lib/moderation';
 import { useMember } from '@/lib/session';
 import { useTenantConfig } from '@/lib/tenant-config';
 import { externalUrl, instagramUrl, mapsUrl, openLink, phoneUrl } from '@/lib/links';
+import type { Commercant } from '@/lib/types';
 import { useTheme } from '@/theme';
 
 export default function CommercantScreen() {
@@ -25,6 +26,7 @@ export default function CommercantScreen() {
   const { profile } = useMember();
   const openMenu = useContentMenu();
   const m = annuaire.data?.find((item) => item.id === Number(id));
+  const collegues = useColleguesDeLaFiche(m?.id);
 
   if (annuaire.isPending) return <LoadingState />;
   if (!m) {
@@ -35,9 +37,8 @@ export default function CommercantScreen() {
     );
   }
 
-  const contact = fullName(m.prenom_contact, m.nom_contact);
+  const contact = nomsDesContacts({ prenom: m.prenom_contact, nom: m.nom_contact }, collegues.data ?? []);
   const name = m.nom_entreprise || contact;
-  const hasContacts = !!(m.adresse || m.telephone || m.email || m.linkedin || m.instagram);
 
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
@@ -60,44 +61,7 @@ export default function CommercantScreen() {
         {!!contact && !!m.nom_entreprise && <Text tone="secondary">{contact}</Text>}
       </View>
       {!!m.description && <LinkedText>{m.description}</LinkedText>}
-      {hasContacts && (
-        <ListSection>
-          {m.adresse && (
-            <ListRow
-              icon="location"
-              title={m.adresse}
-              subtitle="Itinéraire"
-              onPress={() => openLink(mapsUrl(m.adresse!), { inApp: false })}
-            />
-          )}
-          {m.telephone && (
-            <ListRow
-              icon="phone"
-              title={m.telephone}
-              subtitle="Appeler"
-              onPress={() => openLink(phoneUrl(m.telephone!), { inApp: false })}
-            />
-          )}
-          {m.email && (
-            <ListRow icon="mail" title={m.email} onPress={() => openLink(`mailto:${m.email}`, { inApp: false })} />
-          )}
-          {m.linkedin && (
-            <ListRow
-              icon="briefcase"
-              title="LinkedIn"
-              onPress={() => openLink(externalUrl(m.linkedin!), { inApp: false })}
-            />
-          )}
-          {m.instagram && (
-            <ListRow
-              icon="camera"
-              title={m.instagram}
-              subtitle="Instagram"
-              onPress={() => openLink(instagramUrl(m.instagram!), { inApp: false })}
-            />
-          )}
-        </ListSection>
-      )}
+      <CoordonneesDeLaFiche fiche={m} />
       {!!m.user_id && m.user_id !== profile.id && (
         <ListSection>
           <ListRow
@@ -111,6 +75,49 @@ export default function CommercantScreen() {
         <Button title="Modifier ma fiche" icon="camera" variant="secondary" onPress={() => router.push('/plus/ma-fiche')} />
       )}
     </ScrollView>
+  );
+}
+
+/** Adresse, téléphone, e-mail et réseaux de la fiche, chacun ouvrable d'un geste. */
+function CoordonneesDeLaFiche({ fiche }: { fiche: Commercant }) {
+  if (!(fiche.adresse || fiche.telephone || fiche.email || fiche.linkedin || fiche.instagram)) return null;
+  return (
+    <ListSection>
+      {fiche.adresse && (
+        <ListRow
+          icon="location"
+          title={fiche.adresse}
+          subtitle="Itinéraire"
+          onPress={() => openLink(mapsUrl(fiche.adresse!), { inApp: false })}
+        />
+      )}
+      {fiche.telephone && (
+        <ListRow
+          icon="phone"
+          title={fiche.telephone}
+          subtitle="Appeler"
+          onPress={() => openLink(phoneUrl(fiche.telephone!), { inApp: false })}
+        />
+      )}
+      {fiche.email && (
+        <ListRow icon="mail" title={fiche.email} onPress={() => openLink(`mailto:${fiche.email}`, { inApp: false })} />
+      )}
+      {fiche.linkedin && (
+        <ListRow
+          icon="briefcase"
+          title="LinkedIn"
+          onPress={() => openLink(externalUrl(fiche.linkedin!), { inApp: false })}
+        />
+      )}
+      {fiche.instagram && (
+        <ListRow
+          icon="camera"
+          title={fiche.instagram}
+          subtitle="Instagram"
+          onPress={() => openLink(instagramUrl(fiche.instagram!), { inApp: false })}
+        />
+      )}
+    </ListSection>
   );
 }
 

@@ -11,6 +11,7 @@ import { todayISO } from '@/lib/format';
 import { getPushStatus, shouldOfferPush } from '@/lib/notifications';
 import { useMember } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
+import type { ContactDeFiche } from '@/lib/contacts-fiche';
 import type { Actu, Commentaire, Commercant, Evenement, Idee, Lien, Offre } from '@/lib/types';
 
 // Every read below is scoped to the member's association by the RLS policies.
@@ -253,10 +254,27 @@ export function useMyFiche() {
       if (own.error) throw own.error;
       if (own.data) return own.data as Commercant;
       const { data: claimed } = await supabase.rpc('claim_ma_fiche');
-      if (!claimed) return null;
-      return unwrap<Commercant | null>(await supabase.from('annuaire').select('*').eq('id', claimed).maybeSingle());
+      // Pas de fiche à lui : peut-être celle de son entreprise, où le bureau l'a rattaché.
+      const { data: entreprise } = claimed ? { data: null } : await supabase.rpc('fiche_de_collegue');
+      const ficheId = claimed ?? entreprise;
+      if (!ficheId) return null;
+      return unwrap<Commercant | null>(await supabase.from('annuaire').select('*').eq('id', ficheId).maybeSingle());
     },
     retry: false,
+  });
+}
+
+/** Les collègues rattachés à une fiche (plusieurs personnes d'une même entreprise). */
+export function useColleguesDeLaFiche(ficheId: number | undefined) {
+  return useQuery({
+    queryKey: ['annuaire-collegues', ficheId],
+    enabled: !!ficheId,
+    queryFn: async (): Promise<ContactDeFiche[]> => {
+      const { data, error } = await supabase.from('annuaire_collegues').select('prenom, nom').eq('fiche_id', ficheId!);
+      // Script pas encore appliqué : la fiche s'affiche sans ses collègues.
+      if (error) return [];
+      return data as ContactDeFiche[];
+    },
   });
 }
 
