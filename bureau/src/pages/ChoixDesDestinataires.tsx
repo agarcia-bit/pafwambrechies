@@ -8,9 +8,6 @@ import { AUDIENCE_CHOIX, type EtatDestinataires } from './useDestinataires';
 /** La carte « À qui ? » de l'envoi d'un message : groupes fixes, catégories de l'annuaire, groupes du bureau. */
 export function ChoixDesDestinataires({ etat }: { etat: EtatDestinataires }) {
   const parRubrique = (rubrique: Audience['rubrique']) => etat.audiences.filter((a) => a.rubrique === rubrique);
-  const enAttente = parRubrique('attente');
-  const annuaire = parRubrique('annuaire');
-  const enregistres = parRubrique('enregistre');
   const choixALaMain = { cle: AUDIENCE_CHOIX, libelle: 'Choisir des personnes', indice: 'Une liste à cocher, à enregistrer comme groupe', nombre: etat.coches.size };
 
   return (
@@ -21,18 +18,34 @@ export function ChoixDesDestinataires({ etat }: { etat: EtatDestinataires }) {
         <div className="audiences">
           {parRubrique('fixe').map((a) => <LigneAudience key={a.cle} audience={a} etat={etat} />)}
           <LigneAudience audience={{ ...choixALaMain, membres: [], manquants: [] }} nombre={choixALaMain.nombre} etat={etat} />
-              {enAttente.length > 0 && <p className="rubrique-audiences">En attente de réponse</p>}
-          {enAttente.map((a) => <LigneAudience key={a.cle} audience={a} etat={etat} />)}
-          {annuaire.length > 0 && <p className="rubrique-audiences">Par catégorie de l’annuaire</p>}
-          {annuaire.map((a) => <LigneAudience key={a.cle} audience={a} etat={etat} />)}
-          {enregistres.length > 0 && <p className="rubrique-audiences">Vos groupes</p>}
-          {enregistres.map((a) => <LigneAudience key={a.cle} audience={a} etat={etat} />)}
+          {etat.cle === AUDIENCE_CHOIX && <ListeACocher etat={etat} />}
+          <RubriqueRepliable titre="En attente de réponse" audiences={parRubrique('attente')} etat={etat} />
+          <RubriqueRepliable titre="Par catégorie de l’annuaire" audiences={parRubrique('annuaire')} etat={etat} />
+          <RubriqueRepliable titre="Vos groupes" audiences={parRubrique('enregistre')} etat={etat} />
         </div>
       )}
       {etat.audience && etat.audience.manquants.length > 0 && <InfosManquantes audience={etat.audience} />}
       {etat.audience?.rubrique === 'enregistre' && <ActionsDuGroupe groupe={etat.audience} etat={etat} />}
-      {etat.cle === AUDIENCE_CHOIX && <ListeACocher etat={etat} />}
     </section>
+  );
+}
+
+/**
+ * Une rubrique de groupes, repliée par défaut pour garder la carte courte ; un clic sur son titre
+ * la déplie. Elle reste ouverte tant que l'un de ses groupes est choisi.
+ */
+function RubriqueRepliable({ titre, audiences, etat }: { titre: string; audiences: Audience[]; etat: EtatDestinataires }) {
+  const [estOuverte, setEstOuverte] = useState(false);
+  if (!audiences.length) return null;
+  const contientLeChoix = audiences.some((a) => a.cle === etat.cle);
+  const ouverte = estOuverte || contientLeChoix;
+  return (
+    <>
+      <button type="button" className="rubrique-audiences" aria-expanded={ouverte} onClick={() => setEstOuverte(!ouverte)} disabled={contientLeChoix}>
+        <Icon name={ouverte ? 'down' : 'right'} size={13} /> {titre} <span className="rubrique-nombre">{audiences.length}</span>
+      </button>
+      {ouverte && audiences.map((a) => <LigneAudience key={a.cle} audience={a} etat={etat} />)}
+    </>
   );
 }
 
