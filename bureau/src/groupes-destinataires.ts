@@ -6,6 +6,8 @@ import { cotisStatus, fullName, type MemberRow } from './lib';
 
 export type FicheAnnuaire = { nom_entreprise: string; categorie: string | null; email: string | null; user_id: string | null };
 export type GroupeEnregistre = { id: number; nom: string; emails: string[] };
+/** Un événement ou un sondage en cours qui attend une réponse, et ceux qui ont déjà répondu. */
+export type AttenteDeReponse = { cle: string; libelle: string; indice: string; repondants: string[] };
 
 export type Audience = {
   cle: string;
@@ -14,7 +16,7 @@ export type Audience = {
   membres: MemberRow[];
   /** Ce qui n'a pas pu être rattaché à un adhérent, avec la raison : « Boulangerie Dupont (pas d'e-mail) ». */
   manquants: string[];
-  rubrique: 'fixe' | 'annuaire' | 'enregistre';
+  rubrique: 'fixe' | 'attente' | 'annuaire' | 'enregistre';
   groupeId?: number;
 };
 
@@ -83,11 +85,36 @@ function groupesFixes(avecEmail: MemberRow[]): Audience[] {
   ];
 }
 
+/**
+ * Pour chaque événement ou sondage en cours : les adhérents inscrits qui n'ont pas encore répondu.
+ * Seuls les inscrits peuvent répondre dans l'app : les autres ne sont pas comptés.
+ */
+export function groupesEnAttenteDeReponse(membres: MemberRow[], attentes: AttenteDeReponse[]): Audience[] {
+  const inscrits = membres.filter((m) => m.inscrit && m.id);
+  return attentes.map((attente) => {
+    const ontRepondu = new Set(attente.repondants);
+    return {
+      cle: attente.cle,
+      libelle: `Pas répondu : ${attente.libelle}`,
+      indice: attente.indice,
+      membres: inscrits.filter((m) => !ontRepondu.has(m.id!)),
+      manquants: [],
+      rubrique: 'attente',
+    };
+  });
+}
+
 /** Toutes les audiences proposées, dans l'ordre d'affichage. */
-export function construireAudiences(membres: MemberRow[], fiches: FicheAnnuaire[], groupes: GroupeEnregistre[]): Audience[] {
+export function construireAudiences(
+  membres: MemberRow[],
+  fiches: FicheAnnuaire[],
+  groupes: GroupeEnregistre[],
+  attentes: AttenteDeReponse[] = []
+): Audience[] {
   const avecEmail = membres.filter((m) => m.email);
   return [
     ...groupesFixes(avecEmail),
+    ...groupesEnAttenteDeReponse(avecEmail, attentes),
     ...groupesDeLAnnuaire(avecEmail, fiches),
     ...[...groupes].sort((a, b) => a.nom.localeCompare(b.nom, 'fr')).map((g) => groupeEnregistre(avecEmail, g)),
   ];
