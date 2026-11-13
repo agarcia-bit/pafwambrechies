@@ -20,7 +20,7 @@ export function ChoixDesDestinataires({ etat }: { etat: EtatDestinataires }) {
         <div className="audiences">
           {parRubrique('fixe').map((a) => <LigneAudience key={a.cle} audience={a} etat={etat} />)}
           <LigneAudience audience={{ ...choixALaMain, membres: [], manquants: [] }} nombre={choixALaMain.nombre} etat={etat} />
-          {annuaire.length > 0 && <p className="rubrique-audiences">Par catégorie de l’annuaire</p>}
+              {annuaire.length > 0 && <p className="rubrique-audiences">Par catégorie de l’annuaire</p>}
           {annuaire.map((a) => <LigneAudience key={a.cle} audience={a} etat={etat} />)}
           {enregistres.length > 0 && <p className="rubrique-audiences">Vos groupes</p>}
           {enregistres.map((a) => <LigneAudience key={a.cle} audience={a} etat={etat} />)}

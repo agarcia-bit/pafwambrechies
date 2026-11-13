@@ -383,6 +383,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--brand); cu
 .audience .count { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--muted); background: var(--neutral-soft); padding: 2px 9px; border-radius: 99px; font-size: 12.5px; }
 .audience.on .count { color: var(--brand); background: var(--panel); }
 .pick { margin-top: 12px; display: grid; gap: 8px; } .pick .search { max-width: none; }
+.audiences .pick { margin: 0 0 8px; }
 .pick-list { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; }
 .pick-list li + li { border-top: 1px solid var(--line); }
 .pick-list label { display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; font-size: 13.5px; } .pick-list label:hover { background: var(--panel-2); }
