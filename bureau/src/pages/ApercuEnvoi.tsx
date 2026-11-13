@@ -1,18 +1,12 @@
 import { Drawer } from '../Drawer';
-import { Skeleton } from '../Icon';
-import { fullName, loadMembers, supabase, useAsync, type MemberRow } from '../lib';
+import { fullName, loadMembers, useAsync, type MemberRow } from '../lib';
 import { etatDOuverture, resumeDesOuvertures, type DestinataireSuivi } from '../ouvertures';
 
 // Un e-mail de l'historique : son texte tel qu'il est parti, et chacun de ses destinataires.
 
 type Destinataire = DestinataireSuivi & { email: string };
-type EnvoiDetaille = { sujet: string; corps: string; created_at: string; envoi_destinataires: Destinataire[] };
-
-async function chargerEnvoi(id: number): Promise<EnvoiDetaille> {
-  const { data, error } = await supabase.from('envois').select('sujet, corps, created_at, envoi_destinataires(email, statut, resend_id, ouvert_le)').eq('id', id).single();
-  if (error) throw error;
-  return data as EnvoiDetaille;
-}
+/** L'e-mail tel que l'historique l'a déjà chargé : l'aperçu s'ouvre sans nouvelle demande. */
+export type EnvoiDetaille = { sujet: string; corps: string; created_at: string; envoi_destinataires: Destinataire[] };
 
 /** « 13 novembre à 17:34 » */
 const dateEtHeure = (iso: string) =>
@@ -24,35 +18,28 @@ function nomDuDestinataire(email: string, membres: MemberRow[]) {
   return membre ? fullName(membre) : email;
 }
 
-export function ApercuEnvoi({ id, auteur, onClose }: { id: number; auteur: string; onClose: () => void }) {
-  const envoi = useAsync(() => chargerEnvoi(id), [id]);
+export function ApercuEnvoi({ envoi, auteur, onClose }: { envoi: EnvoiDetaille; auteur: string; onClose: () => void }) {
   const membres = useAsync(loadMembers, []);
-  const destinataires = [...(envoi.data?.envoi_destinataires ?? [])]
+  const destinataires = [...envoi.envoi_destinataires]
     .map((d) => ({ ...d, nom: nomDuDestinataire(d.email, membres.data ?? []) }))
     .sort((a, b) => Number(a.statut !== 'echec') - Number(b.statut !== 'echec') || a.nom.localeCompare(b.nom, 'fr'));
 
   return (
-    <Drawer title={envoi.data?.sujet ?? 'E-mail envoyé'} subtitle={envoi.data ? `${auteur} · ${dateEtHeure(envoi.data.created_at)}` : undefined} onClose={onClose} wide>
-      {envoi.loading && !envoi.data ? <Skeleton lines={6} />
-        : envoi.error ? <p className="error">{envoi.error}</p>
-        : (
-          <>
-            <h3 className="sect">Le message</h3>
-            <div className="apercu-message">{envoi.data!.corps}</div>
-            <h3 className="sect">Destinataires ({destinataires.length})</h3>
-            <ResumeOuvertures destinataires={destinataires} />
-            <ul className="plain compact">
-              {destinataires.map((d) => (
-                <li key={d.email}>
-                  <span className="grow">{d.nom}{d.nom !== d.email && <span className="muted small"> · {d.email}</span>}
-                    {etatDOuverture(d) && <small className={'etat-ouverture' + (d.ouvert_le ? ' ouvert' : '')}>{etatDOuverture(d)}</small>}
-                  </span>
-                  <span className={'pill ' + (d.statut === 'echec' ? 'bad' : 'ok')}>{d.statut === 'echec' ? 'Échec' : 'Envoyé'}</span>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
+    <Drawer title={envoi.sujet} subtitle={`${auteur} · ${dateEtHeure(envoi.created_at)}`} onClose={onClose} wide>
+      <h3 className="sect">Le message</h3>
+      <div className="apercu-message">{envoi.corps}</div>
+      <h3 className="sect">Destinataires ({destinataires.length})</h3>
+      <ResumeOuvertures destinataires={destinataires} />
+      <ul className="plain compact">
+        {destinataires.map((d) => (
+          <li key={d.email}>
+            <span className="grow">{d.nom}{d.nom !== d.email && <span className="muted small"> · {d.email}</span>}
+              {etatDOuverture(d) && <small className={'etat-ouverture' + (d.ouvert_le ? ' ouvert' : '')}>{etatDOuverture(d)}</small>}
+            </span>
+            <span className={'pill ' + (d.statut === 'echec' ? 'bad' : 'ok')}>{d.statut === 'echec' ? 'Échec' : 'Envoyé'}</span>
+          </li>
+        ))}
+      </ul>
     </Drawer>
   );
 }
