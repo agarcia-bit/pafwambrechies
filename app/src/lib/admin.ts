@@ -3,6 +3,8 @@ import { getRandomBytes } from 'expo-crypto';
 
 import type { IconName } from '@/components/ui/icon';
 import { ACTU_CATEGORIES } from '@/lib/categories';
+import { categoriesUtilisees, reprendreCategorieExistante } from '@/lib/categories-libres';
+import { useLiens } from '@/lib/data';
 import { formatDay, fullName, todayISO } from '@/lib/format';
 import { dernierJour, formatPeriode } from '@/lib/periode';
 import { uploadPhoto, type PickedPhoto } from '@/lib/photos';
@@ -13,7 +15,8 @@ import { supabase } from '@/lib/supabase';
 // Admin screens edit the association's content. Writes are restricted to
 // admins of the association by the RLS policies ("Admins … tenant …").
 
-export type FieldType = 'text' | 'multiline' | 'url' | 'email' | 'phone' | 'choice' | 'date' | 'time' | 'photo';
+// « categorie » : texte libre, les catégories déjà utilisées (options) proposées en pastilles.
+export type FieldType = 'text' | 'multiline' | 'url' | 'email' | 'phone' | 'choice' | 'date' | 'time' | 'photo' | 'categorie';
 
 export type Field = {
   key: string;
@@ -295,7 +298,7 @@ const liens: Collection = {
     { key: 'titre', label: 'Titre', type: 'text', required: true },
     { key: 'url', label: 'Adresse du site', type: 'url', required: true, placeholder: 'https://…' },
     { key: 'description', label: 'Description', type: 'text' },
-    { key: 'categorie', label: 'Catégorie (facultatif)', type: 'text', placeholder: 'Mairie, Partenaires…' },
+    { key: 'categorie', label: 'Catégorie (facultatif)', type: 'categorie', placeholder: 'Choisir ou écrire une nouvelle catégorie' },
   ],
   defaults: () => ({ titre: '', url: '', description: '', categorie: '' }),
   toValues: (r) => ({ titre: str(r.titre), url: str(r.url), description: str(r.description), categorie: str(r.categorie) }),
@@ -338,8 +341,19 @@ export function withConfig(c: Collection, config: TenantConfig): Collection {
 /** A collection by route key, named and filtered for the signed-in member's association. */
 export function useCollection(key: string | undefined): Collection | undefined {
   const config = useTenantConfig();
+  const liens = useLiens();
   const c = findCollection(key);
-  return c ? withConfig(c, config) : undefined;
+  if (!c) return undefined;
+  return c.key === 'liens' ? avecCategoriesUtilisees(c, categoriesUtilisees((liens.data ?? []).map((l) => l.categorie))) : withConfig(c, config);
+}
+
+/** Les catégories déjà utilisées sont proposées, et une saisie proche reprend l'existante. */
+function avecCategoriesUtilisees(c: Collection, categories: string[]): Collection {
+  return {
+    ...c,
+    fields: c.fields.map((f) => (f.type === 'categorie' ? { ...f, options: categories } : f)),
+    toPayload: (v) => c.toPayload({ ...v, categorie: reprendreCategorieExistante(v.categorie ?? '', categories) }),
+  };
 }
 
 // An update or delete that RLS filters out returns no error, only no rows.

@@ -3,7 +3,8 @@ import { DEFAULT_CATEGORY, formatDay, today, type TenantConfig } from './lib';
 // Les contenus de l'application (actus, offres, annuaire, liens), décrits une fois pour
 // toutes : même liste de champs et même format d'enregistrement que l'écran admin de l'app.
 
-export type FieldType = 'text' | 'multiline' | 'url' | 'email' | 'phone' | 'choice' | 'date' | 'photo';
+// « categorie » : texte libre, avec les catégories déjà utilisées proposées dans un menu déroulant.
+export type FieldType = 'text' | 'multiline' | 'url' | 'email' | 'phone' | 'choice' | 'date' | 'photo' | 'categorie';
 export type Field = { key: string; label: string; type: FieldType; required?: boolean; placeholder?: string; options?: readonly string[]; labels?: Record<string, string>; half?: boolean };
 export type Values = Record<string, string>;
 export type Row = { id: number } & Record<string, unknown>;
@@ -113,7 +114,7 @@ const liens: Collection = {
     { key: 'titre', label: 'Titre', type: 'text', required: true },
     { key: 'url', label: 'Adresse du site', type: 'url', required: true, placeholder: 'https://…' },
     { key: 'description', label: 'Description', type: 'text' },
-    { key: 'categorie', label: 'Catégorie (facultatif)', type: 'text', placeholder: 'Mairie, Partenaires…' },
+    { key: 'categorie', label: 'Catégorie (facultatif)', type: 'categorie', placeholder: 'Choisir ou écrire une nouvelle catégorie' },
   ],
   defaults: () => ({ titre: '', url: '', description: '', categorie: '' }),
   toValues: (r) => ({ titre: str(r.titre), url: str(r.url), description: str(r.description), categorie: str(r.categorie) }),

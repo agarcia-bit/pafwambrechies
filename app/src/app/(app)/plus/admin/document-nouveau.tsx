@@ -1,16 +1,19 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 
+import { ChampCategorie } from '@/components/form-fields';
 import { FormScreen } from '@/components/form-screen';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
 import { adminErrorMessage } from '@/lib/admin';
+import { categoriesUtilisees, reprendreCategorieExistante } from '@/lib/categories-libres';
 import {
   fileSize,
   MAX_DOCUMENT_BYTES,
   pickDocument,
   useAddDocument,
+  useDocuments,
   type PickedDocument,
 } from '@/lib/documents';
 
@@ -23,6 +26,8 @@ export default function NewDocumentScreen() {
   const [categorie, setCategorie] = useState('');
   const [error, setError] = useState<string | null>(null);
   const add = useAddDocument();
+  const documents = useDocuments();
+  const categories = categoriesUtilisees((documents.data ?? []).map((d) => d.categorie));
   const tooBig = !!file?.size && file.size > MAX_DOCUMENT_BYTES;
 
   async function choose() {
@@ -41,7 +46,7 @@ export default function NewDocumentScreen() {
     if (!file) return;
     setError(null);
     add.mutate(
-      { titre, categorie, file },
+      { titre, categorie: reprendreCategorieExistante(categorie, categories), file },
       {
         onSuccess: () => router.back(),
         onError: (e) =>
@@ -74,12 +79,12 @@ export default function NewDocumentScreen() {
       )}
       {tooBig && <Text tone="danger">Ce fichier dépasse 20 Mo.</Text>}
       <TextField label="Titre" value={titre} onChangeText={setTitre} placeholder="Statuts de l’association" maxLength={120} />
-      <TextField
+      <ChampCategorie
         label="Catégorie (facultatif)"
         value={categorie}
-        onChangeText={setCategorie}
+        onChange={setCategorie}
+        categories={categories}
         placeholder="Statuts, Comptes rendus, Formulaires…"
-        maxLength={60}
       />
       {error && <Text tone="danger">{error}</Text>}
       <Button

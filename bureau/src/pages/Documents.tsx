@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 
 import type { PageProps } from '../App';
+import { categoriesUtilisees, reprendreCategorieExistante } from '../categories-libres';
+import { ChampCategorie } from '../components/ui/ChampCategorie';
 import { Empty, Icon, Skeleton } from '../Icon';
 import { formatDay, supabase, useAsync } from '../lib';
 
@@ -33,7 +35,7 @@ export function Documents({ profile }: PageProps) {
       if (up.error) { problems.push(`${file.name} : ${up.error.message}`); continue; }
       const ins = await supabase.from('documents').insert({
         titre: file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim().slice(0, 120) || file.name,
-        categorie: categorie.trim() || null, path, nom_fichier: file.name, mime: file.type || null, taille: file.size,
+        categorie: reprendreCategorieExistante(categorie, categoriesUtilisees((docs.data ?? []).map((d) => d.categorie))) || null, path, nom_fichier: file.name, mime: file.type || null, taille: file.size,
       });
       if (ins.error) { await supabase.storage.from('documents').remove([path]); problems.push(`${file.name} : ${ins.error.message}`); }
     }
@@ -66,7 +68,7 @@ export function Documents({ profile }: PageProps) {
         <p><strong>{busy ? 'Envoi en cours…' : 'Déposez vos fichiers ici'}</strong></p>
         <p className="muted">PDF, images, Word, Excel, PowerPoint, texte — 20 Mo maximum. Visibles par tous les adhérents.</p>
         <div className="row">
-          <input type="text" placeholder="Catégorie (facultatif) : Statuts, Comptes rendus…" value={categorie} onChange={(e) => setCategorie(e.target.value)} />
+          <ChampCategorie valeur={categorie} categories={categoriesUtilisees((docs.data ?? []).map((d) => d.categorie))} onChange={setCategorie} placeholder="Catégorie (facultatif) : Statuts, Comptes rendus…" />
           <button className="primary" disabled={busy} onClick={() => input.current?.click()}><Icon name="upload" size={15} /> Choisir des fichiers</button>
         </div>
         <input ref={input} type="file" multiple hidden onChange={(e) => e.target.files && upload(e.target.files)} />
