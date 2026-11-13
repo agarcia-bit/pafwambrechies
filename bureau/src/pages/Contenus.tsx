@@ -10,16 +10,27 @@ import { Empty, Icon, Skeleton } from '../Icon';
 import { loadTenantConfig, supabase, toast, uploadPhoto, useAsync } from '../lib';
 
 /** Une page par type de contenu (actus, offres, annuaire, liens) : liste, recherche, création, modification, suppression. */
+// Une fonction par sorte de contenu, toujours la même : useAsync et le préchargement la
+// reconnaissent (sa clé de mémoire est son texte plus la sorte de contenu).
+const chargeurs = new Map<keyof typeof COLLECTIONS, () => Promise<Row[]>>();
+export function chargeurDeContenus(kind: keyof typeof COLLECTIONS) {
+  if (!chargeurs.has(kind)) {
+    const { key, order } = COLLECTIONS[kind];
+    chargeurs.set(kind, async () => {
+      let requete = supabase.from(key).select('*');
+      for (const o of order) requete = requete.order(o.column, { ascending: o.ascending, nullsFirst: o.nullsFirst });
+      const { data, error } = await requete;
+      if (error) throw error;
+      return data as Row[];
+    });
+  }
+  return chargeurs.get(kind)!;
+}
+
 export function Contenus({ kind, profile }: PageProps & { kind: keyof typeof COLLECTIONS }) {
   const config = useAsync(loadTenantConfig, []);
   const c = useMemo(() => (config.data ? withConfig(COLLECTIONS[kind], config.data) : COLLECTIONS[kind]), [kind, config.data]);
-  const rows = useAsync(async () => {
-    let q = supabase.from(c.key).select('*');
-    for (const o of c.order) q = q.order(o.column, { ascending: o.ascending, nullsFirst: o.nullsFirst });
-    const { data, error } = await q;
-    if (error) throw error;
-    return data as Row[];
-  }, [c.key]);
+  const rows = useAsync(chargeurDeContenus(kind), [kind]);
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<number | 'new' | null>(null);
 

@@ -123,13 +123,15 @@ function Donut({ parts, label }: { parts: { v: number; c: string }[]; label: str
   );
 }
 
+export async function chargerProchainsEvenements() {
+  const { data, error } = await supabase.from('evenements').select('id, titre, date, date_fin').or(filtreNonTermines()).order('date').limit(4);
+  if (error) throw error;
+  return data as { id: number; titre: string; date: string; date_fin: string | null }[];
+}
+
 /** Les quatre prochains événements, y compris ceux en cours sur plusieurs jours. */
 function ProchainsEvenements() {
-  const events = useAsync(async () => {
-    const { data, error } = await supabase.from('evenements').select('id, titre, date, date_fin').or(filtreNonTermines()).order('date').limit(4);
-    if (error) throw error;
-    return data as { id: number; titre: string; date: string; date_fin: string | null }[];
-  }, []);
+  const events = useAsync(chargerProchainsEvenements, []);
   return (
     <section className="card">
       <div className="head"><h2>Prochains événements</h2><a href="#evenements">Tout voir →</a></div>

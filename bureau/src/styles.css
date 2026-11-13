@@ -621,3 +621,11 @@ select.a-choisir { border-color: var(--warn); color: var(--warn); }
 .filet-erreur { max-width: 640px; margin: 40px auto; display: grid; gap: 12px; }
 .filet-erreur pre { white-space: pre-wrap; font-size: 12.5px; background: var(--neutral-soft); padding: 10px 12px; border-radius: 10px; margin: 0; }
 .filet-erreur button { justify-self: start; }
+
+/* Écran de préparation, au premier affichage du bureau */
+.ecran-preparation { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; }
+.preparation-logo { width: 56px; height: 56px; border-radius: 16px; object-fit: cover; }
+.preparation-logo.vide { display: grid; place-items: center; background: var(--brand); color: #fff; font-weight: 800; font-size: 24px; }
+.preparation-piste { width: 220px; height: 6px; border-radius: 99px; background: var(--neutral-soft); overflow: hidden; margin-top: 6px; }
+.preparation-piste span { display: block; height: 100%; border-radius: 99px; background: var(--brand); transition: width .25s ease; }
+@media (prefers-reduced-motion: reduce) { .preparation-piste span { transition: none; } }

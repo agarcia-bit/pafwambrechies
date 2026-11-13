@@ -12,12 +12,14 @@ const MAX = 20 * 1024 * 1024;
 const safeName = (n: string) => n.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(-80);
 const size = (b: number | null) => (b == null ? '' : b > 1048576 ? `${(b / 1048576).toFixed(1)} Mo` : `${Math.max(1, Math.round(b / 1024))} Ko`);
 
+export async function chargerDocuments(): Promise<Doc[]> {
+  const { data, error } = await supabase.from('documents').select('id, titre, categorie, path, nom_fichier, taille, created_at').order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as Doc[];
+}
+
 export function Documents({ profile }: PageProps) {
-  const docs = useAsync(async () => {
-    const { data, error } = await supabase.from('documents').select('id, titre, categorie, path, nom_fichier, taille, created_at').order('created_at', { ascending: false });
-    if (error) throw error;
-    return data as Doc[];
-  }, []);
+  const docs = useAsync(chargerDocuments, []);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [over, setOver] = useState(false);

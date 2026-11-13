@@ -13,6 +13,19 @@ type Reponse = 'present' | 'absent' | 'indecis';
 type SaReponse = { reponse: Reponse; jours: string[] | null; precision: string | null };
 type Member = { id: string | null; prenom: string | null; nom: string | null; email: string | null };
 
+export async function chargerEvenements() {
+  const [ev, rep, members] = await Promise.all([
+    supabase.from('evenements').select('id, titre, date, date_fin, heure, lieu, description, participation').order('date').order('heure'),
+    supabase.from('evenement_reponses').select('evenement_id, user_id, reponse, jours, precision'),
+    loadMembers(),
+  ]);
+  if (ev.error) throw ev.error;
+  if (rep.error) throw rep.error;
+  const answers: Record<number, Record<string, SaReponse>> = {};
+  for (const { evenement_id, user_id, ...reponse } of rep.data as ({ evenement_id: number; user_id: string } & SaReponse)[]) (answers[evenement_id] ??= {})[user_id] = reponse;
+  return { events: ev.data as Ev[], answers, members: members.filter((m) => m.inscrit) };
+}
+
 export function Evenements({ profile }: PageProps) {
   const [past, setPast] = useState(false);
   // #evenements?id=12 ouvre directement l'événement (liens de la vue d'ensemble et du Pilotage).
@@ -23,18 +36,7 @@ export function Evenements({ profile }: PageProps) {
     return () => removeEventListener('hashchange', on);
   }, []);
   // Tout est chargé en trois requêtes, quel que soit le nombre d'événements.
-  const data = useAsync(async () => {
-    const [ev, rep, members] = await Promise.all([
-      supabase.from('evenements').select('id, titre, date, date_fin, heure, lieu, description, participation').order('date').order('heure'),
-      supabase.from('evenement_reponses').select('evenement_id, user_id, reponse, jours, precision'),
-      loadMembers(),
-    ]);
-    if (ev.error) throw ev.error;
-    if (rep.error) throw rep.error;
-    const answers: Record<number, Record<string, SaReponse>> = {};
-    for (const { evenement_id, user_id, ...reponse } of rep.data as ({ evenement_id: number; user_id: string } & SaReponse)[]) (answers[evenement_id] ??= {})[user_id] = reponse;
-    return { events: ev.data as Ev[], answers, members: members.filter((m) => m.inscrit) };
-  }, []);
+  const data = useAsync(chargerEvenements, []);
 
   if (data.loading && !data.data) return <div className="card"><Skeleton lines={5} /></div>;
   if (data.error) return <p className="error">{data.error}</p>;

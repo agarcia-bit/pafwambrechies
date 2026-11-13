@@ -10,16 +10,18 @@ type Sondage = { id: number; question: string; actif: boolean; obligatoire: bool
 type Member = { id: string; prenom: string | null; nom: string | null };
 const MIN = 2, MAX = 6;
 
+export async function chargerSondages() {
+  const [s, m] = await Promise.all([
+    supabase.from('sondages').select('id, question, actif, obligatoire, date_limite, created_at, sondage_options(id, libelle, position), sondage_reponses(option_id, user_id, created_at)').order('created_at', { ascending: false }).order('position', { referencedTable: 'sondage_options' }),
+    supabase.rpc('member_names'),
+  ]);
+  if (s.error) throw s.error;
+  if (m.error) throw m.error;
+  return { sondages: s.data as unknown as Sondage[], members: m.data as Member[] };
+}
+
 export function Sondages() {
-  const data = useAsync(async () => {
-    const [s, m] = await Promise.all([
-      supabase.from('sondages').select('id, question, actif, obligatoire, date_limite, created_at, sondage_options(id, libelle, position), sondage_reponses(option_id, user_id, created_at)').order('created_at', { ascending: false }).order('position', { referencedTable: 'sondage_options' }),
-      supabase.rpc('member_names'),
-    ]);
-    if (s.error) throw s.error;
-    if (m.error) throw m.error;
-    return { sondages: s.data as unknown as Sondage[], members: m.data as Member[] };
-  }, []);
+  const data = useAsync(chargerSondages, []);
   const [create, setCreate] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
   const [voters, setVoters] = useState<string | null>(null);

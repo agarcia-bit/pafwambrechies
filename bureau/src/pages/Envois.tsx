@@ -10,14 +10,16 @@ const QUOTA: { jour: number | null; mois: number } = { jour: null, mois: 50000 }
 type Stat = { tenant_id: string; association: string; aujourd_hui: number; ce_mois: number; mois_precedent: number; total: number };
 type Envoi = { id: number; sujet: string; nb: number; created_at: string; envoye_par: string | null; envoi_destinataires: { statut: string }[] };
 
+export async function chargerStatsEnvois() {
+  const { data, error } = await supabase.rpc('envois_stats');
+  if (error) throw error;
+  return (data as Stat[]).map((s) => ({ ...s, aujourd_hui: Number(s.aujourd_hui), ce_mois: Number(s.ce_mois), mois_precedent: Number(s.mois_precedent), total: Number(s.total) }));
+}
+
 /** Les e-mails envoyés depuis l'espace bureau : historique de l'association et compteurs.
  *  Le propriétaire de la plateforme voit en plus la consommation de chaque association. */
 export function Envois({ profile }: PageProps) {
-  const stats = useAsync(async () => {
-    const { data, error } = await supabase.rpc('envois_stats');
-    if (error) throw error;
-    return (data as Stat[]).map((s) => ({ ...s, aujourd_hui: Number(s.aujourd_hui), ce_mois: Number(s.ce_mois), mois_precedent: Number(s.mois_precedent), total: Number(s.total) }));
-  }, []);
+  const stats = useAsync(chargerStatsEnvois, []);
   const history = useAsync(async () => {
     const [e, m] = await Promise.all([
       supabase.from('envois').select('id, sujet, nb, created_at, envoye_par, envoi_destinataires(statut)').order('created_at', { ascending: false }).limit(100),
