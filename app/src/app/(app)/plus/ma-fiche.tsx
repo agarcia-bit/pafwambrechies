@@ -14,7 +14,9 @@ export default function MaFicheScreen() {
   if (fiche.isPending) return <LoadingState />;
   if (fiche.isError) return <ErrorState onRetry={fiche.refetch} />;
 
-  const own = { memberId: profile.id, title: 'Ma fiche', submitLabel: 'Créer ma fiche' };
+  // Un collègue rattaché modifie la fiche de son entreprise, sans en devenir le titulaire.
+  const titre = fiche.data && fiche.data.user_id !== profile.id ? 'Fiche de mon entreprise' : 'Ma fiche';
+  const own = { memberId: profile.id, title: titre, submitLabel: 'Créer ma fiche' };
   if (fiche.data) return <EditForm key={fiche.data.id} collection={c} row={fiche.data as never} own={own} />;
 
   const starter: FormValues = {
