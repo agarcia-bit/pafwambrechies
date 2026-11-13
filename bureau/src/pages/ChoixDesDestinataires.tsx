@@ -8,6 +8,7 @@ import { AUDIENCE_CHOIX, type EtatDestinataires } from './useDestinataires';
 /** La carte « À qui ? » de l'envoi d'un message : groupes fixes, catégories de l'annuaire, groupes du bureau. */
 export function ChoixDesDestinataires({ etat }: { etat: EtatDestinataires }) {
   const parRubrique = (rubrique: Audience['rubrique']) => etat.audiences.filter((a) => a.rubrique === rubrique);
+  const enAttente = parRubrique('attente');
   const annuaire = parRubrique('annuaire');
   const enregistres = parRubrique('enregistre');
   const choixALaMain = { cle: AUDIENCE_CHOIX, libelle: 'Choisir des personnes', indice: 'Une liste à cocher, à enregistrer comme groupe', nombre: etat.coches.size };
@@ -20,7 +21,9 @@ export function ChoixDesDestinataires({ etat }: { etat: EtatDestinataires }) {
         <div className="audiences">
           {parRubrique('fixe').map((a) => <LigneAudience key={a.cle} audience={a} etat={etat} />)}
           <LigneAudience audience={{ ...choixALaMain, membres: [], manquants: [] }} nombre={choixALaMain.nombre} etat={etat} />
-              {annuaire.length > 0 && <p className="rubrique-audiences">Par catégorie de l’annuaire</p>}
+              {enAttente.length > 0 && <p className="rubrique-audiences">En attente de réponse</p>}
+          {enAttente.map((a) => <LigneAudience key={a.cle} audience={a} etat={etat} />)}
+          {annuaire.length > 0 && <p className="rubrique-audiences">Par catégorie de l’annuaire</p>}
           {annuaire.map((a) => <LigneAudience key={a.cle} audience={a} etat={etat} />)}
           {enregistres.length > 0 && <p className="rubrique-audiences">Vos groupes</p>}
           {enregistres.map((a) => <LigneAudience key={a.cle} audience={a} etat={etat} />)}
