@@ -9,6 +9,7 @@ import {
   today, toast, useAsync, type CotisConfig, type MemberRow, type Recipient,
 } from '../lib';
 import { Kpi } from '../components/ui/Kpi';
+import { useCotisationDuMembre } from './useCotisationDuMembre';
 
 type Filter = 'tous' | 'a_jour' | 'a_relancer' | 'non_inscrits';
 type SortKey = 'nom' | 'cotisation';
@@ -213,27 +214,19 @@ function MemberDrawer({ m, config, lastSend, onClose, onChanged, onWrite }: {
 }) {
   const suggested = () => (m.valide_jusqu && cotisStatus(m.valide_jusqu) === 'a_jour' ? m.valide_jusqu : config?.fin || addOneYear(today()));
   const [date, setDate] = useState(suggested);
-  const [busy, setBusy] = useState(false);
+  const cotisation = useCotisationDuMembre(m, onChanged);
+  const busy = cotisation.enCours;
   useEffect(() => setDate(suggested()), [m.key, m.valide_jusqu, config?.fin]); // eslint-disable-line react-hooks/exhaustive-deps
   const status = cotisStatus(m.valide_jusqu);
 
-  async function run(action: () => PromiseLike<{ error: { message: string } | null }>, ok: string) {
-    setBusy(true);
-    const { error } = await action();
-    setBusy(false);
-    if (error) return toast(error.message, 'error');
-    toast(ok);
-    onChanged();
-  }
-
-  const save = () =>
-    m.id
-      ? run(() => supabase.rpc('set_cotisation', { p_member: m.id, p_valide_jusqu: date }), 'Cotisation enregistrée')
-      : run(() => supabase.rpc('importer_adherents', { p_rows: [{ prenom: m.prenom ?? '', nom: m.nom ?? '', email: m.email, valide_jusqu: date }] }), 'Cotisation enregistrée');
-  const clear = () => run(() => supabase.rpc('clear_cotisation', { p_member: m.id }), 'Cotisation effacée');
   const removeInvite = () => {
     if (!confirm(`Retirer ${fullName(m)} de la liste des adhérents à inviter ?`)) return;
-    run(() => supabase.rpc('retirer_invitation', { p_email: m.email }), 'Adhérent retiré').then(onClose);
+    supabase.rpc('retirer_invitation', { p_email: m.email }).then(({ error }) => {
+      if (error) return toast(error.message, 'error');
+      toast('Adhérent retiré');
+      onChanged();
+      onClose();
+    });
   };
 
   return (
@@ -249,9 +242,10 @@ function MemberDrawer({ m, config, lastSend, onClose, onChanged, onWrite }: {
       <div className="form">
         <label>Valable jusqu’au<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
         <div className="row" style={{ marginTop: 0 }}>
-          <button className="primary" disabled={busy || !date} onClick={save}>{status === 'a_jour' ? 'Mettre à jour' : 'Enregistrer le renouvellement'}</button>
-          {m.id && m.valide_jusqu && <button className="link danger" disabled={busy} onClick={clear}>Effacer</button>}
+          <button className="primary" disabled={busy || !date} onClick={() => cotisation.enregistrer(date)}>{status === 'a_jour' ? 'Mettre à jour' : 'Enregistrer le renouvellement'}</button>
+          {m.valide_jusqu && <button className="link danger" disabled={busy} onClick={cotisation.annulerLaCotisation}>Annuler la cotisation</button>}
         </div>
+        {cotisation.libelleDefaire && <button className="link" disabled={busy} onClick={cotisation.defaireLeDernierChangement}>{cotisation.libelleDefaire}</button>}
       </div>
       <p className="muted small">
         {config?.fin ? `Date proposée : fin de la campagne ${config.libelle || ''}.` : 'La date proposée est à 12 mois.'}
