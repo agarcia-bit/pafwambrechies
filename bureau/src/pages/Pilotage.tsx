@@ -28,6 +28,9 @@ export function Pilotage({ profile }: PageProps) {
   }, []);
   const unread = useUnread(profile.tenant_id);
   const [onlyMe, setOnlyMe] = useState(false);
+  // Les tâches qu'on vient de cocher, le temps de leur animation de sortie. Déclarée avant les
+  // retours anticipés ci-dessous : React exige le même nombre de mémoires à chaque affichage.
+  const [leaving, setLeaving] = useState<Set<number>>(new Set());
   // #pilotage?action=12 ouvre directement la fiche (lien depuis la page Discussion).
   const [open, setOpen] = useState<number | 'new' | null>(() => Number(hashParam('action')) || null);
   useEffect(() => {
@@ -61,7 +64,6 @@ export function Pilotage({ profile }: PageProps) {
   const taches = onlyMe ? all.taches.filter((t) => t.responsable === profile.id) : all.taches;
   const actions = onlyMe ? all.actions.filter((a) => a.referent === profile.id || taches.some((t) => t.action_id === a.id)) : all.actions;
 
-  const [leaving, setLeaving] = useState<Set<number>>(new Set());
   async function toggle(t: Tache) {
     const finishing = t.statut !== 'Terminé';
     if (finishing) setLeaving((s) => new Set(s).add(t.id));
