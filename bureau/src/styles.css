@@ -629,3 +629,6 @@ select.a-choisir { border-color: var(--warn); color: var(--warn); }
 .preparation-piste { width: 220px; height: 6px; border-radius: 99px; background: var(--neutral-soft); overflow: hidden; margin-top: 6px; }
 .preparation-piste span { display: block; height: 100%; border-radius: 99px; background: var(--brand); transition: width .25s ease; }
 @media (prefers-reduced-motion: reduce) { .preparation-piste span { transition: none; } }
+
+/* Aperçu d'un e-mail envoyé : le texte tel qu'il est parti */
+.apercu-message { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.55; padding: 14px 16px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); }
