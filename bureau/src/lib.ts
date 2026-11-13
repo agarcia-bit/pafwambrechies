@@ -17,6 +17,17 @@ export type Profile = { id: string; prenom: string | null; nom: string | null; e
 const cache = new Map<string, unknown>();
 export const clearAsyncCache = () => cache.clear();
 
+/**
+ * Charge en arrière-plan ce qu'un onglet affichera : la même clé que useAsync(fn, deps), donc le
+ * premier passage sur l'onglet s'affiche aussitôt. Une erreur ici est sans conséquence : l'onglet
+ * recharge de toute façon à son ouverture.
+ */
+export function prechargerDansLeCache<T>(fn: () => Promise<T>, deps: unknown[] = []) {
+  const key = fn.toString() + JSON.stringify(deps);
+  if (cache.has(key)) return Promise.resolve();
+  return fn().then((data) => { cache.set(key, data); }, () => undefined);
+}
+
 export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
   const key = fn.toString() + JSON.stringify(deps);
   const [state, setState] = useState<{ data?: T; error?: string; loading: boolean }>(() =>

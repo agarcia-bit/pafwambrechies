@@ -12,20 +12,30 @@ type Member = MembreInscrit;
 type Invite = { email: string; prenom: string | null; nom: string | null; created_at: string; user_id: string | null; joined_at: string | null };
 const ROLE_ORDER: Record<Role, number> = { admin: 0, bureau: 1, adherent: 2 };
 
+// Les données de la page, nommées pour être préchargées à l'ouverture du bureau (prechargement.ts).
+export async function chargerInscrits(): Promise<Member[]> {
+  const { data, error } = await supabase.from('profiles').select('id, email, prenom, nom, role');
+  if (error) throw error;
+  return (data as Member[]).sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role] || fullName(a).localeCompare(fullName(b), 'fr'));
+}
+
+export async function chargerInvitations(): Promise<Invite[]> {
+  const { data, error } = await supabase.from('adherents_invites').select('email, prenom, nom, created_at, user_id, joined_at').order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as Invite[];
+}
+
+export async function chargerCodeDAcces(): Promise<string | null> {
+  const { data } = await supabase.rpc('get_signup_code');
+  return (data as string | null) || null;
+}
+
 /** Les adhérents : qui a un compte et avec quel rôle, et comment les autres rejoignent l'app (code d'accès, invitations). */
 export function Adherents({ profile, association }: PageProps) {
   const isAdmin = profile.role === 'admin';
-  const members = useAsync(async () => {
-    const { data, error } = await supabase.from('profiles').select('id, email, prenom, nom, role');
-    if (error) throw error;
-    return (data as Member[]).sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role] || fullName(a).localeCompare(fullName(b), 'fr'));
-  }, []);
-  const invites = useAsync(async () => {
-    const { data, error } = await supabase.from('adherents_invites').select('email, prenom, nom, created_at, user_id, joined_at').order('created_at', { ascending: false });
-    if (error) throw error;
-    return data as Invite[];
-  }, []);
-  const code = useAsync(async () => { const { data } = await supabase.rpc('get_signup_code'); return (data as string | null) || null; }, []);
+  const members = useAsync(chargerInscrits, []);
+  const invites = useAsync(chargerInvitations, []);
+  const code = useAsync(chargerCodeDAcces, []);
   const [compose, setCompose] = useState<Recipient[] | null>(null);
   // #adherents?onglet=acces ouvre directement l'accès à l'app (lien de la vue d'ensemble).
   const [tab, setTab] = useState<'roles' | 'acces'>(() => (hashParam('onglet') === 'acces' ? 'acces' : 'roles'));

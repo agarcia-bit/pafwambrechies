@@ -19,6 +19,7 @@ import { Reglages } from './pages/Reglages';
 import { Sondages } from './pages/Sondages';
 import { Avatar, Icon, Skeleton } from './Icon';
 import { FiletDErreur } from './FiletDErreur';
+import { prechargerLesOnglets } from './prechargement';
 import { applyBranding } from './theme';
 import { Toasts } from './Toasts';
 
@@ -217,6 +218,13 @@ function Shell({ userId }: { userId: string }) {
   // Les couleurs de l'association, comme dans l'app ; à nouveau après un changement dans les Réglages.
   const colors = me.data?.colors;
   useEffect(() => { if (colors) applyBranding(colors.primary, colors.banner); }, [colors]);
+  // Une fois le profil chargé (donc la première page lancée), les autres onglets se préparent.
+  const profilCharge = !!me.data;
+  useEffect(() => {
+    if (!profilCharge) return;
+    const minuteur = setTimeout(prechargerLesOnglets, 800);
+    return () => clearTimeout(minuteur);
+  }, [profilCharge]);
   const reloadMe = me.reload;
   useEffect(() => {
     addEventListener('branding-change', reloadMe);
