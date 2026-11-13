@@ -15,13 +15,13 @@ import { loadMembers, supabase, toast, useAsync } from '../lib';
 
 export const AUDIENCE_CHOIX = 'choix';
 
-async function chargerFichesAnnuaire(): Promise<FicheAnnuaire[]> {
+export async function chargerFichesAnnuaire(): Promise<FicheAnnuaire[]> {
   const { data, error } = await supabase.from('annuaire').select('nom_entreprise, categorie, email, user_id');
   if (error) throw error;
   return data as FicheAnnuaire[];
 }
 
-async function chargerGroupesEnvoi(): Promise<GroupeEnregistre[]> {
+export async function chargerGroupesEnvoi(): Promise<GroupeEnregistre[]> {
   const { data, error } = await supabase.from('groupes_envoi').select('id, nom, emails');
   if (error) throw error;
   return data as GroupeEnregistre[];
