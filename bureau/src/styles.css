@@ -634,3 +634,14 @@ select.a-choisir { border-color: var(--warn); color: var(--warn); }
 /* Aperçu d'un e-mail envoyé : le texte tel qu'il est parti */
 .apercu-message { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.55; padding: 14px 16px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); }
 .etat-ouverture { display: block; font-size: 12px; color: var(--muted); } .etat-ouverture.ouvert { color: var(--ok); }
+
+/* Pilotage : accueil de démarrage, modèles, tâches d'une action pas encore créée */
+.demarrer { display: grid; gap: 6px; } .demarrer > p { margin: 0 0 4px; max-width: 62ch; }
+.demarrer-choix { display: grid; gap: 8px; }
+button.demarrer-carte { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; white-space: normal; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); box-shadow: none; }
+button.demarrer-carte:hover { border-color: var(--brand); background: var(--brand-soft); }
+.demarrer-carte strong { display: block; font-size: 14px; } .demarrer-carte small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 400; }
+.demarrer-emoji { flex: none; width: 38px; height: 38px; border-radius: 11px; background: var(--neutral-soft); display: grid; place-items: center; font-size: 19px; }
+.modeles-rapides { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+.plus-options summary { cursor: pointer; font-size: 13px; color: var(--muted); font-weight: 500; } .plus-options[open] summary { margin-bottom: 10px; }
+input.tache-prevue { padding: 6px 10px; font-size: 13.5px; }

@@ -96,6 +96,7 @@ function EventCard({ e, answers, members, onEdit }: { e: Ev; answers: Record<str
           {e.participation && !estPasse(e) && silent.length > 0 && (
             <button onClick={() => setCompose(true)}><Icon name="mail" size={15} /> Relancer les {silent.length} silencieux</button>
           )}
+          {!estPasse(e) && <a className="button" href={`#pilotage?preparer=${e.id}`} title="Créer dans le Pilotage l’action et sa liste de tâches"><Icon name="tasks" size={15} /> Préparer cet événement</a>}
           <button className="icon-btn" onClick={onEdit} aria-label="Modifier" title="Modifier"><Icon name="edit" /></button>
         </div>
       </div>
