@@ -38,6 +38,7 @@ export type Branding = {
   cotisation_libelle?: string;
   cotisation_ouverture?: string;
   cotisation_fin?: string;
+  cotisation_message?: string;
 };
 
 export type Count = { count: number }[];

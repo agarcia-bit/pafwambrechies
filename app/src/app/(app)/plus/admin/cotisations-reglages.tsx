@@ -22,6 +22,7 @@ export default function CotisationsReglagesScreen() {
     libelle: cotisations.libelle,
     ouverture: cotisations.ouverture,
     fin: cotisations.fin,
+    message: cotisations.message,
   });
   const [error, setError] = useState<string | null>(null);
   const set = (key: keyof CotisationSettings) => (value: string) => setS((current) => ({ ...current, [key]: value }));
@@ -67,34 +68,55 @@ export default function CotisationsReglagesScreen() {
           rouge sur l’accueil et reçoit une notification par semaine, jusqu’à ce que vous enregistriez son
           renouvellement. Sans dates, aucun rappel n’est envoyé.
         </Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text variant="headline">Paiement</Text>
         <TextField
-          label="Lien de paiement"
-          value={s.url}
-          onChangeText={set('url')}
-          placeholder="https://www.helloasso.com/associations/…"
-          keyboardType="url"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        <TextField
-          label="Montant (affiché aux adhérents)"
-          value={s.montant}
-          onChangeText={set('montant')}
-          placeholder="Ex : 25 € par an"
+          label="Message aux adhérents (facultatif)"
+          value={s.message}
+          onChangeText={set('message')}
+          placeholder="Ex : code promo RENOUV27, -20 € jusqu’au 15 décembre"
+          multiline
+          maxLength={500}
         />
         <Text variant="footnote" tone="secondary">
-          Le paiement se fait sur ce site (HelloAsso par exemple), pas dans l’app. Une fois le règlement reçu, marquez
-          l’adhérent comme renouvelé dans la liste.
+          Affiché dans la fenêtre « Ma cotisation » des adhérents qui ont à renouveler, pendant la campagne.
         </Text>
       </View>
+
+      <SectionPaiement valeurs={s} modifier={set} />
 
       {error && <Text tone="danger">{error}</Text>}
       <Button title="Enregistrer" onPress={submit} loading={save.isPending} />
     </FormScreen>
+  );
+}
+
+/** Le lien de paiement et le montant affiché aux adhérents. */
+function SectionPaiement({ valeurs, modifier }: {
+  valeurs: CotisationSettings;
+  modifier: (cle: keyof CotisationSettings) => (valeur: string) => void;
+}) {
+  return (
+    <View style={styles.section}>
+      <Text variant="headline">Paiement</Text>
+      <TextField
+        label="Lien de paiement"
+        value={valeurs.url}
+        onChangeText={modifier('url')}
+        placeholder="https://www.helloasso.com/associations/…"
+        keyboardType="url"
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+      <TextField
+        label="Montant (affiché aux adhérents)"
+        value={valeurs.montant}
+        onChangeText={modifier('montant')}
+        placeholder="Ex : 25 € par an"
+      />
+      <Text variant="footnote" tone="secondary">
+        Le paiement se fait sur ce site (HelloAsso par exemple), pas dans l’app. Une fois le règlement reçu, marquez
+        l’adhérent comme renouvelé dans la liste.
+      </Text>
+    </View>
   );
 }
 

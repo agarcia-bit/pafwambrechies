@@ -14,7 +14,7 @@ export type TenantConfig = {
   /** Filters of the directory and of the offers; empty = no categories. */
   categories: { annuaire: string[]; offres: string[] };
   /** Membership dues: off unless the association turns them on. */
-  cotisations: { enabled: boolean; url: string; montant: string; libelle: string; ouverture: string; fin: string };
+  cotisations: { enabled: boolean; url: string; montant: string; libelle: string; ouverture: string; fin: string; message: string };
 };
 
 /** Stored category when an association uses none (the column cannot be empty). */
@@ -54,6 +54,7 @@ export function tenantConfig(branding: Branding | null | undefined): TenantConfi
       libelle: b.cotisation_libelle?.trim() ?? '',
       ouverture: b.cotisation_ouverture?.trim() ?? '',
       fin: b.cotisation_fin?.trim() ?? '',
+      message: b.cotisation_message?.trim() ?? '',
     },
   };
 }
