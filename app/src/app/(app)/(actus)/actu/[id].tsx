@@ -62,8 +62,10 @@ export default function ActuScreen() {
         <View style={[styles.hero, { backgroundColor: heroColor, paddingTop: insets.top + 52 }]}>
           {/* Pulling down at the top keeps the hero color instead of showing the grey ground. */}
           <View pointerEvents="none" style={[styles.heroOverscroll, { backgroundColor: heroColor }]} />
-          <Animated.View entering={FadeInDown.delay(150).duration(450)} style={styles.heroMeta}>
-            <Text variant="footnote" style={styles.heroCategory} numberOfLines={1}>
+          <Animated.View
+            entering={FadeInDown.delay(150).duration(450)}
+            style={[styles.heroCategoryPill, { top: insets.top + 8 }]}>
+            <Text variant="headline" style={styles.heroCategory} numberOfLines={1}>
               {a.categorie.toUpperCase()}
             </Text>
           </Animated.View>
@@ -130,8 +132,18 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1 },
   hero: { paddingHorizontal: 20, paddingBottom: 40, gap: 10 },
   heroOverscroll: { position: 'absolute', top: -1000, left: 0, right: 0, height: 1000 },
-  heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 24 },
-  heroCategory: { color: 'rgba(255,255,255,0.95)', fontWeight: '700', letterSpacing: 0.4 },
+  // Même hauteur que le bouton Retour (36), en face de lui, à droite.
+  heroCategoryPill: {
+    position: 'absolute',
+    right: 16,
+    height: 36,
+    maxWidth: '55%',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  heroCategory: { color: '#FFFFFF', fontWeight: '800', letterSpacing: 0.6 },
   heroTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   heroDate: { color: 'rgba(255,255,255,0.85)' },
   heroEventDate: { color: '#FFFFFF', fontWeight: '700', marginBottom: 2 },
