@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { construireAudiences, emailsDuGroupe, groupeEnregistre, groupesDeLAnnuaire, type FicheAnnuaire } from './groupes-destinataires';
+import {
+  construireAudiences, emailsDuGroupe, groupeEnregistre, groupesDeLAnnuaire, groupesEnAttenteDeReponse, type FicheAnnuaire,
+} from './groupes-destinataires';
 import type { MemberRow } from './lib';
 
 const membre = (key: string, email: string | null, extra: Partial<MemberRow> = {}): MemberRow => ({
@@ -68,5 +70,21 @@ describe('construireAudiences', () => {
 describe('emailsDuGroupe', () => {
   it('garde des adresses uniques en minuscules', () => {
     expect(emailsDuGroupe([ANNE, membre('x', 'Anne@Ex.fr'), membre('y', null)])).toEqual(['anne@ex.fr']);
+  });
+});
+
+describe('groupesEnAttenteDeReponse', () => {
+  it('garde les inscrits qui n’ont pas répondu, sans les adhérents pas encore inscrits', () => {
+    const [groupe] = groupesEnAttenteDeReponse([ANNE, BRUNO, CLARA], [
+      { cle: 'evenement:4', libelle: 'Marché de Noël', indice: 'Événement du 12 déc.', repondants: ['anne'] },
+    ]);
+    expect(groupe.libelle).toBe('Pas répondu : Marché de Noël');
+    expect(groupe.rubrique).toBe('attente');
+    expect(groupe.membres.map((m) => m.key)).toEqual(['clara']);
+  });
+
+  it('se place juste après les groupes fixes', () => {
+    const audiences = construireAudiences([ANNE], [], [], [{ cle: 'sondage:2', libelle: 'Date de l’AG', indice: 'Sondage', repondants: [] }]);
+    expect(audiences.map((a) => a.cle)).toEqual(['tous', 'a_relancer', 'non_inscrits', 'bureau', 'sondage:2']);
   });
 });

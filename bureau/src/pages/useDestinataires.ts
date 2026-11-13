@@ -7,6 +7,7 @@ import {
   type FicheAnnuaire,
   type GroupeEnregistre,
 } from '../groupes-destinataires';
+import { chargerAttentesDeReponse } from '../attentes-de-reponse';
 import { loadMembers, supabase, toast, useAsync } from '../lib';
 
 // L'état du choix des destinataires d'un message : l'audience choisie, la liste cochée à la main,
@@ -30,6 +31,7 @@ export function useDestinataires() {
   const membres = useAsync(loadMembers, []);
   const fiches = useAsync(chargerFichesAnnuaire, []);
   const groupes = useAsync(chargerGroupesEnvoi, []);
+  const attentes = useAsync(chargerAttentesDeReponse, []);
   const [cle, setCle] = useState('tous');
   const [coches, setCoches] = useState<Set<string>>(new Set());
   // Le groupe enregistré dont on modifie la liste, s'il y en a un.
@@ -37,8 +39,8 @@ export function useDestinataires() {
 
   const avecEmail = useMemo(() => (membres.data ?? []).filter((m) => m.email), [membres.data]);
   const audiences = useMemo(
-    () => construireAudiences(membres.data ?? [], fiches.data ?? [], groupes.data ?? []),
-    [membres.data, fiches.data, groupes.data]
+    () => construireAudiences(membres.data ?? [], fiches.data ?? [], groupes.data ?? [], attentes.data ?? []),
+    [membres.data, fiches.data, groupes.data, attentes.data]
   );
   const audience = audiences.find((a) => a.cle === cle);
   const destinataires = cle === AUDIENCE_CHOIX ? avecEmail.filter((m) => coches.has(m.key)) : audience?.membres ?? [];
