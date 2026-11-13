@@ -632,3 +632,4 @@ select.a-choisir { border-color: var(--warn); color: var(--warn); }
 
 /* Aperçu d'un e-mail envoyé : le texte tel qu'il est parti */
 .apercu-message { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.55; padding: 14px 16px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); }
+.etat-ouverture { display: block; font-size: 12px; color: var(--muted); } .etat-ouverture.ouvert { color: var(--ok); }
