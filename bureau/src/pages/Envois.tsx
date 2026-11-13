@@ -1,7 +1,10 @@
+import { useState } from 'react';
+
 import type { PageProps } from '../App';
-import { Empty, Skeleton } from '../Icon';
+import { Empty, Icon, Skeleton } from '../Icon';
 import { formatRelative, fullName, supabase, useAsync, type BureauMember } from '../lib';
 import { Kpi } from '../components/ui/Kpi';
+import { ApercuEnvoi } from './ApercuEnvoi';
 
 // Plan Resend en cours (Pro) : limites partagées par toutes les associations, null = pas de limite.
 // À mettre à jour en changeant de plan.
@@ -33,6 +36,7 @@ export function Envois({ profile }: PageProps) {
   const mine = all.find((s) => s.tenant_id === profile.tenant_id);
   const platform = all.length > 1 || (all.length === 1 && !mine);
   const sum = (k: keyof Omit<Stat, 'tenant_id' | 'association'>) => all.reduce((s, x) => s + x[k], 0);
+  const [ouvert, setOuvert] = useState<number | null>(null);
   const authorOf = (id: string | null) => { const m = history.data?.members.find((x) => x.id === id); return m ? fullName(m) : 'Ancien membre'; };
 
   return (
@@ -81,19 +85,21 @@ export function Envois({ profile }: PageProps) {
               {history.data!.envois.map((e) => {
                 const echecs = e.envoi_destinataires.filter((d) => d.statut === 'echec').length;
                 return (
-                  <li key={e.id} className="item static">
+                  <li key={e.id} className="item" role="button" tabIndex={0} onClick={() => setOuvert(e.id)} onKeyDown={(ev) => ev.key === 'Enter' && setOuvert(e.id)}>
                     <div className="grow">
                       <strong>{e.sujet}</strong>
                       <div className="muted small">{authorOf(e.envoye_par)} · {formatRelative(e.created_at)}</div>
                     </div>
                     <span className="pill ok">{e.nb} envoyé{e.nb > 1 ? 's' : ''}</span>
                     {echecs > 0 && <span className="pill bad">{echecs} en échec</span>}
+                    <Icon name="right" size={16} />
                   </li>
                 );
               })}
             </ul>
           )}
       </section>
+      {ouvert !== null && <ApercuEnvoi id={ouvert} auteur={authorOf(history.data?.envois.find((e) => e.id === ouvert)?.envoye_par ?? null)} onClose={() => setOuvert(null)} />}
     </>
   );
 }
