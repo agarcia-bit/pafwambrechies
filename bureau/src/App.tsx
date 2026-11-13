@@ -18,6 +18,7 @@ import { Pilotage } from './pages/Pilotage';
 import { Reglages } from './pages/Reglages';
 import { Sondages } from './pages/Sondages';
 import { Avatar, Icon, Skeleton } from './Icon';
+import { FiletDErreur } from './FiletDErreur';
 import { applyBranding } from './theme';
 import { Toasts } from './Toasts';
 
@@ -266,7 +267,9 @@ function Shell({ userId }: { userId: string }) {
           )}
         </header>
         <div className="page" key={page.path}>
-          <Page profile={profile} association={association} />
+          <FiletDErreur cle={page.path}>
+            <Page profile={profile} association={association} />
+          </FiletDErreur>
         </div>
       </main>
       {chatOpen && <ChatPanel profile={profile} onClose={() => setChatOpen(false)} />}
