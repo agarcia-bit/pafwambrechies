@@ -602,3 +602,5 @@ button.choix-emoji-bouton { width: 100%; height: 44px; font-size: 22px; padding:
 
 /* Fonction au bureau, dans le tableau des rôles */
 .cellule-fonction input { min-width: 150px; padding: 6px 10px; }
+.espace-avant { margin-top: 20px; }
+.form > p.muted { margin: -4px 0 0; }
