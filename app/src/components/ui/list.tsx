@@ -6,7 +6,13 @@ import { Text } from '@/components/ui/text';
 import { useTheme } from '@/theme';
 
 /** iOS-style inset grouped section: rows in a rounded card, separated by hairlines. */
-export function ListSection({ title, footer, children }: { title?: string; footer?: string; children: ReactNode }) {
+export function ListSection({ title, footer, fond, children }: {
+  title?: string;
+  footer?: string;
+  /** Fond du bloc, pour distinguer une section des autres (blanc par défaut). */
+  fond?: string;
+  children: ReactNode;
+}) {
   const { colors } = useTheme();
   const rows = Children.toArray(children).filter(Boolean);
   return (
@@ -16,7 +22,7 @@ export function ListSection({ title, footer, children }: { title?: string; foote
           {title.toUpperCase()}
         </Text>
       )}
-      <View style={[styles.card, { backgroundColor: colors.card }]}>
+      <View style={[styles.card, { backgroundColor: fond ?? colors.card }]}>
         {rows.map((row, i) => (
           <Fragment key={i}>
             {i > 0 && <View style={[styles.separator, { backgroundColor: colors.separator }]} />}

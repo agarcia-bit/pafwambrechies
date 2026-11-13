@@ -22,10 +22,14 @@ export type Palette = {
   success: string;
   /** « À surveiller » : réponse « Je ne sais pas encore ». */
   warning: string;
+  /** Fond du bloc « Mon espace » (Plus) : neutre, distinct du blanc et de la couleur de l'association. */
+  fondEspace: string;
+  /** Fond du bloc « Communauté » (Plus) : la couleur de l'association, très pâle. */
+  fondCommunaute: string;
 };
 
 // iOS system colors (grouped backgrounds), used on every platform.
-const BASE: Record<Scheme, Omit<Palette, 'primary' | 'onPrimary' | 'primarySoft' | 'banner'>> = {
+const BASE: Record<Scheme, Omit<Palette, 'primary' | 'onPrimary' | 'primarySoft' | 'banner' | 'fondCommunaute'>> = {
   light: {
     background: '#E6E6EC',
     card: '#FFFFFF',
@@ -36,6 +40,7 @@ const BASE: Record<Scheme, Omit<Palette, 'primary' | 'onPrimary' | 'primarySoft'
     danger: '#FF3B30',
     success: '#34C759',
     warning: '#FF9500',
+    fondEspace: '#EDF0F5',
   },
   dark: {
     background: '#000000',
@@ -47,6 +52,7 @@ const BASE: Record<Scheme, Omit<Palette, 'primary' | 'onPrimary' | 'primarySoft'
     danger: '#FF453A',
     success: '#30D158',
     warning: '#FF9F0A',
+    fondEspace: '#1E2229',
   },
 };
 
@@ -104,6 +110,8 @@ export function makePalette(scheme: Scheme, brandColor?: string | null, bannerCo
     // White labels like iOS, unless the color is too light (3:1 suits the bold button text).
     onPrimary: contrast('#FFFFFF', primary) >= 3 ? '#FFFFFF' : '#000000',
     primarySoft: mix(base.card, primary, scheme === 'dark' ? 0.28 : 0.12),
+    // Plus pâle que primarySoft : les pastilles d'icônes restent visibles dessus.
+    fondCommunaute: mix(base.card, primary, scheme === 'dark' ? 0.14 : 0.06),
   };
 }
 

@@ -25,6 +25,7 @@ export default function PlusScreen() {
   const bandStyle = useBandListStyle();
   const name = fullName(profile.prenom, profile.nom) || profile.email || 'Mon compte';
   const unread = useBureauUnread();
+  const { colors } = useTheme();
   return (
     <ScrollView style={bandStyle} contentInsetAdjustmentBehavior="never">
       <BrandBand title="Plus" subtitle="Mon espace">
@@ -33,10 +34,11 @@ export default function PlusScreen() {
       <View style={styles.content}>
         <AssociationBanner />
 
+        <CarteProfil name={name} onPress={() => router.push('/plus/compte')} />
+
         <SectionCommunaute />
 
-        <ListSection title="Mon espace">
-          <ProfileRow name={name} onPress={() => router.push('/plus/compte')} />
+        <ListSection title="Mon espace" fond={colors.fondEspace}>
           {modules.annuaire && (
             <ListRow
               neutral
@@ -106,13 +108,13 @@ export default function PlusScreen() {
   );
 }
 
-/** First row of "Mon espace": the member, like the account card of the phone's settings. */
 /** Ce que l'association propose au-delà des onglets : idées, documents, liens. */
 function SectionCommunaute() {
   const { modules } = useTenantConfig();
+  const { colors } = useTheme();
   if (!modules.idees && !modules.liens && !modules.documents) return null;
   return (
-    <ListSection title="Communauté">
+    <ListSection title="Communauté" fond={colors.fondCommunaute}>
       {modules.idees && (
         <ListRow
           icon="lightbulb"
@@ -141,14 +143,18 @@ function SectionCommunaute() {
   );
 }
 
-function ProfileRow({ name, onPress }: { name: string; onPress: () => void }) {
+/** Le profil de l'adhérent, encadré à part en haut : son compte et ses notifications, l'essentiel. */
+function CarteProfil({ name, onPress }: { name: string; onPress: () => void }) {
   const { colors } = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Mon compte, ${name}`}
       onPress={onPress}
-      style={({ pressed }) => [styles.profile, pressed && { backgroundColor: colors.fill }]}>
+      style={({ pressed }) => [
+        styles.profile,
+        { backgroundColor: pressed ? colors.fill : colors.card, borderColor: colors.primary },
+      ]}>
       <Avatar name={name} size={46} round />
       <View style={styles.flex}>
         <Text variant="headline">{name}</Text>
@@ -228,7 +234,7 @@ function BureauRow({
 const styles = StyleSheet.create({
   content: { padding: 16, paddingTop: 20, gap: 24, paddingBottom: 40 },
   flex: { flex: 1, gap: 2 },
-  profile: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
+  profile: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 16, borderWidth: 1.5 },
   bureau: { borderRadius: 20, padding: 14, gap: 12 },
   bureauHead: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 4, paddingTop: 2 },
   bureauBadge: {
