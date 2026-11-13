@@ -11,6 +11,7 @@ import {
 import { filtreNonTermines } from '../periode';
 import { Chronologie, Equipe, SidePanel, TONE, type CalEvent } from './PilotageViews';
 import { Kpi } from '../components/ui/Kpi';
+import { ChoixEmoji } from '../components/ui/ChoixEmoji';
 
 // Deux vues suffisent : par date (que reste-t-il à faire ?) et par personne (qui fait quoi ?).
 // À droite, dans les deux cas : mes tâches et les prochaines dates.
@@ -211,7 +212,7 @@ function ActionDrawer({ action, taches, members, profile, onClose, onChanged }: 
       }>
       <div className="form">
         <div className="form-row">
-          <label className="w-emoji">Icône<input type="text" maxLength={4} value={f.emoji} onChange={set('emoji')} placeholder="📌" /></label>
+          <label className="w-emoji">Icône<ChoixEmoji valeur={f.emoji} onChange={(emoji) => setF((s) => ({ ...s, emoji }))} /></label>
           <label className="grow">Titre<input type="text" value={f.titre} onChange={set('titre')} placeholder="Ex. Organiser le Beaujolais nouveau" autoFocus={!id} /></label>
         </div>
         <div className="form-row">
