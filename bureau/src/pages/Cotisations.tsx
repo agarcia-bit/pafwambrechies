@@ -265,13 +265,13 @@ function MemberDrawer({ m, config, lastSend, onClose, onChanged, onWrite }: {
 // ── Montant, libellé et campagne de renouvellement ───────────────────────────
 
 function SettingsDrawer({ config, onClose, onChanged }: { config?: CotisConfig; onClose: () => void; onChanged: () => void }) {
-  const [f, setF] = useState({ montant: config?.montant ?? '', libelle: config?.libelle ?? '', url: config?.url ?? '', ouverture: config?.ouverture ?? '', fin: config?.fin ?? '' });
+  const [f, setF] = useState({ montant: config?.montant ?? '', libelle: config?.libelle ?? '', url: config?.url ?? '', ouverture: config?.ouverture ?? '', fin: config?.fin ?? '', message: config?.message ?? '' });
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f, v: string) => setF((s) => ({ ...s, [k]: v }));
   async function save() {
     if ((f.ouverture && !f.fin) || (!f.ouverture && f.fin)) return toast('Indiquez le début et la fin de la campagne, ou aucun des deux.', 'error');
     setBusy(true);
-    const { error } = await supabase.rpc('save_cotisation_settings', { p_url: f.url, p_montant: f.montant, p_libelle: f.libelle, p_ouverture: f.ouverture || null, p_fin: f.fin || null });
+    const { error } = await supabase.rpc('save_cotisation_settings', { p_url: f.url, p_montant: f.montant, p_libelle: f.libelle, p_ouverture: f.ouverture || null, p_fin: f.fin || null, p_message: f.message });
     setBusy(false);
     if (error) return toast(error.message.includes('invalid_url') ? 'L’adresse de paiement doit commencer par https://' : error.message, 'error');
     toast('Réglages enregistrés');
@@ -293,6 +293,10 @@ function SettingsDrawer({ config, onClose, onChanged }: { config?: CotisConfig; 
           <label>Ouverture<input type="date" value={f.ouverture} onChange={(e) => set('ouverture', e.target.value)} /></label>
           <label>Valable jusqu’au<input type="date" value={f.fin} onChange={(e) => set('fin', e.target.value)} /></label>
         </div>
+        <label>Message aux adhérents (facultatif)
+          <textarea rows={3} maxLength={500} value={f.message} onChange={(e) => set('message', e.target.value)} placeholder="Ex. : code promo RENOUV27, -20 € jusqu’au 15 décembre" />
+        </label>
+        <p className="muted small">Affiché dans la fenêtre « Ma cotisation » de l’application, pour les adhérents qui ont à renouveler, pendant la campagne.</p>
         {!config?.module && <p className="note small">Le module Cotisations n’est pas activé pour l’application : les adhérents ne voient pas encore leur situation. Un administrateur peut l’activer dans Réglages, rubrique « Sections de l’app ».</p>}
       </div>
     </Panel>

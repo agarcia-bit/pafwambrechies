@@ -14,6 +14,7 @@ import {
   type Campaign,
   type CotisationStatus,
 } from '@/lib/cotisations';
+import { lignesDuDetailCotisation } from '@/lib/detail-cotisation';
 import { useTenantConfig } from '@/lib/tenant-config';
 
 /** Opens the association's payment page (HelloAsso, ...) in the browser. */
@@ -28,21 +29,20 @@ function openPaymentPage(url: string) {
 function showDetails(
   status: CotisationStatus,
   validUntil: string | null | undefined,
-  config: { url: string; montant: string },
+  config: { url: string; montant: string; message: string },
   campaign: Campaign | null
 ) {
   const { title, message } = describeStatus(status, validUntil, campaign);
   const canPay = needsRenewal(status) && !!config.url;
-  const lines = [message];
-  if (needsRenewal(status) && config.montant) lines.push(`Montant : ${config.montant}.`);
-  lines.push(
-    canPay
-      ? 'Le paiement se fait sur le site de l’association ; le bureau met ensuite à jour votre statut.'
-      : needsRenewal(status)
-        ? 'Rapprochez-vous du bureau pour régler votre cotisation.'
-        : ''
-  );
-  Alert.alert(title, lines.filter(Boolean).join('\n\n'), [
+  const lignes = lignesDuDetailCotisation({
+    situation: message,
+    aRenouveler: needsRenewal(status),
+    campagneOuverte: campaignOpen(campaign),
+    peutPayerEnLigne: canPay,
+    montant: config.montant,
+    messageDuBureau: config.message,
+  });
+  Alert.alert(title, lignes.join('\n\n'), [
     ...(canPay ? [{ text: 'Régler en ligne', onPress: () => openPaymentPage(config.url) }] : []),
     { text: 'Fermer', style: 'cancel' as const },
   ]);

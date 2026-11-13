@@ -84,14 +84,14 @@ export async function loadMembers(): Promise<MemberRow[]> {
 }
 
 // ── Réglages de cotisation (montant, libellé, campagne) ─────────────────────
-export type CotisConfig = { montant: string; libelle: string; url: string; ouverture: string; fin: string; module: boolean };
+export type CotisConfig = { montant: string; libelle: string; url: string; ouverture: string; fin: string; message: string; module: boolean };
 export async function loadCotisConfig(): Promise<CotisConfig> {
   const { data, error } = await supabase.rpc('get_my_branding');
   if (error) throw error;
   const b = (data ?? {}) as Record<string, string>;
   return {
     montant: b.cotisation_montant ?? '', libelle: b.cotisation_libelle ?? '', url: b.cotisation_url ?? '',
-    ouverture: b.cotisation_ouverture ?? '', fin: b.cotisation_fin ?? '', module: b.module_cotisations === 'on',
+    ouverture: b.cotisation_ouverture ?? '', fin: b.cotisation_fin ?? '', message: b.cotisation_message ?? '', module: b.module_cotisations === 'on',
   };
 }
 // ── Configuration de l'association (sections, vocabulaire, catégories) ──────

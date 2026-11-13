@@ -166,7 +166,7 @@ export function useClearCotisation() {
   });
 }
 
-export type CotisationSettings = { url: string; montant: string; libelle: string; ouverture: string; fin: string };
+export type CotisationSettings = { url: string; montant: string; libelle: string; ouverture: string; fin: string; message: string };
 
 /** Payment link, amount and renewal campaign: the bureau sets them (not only the admins). */
 export function useSaveCotisationSettings() {
@@ -179,6 +179,7 @@ export function useSaveCotisationSettings() {
         p_libelle: s.libelle.trim(),
         p_ouverture: s.ouverture || null,
         p_fin: s.fin || null,
+        p_message: s.message.trim(),
       });
       if (error) throw error;
     },
