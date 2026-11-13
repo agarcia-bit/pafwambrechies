@@ -241,17 +241,17 @@ function MemberDrawer({ m, config, lastSend, onClose, onChanged, onWrite }: {
       <p><span className={'badge ' + status}>{STATUS_LABEL[status]}</span>{m.valide_jusqu && <span className="muted"> jusqu’au {formatDay(m.valide_jusqu)}</span>}</p>
       <div className="form">
         <label>Valable jusqu’au<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+        <p className="muted small">
+          {config?.fin ? `Date proposée : fin de la campagne ${config.libelle || ''}.` : 'La date proposée est à 12 mois.'}
+          {config?.montant ? ` Montant : ${config.montant} €.` : ''} Le paiement lui-même se fait hors de l’app{config?.url ? ' (' : ''}{config?.url && <a href={config.url} target="_blank" rel="noreferrer">page de règlement</a>}{config?.url ? ')' : ''}.
+        </p>
         <div className="row" style={{ marginTop: 0 }}>
           <button className="primary" disabled={busy || !date} onClick={() => cotisation.enregistrer(date)}>{status === 'a_jour' ? 'Mettre à jour' : 'Enregistrer le renouvellement'}</button>
           {m.valide_jusqu && <button className="link danger" disabled={busy} onClick={cotisation.annulerLaCotisation}>Annuler la cotisation</button>}
         </div>
         {cotisation.libelleDefaire && <button className="link" disabled={busy} onClick={cotisation.defaireLeDernierChangement}>{cotisation.libelleDefaire}</button>}
       </div>
-      <p className="muted small">
-        {config?.fin ? `Date proposée : fin de la campagne ${config.libelle || ''}.` : 'La date proposée est à 12 mois.'}
-        {config?.montant ? ` Montant : ${config.montant} €.` : ''} Le paiement lui-même se fait hors de l’app{config?.url ? ' (' : ''}{config?.url && <a href={config.url} target="_blank" rel="noreferrer">page de règlement</a>}{config?.url ? ')' : ''}.
-      </p>
-      {m.email && <p><button onClick={onWrite}><Icon name="mail" size={16} /> Écrire à cette personne</button></p>}
+      {m.email && <p className="espace-avant"><button onClick={onWrite}><Icon name="mail" size={16} /> Écrire à cette personne</button></p>}
     </Panel>
   );
 }
