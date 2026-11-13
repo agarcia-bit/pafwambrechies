@@ -19,7 +19,7 @@ import { Reglages } from './pages/Reglages';
 import { Sondages } from './pages/Sondages';
 import { Avatar, Icon, Skeleton } from './Icon';
 import { FiletDErreur } from './FiletDErreur';
-import { prechargerLesOnglets } from './prechargement';
+import { EcranDePreparation, useEspacePrepare } from './EcranDePreparation';
 import { applyBranding } from './theme';
 import { Toasts } from './Toasts';
 
@@ -218,13 +218,8 @@ function Shell({ userId }: { userId: string }) {
   // Les couleurs de l'association, comme dans l'app ; à nouveau après un changement dans les Réglages.
   const colors = me.data?.colors;
   useEffect(() => { if (colors) applyBranding(colors.primary, colors.banner); }, [colors]);
-  // Une fois le profil chargé (donc la première page lancée), les autres onglets se préparent.
-  const profilCharge = !!me.data;
-  useEffect(() => {
-    if (!profilCharge) return;
-    const minuteur = setTimeout(prechargerLesOnglets, 800);
-    return () => clearTimeout(minuteur);
-  }, [profilCharge]);
+  // Au premier affichage, tout l'espace se charge une fois derrière un court écran de préparation.
+  const preparation = useEspacePrepare(!!me.data && me.data.profile.role !== 'adherent');
   const reloadMe = me.reload;
   useEffect(() => {
     addEventListener('branding-change', reloadMe);
@@ -235,6 +230,7 @@ function Shell({ userId }: { userId: string }) {
   if (!me.data) return <Denied text="Impossible de charger votre profil." />;
   const { profile, association, logo } = me.data;
   if (profile.role === 'adherent') return <Denied text="Cet espace est réservé au bureau. Utilisez l’application sur votre téléphone." />;
+  if (!preparation.pret) return <EcranDePreparation association={association} logo={logo} avancement={preparation.avancement} />;
 
   const pages = PAGES.filter((p) => !p.admin || profile.role === 'admin');
   const page = pages.find((p) => p.path === hash) ?? pages[0];

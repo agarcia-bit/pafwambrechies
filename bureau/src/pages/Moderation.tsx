@@ -9,14 +9,22 @@ const KIND_TABLES: Record<Kind, string> = { actus_commentaire: 'actus_commentair
 type Report = { id: number; kind: Kind; target_id: number; reason: string; created_at: string; reporter_nom: string | null; contenu: string | null; auteur_id: string | null; auteur_nom: string | null };
 type Idee = { id: number; titre: string | null; texte: string; categorie: string; prenom: string | null; created_at: string; visible: boolean };
 
+export async function chargerSignalements(): Promise<Report[]> {
+  const { data, error } = await supabase.rpc('signalements_a_traiter');
+  if (error) throw error;
+  return data as Report[];
+}
+
+export async function chargerIdees(): Promise<Idee[]> {
+  const { data, error } = await supabase.from('idees').select('id, titre, texte, categorie, prenom, created_at, visible').order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as Idee[];
+}
+
 /** Signalements des adhérents (obligatoire pour l'App Store) et boîte à idées. */
 export function Moderation() {
-  const reports = useAsync(async () => { const { data, error } = await supabase.rpc('signalements_a_traiter'); if (error) throw error; return data as Report[]; }, []);
-  const idees = useAsync(async () => {
-    const { data, error } = await supabase.from('idees').select('id, titre, texte, categorie, prenom, created_at, visible').order('created_at', { ascending: false });
-    if (error) throw error;
-    return data as Idee[];
-  }, []);
+  const reports = useAsync(chargerSignalements, []);
+  const idees = useAsync(chargerIdees, []);
   const [tab, setTab] = useState<'signalements' | 'idees'>('signalements');
 
   async function handle(r: Report, remove: boolean) {

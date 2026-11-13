@@ -20,12 +20,14 @@ const VIEWS = [
   { key: 'equipe', label: 'Équipe', icon: 'users', hint: 'Qui fait quoi' },
 ] as const;
 
+export async function chargerAgendaPilotage(): Promise<CalEvent[]> {
+  const { data } = await supabase.from('evenements').select('id, titre, date').or(filtreNonTermines());
+  return (data ?? []) as CalEvent[];
+}
+
 export function Pilotage({ profile }: PageProps) {
   const data = useAsync(loadBureau, []);
-  const agenda = useAsync(async () => {
-    const { data } = await supabase.from('evenements').select('id, titre, date').or(filtreNonTermines());
-    return (data ?? []) as CalEvent[];
-  }, []);
+  const agenda = useAsync(chargerAgendaPilotage, []);
   const unread = useUnread(profile.tenant_id);
   const [onlyMe, setOnlyMe] = useState(false);
   // Les tâches qu'on vient de cocher, le temps de leur animation de sortie. Déclarée avant les
