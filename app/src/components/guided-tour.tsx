@@ -1,32 +1,20 @@
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, FadeInDown, useAnimatedStyle, useReducedMotion, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { associationName } from '@/components/association';
-import {
-  ActusArt,
-  AgendaArt,
-  AnnuaireArt,
-  OffresArt,
-  PlusArt,
-  type PlusRow,
-  SondageArt,
-  WelcomeArt,
-} from '@/components/tour-illustrations';
+import { useEtapesDeLaVisite } from '@/components/etapes-visite-guidee';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { INTRO_HOLD_MS } from '@/lib/launch-state';
 import { useMember } from '@/lib/session';
-import { useTenantConfig } from '@/lib/tenant-config';
 import { closeTour, markTourDone, openTour, tourDone, useTourOpen } from '@/lib/tour';
 import { useTheme } from '@/theme';
 import { mix } from '@/theme/colors';
 
-type Step = { key: string; art: (active: boolean) => ReactNode; title: string; text: string; tip?: string };
 
 const SETTLE = Easing.out(Easing.cubic);
 
@@ -37,8 +25,7 @@ const SETTLE = Easing.out(Easing.cubic);
  * again from "Plus" > "Visite guidée".
  */
 export function GuidedTour() {
-  const { profile, branding } = useMember();
-  const { modules, labels, cotisations } = useTenantConfig();
+  const { profile } = useMember();
   const visible = useTourOpen();
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
@@ -61,101 +48,7 @@ export function GuidedTour() {
     if (visible) setPage(0);
   }
 
-  const name = associationName(branding) || 'votre association';
-  // The two last screens show the real rows of "Plus", with what each one is for.
-  const mySpace: PlusRow[] = [
-    ...(modules.annuaire ? [{ icon: 'people' as const, label: 'Ma fiche annuaire', detail: 'Photo, coordonnées, description', highlight: true }] : []),
-    ...(modules.offres ? [{ icon: 'tag' as const, label: 'Mes offres', detail: 'Proposer un bon plan aux adhérents' }] : []),
-    ...(cotisations.enabled ? [{ icon: 'card' as const, label: 'Ma cotisation', detail: 'Où en est votre adhésion' }] : []),
-    { icon: 'person', label: 'Mon compte', detail: 'Notifications, membres bloqués, suppression' },
-  ];
-  const resources: PlusRow[] = [
-    ...(modules.idees ? [{ icon: 'lightbulb' as const, label: 'Boîte à idées', detail: 'Proposer, soutenir, commenter', highlight: true }] : []),
-    ...(modules.documents ? [{ icon: 'document' as const, label: 'Documents', detail: 'Statuts, comptes rendus, règlements…' }] : []),
-    ...(modules.liens ? [{ icon: 'link' as const, label: 'Liens utiles', detail: 'Les sites de l’association' }] : []),
-    { icon: 'info', label: 'Visite guidée', detail: 'Revoir cette présentation' },
-  ];
-  const spaceText = [
-    modules.annuaire && 'tenez votre fiche à jour',
-    modules.offres && 'proposez vos offres',
-    cotisations.enabled && 'suivez votre cotisation',
-  ].filter(Boolean) as string[];
-  const resourcesText = [
-    modules.idees && 'proposez vos idées et soutenez celles des autres',
-    modules.documents && 'consultez les documents de l’association',
-    modules.liens && 'retrouvez ses liens utiles',
-  ].filter(Boolean) as string[];
-  const sentence = (parts: string[]) =>
-    parts.length ? `${parts.slice(0, -1).join(', ')}${parts.length > 1 ? ' et ' : ''}${parts[parts.length - 1]}`.replace(/^./, (c) => c.toUpperCase()) + '.' : '';
-
-  const steps: Step[] = [
-    {
-      key: 'welcome',
-      art: (active) => <WelcomeArt active={active} name={name} logo={branding?.tenant_logo_url} />,
-      title: `Bienvenue dans ${name}`,
-      text: 'Toute la vie de votre association, dans votre poche. Faisons le tour en une minute.',
-    },
-    {
-      key: 'actus',
-      art: (active) => <ActusArt active={active} />,
-      title: 'Les actus',
-      text: 'Les nouvelles de l’association arrivent dans le fil, avec une notification. Aimez, commentez, partagez.',
-      tip: 'Touchez « Lu » : l’actu se range en bas, ce qui est nouveau reste en haut.',
-    },
-    ...(modules.agenda
-      ? [
-          {
-            key: 'agenda',
-            art: (active: boolean) => <AgendaArt active={active} />,
-            title: 'L’agenda',
-            text: 'Tous les événements à venir, avec la date, l’heure et le lieu.',
-            tip: 'Dites en un geste si vous venez, et ajoutez l’événement à votre calendrier.',
-          },
-        ]
-      : []),
-    ...(modules.offres
-      ? [
-          {
-            key: 'offres',
-            art: (active: boolean) => <OffresArt active={active} />,
-            title: labels.offres,
-            text: 'Les bons plans réservés aux adhérents, entre membres de l’association.',
-            tip: 'Proposez les vôtres dans « Plus » > « Mes offres » : le bureau les valide.',
-          },
-        ]
-      : []),
-    ...(modules.annuaire
-      ? [
-          {
-            key: 'annuaire',
-            art: (active: boolean) => <AnnuaireArt active={active} />,
-            title: labels.annuaire,
-            text: 'Retrouvez les membres de l’association, appelez-les ou écrivez-leur en un geste.',
-            tip: 'Complétez votre fiche dans « Plus » > « Ma fiche annuaire ».',
-          },
-        ]
-      : []),
-    {
-      key: 'sondage',
-      art: (active) => <SondageArt active={active} />,
-      title: 'Votre avis compte',
-      text: 'Quand le bureau lance un sondage, il s’affiche à l’ouverture de l’application. Une réponse suffit.',
-      tip: modules.idees ? 'Une idée pour l’association ? Proposez-la dans la boîte à idées.' : undefined,
-    },
-    {
-      key: 'mon-espace',
-      art: (active) => <PlusArt active={active} rows={mySpace} />,
-      title: 'Votre espace, dans « Plus »',
-      text: `${sentence(spaceText)} Dans « Mon compte » : vos notifications, les membres que vous avez bloqués, et la suppression de votre compte si besoin.`.trim(),
-    },
-    {
-      key: 'ressources',
-      art: (active) => <PlusArt active={active} rows={resources} />,
-      title: 'Les ressources de l’association',
-      text: resourcesText.length ? `Toujours dans « Plus » : ${resourcesText.join(', ')}.` : 'Toujours dans « Plus », tout ce que l’association met à votre disposition.',
-      tip: 'Vous pourrez revoir cette visite à tout moment : « Plus » > « Visite guidée ».',
-    },
-  ];
+  const steps = useEtapesDeLaVisite();
   const last = page === steps.length - 1;
 
   function finish() {
