@@ -36,6 +36,8 @@ export function FieldView({ field, value, onChange }: { field: Field; value: str
       return <DateField label={label} value={value} optional={!field.required} onChange={onChange} />;
     case 'time':
       return <TimeField label={label} value={value} onChange={onChange} />;
+    case 'categorie':
+      return <ChampCategorie label={label} value={value} onChange={onChange} categories={field.options ?? []} placeholder={field.placeholder} />;
     default:
       return (
         <TextField
@@ -47,6 +49,22 @@ export function FieldView({ field, value, onChange }: { field: Field; value: str
         />
       );
   }
+}
+
+/** Une catégorie libre : on l'écrit, ou on touche l'une de celles déjà utilisées. */
+export function ChampCategorie({ label, value, onChange, categories, placeholder }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  categories: readonly string[];
+  placeholder?: string;
+}) {
+  return (
+    <>
+      <TextField label={label} value={value} onChangeText={onChange} placeholder={placeholder} maxLength={60} />
+      {categories.length > 0 && <ChoiceField label="Catégories déjà utilisées" options={categories} value={value} onChange={onChange} />}
+    </>
+  );
 }
 
 function FieldLabel({ children }: { children: string }) {

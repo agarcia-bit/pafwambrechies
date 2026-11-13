@@ -1,7 +1,9 @@
 import { useMemo, useRef, useState, type MouseEvent } from 'react';
 
 import type { PageProps } from '../App';
+import { categoriesUtilisees, reprendreCategorieExistante } from '../categories-libres';
 import { COLLECTIONS, withConfig, type Collection, type Field, type Row, type Values } from '../collections';
+import { ChampCategorie } from '../components/ui/ChampCategorie';
 import { Drawer } from '../Drawer';
 import { Empty, Icon, Skeleton } from '../Icon';
 import { loadTenantConfig, supabase, toast, uploadPhoto, useAsync } from '../lib';
@@ -48,7 +50,7 @@ export function Contenus({ kind, profile }: PageProps & { kind: keyof typeof COL
         </div>
       )}
       {open !== null && current !== undefined && (
-        <ItemDrawer c={c} row={current} tenant={profile.tenant_id} onClose={() => setOpen(null)} onChanged={rows.reload} />
+        <ItemDrawer c={c} row={current} tenant={profile.tenant_id} categories={categoriesUtilisees(all.map((r) => r.categorie))} onClose={() => setOpen(null)} onChanged={rows.reload} />
       )}
     </>
   );
@@ -83,7 +85,7 @@ function LigneContenu({ c, r, onOuvrir, onPublie }: { c: Collection; r: Row; onO
   );
 }
 
-function ItemDrawer({ c, row, tenant, onClose, onChanged }: { c: Collection; row: Row | null; tenant: string; onClose: () => void; onChanged: () => void }) {
+function ItemDrawer({ c, row, tenant, categories, onClose, onChanged }: { c: Collection; row: Row | null; tenant: string; categories: string[]; onClose: () => void; onChanged: () => void }) {
   const [v, setV] = useState<Values>(() => ({ ...c.defaults(), ...(row ? c.toValues(row) : {}) }));
   const [busy, setBusy] = useState(false);
   const set = (k: string, val: string) => setV((s) => ({ ...s, [k]: val }));
@@ -92,7 +94,9 @@ function ItemDrawer({ c, row, tenant, onClose, onChanged }: { c: Collection; row
     const missing = c.fields.find((f) => f.required && !v[f.key]?.trim());
     if (missing) return toast(`Le champ « ${missing.label} » est obligatoire.`, 'error');
     setBusy(true);
-    const payload = c.toPayload(v);
+    // « matinale expert » rejoint « Matinale Expert » au lieu de créer une catégorie de plus.
+    const valeurs = Object.fromEntries(Object.entries(v).map(([cle, val]) => [cle, c.fields.find((f) => f.key === cle)?.type === 'categorie' ? reprendreCategorieExistante(val, categories) : val]));
+    const payload = c.toPayload(valeurs);
     const res = row
       ? await supabase.from(c.key).update(payload).eq('id', row.id).select('id')
       : await supabase.from(c.key).insert({ ...payload, tenant_id: tenant }).select('id');
@@ -127,7 +131,7 @@ function ItemDrawer({ c, row, tenant, onClose, onChanged }: { c: Collection; row
       <div className="form">
         {groups.map((g) => (
           <div key={g[0].key} className={g.length > 1 ? 'form-row' : undefined}>
-            {g.map((f) => <FieldInput key={f.key} f={f} value={v[f.key] ?? ''} onChange={(val) => set(f.key, val)} photo={c.photo} autoFocus={f === c.fields[0] && !row} />)}
+            {g.map((f) => <FieldInput key={f.key} f={f} value={v[f.key] ?? ''} onChange={(val) => set(f.key, val)} photo={c.photo} categories={categories} autoFocus={f === c.fields[0] && !row} />)}
           </div>
         ))}
       </div>
@@ -135,7 +139,7 @@ function ItemDrawer({ c, row, tenant, onClose, onChanged }: { c: Collection; row
   );
 }
 
-function FieldInput({ f, value, onChange, photo, autoFocus }: { f: Field; value: string; onChange: (v: string) => void; photo?: Collection['photo']; autoFocus?: boolean }) {
+function FieldInput({ f, value, onChange, photo, categories, autoFocus }: { f: Field; value: string; onChange: (v: string) => void; photo?: Collection['photo']; categories: string[]; autoFocus?: boolean }) {
   const file = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   if (f.type === 'photo') {
@@ -160,6 +164,7 @@ function FieldInput({ f, value, onChange, photo, autoFocus }: { f: Field; value:
   if (f.type === 'choice') return (
     <label>{f.label}<select value={value} onChange={(e) => onChange(e.target.value)}>{(f.options ?? []).map((o) => <option key={o} value={o}>{f.labels?.[o] ?? o}</option>)}</select></label>
   );
+  if (f.type === 'categorie') return <label>{f.label}<ChampCategorie valeur={value} categories={categories} onChange={onChange} placeholder={f.placeholder} /></label>;
   if (f.type === 'multiline') return <label>{f.label}<textarea className="plain-text" rows={6} value={value} onChange={(e) => onChange(e.target.value)} placeholder={f.placeholder} /></label>;
   const type = f.type === 'phone' ? 'tel' : f.type === 'url' ? 'text' : f.type;
   return <label>{f.label}{f.required && <span className="req"> *</span>}<input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={f.placeholder} autoFocus={autoFocus} /></label>;
