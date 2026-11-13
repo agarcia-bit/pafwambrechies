@@ -1,14 +1,15 @@
 import { Drawer } from '../Drawer';
 import { Skeleton } from '../Icon';
 import { fullName, loadMembers, supabase, useAsync, type MemberRow } from '../lib';
+import { etatDOuverture, resumeDesOuvertures, type DestinataireSuivi } from '../ouvertures';
 
 // Un e-mail de l'historique : son texte tel qu'il est parti, et chacun de ses destinataires.
 
-type Destinataire = { email: string; statut: string };
+type Destinataire = DestinataireSuivi & { email: string };
 type EnvoiDetaille = { sujet: string; corps: string; created_at: string; envoi_destinataires: Destinataire[] };
 
 async function chargerEnvoi(id: number): Promise<EnvoiDetaille> {
-  const { data, error } = await supabase.from('envois').select('sujet, corps, created_at, envoi_destinataires(email, statut)').eq('id', id).single();
+  const { data, error } = await supabase.from('envois').select('sujet, corps, created_at, envoi_destinataires(email, statut, resend_id, ouvert_le)').eq('id', id).single();
   if (error) throw error;
   return data as EnvoiDetaille;
 }
@@ -39,10 +40,13 @@ export function ApercuEnvoi({ id, auteur, onClose }: { id: number; auteur: strin
             <h3 className="sect">Le message</h3>
             <div className="apercu-message">{envoi.data!.corps}</div>
             <h3 className="sect">Destinataires ({destinataires.length})</h3>
+            <ResumeOuvertures destinataires={destinataires} />
             <ul className="plain compact">
               {destinataires.map((d) => (
                 <li key={d.email}>
-                  <span className="grow">{d.nom}{d.nom !== d.email && <span className="muted small"> · {d.email}</span>}</span>
+                  <span className="grow">{d.nom}{d.nom !== d.email && <span className="muted small"> · {d.email}</span>}
+                    {etatDOuverture(d) && <small className={'etat-ouverture' + (d.ouvert_le ? ' ouvert' : '')}>{etatDOuverture(d)}</small>}
+                  </span>
                   <span className={'pill ' + (d.statut === 'echec' ? 'bad' : 'ok')}>{d.statut === 'echec' ? 'Échec' : 'Envoyé'}</span>
                 </li>
               ))}
@@ -51,4 +55,11 @@ export function ApercuEnvoi({ id, auteur, onClose }: { id: number; auteur: strin
         )}
     </Drawer>
   );
+}
+
+/** « 18 ouverts sur 42 », ou l'explication quand l'e-mail date d'avant le suivi. */
+function ResumeOuvertures({ destinataires }: { destinataires: DestinataireSuivi[] }) {
+  const { ouverts, suivis } = resumeDesOuvertures(destinataires);
+  if (!suivis) return <p className="muted small">Ouvertures non suivies pour cet e-mail (envoyé avant leur mise en place).</p>;
+  return <p className="small"><strong>{ouverts} ouvert{ouverts > 1 ? 's' : ''}</strong> sur {suivis} <span className="muted">· indication approximative (certaines messageries ouvrent les e-mails toutes seules)</span></p>;
 }

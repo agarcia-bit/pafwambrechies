@@ -4,6 +4,7 @@ import type { PageProps } from '../App';
 import { Empty, Icon, Skeleton } from '../Icon';
 import { formatRelative, fullName, supabase, useAsync, type BureauMember } from '../lib';
 import { Kpi } from '../components/ui/Kpi';
+import { resumeDesOuvertures, type DestinataireSuivi } from '../ouvertures';
 import { ApercuEnvoi } from './ApercuEnvoi';
 
 // Plan Resend en cours (Pro) : limites partagées par toutes les associations, null = pas de limite.
@@ -11,7 +12,7 @@ import { ApercuEnvoi } from './ApercuEnvoi';
 const QUOTA: { jour: number | null; mois: number } = { jour: null, mois: 50000 };
 
 type Stat = { tenant_id: string; association: string; aujourd_hui: number; ce_mois: number; mois_precedent: number; total: number };
-type Envoi = { id: number; sujet: string; nb: number; created_at: string; envoye_par: string | null; envoi_destinataires: { statut: string }[] };
+type Envoi = { id: number; sujet: string; nb: number; created_at: string; envoye_par: string | null; envoi_destinataires: DestinataireSuivi[] };
 
 export async function chargerStatsEnvois() {
   const { data, error } = await supabase.rpc('envois_stats');
@@ -25,7 +26,7 @@ export function Envois({ profile }: PageProps) {
   const stats = useAsync(chargerStatsEnvois, []);
   const history = useAsync(async () => {
     const [e, m] = await Promise.all([
-      supabase.from('envois').select('id, sujet, nb, created_at, envoye_par, envoi_destinataires(statut)').order('created_at', { ascending: false }).limit(100),
+      supabase.from('envois').select('id, sujet, nb, created_at, envoye_par, envoi_destinataires(statut, resend_id, ouvert_le)').order('created_at', { ascending: false }).limit(100),
       supabase.rpc('bureau_members'),
     ]);
     if (e.error) throw e.error;
@@ -90,6 +91,7 @@ export function Envois({ profile }: PageProps) {
                       <strong>{e.sujet}</strong>
                       <div className="muted small">{authorOf(e.envoye_par)} · {formatRelative(e.created_at)}</div>
                     </div>
+                    <PastilleOuvertures destinataires={e.envoi_destinataires} />
                     <span className="pill ok">{e.nb} envoyé{e.nb > 1 ? 's' : ''}</span>
                     {echecs > 0 && <span className="pill bad">{echecs} en échec</span>}
                     <Icon name="right" size={16} />
@@ -104,6 +106,12 @@ export function Envois({ profile }: PageProps) {
   );
 }
 
+
+function PastilleOuvertures({ destinataires }: { destinataires: DestinataireSuivi[] }) {
+  const { ouverts, suivis } = resumeDesOuvertures(destinataires);
+  if (!suivis) return null;
+  return <span className="pill info">{ouverts} ouvert{ouverts > 1 ? 's' : ''}</span>;
+}
 
 function Gauge({ label, value, max }: { label: string; value: number; max: number }) {
   const pct = Math.min(100, (value / max) * 100);

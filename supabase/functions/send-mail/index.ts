@@ -87,6 +87,8 @@ Deno.serve(async (req) => {
     `<p style="color:#6b7280;font-size:13px;margin-top:24px">— ${escapeHtml(footer)}</p></div>`;
 
   const failed = new Set<string>();
+  // La référence Resend de chaque e-mail : la fonction resend-webhook y note son ouverture.
+  const references = new Map<string, string>();
   let rateLimited = false;
   for (let i = 0; i < to.length; i += BATCH) {
     const batch = to.slice(i, i + BATCH);
@@ -113,6 +115,10 @@ Deno.serve(async (req) => {
         console.error("Resend error", res.status, detail);
         if (res.status === 429 || /quota|limit/i.test(detail)) rateLimited = true;
         batch.forEach((r) => failed.add(r.email));
+      } else {
+        // Les références reviennent dans l'ordre des e-mails du lot.
+        const sent = await res.json().catch(() => null) as { data?: { id?: string }[] } | null;
+        sent?.data?.forEach((d, j) => { if (d?.id && batch[j]) references.set(batch[j].email, d.id); });
       }
     } catch (err) {
       console.error("Resend error", err);
@@ -128,6 +134,7 @@ Deno.serve(async (req) => {
     await sb.from("envoi_destinataires").insert(to.map((r) => ({
       envoi_id: envoi.id, tenant_id: profile.tenant_id, email: r.email, user_id: r.user_id,
       statut: failed.has(r.email) ? "echec" : "envoye",
+      resend_id: references.get(r.email) ?? null,
     })));
   }
 
