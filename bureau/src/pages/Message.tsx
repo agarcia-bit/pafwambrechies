@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { PageProps } from '../App';
 import { MailForm } from '../Compose';
 import type { Recipient } from '../lib';
+import { ApercuDesDestinataires } from './ApercuDesDestinataires';
 import { ChoixDesDestinataires } from './ChoixDesDestinataires';
 import { Envois } from './Envois';
 import { useDestinataires } from './useDestinataires';
@@ -22,7 +23,7 @@ export function Message(props: PageProps) {
         <section className="card">
           <div className="head">
             <h2>Le message</h2>
-            <span className={'pill ' + (to.length ? 'brand' : 'neutral')}>{to.length} destinataire{to.length > 1 ? 's' : ''}</span>
+            <ApercuDesDestinataires membres={destinataires.destinataires} groupe={destinataires.audience?.libelle ?? 'Choisis à la main'} />
           </div>
           <MailForm key={`${destinataires.cle}-${sentTick}`} to={to} inline onClose={() => undefined} onSent={() => { setSentTick((t) => t + 1); destinataires.toutDecocher(); }} />
         </section>
