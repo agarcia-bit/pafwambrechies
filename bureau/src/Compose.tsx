@@ -113,10 +113,10 @@ export const startSending = (n: number) => emit({ phase: 'sending', n });
 export const finishSending = (sent: number) => emit({ phase: 'sent', n: sent });
 export const cancelSending = () => emit(null);
 
-// La boucle de styles.css (env-cycle, flap-cycle) : l'enveloppe est fermée de 1,16 s à 2,03 s.
-const CYCLE_MS = 2400;
-const CLOSED_FROM_MS = 1160;
-const CLOSED_TO_MS = 2030;
+// La boucle de styles.css (env-cycle, flap-cycle) : l'enveloppe est fermée de 0,58 s à 1,02 s.
+const CYCLE_MS = 1200;
+const CLOSED_FROM_MS = 580;
+const CLOSED_TO_MS = 1015;
 /** Le temps à attendre pour que l'enveloppe soit fermée, `elapsed` ms après le début de la boucle. */
 function untilClosed(elapsed: number) {
   const t = elapsed % CYCLE_MS;
@@ -150,12 +150,12 @@ export function SentOverlay() {
     const start = performance.now() + 100;
     let raf = 0;
     const tick = (now: number) => {
-      const p = Math.min(1, Math.max(0, (now - start) / 600));
+      const p = Math.min(1, Math.max(0, (now - start) / 400));
       setShown(Math.round(sent * (1 - Math.pow(1 - p, 3))));
       if (p < 1) raf = requestAnimationFrame(tick);
     };
     if (!reduced) raf = requestAnimationFrame(tick);
-    const end = setTimeout(() => setState(null), reduced ? 1400 : 1800);
+    const end = setTimeout(() => setState(null), reduced ? 1000 : 1200);
     return () => { cancelAnimationFrame(raf); clearTimeout(end); };
   }, [state]);
   if (!state) return null;

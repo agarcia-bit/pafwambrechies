@@ -5,14 +5,15 @@ import { Empty, Icon, Skeleton } from '../Icon';
 import { formatRelative, fullName, supabase, useAsync, type BureauMember } from '../lib';
 import { Kpi } from '../components/ui/Kpi';
 import { resumeDesOuvertures, type DestinataireSuivi } from '../ouvertures';
-import { ApercuEnvoi } from './ApercuEnvoi';
+import { ApercuEnvoi, type EnvoiDetaille } from './ApercuEnvoi';
 
 // Plan Resend en cours (Pro) : limites partagées par toutes les associations, null = pas de limite.
 // À mettre à jour en changeant de plan.
 const QUOTA: { jour: number | null; mois: number } = { jour: null, mois: 50000 };
 
 type Stat = { tenant_id: string; association: string; aujourd_hui: number; ce_mois: number; mois_precedent: number; total: number };
-type Envoi = { id: number; sujet: string; nb: number; created_at: string; envoye_par: string | null; envoi_destinataires: DestinataireSuivi[] };
+// Le texte et les destinataires viennent avec l'historique : l'aperçu s'ouvre sans attendre.
+type Envoi = EnvoiDetaille & { id: number; nb: number; envoye_par: string | null };
 
 export async function chargerStatsEnvois() {
   const { data, error } = await supabase.rpc('envois_stats');
@@ -26,7 +27,7 @@ export function Envois({ profile }: PageProps) {
   const stats = useAsync(chargerStatsEnvois, []);
   const history = useAsync(async () => {
     const [e, m] = await Promise.all([
-      supabase.from('envois').select('id, sujet, nb, created_at, envoye_par, envoi_destinataires(statut, resend_id, ouvert_le)').order('created_at', { ascending: false }).limit(100),
+      supabase.from('envois').select('id, sujet, corps, nb, created_at, envoye_par, envoi_destinataires(email, statut, resend_id, ouvert_le)').order('created_at', { ascending: false }).limit(100),
       supabase.rpc('bureau_members'),
     ]);
     if (e.error) throw e.error;
@@ -38,6 +39,7 @@ export function Envois({ profile }: PageProps) {
   const platform = all.length > 1 || (all.length === 1 && !mine);
   const sum = (k: keyof Omit<Stat, 'tenant_id' | 'association'>) => all.reduce((s, x) => s + x[k], 0);
   const [ouvert, setOuvert] = useState<number | null>(null);
+  const envoiOuvert = history.data?.envois.find((e) => e.id === ouvert);
   const authorOf = (id: string | null) => { const m = history.data?.members.find((x) => x.id === id); return m ? fullName(m) : 'Ancien membre'; };
 
   return (
@@ -101,7 +103,7 @@ export function Envois({ profile }: PageProps) {
             </ul>
           )}
       </section>
-      {ouvert !== null && <ApercuEnvoi id={ouvert} auteur={authorOf(history.data?.envois.find((e) => e.id === ouvert)?.envoye_par ?? null)} onClose={() => setOuvert(null)} />}
+      {envoiOuvert && <ApercuEnvoi envoi={envoiOuvert} auteur={authorOf(envoiOuvert.envoye_par)} onClose={() => setOuvert(null)} />}
     </>
   );
 }
