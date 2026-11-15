@@ -1,0 +1,65 @@
+/* ── Téléphone (jusqu'à 860 px) ──────────────────────────────────────────────
+   Le menu de gauche devient un panneau qui glisse au toucher de ☰ ; une barre en haut garde
+   l'association, la page en cours et la discussion. Tout passe sur une colonne, sans jamais
+   déborder en largeur (minmax(0, …) : un contenu large ne peut plus élargir la page). */
+
+.barre-mobile, .fermer-menu { display: none; }
+
+@media (max-width: 860px) {
+  .shell, .shell.with-chat { grid-template-columns: minmax(0, 1fr); }
+  main { min-width: 0; padding: 14px 14px 64px; }
+
+  .barre-mobile {
+    display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 20;
+    padding: 8px 10px; padding-top: max(8px, env(safe-area-inset-top));
+    background: var(--banner, var(--brand)); color: #fff; box-shadow: 0 2px 10px rgba(15, 23, 42, .18);
+  }
+  .barre-mobile .icon-btn { color: #fff; padding: 9px; position: relative; }
+  .barre-mobile .icon-btn:hover { background: rgba(255, 255, 255, .16); color: #fff; }
+  .barre-mobile .icon-btn .unread { position: absolute; top: 2px; right: 0; margin: 0; }
+  .barre-mobile .logo.sm { flex: none; }
+  .barre-mobile .grow { min-width: 0; line-height: 1.2; }
+  .barre-mobile small { display: block; font-size: 11.5px; opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .barre-mobile strong { display: block; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  aside.nav {
+    position: fixed; top: 0; bottom: 0; left: 0; z-index: 50; width: min(300px, 86vw); height: 100dvh;
+    transform: translateX(-105%); transition: transform .24s cubic-bezier(.2, .8, .2, 1);
+    box-shadow: 0 30px 80px rgba(15, 23, 42, .35); border-right: 0;
+    padding-top: max(16px, env(safe-area-inset-top)); padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  .shell.menu-ouvert aside.nav { transform: none; }
+  .fermer-menu { display: grid; color: #fff; } .fermer-menu:hover { background: rgba(255, 255, 255, .16); color: #fff; }
+  nav a { padding: 11px 10px; font-size: 15px; }
+  .voile-menu { position: fixed; inset: 0; z-index: 49; background: rgba(15, 23, 42, .42); animation: fade .2s; }
+
+  /* Le titre est déjà dans la barre du haut : la page garde seulement son explication. */
+  .page-head { margin-bottom: 14px; } .page-head h1 { display: none; } .page-head .chat-toggle { display: none; }
+  .page-head p { font-size: 13.5px; }
+
+  /* Une colonne partout, des cartes un peu plus serrées. */
+  .card { padding: 16px; border-radius: 16px; }
+  .grid2, .team, .message-grid, .with-side { grid-template-columns: minmax(0, 1fr); }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .stat { padding: 12px; gap: 10px; } .stat strong { font-size: 20px; } .stat .tile { width: 34px; height: 34px; }
+  .kpis { gap: 8px; } .kpi { flex: 1 1 calc(50% - 4px); min-width: 0; padding: 12px 14px; }
+
+  /* Recherche et boutons d'action sur toute la largeur, plus de bouton poussé à droite hors de l'écran. */
+  .toolbar { gap: 8px; } .toolbar .search, .toolbar input { flex: 1 1 100%; max-width: none; }
+  .push { margin-left: 0; }
+  .head { align-items: flex-start; }
+
+  /* Les panneaux latéraux (fiches, réglages, discussion) prennent tout l'écran. */
+  .drawer, .drawer.wide { width: 100%; border-radius: 0; }
+  .chat-panel { width: 100vw; height: 100dvh; }
+
+  /* Formulaires : 16 px évite que l'iPhone zoome à chaque champ ; un champ par ligne. */
+  input, select, textarea { font-size: 16px; }
+  .form-row > * { min-width: 100%; } .form-row > .w-emoji { min-width: 0; }
+  .form-row:has(> .w-emoji) > * { min-width: 0; } /* l'icône reste à côté du titre */
+  .add-one { grid-template-columns: minmax(0, 1fr); }
+
+  /* Les tableaux défilent dans leur carte, la page ne bouge pas. */
+  .card.flush, .card:has(> table) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { font-size: 13px; }
+}
