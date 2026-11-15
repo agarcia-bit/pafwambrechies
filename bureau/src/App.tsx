@@ -1,7 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import { clearAsyncCache, fullName, supabase, useAsync, type Profile } from './lib';
+import { clearAsyncCache, supabase, useAsync, type Profile } from './lib';
 import { Adherents } from './pages/Adherents';
 import { Contenus } from './pages/Contenus';
 import { Cotisations } from './pages/Cotisations';
@@ -17,7 +17,8 @@ import { Overview } from './pages/Overview';
 import { Pilotage } from './pages/Pilotage';
 import { Reglages } from './pages/Reglages';
 import { Sondages } from './pages/Sondages';
-import { Avatar, Icon, Skeleton } from './Icon';
+import { Icon, Skeleton } from './Icon';
+import { BarreMobile, NavigationDuBureau } from './NavigationDuBureau';
 import { FiletDErreur } from './FiletDErreur';
 import { EcranDePreparation, useEspacePrepare } from './EcranDePreparation';
 import { applyBranding } from './theme';
@@ -198,6 +199,9 @@ function initialChat() {
 
 function Shell({ userId }: { userId: string }) {
   const hash = useHash();
+  // Sur téléphone, le menu glisse par-dessus la page ; changer de page le referme.
+  const [menuOuvert, setMenuOuvert] = useState(false);
+  useEffect(() => setMenuOuvert(false), [hash]);
   const [chatOpen, setChatOpenState] = useState(initialChat);
   const setChatOpen = (open: boolean) => { setChatOpenState(open); try { localStorage.setItem(CHAT_KEY, open ? '1' : '0'); } catch { /* sans stockage */ } };
   const me = useAsync(async () => {
@@ -236,28 +240,17 @@ function Shell({ userId }: { userId: string }) {
   const page = pages.find((p) => p.path === hash) ?? pages[0];
   const Page = page.el;
   return (
-    <div className={'shell' + (chatOpen ? ' with-chat' : '')}>
+    <div className={'shell' + (chatOpen ? ' with-chat' : '') + (menuOuvert ? ' menu-ouvert' : '')}>
       <Toasts />
       <SentOverlay />
-      <aside className="nav">
-        <div className="nav-brand">
-          {logo ? <img className="logo sm" src={logo} alt="" /> : <span className="logo sm">{association.slice(0, 1).toUpperCase()}</span>}
-          <div className="grow">{association}<small>Espace bureau</small></div>
-        </div>
-        <nav>
-          {pages.map((p) => (
-            <Fragment key={p.path}>
-              {p.section && <div className="nav-label">{p.section}</div>}
-              <a href={'#' + p.path} className={p.path === page.path ? 'active' : ''}><Icon name={p.icon} size={17} />{p.label}</a>
-            </Fragment>
-          ))}
-        </nav>
-        <div className="me">
-          <Avatar name={fullName(profile)} size={34} />
-          <div className="grow"><strong>{profile.prenom ?? profile.email}</strong><small>{profile.role === 'admin' ? 'Administrateur' : 'Bureau'}</small></div>
-          <button className="icon-btn" onClick={() => supabase.auth.signOut()} aria-label="Se déconnecter" title="Se déconnecter"><Icon name="logout" /></button>
-        </div>
-      </aside>
+      <BarreMobile
+        association={association}
+        logo={logo}
+        titre={page.label}
+        onMenu={() => setMenuOuvert(true)}
+        discussion={<button className="icon-btn" onClick={() => setChatOpen(true)} aria-label="Discussion du bureau"><Icon name="chat" size={20} /><UnreadDot tenant={profile.tenant_id} /></button>}
+      />
+      <NavigationDuBureau pages={pages} pageActive={page.path} association={association} logo={logo} profile={profile} estOuvert={menuOuvert} onFermer={() => setMenuOuvert(false)} />
       <main>
         <header className="page-head">
           <div>
