@@ -227,11 +227,7 @@ ul.names { columns: 2 220px; margin-top: 10px; list-style: none; padding: 0; } u
 @media (max-width: 1000px) { .with-side { grid-template-columns: 1fr; } .side-panel { position: static; } }
 @media (max-width: 860px) {
   .login-page { grid-template-columns: 1fr; } .login-brand { padding: 32px 24px; } .login-brand h1 { font-size: 30px; } .login-brand ul { display: none; }
-  .shell { grid-template-columns: 1fr; }
-  aside.nav { position: static; height: auto; overflow: visible; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; }
-  nav { display: flex; overflow-x: auto; flex: 1 1 100%; order: 3; gap: 2px; } nav a { white-space: nowrap; padding: 7px 10px; } nav .nav-label { display: none; }
-  .me { order: 2; margin-left: auto; border: 0; padding: 0; } .me .grow { display: none; }
-  main { padding: 18px 16px 50px; }
+  /* Structure du téléphone (barre, menu glissant, largeurs) : voir mobile.css. */
   .tl-item { grid-template-columns: 44px 1fr; }
   .kpi { min-width: 110px; padding: 12px 14px; }
 }
@@ -327,7 +323,6 @@ th.num, td.num, .num { text-align: right; font-variant-numeric: tabular-nums; }
   .chat-panel { position: fixed; right: 0; top: 0; width: min(380px, 100vw); z-index: 40; box-shadow: var(--shadow-3); }
 }
 @media (max-width: 700px) { .msg-body { max-width: 85%; } }
-@media (max-width: 860px) { .shell.with-chat { grid-template-columns: 1fr; } }
 /* La page rétrécit quand la discussion est ouverte : le panneau latéral du Pilotage passe dessous. */
 main { container-type: inline-size; }
 @container (max-width: 900px) { .with-side { grid-template-columns: 1fr; } .side-panel { position: static; } }
