@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  construireAudiences, emailsDuGroupe, groupeEnregistre, groupesDeLAnnuaire, groupesEnAttenteDeReponse, type FicheAnnuaire,
+  categoriesParAdherent, construireAudiences, emailsDuGroupe, groupeEnregistre, groupesDeLAnnuaire, groupesEnAttenteDeReponse, type FicheAnnuaire,
 } from './groupes-destinataires';
 import type { MemberRow } from './lib';
 
@@ -86,5 +86,20 @@ describe('groupesEnAttenteDeReponse', () => {
   it('se place juste après les groupes fixes', () => {
     const audiences = construireAudiences([ANNE], [], [], [{ cle: 'sondage:2', libelle: 'Date de l’AG', indice: 'Sondage', repondants: [] }]);
     expect(audiences.map((a) => a.cle)).toEqual(['tous', 'a_relancer', 'non_inscrits', 'bureau', 'sondage:2']);
+  });
+});
+
+describe('categoriesParAdherent', () => {
+  it('donne à chaque adhérent ses catégories, sans doublon, et ignore les fiches sans catégorie ni adhérent', () => {
+    const resultat = categoriesParAdherent([ANNE, BRUNO], [
+      fiche('Boulangerie', 'Commerçant', null, 'anne'),
+      fiche('Traiteur', 'Restaurant', 'anne@ex.fr'),
+      fiche('Boulangerie bis', 'Commerçant', 'anne@ex.fr'),
+      fiche('Sans catégorie', null, 'bruno@ex.fr'),
+      fiche('Inconnu', 'Entreprise', 'personne@ex.fr'),
+    ]);
+    expect(resultat.get('anne')).toEqual(['Commerçant', 'Restaurant']);
+    expect(resultat.has('i:bruno@ex.fr')).toBe(false);
+    expect(resultat.size).toBe(1);
   });
 });

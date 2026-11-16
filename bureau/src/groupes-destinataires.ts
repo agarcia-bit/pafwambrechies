@@ -36,6 +36,19 @@ function raisonDeLAbsence(fiche: FicheAnnuaire): string {
   return `${fiche.nom_entreprise} (${normaliser(fiche.email) ? 'e-mail inconnu des adhérents' : "pas d'e-mail"})`;
 }
 
+/** Les catégories de l'annuaire de chaque adhérent (clé de l'adhérent → catégories triées), pour les afficher en étiquette. */
+export function categoriesParAdherent(membres: MemberRow[], fiches: FicheAnnuaire[]): Map<string, string[]> {
+  const resultat = new Map<string, string[]>();
+  for (const fiche of fiches) {
+    const categorie = fiche.categorie?.trim();
+    const adherent = categorie ? adherentDeLaFiche(fiche, membres) : undefined;
+    if (!categorie || !adherent) continue;
+    const deja = resultat.get(adherent.key) ?? [];
+    if (!deja.includes(categorie)) resultat.set(adherent.key, [...deja, categorie].sort((a, b) => a.localeCompare(b, 'fr')));
+  }
+  return resultat;
+}
+
 /** Un groupe par catégorie de l'annuaire, dans l'ordre alphabétique. */
 export function groupesDeLAnnuaire(membres: MemberRow[], fiches: FicheAnnuaire[]): Audience[] {
   const categories = [...new Set(fiches.map((f) => f.categorie?.trim()).filter((c): c is string => !!c))];

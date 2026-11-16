@@ -97,7 +97,12 @@ function ActionsDuGroupe({ groupe, etat }: { groupe: Audience; etat: EtatDestina
 
 function ListeACocher({ etat }: { etat: EtatDestinataires }) {
   const [recherche, setRecherche] = useState('');
-  const candidats = recherche.trim() ? etat.avecEmail.filter((m) => correspondALaRecherche(m, recherche)) : etat.avecEmail;
+  const categoriesDe = (key: string) => etat.categories.get(key) ?? [];
+  // La recherche trouve aussi par catégorie : « resto » liste tous les restaurateurs.
+  const texte = recherche.trim().toLowerCase();
+  const candidats = texte
+    ? etat.avecEmail.filter((m) => correspondALaRecherche(m, recherche) || categoriesDe(m.key).some((c) => c.toLowerCase().includes(texte)))
+    : etat.avecEmail;
   return (
     <div className="pick pop-in">
       <div className="search"><Icon name="search" size={15} /><input type="search" placeholder="Rechercher…" value={recherche} onChange={(e) => setRecherche(e.target.value)} /></div>
@@ -108,6 +113,7 @@ function ListeACocher({ etat }: { etat: EtatDestinataires }) {
               <input type="checkbox" checked={etat.coches.has(m.key)} onChange={() => etat.basculer(m.key)} />
               <Avatar name={fullName(m)} size={24} />
               <span className="grow">{fullName(m)}<small className="muted"> · {m.email}</small></span>
+              {categoriesDe(m.key).map((c) => <span key={c} className="tag-categorie">{c}</span>)}
             </label>
           </li>
         ))}
