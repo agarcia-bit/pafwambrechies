@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import {
+  categoriesParAdherent,
   construireAudiences,
   emailsDuGroupe,
   type Audience,
@@ -42,6 +43,7 @@ export function useDestinataires() {
     () => construireAudiences(membres.data ?? [], fiches.data ?? [], groupes.data ?? [], attentes.data ?? []),
     [membres.data, fiches.data, groupes.data, attentes.data]
   );
+  const categories = useMemo(() => categoriesParAdherent(membres.data ?? [], fiches.data ?? []), [membres.data, fiches.data]);
   const audience = audiences.find((a) => a.cle === cle);
   const destinataires = cle === AUDIENCE_CHOIX ? avecEmail.filter((m) => coches.has(m.key)) : audience?.membres ?? [];
 
@@ -91,6 +93,7 @@ export function useDestinataires() {
     chargement: membres.loading && !membres.data,
     audiences,
     audience,
+    categories,
     cle,
     choisir,
     coches,
