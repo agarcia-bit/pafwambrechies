@@ -116,7 +116,7 @@ export function Pilotage({ profile }: PageProps) {
       <div className="with-side">
         {!all.actions.length ? <DemarrerLePilotage evenements={agenda.data ?? []} onCommencer={fiche.ouvrirNouvelle} />
           : view === 'equipe' ? <Equipe {...props} /> : <Chronologie {...props} />}
-        <SidePanel {...props} actions={all.actions} taches={all.taches} events={agenda.data ?? []} />
+        <SidePanel {...props} actions={all.actions} taches={all.taches} events={agenda.data ?? []} sansMesTaches={view === 'equipe' && all.actions.length > 0} />
       </div>
 
       {open !== null && (

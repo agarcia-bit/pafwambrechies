@@ -170,7 +170,7 @@ table.clickable tbody tr { cursor: pointer; transition: background .1s; } table.
 .kpi strong { font-size: 22px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; font-variant-numeric: tabular-nums; } .kpi span { font-size: 12.5px; color: var(--muted); }
 .kpi.bad strong { color: var(--bad); } .kpi.ok strong { color: var(--ok); } .kpi.info strong { color: var(--info); } .kpi.brand strong { color: var(--brand); }
 .view-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; } .view-hint { display: none; } @media (min-width: 1100px) { .view-hint { display: inline; } }
-.with-side { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
+.with-side { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
 .side-panel { position: sticky; top: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px 18px; box-shadow: var(--shadow-1); }
 .side-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 
@@ -200,10 +200,10 @@ table.clickable tbody tr { cursor: pointer; transition: background .1s; } table.
 .tl-card .task-list { margin-top: 4px; border-top: 1px dashed var(--line); padding-top: 4px; }
 
 /* Équipe */
-.team { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; align-items: start; } .team-card { margin: 0; display: grid; gap: 12px; } .team-card.is-me { border-color: var(--brand-line); }
+.team { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(330px, 100%), 1fr)); gap: 16px; align-items: start; } .team-card { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; } .team-card.is-me { border-color: var(--brand-line); }
 .team-head { display: flex; align-items: center; gap: 12px; } .team-head strong { display: flex; align-items: center; gap: 8px; }
 .load { height: 5px; background: var(--neutral-soft); border-radius: 99px; overflow: hidden; } .load span { display: block; height: 100%; background: var(--brand); border-radius: 99px; transition: width .3s; } .load span.bad { background: var(--bad); }
-.chip-row { display: flex; gap: 6px; flex-wrap: wrap; } .chip-mini { padding: 3px 10px; border-radius: 99px; font-size: 12px; background: var(--brand-soft); border-color: transparent; color: var(--brand); font-weight: 550; } .chip-mini:hover { background: var(--brand); color: var(--brand-ink); }
+.chip-row { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; } .chip-row .chip-mini { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .chip-mini { padding: 3px 10px; border-radius: 99px; font-size: 12px; background: var(--brand-soft); border-color: transparent; color: var(--brand); font-weight: 550; } .chip-mini:hover { background: var(--brand); color: var(--brand-ink); }
 
 /* Calendrier */
 span.cal-chip { cursor: default; }
