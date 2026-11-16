@@ -82,7 +82,8 @@ function StatusSelect({ a, onMove }: { a: Action; onMove: (a: Action, s: string)
 
 export type CalEvent = { id: number; titre: string; date: string };
 
-export function SidePanel({ taches, actions, members, me, onToggle, onOpen, events, leaving }: ViewProps & { events: CalEvent[] }) {
+/** sansMesTaches : dans la vue Équipe, ma carte est déjà en tête ; « Pour moi » ferait doublon. */
+export function SidePanel({ taches, actions, members, me, onToggle, onOpen, events, leaving, sansMesTaches }: ViewProps & { events: CalEvent[]; sansMesTaches?: boolean }) {
   const mine = taches.filter((t) => t.responsable === me && t.statut !== 'Terminé').sort(byDue);
   const late = mine.filter((t) => isOverdue(t.echeance, t.statut)).length;
   const actionOf = (id: number) => actions.find((a) => a.id === id);
@@ -93,6 +94,7 @@ export function SidePanel({ taches, actions, members, me, onToggle, onOpen, even
   ].filter((i) => daysUntil(i.date) <= 30).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
   return (
     <aside className="side-panel">
+      {!sansMesTaches && <>
       <div className="side-head">
         <h3>Pour moi</h3>
         <span className={'pill ' + (late ? 'bad' : mine.length ? 'brand' : 'neutral')}>{late ? `${late} en retard` : `${mine.length} à faire`}</span>
@@ -100,7 +102,8 @@ export function SidePanel({ taches, actions, members, me, onToggle, onOpen, even
       {mine.length ? (
         <ul className="task-list">{mine.map((t) => <TaskRow key={t.id} t={t} members={members} onToggle={onToggle} actionOf={actionOf} leaving={leaving?.has(t.id)} />)}</ul>
       ) : <Empty icon="sparkle" title="Rien pour vous" hint="Vos tâches apparaîtront ici." />}
-      <div className="side-head" style={{ marginTop: 18 }}>
+      </>}
+      <div className="side-head" style={sansMesTaches ? undefined : { marginTop: 18 }}>
         <h3>30 prochains jours</h3>
       </div>
       {horizon.length ? (
