@@ -15,8 +15,10 @@ import { useTenantConfig } from '@/lib/tenant-config';
 import type { Offre } from '@/lib/types';
 import { useBlockedIds } from '@/lib/moderation';
 import { useBandListStyle } from '@/theme';
+import { useEspaceSousOnglets } from '@/hooks/use-espace-sous-onglets';
 
 export default function OffresScreen() {
+  const espaceSousOnglets = useEspaceSousOnglets();
   const offres = useOffres();
   const { categories, labels } = useTenantConfig();
   const bandStyle = useBandListStyle();
@@ -34,7 +36,7 @@ export default function OffresScreen() {
       keyExtractor={(o) => String(o.id)}
       renderItem={({ item }) => <OffreCard offre={item} />}
       contentInsetAdjustmentBehavior="never"
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: espaceSousOnglets }]}
       ItemSeparatorComponent={Gap}
       ListHeaderComponent={
         <View style={styles.header}>

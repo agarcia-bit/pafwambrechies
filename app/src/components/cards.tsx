@@ -10,6 +10,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Icon } from '@/components/ui/icon';
 import { PressableCard } from '@/components/ui/card';
+import { LinkedText } from '@/components/ui/linked-text';
 import { Text } from '@/components/ui/text';
 import { formatDayShort, formatRelative } from '@/lib/format';
 import { useReadActus } from '@/lib/read-actus';
@@ -104,9 +105,9 @@ function UnreadActuCard({ actu, index, onRead }: { actu: Actu; index: number; on
         {actu.titre}
       </Text>
       {!!preview && (
-        <Text tone="secondary" numberOfLines={3}>
+        <LinkedText tone="secondary" numberOfLines={3}>
           {preview}
-        </Text>
+        </LinkedText>
       )}
     </View>
   );

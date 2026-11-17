@@ -15,11 +15,13 @@ import { openTour } from '@/lib/tour';
 import { useMember } from '@/lib/session';
 import { useTenantConfig } from '@/lib/tenant-config';
 import { useBandListStyle, useTheme } from '@/theme';
+import { useEspaceSousOnglets } from '@/hooks/use-espace-sous-onglets';
 
 // Three kinds of things, kept apart: what the association offers beyond the tabs ("Communauté",
 // in its color), the member's own settings ("Mon espace", in grey, opened by their name), and the
 // bureau's tools, on a dark block of their own that only the bureau and the admins see.
 export default function PlusScreen() {
+  const espaceSousOnglets = useEspaceSousOnglets();
   const { profile, isBureau, isPlatformAdmin, branding } = useMember();
   const { modules } = useTenantConfig();
   const bandStyle = useBandListStyle();
@@ -27,7 +29,7 @@ export default function PlusScreen() {
   const unread = useBureauUnread();
   const { colors } = useTheme();
   return (
-    <ScrollView style={bandStyle} contentInsetAdjustmentBehavior="never">
+    <ScrollView style={bandStyle} contentInsetAdjustmentBehavior="never" contentContainerStyle={{ paddingBottom: espaceSousOnglets - 40 }}>
       <BrandBand title="Plus" subtitle="Mon espace">
         <BandPill label={associationName(branding)} />
       </BrandBand>

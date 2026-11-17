@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 
+import { useEspaceSousOnglets } from '@/hooks/use-espace-sous-onglets';
 import { PushOffer } from '@/components/association';
 import { CotisationBanner } from '@/components/cotisation-banner';
 import { ParticipationBanner } from '@/components/participation-banner';
@@ -28,6 +29,7 @@ function greeting(firstName: string | null): string {
 type Category = (typeof ACTU_CATEGORIES)[number];
 
 export default function ActusScreen() {
+  const espaceSousOnglets = useEspaceSousOnglets();
   const [category, setCategory] = useState<Category>('Tous');
   const { branding, profile } = useMember();
   const { colors } = useTheme();
@@ -67,7 +69,7 @@ export default function ActusScreen() {
           </View>
         )}
         contentInsetAdjustmentBehavior="never"
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: espaceSousOnglets }]}
         ItemSeparatorComponent={Gap}
         ListHeaderComponent={
           <View style={styles.header}>
