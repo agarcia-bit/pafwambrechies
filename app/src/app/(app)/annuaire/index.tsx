@@ -17,8 +17,10 @@ import { useBlockedIds } from '@/lib/moderation';
 import { useTenantConfig } from '@/lib/tenant-config';
 import type { Commercant } from '@/lib/types';
 import { useBandListStyle, useTheme } from '@/theme';
+import { useEspaceSousOnglets } from '@/hooks/use-espace-sous-onglets';
 
 export default function AnnuaireScreen() {
+  const espaceSousOnglets = useEspaceSousOnglets();
   const annuaire = useAnnuaire();
   const bandStyle = useBandListStyle();
   const { colors } = useTheme();
@@ -48,7 +50,7 @@ export default function AnnuaireScreen() {
         renderItem={({ item }) => <MerchantRow merchant={item} />}
         contentInsetAdjustmentBehavior="never"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: espaceSousOnglets }]}
         ItemSeparatorComponent={Gap}
         ListHeaderComponent={
           <View style={styles.header}>

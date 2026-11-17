@@ -12,6 +12,7 @@ import { dayParts, monthLabel } from '@/lib/format';
 import { detailsEvenement } from '@/lib/periode';
 import type { Evenement } from '@/lib/types';
 import { useBandListStyle, useTheme } from '@/theme';
+import { useEspaceSousOnglets } from '@/hooks/use-espace-sous-onglets';
 
 function byMonth(events: Evenement[]): { title: string; data: Evenement[] }[] {
   const sections: { title: string; data: Evenement[] }[] = [];
@@ -25,6 +26,7 @@ function byMonth(events: Evenement[]): { title: string; data: Evenement[] }[] {
 }
 
 export default function AgendaScreen() {
+  const espaceSousOnglets = useEspaceSousOnglets();
   const events = useEvenements();
   const bandStyle = useBandListStyle();
   const { refreshing, onRefresh } = usePullToRefresh(events.refetch);
@@ -49,7 +51,7 @@ export default function AgendaScreen() {
       )}
       stickySectionHeadersEnabled={false}
       contentInsetAdjustmentBehavior="never"
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: espaceSousOnglets }]}
       ItemSeparatorComponent={Gap}
       ListEmptyComponent={
         events.isPending ? (
