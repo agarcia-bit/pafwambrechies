@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { FieldView, PhotoField } from '@/components/form-fields';
 import { FormScreen } from '@/components/form-screen';
 import { HeaderButton } from '@/components/header-button';
+import { RecadragePhoto } from '@/components/recadrage-photo';
 import { Button } from '@/components/ui/button';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
@@ -17,8 +18,8 @@ import {
   type FormValues,
   type Row,
 } from '@/lib/admin';
-import { confirmAction, showMessage } from '@/lib/confirm';
-import { pickPhoto, type PickedPhoto } from '@/lib/photos';
+import { usePhotoDuFormulaire } from '@/hooks/use-photo-du-formulaire';
+import { confirmAction } from '@/lib/confirm';
 
 // Creates an item (no id) or edits one (id), for any admin collection.
 export default function AdminEditScreen() {
@@ -54,8 +55,7 @@ export function EditForm({
   const save = useSaveItem(c);
   const remove = useDeleteItem(c);
   const [values, setValues] = useState<FormValues>(() => (row ? c.toValues(row) : c.defaults()));
-  const [photo, setPhoto] = useState<PickedPhoto | null>(null);
-  const [picking, setPicking] = useState(false);
+  const { photo, setPhoto, picking, choosePhoto, aCadrer, validerLeCadrage, annulerLeCadrage } = usePhotoDuFormulaire(c);
   const [error, setError] = useState<string | null>(null);
 
   function update(key: string, value: string) {
@@ -63,17 +63,6 @@ export function EditForm({
       const next = { ...current, [key]: value };
       return c.derive ? c.derive(key, next) : next;
     });
-  }
-
-  async function choosePhoto() {
-    setPicking(true);
-    try {
-      const picked = await pickPhoto({ outputWidth: c.photo?.width, crop: c.photo?.crop });
-      if (picked) setPhoto(picked);
-    } catch {
-      showMessage('Photo illisible', 'Choisissez une autre photo.');
-    }
-    setPicking(false);
   }
 
   function submit() {
@@ -147,6 +136,7 @@ export function EditForm({
         <Button title={row ? 'Enregistrer' : (own?.submitLabel ?? c.addLabel)} onPress={submit} loading={save.isPending} />
         {row && (!own || own.canDelete) && <Button title="Supprimer" variant="destructive" onPress={destroy} loading={remove.isPending} />}
       </FormScreen>
+      <RecadragePhoto photo={aCadrer} onValider={validerLeCadrage} onAnnuler={annulerLeCadrage} />
     </>
   );
 }

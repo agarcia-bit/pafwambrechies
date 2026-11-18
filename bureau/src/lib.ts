@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { useCallback, useEffect, useState } from 'react';
 
 import { nomAvecFonction } from './fonction-bureau';
+import type { Zone } from './recadrage';
 
 // Valeurs publiques (identiques à l'app) : la clé publiable n'ouvre que ce que les règles RLS autorisent.
 export const supabase = createClient(
@@ -136,16 +137,17 @@ export const formatRelative = (iso: string) => {
 
 /** Redimensionne une image dans le navigateur et l'envoie dans un bucket public, comme l'application
  *  (le nom contient les dimensions : l'app s'en sert pour le ratio d'affichage). */
-/** crop: true = 4:3 centré (annuaire) ; 'logo' = carré centré, en PNG (garde la transparence) ;
- *  folder : sous-dossier du bucket. */
-export async function uploadPhoto(file: File, bucket: string, width: number, crop: boolean | 'logo', folder?: string): Promise<string> {
+/** crop: true = 4:3 centré ; 'logo' = carré centré, en PNG (garde la transparence) ; une zone =
+ *  la partie cadrée à la main (fiche de l'annuaire) ; folder : sous-dossier du bucket. */
+export async function uploadPhoto(file: File, bucket: string, width: number, crop: boolean | 'logo' | Zone, folder?: string): Promise<string> {
   const bmp = await createImageBitmap(file);
-  const scale = Math.min(1, width / bmp.width);
   let sw = bmp.width, sh = bmp.height, sx = 0, sy = 0;
-  if (crop) { // 4:3 ou carré, centré
+  if (typeof crop === 'object') ({ x: sx, y: sy, largeur: sw, hauteur: sh } = crop);
+  else if (crop) { // 4:3 ou carré, centré
     const ratio = crop === 'logo' ? 1 : 4 / 3;
     if (sw / sh > ratio) { sw = Math.round(sh * ratio); sx = Math.round((bmp.width - sw) / 2); } else { sh = Math.round(sw / ratio); sy = Math.round((bmp.height - sh) / 2); }
   }
+  const scale = Math.min(1, width / sw);
   const w = Math.round(sw * scale), h = Math.round(sh * scale);
   const canvas = document.createElement('canvas');
   canvas.width = w; canvas.height = h;

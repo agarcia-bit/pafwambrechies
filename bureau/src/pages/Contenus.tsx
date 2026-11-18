@@ -1,13 +1,14 @@
-import { useMemo, useRef, useState, type MouseEvent } from 'react';
+import { useMemo, useState, type MouseEvent } from 'react';
 
 import type { PageProps } from '../App';
 import { categoriesUtilisees, reprendreCategorieExistante } from '../categories-libres';
 import { COLLECTIONS, withConfig, type Collection, type Field, type Row, type Values } from '../collections';
 import { ChampCategorie } from '../components/ui/ChampCategorie';
+import { ChampPhoto } from '../components/ui/ChampPhoto';
 import { PersonnesDeLEntreprise } from './PersonnesDeLEntreprise';
 import { Drawer } from '../Drawer';
 import { Empty, Icon, Skeleton } from '../Icon';
-import { loadTenantConfig, supabase, toast, uploadPhoto, useAsync } from '../lib';
+import { loadTenantConfig, supabase, toast, useAsync } from '../lib';
 
 /** Une page par type de contenu (actus, offres, annuaire, liens) : liste, recherche, création, modification, suppression. */
 // Une fonction par sorte de contenu, toujours la même : useAsync et le préchargement la
@@ -153,27 +154,7 @@ function ItemDrawer({ c, row, tenant, categories, onClose, onChanged }: { c: Col
 }
 
 function FieldInput({ f, value, onChange, photo, categories, autoFocus }: { f: Field; value: string; onChange: (v: string) => void; photo?: Collection['photo']; categories: string[]; autoFocus?: boolean }) {
-  const file = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  if (f.type === 'photo') {
-    async function pick(e: React.ChangeEvent<HTMLInputElement>) {
-      const chosen = e.target.files?.[0];
-      if (!chosen || !photo) return;
-      setUploading(true);
-      try { onChange(await uploadPhoto(chosen, photo.bucket, photo.width, photo.crop)); toast('Photo ajoutée'); } catch (err) { toast((err as Error).message, 'error'); } finally { setUploading(false); if (file.current) file.current.value = ''; }
-    }
-    return (
-      <div className="photo-field">
-        <span className="lbl">{f.label}</span>
-        <div className="row" style={{ marginTop: 6 }}>
-          {value ? <img src={value} alt="" className="photo-preview" /> : <span className="photo-preview empty"><Icon name="file" size={20} /></span>}
-          <input ref={file} type="file" accept="image/*" hidden onChange={pick} />
-          <button type="button" onClick={() => file.current?.click()} disabled={uploading}><Icon name="upload" size={15} /> {uploading ? 'Envoi…' : value ? 'Changer' : 'Choisir une photo'}</button>
-          {value && <button type="button" className="link danger" onClick={() => onChange('')}>Retirer</button>}
-        </div>
-      </div>
-    );
-  }
+  if (f.type === 'photo' && photo) return <ChampPhoto libelle={f.label} valeur={value} onChange={onChange} photo={photo} />;
   if (f.type === 'choice') {
     // Une valeur hors de la liste (« Général » d'une fiche importée) s'affiche telle quelle : sans
     // elle, le menu montrerait la première option alors que la fiche garde l'ancienne valeur.

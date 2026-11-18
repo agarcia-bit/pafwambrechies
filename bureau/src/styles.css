@@ -641,3 +641,13 @@ button.demarrer-carte:hover { border-color: var(--brand); background: var(--bran
 .modeles-rapides { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
 .plus-options summary { cursor: pointer; font-size: 13px; color: var(--muted); font-weight: 500; } .plus-options[open] summary { margin-bottom: 10px; }
 input.tache-prevue { padding: 6px 10px; font-size: 13.5px; }
+
+/* Cadrage de la photo d'une fiche (components/ui/RecadrageDePhoto) : au-dessus du panneau latéral. */
+.recadrage-voile { z-index: 60; }
+.recadrage { position: fixed; z-index: 61; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 32px)); background: var(--panel); border-radius: 18px; padding: 20px; box-shadow: 0 30px 80px rgba(15, 23, 42, .35); display: grid; gap: 12px; justify-items: center; }
+.recadrage h3 { margin: 0; justify-self: start; } .recadrage > p { margin: 0; font-size: 13px; justify-self: start; }
+.recadrage-cadre { position: relative; overflow: hidden; border-radius: 12px; background: #000; cursor: grab; touch-action: none; user-select: none; }
+.recadrage-cadre:active { cursor: grabbing; }
+.recadrage-cadre img { position: absolute; left: 50%; top: 50%; max-width: none; pointer-events: none; }
+.recadrage-zoom { display: flex; align-items: center; gap: 10px; width: 100%; font-size: 13px; } .recadrage-zoom input { flex: 1; }
+.recadrage-boutons { justify-content: flex-end; width: 100%; gap: 8px; }
