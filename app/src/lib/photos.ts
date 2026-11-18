@@ -1,42 +1,43 @@
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { ImageManipulator, SaveFormat, type ImageRef } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 
+import type { Zone } from '@/lib/recadrage';
 import { supabase } from '@/lib/supabase';
 
 export type PickedPhoto = { uri: string; base64: string; width: number; height: number; png?: boolean };
 
+/** Une photo choisie dans la galerie, pas encore préparée : `image` a déjà le bon sens (EXIF). */
+export type PhotoChoisie = { uri: string; image: ImageRef; largeur: number; hauteur: number };
+
+/** Ouvre la galerie ; null si la personne annule. */
+export async function choisirPhoto(): Promise<PhotoChoisie | null> {
+  const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 1 });
+  if (picked.canceled) return null;
+  const uri = picked.assets[0].uri;
+  const image = await ImageManipulator.manipulate(uri).renderAsync();
+  return { uri, image, largeur: image.width, hauteur: image.height };
+}
+
 /**
- * Lets the admin pick a photo and prepares it for upload as a JPEG.
- *  - crop (directory entries, shown as 4:3): the center is cut to 4:3;
+ * Prepares a chosen photo for upload as a JPEG.
+ *  - `zone` (directory entries, framed by the member): exactly that part of the photo;
+ *  - crop without zone: the center is cut to 4:3;
  *  - no crop (posts): the whole photo is kept, in its own format;
  *  - 'logo' (association logo): the center is cut square and kept as a PNG (transparency stays).
  * It is only ever made smaller: at most `outputWidth` wide and 1.5 times that tall.
- * Null when cancelled.
  */
-export async function pickPhoto({
-  outputWidth = 800,
-  crop = true,
-}: { outputWidth?: number; crop?: boolean | 'logo' } = {}): Promise<PickedPhoto | null> {
-  const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 1 });
-  if (picked.canceled) return null;
-
-  const image = await ImageManipulator.manipulate(picked.assets[0].uri).renderAsync();
+export async function preparerPhoto(
+  photo: PhotoChoisie,
+  { outputWidth = 800, crop = true, zone }: { outputWidth?: number; crop?: boolean | 'logo'; zone?: Zone } = {}
+): Promise<PickedPhoto> {
+  const { image } = photo;
   let context = ImageManipulator.manipulate(image);
   let { width, height } = image;
-  if (crop) {
-    const ratio = crop === 'logo' ? 1 : 4 / 3;
-    width = image.width;
-    height = Math.round(width / ratio);
-    if (height > image.height) {
-      height = image.height;
-      width = Math.round(height * ratio);
-    }
-    context = context.crop({
-      originX: Math.round((image.width - width) / 2),
-      originY: Math.round((image.height - height) / 2),
-      width,
-      height,
-    });
+  const cadrage = zone ?? (crop ? zoneCentree(image.width, image.height, crop === 'logo' ? 1 : 4 / 3) : null);
+  if (cadrage) {
+    width = cadrage.largeur;
+    height = cadrage.hauteur;
+    context = context.crop({ originX: cadrage.x, originY: cadrage.y, width, height });
   }
   const scale = Math.min(1, outputWidth / width, (outputWidth * 1.5) / height);
   const rendered = await context.resize({ width: Math.round(width * scale) }).renderAsync();
@@ -44,6 +45,19 @@ export async function pickPhoto({
   const saved = await rendered.saveAsync({ format: png ? SaveFormat.PNG : SaveFormat.JPEG, compress: 0.85, base64: true });
   if (!saved.base64) throw new Error('Photo illisible');
   return { uri: saved.uri, base64: saved.base64, width: saved.width, height: saved.height, png };
+}
+
+/** Choisit puis prépare une photo, sans recadrage à la main (actus, logo). Null si annulé. */
+export async function pickPhoto(options: { outputWidth?: number; crop?: boolean | 'logo' } = {}): Promise<PickedPhoto | null> {
+  const photo = await choisirPhoto();
+  return photo ? preparerPhoto(photo, options) : null;
+}
+
+/** Le plus grand rectangle au format `ratio`, au centre de la photo. */
+function zoneCentree(largeurImage: number, hauteurImage: number, ratio: number): Zone {
+  const largeur = Math.min(largeurImage, Math.round(hauteurImage * ratio));
+  const hauteur = Math.min(hauteurImage, Math.round(largeur / ratio));
+  return { x: Math.round((largeurImage - largeur) / 2), y: Math.round((hauteurImage - hauteur) / 2), largeur, hauteur };
 }
 
 /** Width / height of a photo uploaded by uploadPhoto (it is in the file name), if known. */
