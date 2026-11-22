@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode } from 'react';
 
+import { BoutonRetour } from './components/FormulaireDeRetour';
 import { Avatar, Icon } from './Icon';
 import { fullName, supabase, type Profile } from './lib';
 
@@ -35,6 +36,7 @@ export function NavigationDuBureau({ pages, pageActive, association, logo, profi
             </Fragment>
           ))}
         </nav>
+        <BoutonRetour auteur={profile.id} />
         <div className="me">
           <Avatar name={fullName(profile)} size={34} />
           <div className="grow"><strong>{profile.prenom ?? profile.email}</strong><small>{profile.role === 'admin' ? 'Administrateur' : 'Bureau'}</small></div>

@@ -16,6 +16,8 @@ import { ChatPanel, useUnread } from './Discussion';
 import { Overview } from './pages/Overview';
 import { Pilotage } from './pages/Pilotage';
 import { Reglages } from './pages/Reglages';
+import { Retours } from './pages/Retours';
+import { estProprietaireDeLaPlateforme } from './retours';
 import { Sondages } from './pages/Sondages';
 import { Icon, Skeleton } from './Icon';
 import { BarreMobile, NavigationDuBureau } from './NavigationDuBureau';
@@ -24,7 +26,7 @@ import { EcranDePreparation, useEspacePrepare } from './EcranDePreparation';
 import { applyBranding } from './theme';
 import { Toasts } from './Toasts';
 
-type Page = { path: string; label: string; icon: string; sub: string; el: (p: PageProps) => JSX.Element; section?: string; admin?: boolean };
+type Page = { path: string; label: string; icon: string; sub: string; el: (p: PageProps) => JSX.Element; section?: string; admin?: boolean; plateforme?: boolean };
 const PAGES: Page[] = [
   { path: 'accueil', label: 'Vue d’ensemble', icon: 'home', sub: 'L’essentiel de votre association en un coup d’œil', el: Overview },
   { path: 'pilotage', label: 'Pilotage', icon: 'tasks', sub: 'Les actions du bureau et la liste des choses à faire', el: Pilotage },
@@ -42,6 +44,7 @@ const PAGES: Page[] = [
   { path: 'moderation', label: 'Modération', icon: 'alert', sub: 'Signalements et boîte à idées', el: Moderation },
   { path: 'importer', label: 'Importer', icon: 'upload', sub: 'Ajoutez vos adhérents depuis un tableur', el: Importer, section: 'Administration' },
   { path: 'reglages', label: 'Réglages', icon: 'edit', sub: 'Identité, sections et vocabulaire de l’app', el: Reglages, admin: true },
+  { path: 'retours', label: 'Retours', icon: 'sparkle', sub: 'Les bugs et idées envoyés par les membres de toutes les associations', el: Retours, section: 'Plateforme', plateforme: true },
 ];
 
 // Anciennes adresses (liens qui circulent encore).
@@ -207,13 +210,15 @@ function Shell({ userId }: { userId: string }) {
   const me = useAsync(async () => {
     const { data, error } = await supabase.from('profiles').select('id, prenom, nom, email, role, tenant_id').eq('id', userId).single();
     if (error) throw error;
-    const [{ data: t }, { data: b }] = await Promise.all([
+    const [{ data: t }, { data: b }, plateforme] = await Promise.all([
       supabase.from('tenants').select('name').eq('id', data.tenant_id).maybeSingle(),
       supabase.rpc('get_my_branding'),
+      estProprietaireDeLaPlateforme(),
     ]);
     const branding = (b ?? {}) as Record<string, string | undefined>;
     return {
       profile: data as Profile,
+      plateforme,
       association: branding.tenant_name?.trim() || (t?.name as string | undefined) || 'Mon association',
       logo: branding.tenant_logo_url?.trim() || null,
       colors: { primary: branding.tenant_primary_color, banner: branding.tenant_secondary_color },
@@ -232,11 +237,11 @@ function Shell({ userId }: { userId: string }) {
 
   if (me.loading && !me.data) return <div className="center"><div className="card" style={{ width: 320 }}><Skeleton lines={4} /></div></div>;
   if (!me.data) return <Denied text="Impossible de charger votre profil." />;
-  const { profile, association, logo } = me.data;
+  const { profile, association, logo, plateforme } = me.data;
   if (profile.role === 'adherent') return <Denied text="Cet espace est réservé au bureau. Utilisez l’application sur votre téléphone." />;
   if (!preparation.pret) return <EcranDePreparation association={association} logo={logo} avancement={preparation.avancement} />;
 
-  const pages = PAGES.filter((p) => !p.admin || profile.role === 'admin');
+  const pages = PAGES.filter((p) => (!p.admin || profile.role === 'admin') && (!p.plateforme || plateforme));
   const page = pages.find((p) => p.path === hash) ?? pages[0];
   const Page = page.el;
   return (

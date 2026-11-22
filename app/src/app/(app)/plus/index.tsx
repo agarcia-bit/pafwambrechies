@@ -68,6 +68,13 @@ export default function PlusScreen() {
           )}
           <CotisationRow />
           <ListRow neutral icon="info" title="Visite guidée" subtitle="Revoir la présentation de l’application" onPress={openTour} />
+          <ListRow
+            neutral
+            icon="lightbulb"
+            title="Un bug ? Une idée ?"
+            subtitle="Écrire à l’équipe d’Allianceo"
+            onPress={() => router.push('/plus/retour')}
+          />
         </ListSection>
 
         {(isBureau || isPlatformAdmin) && (

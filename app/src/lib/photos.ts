@@ -68,12 +68,17 @@ export function photoRatio(url: string): number | null {
 
 /** Uploads a photo and returns its public URL; `folder` puts it in a sub-folder of the bucket. */
 export async function uploadPhoto(photo: PickedPhoto, bucketName: string, folder?: string): Promise<string> {
+  const chemin = await deposerPhoto(photo, bucketName, folder);
+  return supabase.storage.from(bucketName).getPublicUrl(chemin).data.publicUrl;
+}
+
+/** Dépose une photo et rend son chemin dans le bucket (pour un bucket privé, sans adresse publique). */
+export async function deposerPhoto(photo: PickedPhoto, bucketName: string, folder?: string): Promise<string> {
   const bytes = Uint8Array.from(atob(photo.base64), (c) => c.charCodeAt(0));
   // The size goes in the name so that screens know the photo's format before loading it.
   const ext = photo.png ? 'png' : 'jpg';
   const path = `${folder ? `${folder}/` : ''}${Date.now()}-${Math.random().toString(36).slice(2)}-${photo.width}x${photo.height}.${ext}`;
-  const bucket = supabase.storage.from(bucketName);
-  const { error } = await bucket.upload(path, bytes.buffer, { contentType: photo.png ? 'image/png' : 'image/jpeg' });
+  const { error } = await supabase.storage.from(bucketName).upload(path, bytes.buffer, { contentType: photo.png ? 'image/png' : 'image/jpeg' });
   if (error) throw error;
-  return bucket.getPublicUrl(path).data.publicUrl;
+  return path;
 }
