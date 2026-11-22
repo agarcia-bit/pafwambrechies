@@ -9,6 +9,7 @@ import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FormScreen } from '@/components/form-screen';
+import { ZoneDeLecture } from '@/components/zone-de-lecture';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
@@ -39,25 +40,13 @@ export default function ConnexionScreen() {
   return (
     <LinearGradient colors={['#14B8A6', '#0B5F58']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.screen}>
     <StatusBar style="light" />
+    <ZoneDeLecture>
     <FormScreen
       fullScreen
       transparent
       style={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12, gap: 12 }}>
       <View style={styles.middle}>
-      <View style={styles.brand}>
-        <Image source={require('../../assets/images/icon.png')} style={styles.logo} accessibilityLabel="Logo Allianceo" />
-        <View style={styles.wordmark}>
-          {/* Same width as the dot, so that the name itself stays centered. */}
-          <View style={styles.wordmarkSpacer} />
-          <Text variant="largeTitle" style={styles.wordmarkText}>
-            ALLIANCEO
-          </Text>
-          <View style={styles.wordmarkDot} />
-        </View>
-        <Text style={[styles.center, styles.tagline]}>
-          L’espace adhérents de votre association
-        </Text>
-      </View>
+      <MarqueAllianceo />
 
       <TextField
         onDark
@@ -102,14 +91,42 @@ export default function ConnexionScreen() {
           Première fois ? Votre association vous a communiqué un code d’accès.
         </Text>
         <Button title="Créer mon compte" variant="glass" onPress={() => router.push('/inscription')} />
-        <View style={styles.publisher} accessible accessibilityLabel="Allianceo, développé par Agalumy">
-          <Text style={styles.by}>développé par</Text>
-          <Image source={require('../../assets/images/agalumy-logo-white.png')} style={styles.publisherLogo} contentFit="contain" />
-        </View>
+        <SignatureAgalumy />
       </View>
     </FormScreen>
+    </ZoneDeLecture>
     <LoginIntro />
     </LinearGradient>
+  );
+}
+
+/** Le logo, le nom et la phrase d'accroche, en haut du formulaire. */
+function MarqueAllianceo() {
+  return (
+    <View style={styles.brand}>
+      <Image source={require('../../assets/images/icon.png')} style={styles.logo} accessibilityLabel="Logo Allianceo" />
+      <View style={styles.wordmark}>
+        {/* Same width as the dot, so that the name itself stays centered. */}
+        <View style={styles.wordmarkSpacer} />
+        <Text variant="largeTitle" style={styles.wordmarkText}>
+          ALLIANCEO
+        </Text>
+        <View style={styles.wordmarkDot} />
+      </View>
+      <Text style={[styles.center, styles.tagline]}>
+        L’espace adhérents de votre association
+      </Text>
+    </View>
+  );
+}
+
+/** « Allianceo, développé par Agalumy » : le logo de l'éditeur en bas de page. */
+function SignatureAgalumy() {
+  return (
+    <View style={styles.publisher} accessible accessibilityLabel="Allianceo, développé par Agalumy">
+      <Text style={styles.by}>développé par</Text>
+      <Image source={require('../../assets/images/agalumy-logo-white.png')} style={styles.publisherLogo} contentFit="contain" />
+    </View>
   );
 }
 

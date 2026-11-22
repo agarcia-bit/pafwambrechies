@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 
 import { FormScreen } from '@/components/form-screen';
+import { ZoneDeLecture } from '@/components/zone-de-lecture';
 
 /** The teal of the logo: gradient of the sign-in screens (the header of their screens matches its top). */
 export const AUTH_GRADIENT = ['#14B8A6', '#0B5F58'] as const;
@@ -29,9 +30,11 @@ export function AuthScreen({
   return (
     <LinearGradient colors={AUTH_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.screen}>
       <StatusBar style="light" />
-      <FormScreen transparent fullScreen={fullScreen} style={style}>
-        {children}
-      </FormScreen>
+      <ZoneDeLecture>
+        <FormScreen transparent fullScreen={fullScreen} style={style}>
+          {children}
+        </FormScreen>
+      </ZoneDeLecture>
     </LinearGradient>
   );
 }

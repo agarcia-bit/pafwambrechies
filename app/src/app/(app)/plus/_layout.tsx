@@ -1,5 +1,7 @@
 import { Stack } from 'expo-router';
 
+import { entourerDUneZoneDeLecture } from '@/components/zone-de-lecture';
+
 import { useBrandHeader } from '@/theme';
 
 import { useMember } from '@/lib/session';
@@ -10,7 +12,7 @@ export default function PlusLayout() {
   const { isAdmin, isBureau, isPlatformAdmin } = useMember();
   const { modules, cotisations } = useTenantConfig();
   return (
-    <Stack screenOptions={header}>
+    <Stack screenOptions={header} screenLayout={entourerDUneZoneDeLecture}>
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Protected guard={modules.idees}>
         <Stack.Screen name="idees/index" options={{ title: 'Boîte à idées' }} />
