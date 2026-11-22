@@ -140,6 +140,12 @@ export const formatRelative = (iso: string) => {
 /** crop: true = 4:3 centré ; 'logo' = carré centré, en PNG (garde la transparence) ; une zone =
  *  la partie cadrée à la main (fiche de l'annuaire) ; folder : sous-dossier du bucket. */
 export async function uploadPhoto(file: File, bucket: string, width: number, crop: boolean | 'logo' | Zone, folder?: string): Promise<string> {
+  const chemin = await deposerPhoto(file, bucket, width, crop, folder);
+  return supabase.storage.from(bucket).getPublicUrl(chemin).data.publicUrl;
+}
+
+/** Comme uploadPhoto, mais rend le chemin dans le bucket : pour un bucket privé (captures des retours). */
+export async function deposerPhoto(file: File, bucket: string, width: number, crop: boolean | 'logo' | Zone, folder?: string): Promise<string> {
   const bmp = await createImageBitmap(file);
   let sw = bmp.width, sh = bmp.height, sx = 0, sy = 0;
   if (typeof crop === 'object') ({ x: sx, y: sy, largeur: sw, hauteur: sh } = crop);
@@ -159,7 +165,7 @@ export async function uploadPhoto(file: File, bucket: string, width: number, cro
   const path = `${folder ? `${folder}/` : ''}${Date.now()}-${Math.random().toString(36).slice(2)}-${w}x${h}.${png ? 'png' : 'jpg'}`;
   const { error } = await supabase.storage.from(bucket).upload(path, blob, { contentType: type });
   if (error) throw error;
-  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  return path;
 }
 
 export const euros = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });

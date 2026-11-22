@@ -651,3 +651,8 @@ input.tache-prevue { padding: 6px 10px; font-size: 13.5px; }
 .recadrage-cadre img { position: absolute; left: 50%; top: 50%; max-width: none; pointer-events: none; }
 .recadrage-zoom { display: flex; align-items: center; gap: 10px; width: 100%; font-size: 13px; } .recadrage-zoom input { flex: 1; }
 .recadrage-boutons { justify-content: flex-end; width: 100%; gap: 8px; }
+
+/* « Un bug ? Une idée ? » en bas du menu (components/FormulaireDeRetour), et son formulaire. */
+.bouton-retour { justify-content: flex-start; width: 100%; margin: 0; color: var(--muted); }
+.formulaire-retour { display: grid; gap: 16px; } .formulaire-retour .seg { justify-self: start; }
+.formulaire-retour .nom-capture { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }

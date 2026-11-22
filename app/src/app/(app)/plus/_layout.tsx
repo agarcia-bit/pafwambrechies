@@ -38,6 +38,7 @@ export default function PlusLayout() {
       <Stack.Screen name="regles" options={{ title: 'Règles de la communauté' }} />
       <Stack.Screen name="bloques" options={{ title: 'Membres bloqués' }} />
       <Stack.Screen name="compte" options={{ title: 'Mon compte' }} />
+      <Stack.Screen name="retour" options={{ title: 'Un bug ? Une idée ?', presentation: 'modal' }} />
       {/* The RLS policies enforce it server-side; this hides the screens from other members. */}
       <Stack.Protected guard={isBureau}>
         <Stack.Screen name="admin/index" options={{ title: 'Administration' }} />
