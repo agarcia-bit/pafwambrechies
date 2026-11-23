@@ -9,6 +9,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useEvenements } from '@/lib/data';
+import { usePlanningsOuverts } from '@/lib/mes-creneaux';
 import { dayParts, monthLabel } from '@/lib/format';
 import { detailsEvenement } from '@/lib/periode';
 import type { Evenement } from '@/lib/types';
@@ -30,7 +31,9 @@ export default function AgendaScreen() {
   const espaceSousOnglets = useEspaceSousOnglets();
   const events = useEvenements();
   const bandStyle = useBandListStyle();
-  const { refreshing, onRefresh } = usePullToRefresh(events.refetch);
+  const plannings = usePlanningsOuverts();
+  // Tirer pour rafraîchir relit aussi les plannings : un créneau a pu se remplir entre-temps.
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([events.refetch(), plannings.refetch()]));
 
   return (
     <SectionList

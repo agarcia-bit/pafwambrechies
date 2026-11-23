@@ -44,6 +44,13 @@ function ChoixDuCreneau({ planning }: { planning: PlanningOuvert }) {
   const { prendre, liberer } = useMonCreneau();
   const erreur = prendre.error ?? liberer.error;
 
+  // Un nouveau choix efface le message du précédent (« déjà inscrit à cette heure-là »).
+  function choisir(c: Choix) {
+    prendre.reset();
+    liberer.reset();
+    setChoix(c);
+  }
+
   function prendreLeCreneau(c: Choix) {
     prendre.mutate({ pole: c.pole, heure: c.heure }, {
       onSuccess: () => {
@@ -69,7 +76,7 @@ function ChoixDuCreneau({ planning }: { planning: PlanningOuvert }) {
               {casesDuPole(planning, pole).map((c) => (
                 <PastilleDeCreneau key={c.heure} creneau={c} dureeMinutes={planning.duree_minutes}
                   estChoisi={choix?.pole === pole.id && choix.heure === c.heure}
-                  onChoisir={() => setChoix({ pole: pole.id, nomDuPole: pole.nom, heure: c.heure, inscription: c.inscription })} />
+                  onChoisir={() => choisir({ pole: pole.id, nomDuPole: pole.nom, heure: c.heure, inscription: c.inscription })} />
               ))}
             </View>
           </View>
