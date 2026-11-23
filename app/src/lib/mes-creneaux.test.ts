@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { casesDuPole, resumeDuPlanning, type PlanningOuvert } from './mes-creneaux';
+import { billetsDuPlanning, casesDuPole, resumeDuPlanning, type PlanningOuvert } from './mes-creneaux';
 
 // vi.mock est remonté avant les imports : le vrai client Supabase n'est jamais créé.
 vi.mock('./supabase', () => ({ supabase: {} }));
@@ -28,5 +28,9 @@ describe('mes créneaux', () => {
 
   it('résume les places libres et les créneaux de la personne', () => {
     expect(resumeDuPlanning(marche)).toEqual({ libres: 4, mesCreneaux: [{ pole: 'Gaufres', heure: '10:00' }] });
+  });
+
+  it('fait un billet par créneau de la personne, avec les autres bénévoles', () => {
+    expect(billetsDuPlanning(marche)).toEqual([{ inscription: 9, pole: 1, nomDuPole: 'Gaufres', heure: '10:00', autres: 1 }]);
   });
 });

@@ -74,6 +74,12 @@ export function usePlanning(actionId: number) {
     ajouterUnNom: (pole: Pole, heure: string, nom: string) =>
       ecrireEtRecharger(supabase.from('inscriptions_creneaux').insert({ pole_id: pole.id, debut: heure, nom_libre: nom.trim() })),
     retirerInscrit: (inscrit: Inscrit) => ecrireEtRecharger(supabase.from('inscriptions_creneaux').delete().eq('id', inscrit.id)),
+    /** Le membre du bureau connecté prend une place ; la base refuse si le créneau est complet. */
+    jeViens: (pole: Pole, heure: string, moi: string) =>
+      ecrireEtRecharger(supabase.from('inscriptions_creneaux').insert({ pole_id: pole.id, debut: heure, membre: moi })),
+    /** Comme « Je ne peux plus venir » dans l'app : la place se libère et le référent est prévenu. */
+    jeMeRetire: (inscrit: Inscrit) => ecrireEtRecharger(supabase.from('inscriptions_creneaux')
+      .update({ annulee_le: new Date().toISOString(), annulation_notifiee: false }).eq('id', inscrit.id)),
   };
 }
 

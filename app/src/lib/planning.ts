@@ -51,7 +51,9 @@ type Modification =
   | { type: 'supprimer-pole'; pole: Pole }
   | { type: 'besoin'; pole: Pole; heure: string; besoin: number }
   | { type: 'ajouter-nom'; pole: Pole; heure: string; nom: string }
-  | { type: 'retirer'; inscrit: Inscrit };
+  | { type: 'retirer'; inscrit: Inscrit }
+  | { type: 'je-viens'; pole: Pole; heure: string; moi: string }
+  | { type: 'je-me-retire'; inscrit: Inscrit };
 
 /** La requête qui correspond à chaque geste du bureau sur le planning. */
 function requeteDe(actionId: number, m: Modification) {
@@ -67,6 +69,10 @@ function requeteDe(actionId: number, m: Modification) {
     case 'besoin': return supabase.from('poles').update({ besoins_par_creneau: changerLeBesoin(m.pole, m.heure, m.besoin) }).eq('id', m.pole.id);
     case 'ajouter-nom': return supabase.from('inscriptions_creneaux').insert({ pole_id: m.pole.id, debut: m.heure, nom_libre: m.nom.trim() });
     case 'retirer': return supabase.from('inscriptions_creneaux').delete().eq('id', m.inscrit.id);
+    case 'je-viens': return supabase.from('inscriptions_creneaux').insert({ pole_id: m.pole.id, debut: m.heure, membre: m.moi });
+    // Comme « Je ne peux plus venir » côté adhérent : la place se libère et le référent est prévenu.
+    case 'je-me-retire': return supabase.from('inscriptions_creneaux')
+      .update({ annulee_le: new Date().toISOString(), annulation_notifiee: false }).eq('id', m.inscrit.id);
   }
 }
 

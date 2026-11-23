@@ -39,7 +39,7 @@ export function FicheAction({ action, depart, taches, members, profile, onClose,
       {id
         ? <TachesDeLAction fiche={fiche} taches={taches} members={members} moi={profile.id} />
         : <TachesPrevues fiche={fiche} />}
-      {id && <PlanningDeLAction actionId={id} />}
+      {id && <PlanningDeLAction actionId={id} moi={profile.id} dateAction={champs.date_action} />}
       {id && (
         <section className="drawer-section">
           <div className="section-head"><h3>Discussion</h3><span className="muted small">Bureau uniquement</span></div>

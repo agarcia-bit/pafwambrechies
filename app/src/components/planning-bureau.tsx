@@ -108,7 +108,7 @@ function LigneDePole({ pole, modifier }: { pole: Pole; modifier: Modifier }) {
 }
 
 /** La grille sur téléphone : une section par pôle, une ligne par tranche ; toucher une ligne ouvre le créneau. */
-export function GrilleDuPlanning({ actionId, planning }: { actionId: number; planning: Planning & { horaires: Horaires } }) {
+export function GrilleDuPlanning({ actionId, moi, planning }: { actionId: number; moi: string; planning: Planning & { horaires: Horaires } }) {
   const { colors } = useTheme();
   const tranches = tranchesDeLaJournee(planning.horaires);
   const teinte = { rempli: colors.success, manque: colors.warning, ferme: undefined } as const;
@@ -119,7 +119,7 @@ export function GrilleDuPlanning({ actionId, planning }: { actionId: number; pla
         const besoin = besoinDuCreneau(pole, heure);
         const etat = etatPourLeBureau(besoin, inscrits.length);
         const manque = besoin - inscrits.length;
-        const detail = inscrits.length ? inscrits.map((i) => i.nom).join(', ') : besoin ? `Il manque ${manque} personne${manque > 1 ? 's' : ''}` : 'Pas besoin';
+        const detail = inscrits.length ? inscrits.map((i) => (i.membre === moi ? 'Vous' : i.nom)).join(', ') : besoin ? `Il manque ${manque} personne${manque > 1 ? 's' : ''}` : 'Pas besoin';
         return (
           <ListRow
             key={heure}

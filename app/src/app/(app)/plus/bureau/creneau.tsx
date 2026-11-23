@@ -11,8 +11,9 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
 import { confirmAction } from '@/lib/confirm';
-import { besoinDuCreneau, libelleDeTranche } from '@/lib/creneaux';
+import { besoinDuCreneau, estDejaPrisALHeure, libelleDeTranche } from '@/lib/creneaux';
 import { inscritsDuCreneau, messageDuPlanning, useModifierLePlanning, usePlanning, type Inscrit } from '@/lib/planning';
+import { useMember } from '@/lib/session';
 import { useTheme } from '@/theme';
 
 /** Un créneau d'un pôle (« Gaufres, 10 h – 12 h ») : combien il faut de monde, qui vient, ajouter un nom. */
@@ -21,6 +22,7 @@ export default function CreneauScreen() {
   const planning = usePlanning(Number(action));
   const modification = useModifierLePlanning(Number(action));
   const pole = planning.data?.poles.find((p) => p.id === Number(poleId));
+  const { profile } = useMember();
 
   if (planning.isPending) return <LoadingState />;
   if (planning.isError) return <ErrorState onRetry={planning.refetch} />;
@@ -36,7 +38,11 @@ export default function CreneauScreen() {
           <Compteur libelle="personnes nécessaires sur ce créneau" valeur={besoinDuCreneau(pole, heure)}
             onChanger={(besoin) => modification.mutate({ type: 'besoin', pole, heure, besoin })} />
         </View>
-        <ListeDesInscrits inscrits={inscrits} onRetirer={(inscrit) => modification.mutate({ type: 'retirer', inscrit })} />
+        <ListeDesInscrits inscrits={inscrits} moi={profile.id} onRetirer={(inscrit) => modification.mutate(
+          inscrit.membre === profile.id ? { type: 'je-me-retire', inscrit } : { type: 'retirer', inscrit })} />
+        {inscrits.length < besoinDuCreneau(pole, heure) && !estDejaPrisALHeure(planning.data.inscrits, profile.id, heure) && (
+          <Button title="Je viens" icon="plus" loading={modification.isPending} onPress={() => modification.mutate({ type: 'je-viens', pole, heure, moi: profile.id })} />
+        )}
         {inscrits.length < besoinDuCreneau(pole, heure) && (
           <AjoutDUnNom enCours={modification.isPending} onAjouter={(nom) => modification.mutate({ type: 'ajouter-nom', pole, heure, nom })} />
         )}
@@ -45,10 +51,12 @@ export default function CreneauScreen() {
   );
 }
 
-function ListeDesInscrits({ inscrits, onRetirer }: { inscrits: Inscrit[]; onRetirer: (inscrit: Inscrit) => void }) {
+function ListeDesInscrits({ inscrits, moi, onRetirer }: { inscrits: Inscrit[]; moi: string; onRetirer: (inscrit: Inscrit) => void }) {
   const { colors } = useTheme();
   async function retirer(inscrit: Inscrit) {
-    if (await confirmAction({ title: `Retirer ${inscrit.nom} de ce créneau ?`, confirmLabel: 'Retirer', destructive: true })) onRetirer(inscrit);
+    const estMoi = inscrit.membre === moi;
+    const titre = estMoi ? 'Vous ne pouvez plus venir ?' : `Retirer ${inscrit.nom} de ce créneau ?`;
+    if (await confirmAction({ title: titre, confirmLabel: estMoi ? 'Me désinscrire' : 'Retirer', destructive: true })) onRetirer(inscrit);
   }
   if (!inscrits.length) return <Text tone="secondary">Personne pour l’instant.</Text>;
   return (
@@ -57,7 +65,7 @@ function ListeDesInscrits({ inscrits, onRetirer }: { inscrits: Inscrit[]; onReti
         <ListRow
           key={inscrit.id}
           icon="person"
-          title={inscrit.nom}
+          title={inscrit.membre === moi ? 'Vous' : inscrit.nom}
           subtitle={inscrit.a_compte ? 'Inscrit depuis l’app' : 'Ajouté à la main'}
           right={
             <Pressable accessibilityRole="button" accessibilityLabel={`Retirer ${inscrit.nom}`} onPress={() => retirer(inscrit)} style={styles.retirer}>

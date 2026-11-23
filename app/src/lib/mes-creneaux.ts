@@ -57,6 +57,17 @@ export function resumeDuPlanning(planning: PlanningOuvert) {
   return { libres, mesCreneaux };
 }
 
+export type Billet = { inscription: number; pole: number; nomDuPole: string; heure: string; autres: number };
+
+/** Les créneaux de la personne, dans l'ordre de la journée, avec le nombre d'autres bénévoles. */
+export function billetsDuPlanning(planning: PlanningOuvert): Billet[] {
+  return planning.poles
+    .flatMap((pole) => pole.mes_inscriptions.map((i) => ({
+      inscription: i.id, pole: pole.id, nomDuPole: pole.nom, heure: i.debut, autres: Math.max(0, (pole.pris[i.debut] ?? 1) - 1),
+    })))
+    .sort((a, b) => a.heure.localeCompare(b.heure));
+}
+
 const CLE = ['plannings-ouverts'];
 
 export function usePlanningsOuverts() {
@@ -77,9 +88,11 @@ export function useMonCreneau() {
   const client = useQueryClient();
   const relire = () => client.invalidateQueries({ queryKey: CLE });
   const prendre = useMutation({
-    mutationFn: async ({ pole, heure }: { pole: number; heure: string }) => {
-      const { error } = await supabase.rpc('prendre_creneau', { p_pole: pole, p_debut: heure });
+    /** Rend l'identifiant de la nouvelle inscription (le billet qui doit apparaître). */
+    mutationFn: async ({ pole, heure }: { pole: number; heure: string }): Promise<number> => {
+      const { data, error } = await supabase.rpc('prendre_creneau', { p_pole: pole, p_debut: heure });
       if (error) throw error;
+      return data as number;
     },
     onSettled: relire,
   });

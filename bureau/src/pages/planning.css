@@ -1,36 +1,97 @@
-/* Planning des présences d'une action (PlanningDeLAction, GrilleDuPlanning). Les couleurs de case
-   suivent le sens fixe du DESIGN.md, vu du bureau : vert = rempli, ambre = il manque du monde, gris = pas besoin. */
-.planning .form { margin-bottom: 14px; }
-.planning-horaires { align-items: flex-end; }
+/* Planning des présences d'une action (PlanningDeLAction, VuesDuPlanning, PlacesDuCreneau,
+   BilletDuBureau). Les couleurs suivent le sens fixe du DESIGN.md, vu du bureau : vert = rempli,
+   ambre = il manque du monde, gris = pas besoin. Le billet reprend celui de l'app. */
+.planning { display: grid; gap: 14px; }
+.planning .section-head h3 { display: flex; align-items: center; gap: 10px; }
+.planning .tag { text-transform: none; font-family: var(--font); font-size: 11.5px; font-weight: 650; border-radius: 99px; padding: 3px 9px; background: var(--neutral-soft); color: var(--text-2); }
+.planning .tag.ouvert { background: var(--ok-soft); color: var(--ok); }
 .planning-vide { display: grid; gap: 12px; justify-items: start; padding: 4px 0; }
+
+/* Réglages repliés : une ligne de résumé, « Modifier » pour déplier. */
+.planning-reglages { border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
+.planning-reglages > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 10px 14px; font-size: 13px; color: var(--text-2); }
+.planning-reglages > summary::-webkit-details-marker { display: none; }
+.planning-modifier { margin-left: auto; color: var(--brand); font-weight: 600; }
+.planning-reglages[open] > summary .planning-modifier { visibility: hidden; }
+.planning-reglages > .form, .planning-reglages > .planning-poles { padding: 0 14px 12px; }
+.planning-horaires { align-items: flex-end; }
+.planning-horaires input, .planning-horaires select { height: 40px; box-sizing: border-box; }
 .planning-poles h4 { margin: 6px 0 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; font-size: 11px; }
 .planning-nombre { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .planning-nombre input { width: 62px; }
 
-.planning-grille-cadre { overflow-x: auto; margin-top: 14px; border: 1px solid var(--line); border-radius: var(--r); }
-.planning-grille { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; }
-.planning-grille th { text-align: left; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.planning-grille tbody th { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; padding: 10px 14px; position: sticky; left: 0; background: var(--panel); z-index: 1; }
-.planning-grille td, .planning-grille tbody th { border-top: 1px solid var(--line); vertical-align: top; }
-.planning-case { min-width: 112px; padding: 8px 10px; }
-.planning-case.rempli { background: var(--ok-soft); }
-.planning-case.manque { background: var(--warn-soft); }
-.planning-case.ferme { background: var(--neutral-soft); }
-.planning-besoin { display: flex; align-items: center; gap: 4px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.planning-case.rempli .planning-besoin { color: var(--ok); }
-.planning-case.manque .planning-besoin { color: var(--warn); }
-.planning-case.ferme .planning-besoin { color: var(--muted); }
-.planning-besoin .icon-btn { width: 26px; height: 26px; padding: 0; font-size: 15px; line-height: 1; }
-.planning-noms { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 2px; }
-.planning-noms li { display: flex; align-items: center; justify-content: space-between; gap: 4px; color: var(--text); }
-.planning-noms .icon-btn { width: 24px; height: 24px; padding: 0; opacity: .55; }
-.planning-noms li:hover .icon-btn, .planning-noms .icon-btn:focus-visible { opacity: 1; }
-.planning-ajout { margin-top: 4px; padding: 4px 8px; font-size: 12px; }
-.planning-ajout-champ { margin-top: 4px; width: 100%; padding: 5px 8px; font-size: 13px; }
-.planning-grille thead th { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; color: var(--text-2); padding: 10px; }
-.planning-horaires input, .planning-horaires select { height: 40px; box-sizing: border-box; }
-/* Au doigt, chaque bouton de la grille garde une zone de 44 px. */
+/* Billet : la couleur de l'association, un pointillé à encoches entre l'horaire et l'action. */
+.billet { position: relative; display: flex; background: var(--brand); color: var(--brand-ink); border-radius: 18px; overflow: hidden; }
+.billet-gauche { flex: 1; padding: 14px 20px; min-width: 0; }
+.billet-sur-titre { font-size: 11.5px; font-weight: 600; opacity: .85; text-transform: uppercase; letter-spacing: .04em; }
+.billet-heure { font-family: var(--display); font-size: 24px; font-weight: 700; letter-spacing: -.02em; margin: 2px 0; }
+.billet-pole { font-size: 13.5px; font-weight: 600; }
+.billet-droite { width: 190px; border-left: 2px dashed color-mix(in srgb, var(--brand-ink) 45%, transparent); padding: 14px 18px; display: flex; flex-direction: column; justify-content: center; gap: 4px; font-size: 12.5px; }
+.billet::before, .billet::after { content: ''; position: absolute; right: 181px; width: 18px; height: 18px; border-radius: 50%; background: var(--panel); }
+.billet::before { top: -9px; } .billet::after { bottom: -9px; }
+.billet-lien { border: 0; background: none; box-shadow: none; padding: 0; color: inherit; font-weight: 600; text-decoration: underline; text-align: left; min-height: 24px; }
+.billet-lien:hover { background: none; opacity: .85; }
+
+.seg { justify-self: start; }
+
+/* Jauge d'un pôle (en-tête de carte ou de colonne). */
+.jauge-titre { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.jauge-nom { font-family: var(--display); font-size: 14.5px; font-weight: 650; }
+.jauge-chiffre { font-size: 12.5px; font-weight: 650; color: var(--warn); font-variant-numeric: tabular-nums; }
+.jauge-chiffre.bien { color: var(--ok); }
+.jauge { height: 6px; background: var(--neutral-soft); border-radius: 99px; margin-top: 7px; overflow: hidden; }
+.jauge > div { height: 100%; background: #e59e2b; border-radius: 99px; }
+.jauge > div.bien { background: var(--ok); }
+
+/* Vue par pôle */
+.vue-poles { display: grid; gap: 12px; }
+.carte-pole { border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow-1); background: var(--panel); }
+.carte-pole-tranches { display: grid; gap: 10px 12px; margin-top: 12px; }
+.places .tranche { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Vue en grille */
+.vue-grille { border: 1px solid var(--line); border-radius: 16px; overflow-x: auto; box-shadow: var(--shadow-1); }
+.vue-grille table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 520px; }
+.vue-grille thead th { background: var(--panel-2); padding: 12px 12px 10px; text-align: left; vertical-align: top; text-transform: none; letter-spacing: 0; border-bottom: 1px solid var(--line); }
+.vue-grille thead th:first-child { width: 96px; }
+.vue-grille tbody th { padding: 12px; font-size: 13px; font-weight: 600; color: var(--text-2); text-align: left; vertical-align: top; text-transform: none; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.vue-grille tbody tr + tr { border-top: 1px solid var(--line); }
+.vue-grille td { padding: 10px 12px; vertical-align: top; border-left: 1px solid var(--line); }
+.vue-grille td:has(.places.rempli) { background: color-mix(in srgb, var(--ok-soft) 55%, var(--panel)); }
+.vue-grille td:has(.places.manque) { background: color-mix(in srgb, var(--warn-soft) 40%, var(--panel)); }
+.vue-grille td:has(.places.ferme) { background: var(--panel-2); }
+
+/* Les places d'un créneau */
+.places { display: grid; gap: 5px; justify-items: start; align-content: start; }
+.places-tete { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; min-height: 22px; }
+.personne { position: relative; display: inline-flex; align-items: center; gap: 6px; background: var(--neutral-soft); border-radius: 99px; padding: 3px 10px 3px 3px; font-size: 12.5px; font-weight: 550; max-width: 100%; }
+.personne.moi { background: var(--brand-soft); color: var(--brand); font-weight: 650; }
+.personne-retirer { display: none; border: 0; background: var(--panel); box-shadow: var(--shadow-1); width: 20px; height: 20px; padding: 0; border-radius: 50%; place-items: center; margin-left: 2px; }
+.personne:hover .personne-retirer, .personne-retirer:focus-visible { display: inline-grid; }
+.place-libre { border: 1.5px dashed #e0b36a; color: var(--warn); background: color-mix(in srgb, var(--warn-soft) 45%, var(--panel)); border-radius: 99px; padding: 4px 11px; font-size: 12.5px; font-weight: 650; box-shadow: none; }
+button.place-libre:hover { background: var(--warn-soft); border-style: solid; }
+.place-libre.attente { border-color: var(--line-2); color: var(--muted); background: transparent; font-weight: 500; }
+.places-outils { display: flex; align-items: center; gap: 6px; margin-left: auto; opacity: 0; transition: opacity .15s; }
+.places:hover .places-outils, .places:focus-within .places-outils { opacity: 1; }
+.places-besoin { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.places-besoin .icon-btn { width: 22px; height: 22px; padding: 0; font-size: 14px; line-height: 1; }
+.places-champ { width: 100%; padding: 5px 8px; font-size: 13px; }
+
+/* Au doigt, pas de survol : les outils restent visibles et chaque bouton garde 44 px. */
 @media (pointer: coarse) {
-  .planning-besoin .icon-btn, .planning-noms .icon-btn { width: 44px; height: 44px; opacity: 1; }
-  .planning-ajout { min-height: 44px; }
+  .places-outils { opacity: 1; }
+  .personne-retirer { display: inline-grid; width: 32px; height: 32px; }
+  .places-besoin .icon-btn { width: 44px; height: 44px; }
+  .place-libre { min-height: 44px; }
 }
+@media (prefers-reduced-motion: reduce) { .places-outils { transition: none; } }
+@media (max-width: 640px) {
+  .billet { flex-direction: column; }
+  .billet-droite { width: auto; border-left: 0; border-top: 2px dashed color-mix(in srgb, var(--brand-ink) 45%, transparent); }
+  .billet::before, .billet::after { display: none; }
+  .carte-pole-tranches { grid-template-columns: minmax(0, 1fr) !important; gap: 14px; }
+}
+.planning .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* Dans la grille, l'horaire est en tête de ligne : les outils flottent dans le coin de la case. */
+.vue-grille td { position: relative; }
+.vue-grille .places-tete { position: absolute; top: 6px; right: 8px; width: auto; min-height: 0; }

@@ -1,41 +1,73 @@
 import { useState } from 'react';
 
-import { bilanDesPlaces, DUREES_DE_TRANCHE, minutesDe, tranchesDeLaJournee, type Horaires, type Pole } from '../creneaux';
+import { bilanDesPlaces, DUREES_DE_TRANCHE, libelleDeTranche, minutesDe, tranchesDeLaJournee, type Horaires, type Pole } from '../creneaux';
 import { Icon } from '../Icon';
-import { GrilleDuPlanning } from './GrilleDuPlanning';
+import { BilletsDuBureau } from './BilletDuBureau';
+import { VueEnGrille, VueParPole } from './VuesDuPlanning';
 import { usePlanning, type PlanningEtat } from './usePlanning';
 import './planning.css';
 
 const HORAIRES_PROPOSES: Horaires = { debut: '10:00', fin: '18:00', dureeMinutes: 120 };
 
+type Vue = 'poles' | 'grille';
+
 /**
- * Le planning des présences d'une action : les horaires communs, les pôles (« Gaufres, 3 personnes
- * en même temps ») et la grille pôles × créneaux, avec les noms et les trous.
+ * Le planning des présences d'une action : les créneaux du membre connecté en billets, puis tout
+ * le planning, par pôle ou en grille (heures × pôles), avec les noms, les places libres et
+ * « + Je viens ». Les horaires et les pôles se règlent dans un panneau replié une fois prêts.
  */
-export function PlanningDeLAction({ actionId }: { actionId: number }) {
+export function PlanningDeLAction({ actionId, moi, dateAction }: { actionId: number; moi: string; dateAction: string }) {
   const planning = usePlanning(actionId);
+  const [vue, setVue] = useState<Vue>('poles');
   if (!planning.estCharge) return null;
   const tranches = planning.horaires ? tranchesDeLaJournee(planning.horaires) : [];
+  const estPret = !!planning.horaires && planning.poles.length > 0 && tranches.length > 0;
+  return (
+    <section className="drawer-section planning">
+      <EnteteDuPlanning planning={planning} tranches={tranches} estPret={estPret} />
+      {!planning.horaires && <DemarrerLePlanning onDemarrer={planning.enregistrerHoraires} />}
+      {planning.horaires && (
+        <details className="planning-reglages" open={!estPret}>
+          <summary>{resumeDesReglages(planning.horaires, planning.poles.length)}<span className="planning-modifier">Modifier</span></summary>
+          <ReglagesDuPlanning planning={planning} horaires={planning.horaires} />
+          <ListeDesPoles planning={planning} />
+        </details>
+      )}
+      {estPret && planning.horaires && (
+        <>
+          <BilletsDuBureau planning={planning} moi={moi} dureeMinutes={planning.horaires.dureeMinutes} dateLongue={dateLongue(dateAction)} />
+          <div className="seg" role="group" aria-label="Présentation du planning">
+            <button className={vue === 'poles' ? 'on' : ''} aria-pressed={vue === 'poles'} onClick={() => setVue('poles')}>Par pôle</button>
+            <button className={vue === 'grille' ? 'on' : ''} aria-pressed={vue === 'grille'} onClick={() => setVue('grille')}>Grille</button>
+          </div>
+          {vue === 'poles'
+            ? <VueParPole planning={planning} tranches={tranches} dureeMinutes={planning.horaires.dureeMinutes} moi={moi} />
+            : <VueEnGrille planning={planning} tranches={tranches} dureeMinutes={planning.horaires.dureeMinutes} moi={moi} />}
+        </>
+      )}
+    </section>
+  );
+}
+
+/** « samedi 12 décembre » */
+const dateLongue = (jour: string) =>
+  new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${jour}T12:00:00Z`));
+
+/** « De 10 h à 18 h · tranches de 2 h · 3 pôles » */
+function resumeDesReglages(h: Horaires, nombreDePoles: number) {
+  const heure = (hhmm: string) => libelleDeTranche(hhmm, 0).split(' – ')[0];
+  const duree = h.dureeMinutes < 60 ? `${h.dureeMinutes} min` : `${Math.floor(h.dureeMinutes / 60)} h${h.dureeMinutes % 60 ? ' 30' : ''}`;
+  return `De ${heure(h.debut)} à ${heure(h.fin)} · tranches de ${duree} · ${nombreDePoles} pôle${nombreDePoles > 1 ? 's' : ''}`;
+}
+
+function EnteteDuPlanning({ planning, tranches, estPret }: { planning: PlanningEtat; tranches: string[]; estPret: boolean }) {
   const pris = (pole: number, heure: string) => planning.inscrits.filter((i) => i.pole_id === pole && i.debut === heure).length;
   const bilan = bilanDesPlaces(planning.poles, tranches, pris);
   return (
-    <section className="drawer-section planning">
-      <div className="section-head">
-        <h3>Planning des présences</h3>
-        {planning.poles.length > 0 && tranches.length > 0 && (
-          <span className="muted small">{bilan.libres ? `${bilan.libres} place${bilan.libres > 1 ? 's' : ''} libre${bilan.libres > 1 ? 's' : ''} sur ${bilan.places}` : 'Tout est rempli'}</span>
-        )}
-      </div>
-      {planning.horaires ? (
-        <>
-          <ReglagesDuPlanning planning={planning} horaires={planning.horaires} />
-          <ListeDesPoles planning={planning} />
-          {planning.poles.length > 0 && <GrilleDuPlanning planning={planning} tranches={tranches} dureeMinutes={planning.horaires.dureeMinutes} />}
-        </>
-      ) : (
-        <DemarrerLePlanning onDemarrer={planning.enregistrerHoraires} />
-      )}
-    </section>
+    <div className="section-head">
+      <h3>Planning des présences {planning.horaires && <span className={'tag' + (planning.ouvert ? ' ouvert' : '')}>{planning.ouvert ? 'Ouvert aux membres' : 'Réservé au bureau'}</span>}</h3>
+      {estPret && <span className="muted small">{bilan.libres ? `${bilan.libres} place${bilan.libres > 1 ? 's' : ''} libre${bilan.libres > 1 ? 's' : ''} sur ${bilan.places}` : 'Tout est rempli'}</span>}
+    </div>
   );
 }
 
