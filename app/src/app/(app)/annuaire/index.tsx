@@ -17,10 +17,12 @@ import { useBlockedIds } from '@/lib/moderation';
 import { useTenantConfig } from '@/lib/tenant-config';
 import type { Commercant } from '@/lib/types';
 import { useBandListStyle, useTheme } from '@/theme';
+import { useMargeDeLecture } from '@/components/zone-de-lecture';
 import { useEspaceSousOnglets } from '@/hooks/use-espace-sous-onglets';
 
 export default function AnnuaireScreen() {
   const espaceSousOnglets = useEspaceSousOnglets();
+  const marges = useMargeDeLecture();
   const annuaire = useAnnuaire();
   const bandStyle = useBandListStyle();
   const { colors } = useTheme();
@@ -50,11 +52,11 @@ export default function AnnuaireScreen() {
         renderItem={({ item }) => <MerchantRow merchant={item} />}
         contentInsetAdjustmentBehavior="never"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={[styles.content, { paddingBottom: espaceSousOnglets }]}
+        contentContainerStyle={[styles.content, { paddingBottom: espaceSousOnglets, paddingLeft: marges.gauche, paddingRight: marges.droite }]}
         ItemSeparatorComponent={Gap}
         ListHeaderComponent={
           <View style={styles.header}>
-            <BrandBand title={labels.annuaire} subtitle="Les membres de l’association">
+            <BrandBand dansLaListe title={labels.annuaire} subtitle="Les membres de l’association">
               {categories.annuaire.length > 0 && (
                 <ChipBar onBand options={['Tous', ...categories.annuaire]} value={category} onChange={setCategory} />
               )}

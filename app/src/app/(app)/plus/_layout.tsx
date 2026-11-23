@@ -71,7 +71,7 @@ export default function PlusLayout() {
         <Stack.Screen name="bureau/action/nouvelle" options={{ title: 'Nouvelle action', presentation: 'modal' }} />
         <Stack.Screen name="bureau/tache" options={{ presentation: 'modal' }} />
         <Stack.Screen name="bureau/planning" options={{ title: 'Planning' }} />
-        <Stack.Screen name="bureau/creneau" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="bureau/creneau" options={{ title: 'Créneau', presentation: 'modal' }} />
         <Stack.Screen name="bureau/discussion" options={{ title: 'Discussion du bureau' }} />
       </Stack.Protected>
     </Stack>

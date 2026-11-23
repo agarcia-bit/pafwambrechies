@@ -15,10 +15,12 @@ import { useTenantConfig } from '@/lib/tenant-config';
 import type { Offre } from '@/lib/types';
 import { useBlockedIds } from '@/lib/moderation';
 import { useBandListStyle } from '@/theme';
+import { useMargeDeLecture } from '@/components/zone-de-lecture';
 import { useEspaceSousOnglets } from '@/hooks/use-espace-sous-onglets';
 
 export default function OffresScreen() {
   const espaceSousOnglets = useEspaceSousOnglets();
+  const marges = useMargeDeLecture();
   const offres = useOffres();
   const { categories, labels } = useTenantConfig();
   const bandStyle = useBandListStyle();
@@ -36,11 +38,11 @@ export default function OffresScreen() {
       keyExtractor={(o) => String(o.id)}
       renderItem={({ item }) => <OffreCard offre={item} />}
       contentInsetAdjustmentBehavior="never"
-      contentContainerStyle={[styles.content, { paddingBottom: espaceSousOnglets }]}
+      contentContainerStyle={[styles.content, { paddingBottom: espaceSousOnglets, paddingLeft: marges.gauche, paddingRight: marges.droite }]}
       ItemSeparatorComponent={Gap}
       ListHeaderComponent={
         <View style={styles.header}>
-          <BrandBand title={labels.offres} subtitle="Les bons plans réservés aux adhérents">
+          <BrandBand dansLaListe title={labels.offres} subtitle="Les bons plans réservés aux adhérents">
             {categories.offres.length > 0 && (
               <ChipBar onBand options={['Tous', ...categories.offres]} value={category} onChange={setCategory} />
             )}

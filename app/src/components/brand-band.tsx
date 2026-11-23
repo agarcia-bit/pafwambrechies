@@ -4,6 +4,7 @@ import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui/text';
+import { useMargeDeLecture } from '@/components/zone-de-lecture';
 import { introDelay } from '@/lib/launch-state';
 import { useTheme } from '@/theme';
 
@@ -17,12 +18,20 @@ const ROW_HEIGHT = 42; // the height of a row of filter chips
  * (filters, or a small pill). It also extends far above the screen, so that pulling the list down
  * shows the same color instead of grey.
  */
-export function BrandBand({ title, subtitle, children }: PropsWithChildren<{ title: string; subtitle?: string }>) {
+export function BrandBand({ title, subtitle, dansLaListe = false, children }: PropsWithChildren<{
+  title: string;
+  subtitle?: string;
+  /** La bande est le haut d'une liste centrée : elle en déborde la marge pour toucher les bords. */
+  dansLaListe?: boolean;
+}>) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
+  // Sur grand écran, la couleur va d'un bord à l'autre mais le titre s'aligne sur les cartes.
+  const marges = useMargeDeLecture();
+  const debord = dansLaListe ? { marginLeft: -marges.gauche, marginRight: -marges.droite } : null;
   return (
-    <View style={[styles.band, { backgroundColor: colors.banner, paddingTop: insets.top + 12 }]}>
+    <View style={[styles.band, { backgroundColor: colors.banner, paddingTop: insets.top + 12, paddingLeft: marges.gauche, paddingRight: marges.droite }, debord]}>
       <View pointerEvents="none" style={[styles.overscroll, { backgroundColor: colors.banner }]} />
       <View style={styles.titles}>
         <Text variant="largeTitle" style={styles.title} numberOfLines={1} adjustsFontSizeToFit>

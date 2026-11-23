@@ -14,6 +14,7 @@ import { dayParts, monthLabel } from '@/lib/format';
 import { detailsEvenement } from '@/lib/periode';
 import type { Evenement } from '@/lib/types';
 import { useBandListStyle, useTheme } from '@/theme';
+import { useMargeDeLecture } from '@/components/zone-de-lecture';
 import { useEspaceSousOnglets } from '@/hooks/use-espace-sous-onglets';
 
 function byMonth(events: Evenement[]): { title: string; data: Evenement[] }[] {
@@ -29,6 +30,7 @@ function byMonth(events: Evenement[]): { title: string; data: Evenement[] }[] {
 
 export default function AgendaScreen() {
   const espaceSousOnglets = useEspaceSousOnglets();
+  const marges = useMargeDeLecture();
   const events = useEvenements();
   const bandStyle = useBandListStyle();
   const plannings = usePlanningsOuverts();
@@ -40,7 +42,7 @@ export default function AgendaScreen() {
       style={bandStyle}
       ListHeaderComponent={
         <>
-          <BrandBand title="Agenda" subtitle="Les prochains rendez-vous">
+          <BrandBand dansLaListe title="Agenda" subtitle="Les prochains rendez-vous">
             {events.data && (
               <BandPill label={events.data.length === 1 ? '1 événement à venir' : `${events.data.length} événements à venir`} />
             )}
@@ -58,7 +60,7 @@ export default function AgendaScreen() {
       )}
       stickySectionHeadersEnabled={false}
       contentInsetAdjustmentBehavior="never"
-      contentContainerStyle={[styles.content, { paddingBottom: espaceSousOnglets }]}
+      contentContainerStyle={[styles.content, { paddingBottom: espaceSousOnglets, paddingLeft: marges.gauche, paddingRight: marges.droite }]}
       ItemSeparatorComponent={Gap}
       ListEmptyComponent={
         events.isPending ? (

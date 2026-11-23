@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 
+import { useMargeDeLecture } from '@/components/zone-de-lecture';
 import { useEspaceSousOnglets } from '@/hooks/use-espace-sous-onglets';
 import { PushOffer } from '@/components/association';
 import { CotisationBanner } from '@/components/cotisation-banner';
@@ -30,6 +31,7 @@ type Category = (typeof ACTU_CATEGORIES)[number];
 
 export default function ActusScreen() {
   const espaceSousOnglets = useEspaceSousOnglets();
+  const marges = useMargeDeLecture();
   const [category, setCategory] = useState<Category>('Tous');
   const { branding, profile } = useMember();
   const { colors } = useTheme();
@@ -51,7 +53,9 @@ export default function ActusScreen() {
           title={(branding?.tenant_name ?? branding?.name ?? 'Actus').toUpperCase()}>
           <ChipBar onBand options={ACTU_CATEGORIES} value={category} onChange={setCategory} />
         </BrandBand>
-        <CotisationBanner />
+        <View style={{ paddingLeft: marges.gauche, paddingRight: marges.droite }}>
+          <CotisationBanner />
+        </View>
       </View>
       <Animated.FlatList
         style={styles.list}
@@ -69,7 +73,7 @@ export default function ActusScreen() {
           </View>
         )}
         contentInsetAdjustmentBehavior="never"
-        contentContainerStyle={[styles.content, { paddingBottom: espaceSousOnglets }]}
+        contentContainerStyle={[styles.content, { paddingBottom: espaceSousOnglets, paddingLeft: marges.gauche, paddingRight: marges.droite }]}
         ItemSeparatorComponent={Gap}
         ListHeaderComponent={
           <View style={styles.header}>
