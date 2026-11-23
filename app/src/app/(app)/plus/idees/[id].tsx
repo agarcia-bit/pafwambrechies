@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import { Pressable, ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
 
 import { CommentCount, CommentsSection, LikeButton } from '@/components/social';
+import { BadgeDeProposition } from '@/components/proposer-un-evenement';
 import { Badge } from '@/components/ui/badge';
 import { Icon } from '@/components/ui/icon';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -37,6 +38,7 @@ export default function IdeeScreen() {
       contentContainerStyle={styles.content}>
       <View style={styles.meta}>
         <Badge label={i.categorie} />
+        <BadgeDeProposition statut={i.proposition_statut} />
         <Text variant="footnote" tone="secondary" style={styles.shrink}>
           {i.prenom || 'Anonyme'} · {formatRelative(i.created_at)}
         </Text>

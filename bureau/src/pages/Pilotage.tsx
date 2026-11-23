@@ -9,6 +9,8 @@ import { Chronologie, Equipe, SidePanel, type CalEvent } from './PilotageViews';
 import { Kpi } from '../components/ui/Kpi';
 import { DemarrerLePilotage } from './DemarrerLePilotage';
 import { FicheAction } from './FicheAction';
+import { EncadreDesPropositions, FenetreDeProposition } from './PropositionsDesMembres';
+import { usePropositionsDesMembres, type PropositionAvecSoutiens } from './usePropositionsDesMembres';
 import { useOuvertureDeFiche } from './useOuvertureDeFiche';
 
 // Deux vues suffisent : par date (que reste-t-il à faire ?) et par personne (qui fait quoi ?).
@@ -32,23 +34,11 @@ export function Pilotage({ profile }: PageProps) {
   // retours anticipés ci-dessous : React exige le même nombre de mémoires à chaque affichage.
   const [leaving, setLeaving] = useState<Set<number>>(new Set());
   const fiche = useOuvertureDeFiche(agenda.data);
+  const propositions = usePropositionsDesMembres();
+  const [aRepondre, setARepondre] = useState<PropositionAvecSoutiens | null>(null);
   const { ouverte: open, depart, ouvrir: setOpen, fermer: fermerLaFiche } = fiche;
   const [view, setViewState] = useState<string>(() => { try { const v = localStorage.getItem('pilotage-vue'); return v === 'equipe' ? v : 'chrono'; } catch { return 'chrono'; } });
   const setView = (v: string) => { setViewState(v); try { localStorage.setItem('pilotage-vue', v); } catch { /* sans stockage */ } };
-
-  const kpi = useMemo(() => {
-    const d = data.data;
-    if (!d) return null;
-    const openTasks = d.taches.filter((t) => t.statut !== 'Terminé');
-    return {
-      aVenir: d.actions.filter((a) => a.statut !== 'Terminé' && a.date_action >= today()).length,
-      enCours: d.actions.filter((a) => a.statut === 'En cours').length,
-      bloque: d.actions.filter((a) => a.statut === 'Bloqué').length,
-      retard: openTasks.filter((t) => isOverdue(t.echeance, t.statut)).length,
-      mine: openTasks.filter((t) => t.responsable === profile.id).length,
-      budget: d.actions.filter((a) => a.statut !== 'Terminé').reduce((s, a) => s + (a.budget ?? 0), 0),
-    };
-  }, [data.data, profile.id]);
 
   if (data.loading && !data.data) return <div className="card"><Skeleton lines={6} /></div>;
   if (data.error) return <p className="error">{data.error}</p>;
@@ -87,14 +77,8 @@ export function Pilotage({ profile }: PageProps) {
 
   return (
     <>
-      {all.actions.length > 0 && <div className="kpis">
-        <Kpi valeur={kpi!.aVenir} libelle="actions à venir" />
-        <Kpi valeur={kpi!.enCours} libelle="en cours" ton="info" />
-        {kpi!.bloque > 0 && <Kpi valeur={kpi!.bloque} libelle={kpi!.bloque > 1 ? 'bloquées' : 'bloquée'} ton="bad" />}
-        <Kpi valeur={kpi!.retard} libelle={kpi!.retard > 1 ? 'tâches en retard' : 'tâche en retard'} ton={kpi!.retard ? 'bad' : 'ok'} />
-        <Kpi valeur={kpi!.mine} libelle={kpi!.mine > 1 ? 'tâches pour moi' : 'tâche pour moi'} ton="brand" />
-        {kpi!.budget > 0 && <Kpi valeur={`${kpi!.budget.toLocaleString('fr-FR')} €`} libelle="budget engagé" />}
-      </div>}
+      <EncadreDesPropositions etat={propositions} onRepondre={setARepondre} />
+      {all.actions.length > 0 && <ChiffresDuPilotage actions={all.actions} taches={all.taches} moi={profile.id} />}
 
       <div className="view-bar">
         <div className="seg" role="tablist" aria-label="Vue">
@@ -131,6 +115,36 @@ export function Pilotage({ profile }: PageProps) {
           onCreee={setOpen}
         />
       )}
+      {aRepondre && (
+        // Une proposition acceptée a pu créer une action ou des événements : le Pilotage se relit.
+        <FenetreDeProposition proposition={aRepondre} etat={propositions}
+          onFermer={() => { setARepondre(null); data.reload(); agenda.reload(); }} />
+      )}
     </>
+  );
+}
+
+/** Les chiffres clés en tête du Pilotage : actions à venir, en cours, bloquées, retards, mes tâches, budget. */
+function ChiffresDuPilotage({ actions, taches, moi }: { actions: Action[]; taches: Tache[]; moi: string }) {
+  const kpi = useMemo(() => {
+    const ouvertes = taches.filter((t) => t.statut !== 'Terminé');
+    return {
+      aVenir: actions.filter((a) => a.statut !== 'Terminé' && a.date_action >= today()).length,
+      enCours: actions.filter((a) => a.statut === 'En cours').length,
+      bloque: actions.filter((a) => a.statut === 'Bloqué').length,
+      retard: ouvertes.filter((t) => isOverdue(t.echeance, t.statut)).length,
+      mine: ouvertes.filter((t) => t.responsable === moi).length,
+      budget: actions.filter((a) => a.statut !== 'Terminé').reduce((s, a) => s + (a.budget ?? 0), 0),
+    };
+  }, [actions, taches, moi]);
+  return (
+    <div className="kpis">
+      <Kpi valeur={kpi.aVenir} libelle="actions à venir" />
+      <Kpi valeur={kpi.enCours} libelle="en cours" ton="info" />
+      {kpi.bloque > 0 && <Kpi valeur={kpi.bloque} libelle={kpi.bloque > 1 ? 'bloquées' : 'bloquée'} ton="bad" />}
+      <Kpi valeur={kpi.retard} libelle={kpi.retard > 1 ? 'tâches en retard' : 'tâche en retard'} ton={kpi.retard ? 'bad' : 'ok'} />
+      <Kpi valeur={kpi.mine} libelle={kpi.mine > 1 ? 'tâches pour moi' : 'tâche pour moi'} ton="brand" />
+      {kpi.budget > 0 && <Kpi valeur={`${kpi.budget.toLocaleString('fr-FR')} €`} libelle="budget engagé" />}
+    </div>
   );
 }

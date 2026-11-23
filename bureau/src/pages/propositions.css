@@ -1,0 +1,25 @@
+/* Les événements proposés par les membres, en haut du Pilotage, et la fenêtre pour y répondre. */
+.propositions { margin-bottom: 16px; padding: 16px 18px; border-left: 0; }
+.propositions h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 16px; }
+.propositions h2 svg { color: var(--brand); }
+.propositions ul { list-style: none; margin: 0; padding: 0; }
+.propositions li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.propositions li:first-child { border-top: 0; }
+.propositions li p { margin: 2px 0 0; }
+.propositions li button { min-height: 44px; flex: none; }
+
+.proposition { display: grid; gap: 14px; }
+.proposition-quand { display: flex; gap: 8px; align-items: flex-start; margin: 0; font-weight: 550; }
+.proposition-texte { margin: 0; white-space: pre-wrap; line-height: 1.5; }
+.proposition-choix { display: grid; gap: 10px; padding: 14px; border-radius: 12px; background: var(--panel-2); }
+.proposition-choix p { margin: 0; }
+.proposition-choix .seg button { min-height: 44px; }
+.proposition-date, .proposition-mot { display: grid; gap: 6px; font-weight: 600; font-size: 13px; }
+.proposition-date input { max-width: 220px; min-height: 44px; }
+.proposition-mot textarea { font-weight: 400; }
+
+@media (max-width: 720px) {
+  .propositions li { flex-wrap: wrap; }
+  .propositions li button { width: 100%; }
+  .proposition-choix .seg { width: 100%; } .proposition-choix .seg button { flex: 1; }
+}

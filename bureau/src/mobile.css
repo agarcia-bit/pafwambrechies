@@ -51,6 +51,8 @@
 
   /* Les panneaux latéraux (fiches, réglages, discussion) prennent tout l'écran. */
   .drawer, .drawer.wide { width: 100%; border-radius: 0; }
+  /* Au-dessus de la barre rouge collée en haut (z-index 20), sinon elle cache le titre du panneau. */
+  .scrim { z-index: 21; } .drawer { z-index: 22; }
   /* Trois boutons en bas d'un panneau ne tiennent pas sur une ligne : ils passent à la ligne. */
   .drawer-foot { flex-wrap: wrap; }
   .chat-panel { width: 100vw; height: 100dvh; }

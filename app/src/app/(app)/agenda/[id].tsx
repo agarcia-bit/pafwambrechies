@@ -54,6 +54,7 @@ export default function EvenementScreen() {
         <DetailCard>
           <DetailRow icon="calendar" text={formatPeriode(ev)} />
           {!!ev.heure && <DetailRow icon="clock" text={ev.heure} />}
+          {!!ev.propose_par_nom && <DetailRow icon="person" text={`Proposé par ${ev.propose_par_nom}`} />}
           {!!place && (
             <DetailRow icon="location" text={place} hint="Itinéraire" onPress={() => openLink(mapsUrl(place), { inApp: false })} />
           )}
