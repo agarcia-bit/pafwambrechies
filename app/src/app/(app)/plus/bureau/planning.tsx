@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import { BilletDeCreneau } from '@/components/billet-de-creneau';
@@ -10,7 +10,9 @@ import { ListRow, ListSection } from '@/components/ui/list';
 import { ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { confirmAction } from '@/lib/confirm';
-import { billetsDeLaPersonne, tranchesDeLaJournee, trousDuPlanning } from '@/lib/creneaux';
+import { billetsDeLaPersonne, messageDeRelance, tranchesDeLaJournee, trousDuPlanning } from '@/lib/creneaux';
+import { formatDayLong } from '@/lib/format';
+import { useDerniereRelance } from '@/lib/relance';
 import { messageDuPlanning, useModifierLePlanning, usePlanning, type Inscrit } from '@/lib/planning';
 import { useMember } from '@/lib/session';
 
@@ -27,6 +29,7 @@ export default function PlanningScreen() {
   const { profile } = useMember();
   const planning = usePlanning(actionId);
   const modification = useModifierLePlanning(actionId);
+  const derniereRelance = useDerniereRelance(actionId);
   const [reglagesOuverts, setReglagesOuverts] = useState(false);
   const [vue, setVue] = useState<(typeof VUES)[number]>('Ce qui manque');
 
@@ -47,7 +50,12 @@ export default function PlanningScreen() {
         {!horaires && <DemarrerLePlanning modifier={modification.mutate} />}
         {horaires && estPret && (
           <>
-            <EnteteDuPlanning trous={trous} ouvert={ouvert} modifier={modification.mutate} enCours={modification.isPending} />
+            <EnteteDuPlanning trous={trous} ouvert={ouvert} modifier={modification.mutate} enCours={modification.isPending}
+              derniereRelance={derniereRelance.data ?? null}
+              onPrevenir={() => router.push({ pathname: '/plus/bureau/relance', params: {
+                action: String(actionId), ouvert: ouvert ? '1' : '0',
+                message: messageDeRelance(planning.data.titre, formatDayLong(planning.data.date).toLowerCase(), trous, horaires.dureeMinutes),
+              } })} />
             {billetsDeLaPersonne(poles, planning.data.inscrits, profile.id).map(({ inscrit, nomDuPole, avec }) => (
               <BilletDeCreneau key={inscrit.id} nomDuPole={nomDuPole} heure={inscrit.debut} dureeMinutes={horaires.dureeMinutes}
                 autres={avec.length} estNouveau={false} enCours={modification.isPending} onLiberer={() => seRetirer(inscrit)} compact />

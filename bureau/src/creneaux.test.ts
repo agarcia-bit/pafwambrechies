@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  besoinDuCreneau, billetsDeLaPersonne, creneauxDuPlanning, messageDeRelance, resumeDesTrous, trousDuPlanning, bilanDesPlaces, changerLeBesoin, estDejaPrisALHeure, etatDuCreneau, etatPourLeBureau, libelleDeLEtat, libelleDeTranche, tranchesDeLaJournee,
+  besoinDuCreneau, billetsDeLaPersonne, creneauxDuPlanning, estRecente, quandEstCe, messageDeRelance, resumeDesTrous, trousDuPlanning, bilanDesPlaces, changerLeBesoin, estDejaPrisALHeure, etatDuCreneau, etatPourLeBureau, libelleDeLEtat, libelleDeTranche, tranchesDeLaJournee,
 } from './creneaux';
 
 const cafe = { id: 1, nom: 'Café', personnes: 2, besoins_par_creneau: { '10:00': 0 }, ordre: 0 };
@@ -84,5 +84,22 @@ describe('créneaux de présence', () => {
     expect(messageDeRelance('Marché de Noël', 'samedi 12 décembre', trous, 120))
       .toBe('Marché de Noël samedi 12 décembre : il manque 6 personnes, surtout au pôle Buvette (10 h – 12 h). Un créneau vous tente ?');
     expect(messageDeRelance('Marché de Noël', 'samedi', [], 120)).toBe('Marché de Noël samedi : tous les créneaux sont pris, merci à tous !');
+  });
+});
+
+describe('relance : quand et à quel rythme', () => {
+  const maintenant = new Date('2026-11-23T17:00:00Z'); // 18 h à Paris
+
+  it('dit quand est partie la dernière relance', () => {
+    expect(quandEstCe('2026-11-23T08:05:00Z', maintenant)).toBe('aujourd’hui à 9 h 05');
+    expect(quandEstCe('2026-11-22T17:00:00Z', maintenant)).toBe('hier à 18 h');
+    expect(quandEstCe('2026-11-03T17:00:00Z', maintenant)).toBe('le 3 novembre à 18 h');
+  });
+
+  it('prévient seulement si la dernière relance a moins de 24 h', () => {
+    const relance = (iso: string) => ({ created_at: iso, nb_notifications: 3, nb_emails: 1 });
+    expect(estRecente(relance('2026-11-23T08:00:00Z'), maintenant.getTime())).toBe(true);
+    expect(estRecente(relance('2026-11-22T16:00:00Z'), maintenant.getTime())).toBe(false);
+    expect(estRecente(null, maintenant.getTime())).toBe(false);
   });
 });

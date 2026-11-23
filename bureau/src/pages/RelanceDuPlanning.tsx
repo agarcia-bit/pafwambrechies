@@ -32,7 +32,7 @@ export function FenetreDeRelance({ relance, messagePropose, estOuvert, onFermer,
       footer={<>
         <span className="grow" />
         <button className="ghost" onClick={onFermer}>Annuler</button>
-        <button className="primary" disabled={!message.trim() || relance.enCours || total === 0} onClick={envoyer}>
+        <button className="primary" disabled={!message.trim() || relance.enCours || !total} onClick={envoyer}>
           <Icon name="send" size={15} /> {relance.enCours ? 'Envoi…' : 'Envoyer'}
         </button>
       </>}>

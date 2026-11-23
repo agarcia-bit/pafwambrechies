@@ -1,29 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { type Relance } from '../creneaux';
 import { supabase, toast } from '../lib';
+
+export { estRecente, quandEstCe, type Relance } from '../creneaux';
 
 // La relance d'un planning (supabase/relances_planning.sql, fonction relancer-planning) : la
 // dernière relance pour l'afficher, combien de personnes seraient prévenues, et l'envoi lui-même.
 
-export type Relance = { created_at: string; nb_notifications: number; nb_emails: number };
 export type Apercu = { nb_notifications: number; nb_emails: number };
-
-const UN_JOUR_MS = 24 * 60 * 60 * 1000;
-
-/** Vrai si la relance a moins de 24 h : la fenêtre demande alors confirmation avant de relancer. */
-export const estRecente = (relance: Relance | null, maintenant = Date.now()) =>
-  !!relance && maintenant - new Date(relance.created_at).getTime() < UN_JOUR_MS;
-
-/** « hier à 18 h », « aujourd'hui à 9 h 05 », « le 3 décembre à 18 h » */
-export function quandEstCe(iso: string, maintenant = new Date()): string {
-  const date = new Date(iso);
-  const jour = (d: Date) => d.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' });
-  const hier = new Date(maintenant.getTime() - UN_JOUR_MS);
-  const heure = date.toLocaleTimeString('fr-FR', { hour: 'numeric', minute: '2-digit', timeZone: 'Europe/Paris' }).replace(':', ' h ').replace(' h 00', ' h');
-  if (jour(date) === jour(maintenant)) return `aujourd’hui à ${heure}`;
-  if (jour(date) === jour(hier)) return `hier à ${heure}`;
-  return `le ${date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' })} à ${heure}`;
-}
 
 /** L'erreur de la fonction en ligne, dite simplement. */
 async function messageDErreur(erreur: unknown): Promise<string> {
