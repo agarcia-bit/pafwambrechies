@@ -14,7 +14,10 @@ export type PoleOuvert = {
   besoins_par_creneau: Record<string, number>;
   /** Combien de personnes sont déjà inscrites, par heure de début (« 10:00 »). */
   pris: Record<string, number>;
-  mes_inscriptions: { id: number; debut: string }[];
+  /** remplacant_recherche : la personne cherche quelqu'un pour reprendre sa place (supabase/creneaux.sql, section 9). */
+  mes_inscriptions: { id: number; debut: string; remplacant_recherche?: boolean }[];
+  /** Les places des autres qui cherchent un remplaçant, sans leur nom. */
+  a_reprendre?: { id: number; debut: string }[];
 };
 
 export type PlanningOuvert = {
@@ -57,18 +60,20 @@ export function resumeDuPlanning(planning: PlanningOuvert) {
   return { libres, mesCreneaux };
 }
 
-export type Billet = { inscription: number; pole: number; nomDuPole: string; heure: string; autres: number };
+export type Billet = { inscription: number; pole: number; nomDuPole: string; heure: string; autres: number; remplacantRecherche: boolean };
 
 /** Les créneaux de la personne, dans l'ordre de la journée, avec le nombre d'autres bénévoles. */
 export function billetsDuPlanning(planning: PlanningOuvert): Billet[] {
   return planning.poles
     .flatMap((pole) => pole.mes_inscriptions.map((i) => ({
       inscription: i.id, pole: pole.id, nomDuPole: pole.nom, heure: i.debut, autres: Math.max(0, (pole.pris[i.debut] ?? 1) - 1),
+      remplacantRecherche: !!i.remplacant_recherche,
     })))
     .sort((a, b) => a.heure.localeCompare(b.heure));
 }
 
-const CLE = ['plannings-ouverts'];
+export const CLE_DES_PLANNINGS = ['plannings-ouverts'];
+const CLE = CLE_DES_PLANNINGS;
 
 export function usePlanningsOuverts() {
   return useQuery({

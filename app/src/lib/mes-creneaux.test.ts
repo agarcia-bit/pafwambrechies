@@ -31,6 +31,6 @@ describe('mes créneaux', () => {
   });
 
   it('fait un billet par créneau de la personne, avec les autres bénévoles', () => {
-    expect(billetsDuPlanning(marche)).toEqual([{ inscription: 9, pole: 1, nomDuPole: 'Gaufres', heure: '10:00', autres: 1 }]);
+    expect(billetsDuPlanning(marche)).toEqual([{ inscription: 9, pole: 1, nomDuPole: 'Gaufres', heure: '10:00', autres: 1, remplacantRecherche: false }]);
   });
 });

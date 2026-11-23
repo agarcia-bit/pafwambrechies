@@ -11,7 +11,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
 import { confirmAction } from '@/lib/confirm';
-import { besoinDuCreneau, estDejaPrisALHeure, libelleDeTranche } from '@/lib/creneaux';
+import { avecMentionDeReprise, besoinDuCreneau, estDejaPrisALHeure, libelleDeTranche } from '@/lib/creneaux';
 import { inscritsDuCreneau, messageDuPlanning, useModifierLePlanning, usePlanning, type Inscrit } from '@/lib/planning';
 import { useMember } from '@/lib/session';
 import { useTheme } from '@/theme';
@@ -65,7 +65,7 @@ function ListeDesInscrits({ inscrits, moi, onRetirer }: { inscrits: Inscrit[]; m
         <ListRow
           key={inscrit.id}
           icon="person"
-          title={inscrit.membre === moi ? 'Vous' : inscrit.nom}
+          title={avecMentionDeReprise(inscrit.membre === moi ? 'Vous' : inscrit.nom, inscrit.a_reprendre)}
           subtitle={inscrit.a_compte ? 'Inscrit depuis l’app' : 'Ajouté à la main'}
           right={
             <Pressable accessibilityRole="button" accessibilityLabel={`Retirer ${inscrit.nom}`} onPress={() => retirer(inscrit)} style={styles.retirer}>

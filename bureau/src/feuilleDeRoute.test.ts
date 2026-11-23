@@ -8,7 +8,7 @@ describe('feuille de route du jour J', () => {
   const inscrits = [
     { pole_id: 1, debut: '10:00', membre: 'zoe', nom: 'Zoé Martin' },
     { pole_id: 1, debut: '10:00', membre: null, nom: 'Albert (voisin)' },
-    { pole_id: 1, debut: '12:00', membre: 'tom', nom: 'Tom Leroy' },
+    { pole_id: 1, debut: '12:00', membre: 'tom', nom: 'Tom Leroy', a_reprendre: true },
   ];
 
   it('range les noms par ordre alphabétique et ajoute une ligne vide par place libre', () => {
@@ -24,6 +24,8 @@ describe('feuille de route du jour J', () => {
     const feuille = feuilleDeRoute([buvette, caisse], ['10:00', '12:00'], 120, inscrits, null);
     expect(feuille.map((p) => p.nom)).toEqual(['Buvette']);
     expect(feuille[0].tranches.map((t) => t.heure)).toEqual(['10:00', '12:00']);
+    // Tom cherche un remplaçant : la feuille le signale, le responsable sait à quoi s'attendre.
+    expect(feuille[0].tranches[1].lignes[0].nom).toBe('Tom Leroy (à reprendre)');
   });
 
   it("n'ajoute les coordonnées que des membres qui ont un compte, et seulement si on les fournit", () => {

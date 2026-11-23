@@ -96,7 +96,10 @@ export function etatPourLeBureau(besoin: number, pris: number): EtatPourLeBureau
   return pris >= besoin ? 'rempli' : 'manque';
 }
 
-type InscritDuPlanning = { id: number; pole_id: number; debut: string; membre: string | null; nom: string };
+type InscritDuPlanning = { id: number; pole_id: number; debut: string; membre: string | null; nom: string; a_reprendre?: boolean };
+
+/** « Julien (à reprendre) » : la personne cherche un remplaçant, la place reste à son nom (supabase/creneaux.sql, section 9). */
+export const avecMentionDeReprise = (nom: string, aReprendre?: boolean) => (aReprendre ? `${nom} (à reprendre)` : nom);
 
 /** Les créneaux d'une personne, dans l'ordre de la journée, avec le prénom des autres présents. */
 export function billetsDeLaPersonne<T extends InscritDuPlanning>(poles: Pole[], inscrits: T[], moi: string) {
@@ -127,7 +130,7 @@ export function creneauxDuPlanning<T extends InscritDuPlanning>(poles: Pole[], t
       const ici = inscrits.filter((i) => i.pole_id === pole.id && i.debut === heure);
       creneaux.push({
         pole, heure, manque: Math.max(0, besoin - ici.length),
-        presents: ici.map((i) => (moi && i.membre === moi ? 'vous' : i.nom)), estMoi: ici.some((i) => !!moi && i.membre === moi),
+        presents: ici.map((i) => avecMentionDeReprise(moi && i.membre === moi ? 'vous' : i.nom, i.a_reprendre)), estMoi: ici.some((i) => !!moi && i.membre === moi),
       });
     }
   }

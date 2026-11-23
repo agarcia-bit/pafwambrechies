@@ -2,7 +2,7 @@
 // pour chaque pôle, chaque tranche horaire avec les noms de ceux qui y sont, puis des lignes
 // « à pourvoir » à remplir au stylo le jour même. Sans accès à la base : testé à part.
 
-import { besoinDuCreneau, libelleDeTranche, type Pole } from './creneaux';
+import { avecMentionDeReprise, besoinDuCreneau, libelleDeTranche, type Pole } from './creneaux';
 
 /** Les coordonnées d'un membre, imprimées seulement si le bureau coche « Avec les coordonnées ». */
 export type Contact = { email: string | null; telephone: string | null };
@@ -12,7 +12,7 @@ export type LigneDeFeuille = { nom: string | null; contact: Contact | null };
 export type TrancheDeFeuille = { heure: string; libelle: string; lignes: LigneDeFeuille[] };
 export type PoleDeFeuille = { nom: string; tranches: TrancheDeFeuille[] };
 
-type Inscrit = { pole_id: number; debut: string; membre: string | null; nom: string };
+type Inscrit = { pole_id: number; debut: string; membre: string | null; nom: string; a_reprendre?: boolean };
 
 /** Les lignes d'une tranche : les inscrits par ordre alphabétique, puis une ligne vide par place libre. */
 function lignesDeLaTranche(pole: Pole, heure: string, inscrits: Inscrit[], contacts: Map<string, Contact> | null): LigneDeFeuille[] {
@@ -21,7 +21,8 @@ function lignesDeLaTranche(pole: Pole, heure: string, inscrits: Inscrit[], conta
     .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
   const vides = Math.max(0, besoinDuCreneau(pole, heure) - ici.length);
   return [
-    ...ici.map((i) => ({ nom: i.nom, contact: (contacts && i.membre && contacts.get(i.membre)) || null })),
+    // « à reprendre » : la personne cherche un remplaçant, le responsable sait qu'il faudra peut-être un autre nom.
+    ...ici.map((i) => ({ nom: avecMentionDeReprise(i.nom, i.a_reprendre), contact: (contacts && i.membre && contacts.get(i.membre)) || null })),
     ...Array.from({ length: vides }, () => ({ nom: null, contact: null })),
   ];
 }

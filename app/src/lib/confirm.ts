@@ -32,3 +32,30 @@ export function confirmAction(options: {
     );
   });
 }
+
+/**
+ * Une question à plusieurs réponses (ex. « Chercher un remplaçant » ou « Libérer ma place ») ;
+ * rend la valeur choisie, ou null si la personne annule. Sur le web, une suite de confirmations.
+ */
+export function choisirParmi<T extends string>(options: {
+  title: string;
+  message?: string;
+  choix: { label: string; valeur: T; destructive?: boolean }[];
+}): Promise<T | null> {
+  const { title, message, choix } = options;
+  if (Platform.OS === 'web') {
+    const retenu = choix.find((c) => window.confirm(`${title}\n\n${c.label} ?`));
+    return Promise.resolve(retenu?.valeur ?? null);
+  }
+  return new Promise((resolve) => {
+    Alert.alert(
+      title,
+      message,
+      [
+        ...choix.map((c) => ({ text: c.label, style: c.destructive ? ('destructive' as const) : ('default' as const), onPress: () => resolve(c.valeur) })),
+        { text: 'Annuler', style: 'cancel' as const, onPress: () => resolve(null) },
+      ],
+      { cancelable: true, onDismiss: () => resolve(null) }
+    );
+  });
+}

@@ -14,6 +14,8 @@
 -- propres créneaux (ni budget, ni tâches, ni le nom des autres).
 -- Le nombre de places est vérifié par la base elle-même, sous verrou : deux personnes qui touchent
 -- la dernière place au même instant ne peuvent pas la prendre toutes les deux.
+-- Un adhérent qui ne peut plus venir peut chercher un remplaçant (section 9) : sa place reste à son
+-- nom, « à reprendre » pour les autres, jusqu'à ce que quelqu'un la prenne.
 -- Script rejouable sans risque.
 
 -- 1. Les horaires de l'action ─────────────────────────────────────────────────────────────────────
@@ -65,6 +67,13 @@ create table if not exists public.inscriptions_creneaux (
   rappel_veille_le timestamptz,
   constraint inscriptions_creneaux_qui check ((membre is null) <> (nom_libre is null))
 );
+-- Remplacement (section 9) : depuis quand la personne cherche un remplaçant, qui a repris sa place,
+-- et de quoi n'envoyer chaque notification qu'une fois (notify-taches).
+alter table public.inscriptions_creneaux
+  add column if not exists remplacant_recherche_le timestamptz,
+  add column if not exists reprise_par uuid references public.profiles(id) on delete set null,
+  add column if not exists reprise_notifiee boolean not null default true,
+  add column if not exists sans_remplacant_signale_le timestamptz;
 create index if not exists inscriptions_creneaux_pole_idx on public.inscriptions_creneaux (pole_id, debut);
 create index if not exists inscriptions_creneaux_membre_idx on public.inscriptions_creneaux (membre);
 -- Une seule inscription en cours par personne, pôle et heure.
@@ -133,9 +142,16 @@ returns jsonb language sql stable security definer set search_path = public as $
         'pris', (select coalesce(jsonb_object_agg(t.heure, t.nombre), '{}'::jsonb) from (
                    select to_char(i.debut, 'HH24:MI') heure, count(*) nombre from public.inscriptions_creneaux i
                     where i.pole_id = p.id and i.annulee_le is null group by i.debut) t),
-        'mes_inscriptions', (select coalesce(jsonb_agg(jsonb_build_object('id', i.id, 'debut', to_char(i.debut, 'HH24:MI'))), '[]'::jsonb)
+        'mes_inscriptions', (select coalesce(jsonb_agg(jsonb_build_object('id', i.id, 'debut', to_char(i.debut, 'HH24:MI'),
+                                   'remplacant_recherche', i.remplacant_recherche_le is not null)), '[]'::jsonb)
                    from public.inscriptions_creneaux i
-                  where i.pole_id = p.id and i.membre = auth.uid() and i.annulee_le is null)
+                  where i.pole_id = p.id and i.membre = auth.uid() and i.annulee_le is null),
+        -- Les places dont la personne cherche un remplaçant, sans son nom (un adhérent ne voit pas
+        -- qui est inscrit) ; les siennes n'y sont pas, elles sont dans mes_inscriptions.
+        'a_reprendre', (select coalesce(jsonb_agg(jsonb_build_object('id', i.id, 'debut', to_char(i.debut, 'HH24:MI')) order by i.debut), '[]'::jsonb)
+                   from public.inscriptions_creneaux i
+                  where i.pole_id = p.id and i.annulee_le is null and i.remplacant_recherche_le is not null
+                    and i.membre is distinct from auth.uid())
       ) order by p.ordre, p.id), '[]'::jsonb)
       from public.poles p where p.action_id = a.id)
   ) order by a.date_action, a.id), '[]'::jsonb)
@@ -193,12 +209,14 @@ grant execute on function public.liberer_creneau(bigint) to authenticated;
 -- 8. Ce que voit le bureau : les inscrits d'une action, avec leur nom ──────────────────────────────
 -- Un membre du bureau qui n'est pas administrateur ne lit pas les fiches des adhérents : cette
 -- fonction ne lui donne que le prénom et le nom des inscrits de ses propres actions.
+-- Le type rendu a gagné une colonne (a_reprendre) : l'ancienne version doit disparaître d'abord.
+drop function if exists public.inscrits_de_l_action(bigint);
 create or replace function public.inscrits_de_l_action(p_action bigint)
-returns table (id bigint, pole_id bigint, debut text, membre uuid, nom text, a_compte boolean)
+returns table (id bigint, pole_id bigint, debut text, membre uuid, nom text, a_compte boolean, a_reprendre boolean)
 language sql stable security definer set search_path = public as $$
   select i.id, i.pole_id, to_char(i.debut, 'HH24:MI'), i.membre,
          coalesce(i.nom_libre, nullif(trim(concat_ws(' ', pr.prenom, pr.nom)), ''), 'Adhérent'),
-         i.membre is not null
+         i.membre is not null, i.remplacant_recherche_le is not null
     from public.inscriptions_creneaux i
     join public.poles p on p.id = i.pole_id
     left join public.profiles pr on pr.id = i.membre
@@ -208,3 +226,76 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public.inscrits_de_l_action(bigint) from public, anon;
 grant execute on function public.inscrits_de_l_action(bigint) to authenticated;
+
+-- 9. Chercher un remplaçant, puis reprendre la place ─────────────────────────────────────────────
+-- « Je ne peux plus venir » → « Chercher un remplaçant » : la place reste au nom de la personne et
+-- devient « à reprendre ». « Je la prends » : l'autre est inscrit et la première personne libérée,
+-- en une seule fois (la place n'est jamais vide, ni prise deux fois). notify-taches prévient la
+-- personne remplacée, et le référent la veille si personne n'a repris la place.
+create or replace function public.chercher_remplacant(p_inscription bigint)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  update public.inscriptions_creneaux i set remplacant_recherche_le = now()
+    from public.poles p join public.actions a on a.id = p.action_id
+   where i.id = p_inscription and p.id = i.pole_id and i.membre = auth.uid() and i.annulee_le is null
+     and i.remplacant_recherche_le is null and a.date_action >= (now() at time zone 'Europe/Paris')::date;
+  if not found then
+    raise exception 'Cette inscription n''existe plus.' using errcode = 'P0001';
+  end if;
+end $$;
+
+-- « Finalement, je viens » : la place n'est plus à reprendre.
+create or replace function public.annuler_recherche_de_remplacant(p_inscription bigint)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  update public.inscriptions_creneaux set remplacant_recherche_le = null, sans_remplacant_signale_le = null
+   where id = p_inscription and membre = auth.uid() and annulee_le is null and remplacant_recherche_le is not null;
+  if not found then
+    raise exception 'Votre place a déjà été reprise.' using errcode = 'P0001';
+  end if;
+end $$;
+
+create or replace function public.reprendre_creneau(p_inscription bigint)
+returns bigint language plpgsql security definer set search_path = public as $$
+declare
+  ancienne public.inscriptions_creneaux;
+  l_action bigint;
+  nouvelle bigint;
+begin
+  -- Le verrou sur la ligne : deux personnes qui touchent « Je la prends » en même temps ne
+  -- peuvent pas toutes les deux reprendre la place.
+  select i.* into ancienne from public.inscriptions_creneaux i
+    join public.poles p on p.id = i.pole_id join public.actions a on a.id = p.action_id
+   where i.id = p_inscription and i.annulee_le is null and i.remplacant_recherche_le is not null
+     and a.tenant_id = public.current_tenant_id() and a.ouvert_aux_membres
+     and a.date_action >= (now() at time zone 'Europe/Paris')::date
+     for update of i;
+  if ancienne.id is null then
+    raise exception 'Cette place a déjà été reprise.' using errcode = 'P0001';
+  end if;
+  if ancienne.membre = auth.uid() then
+    raise exception 'C''est votre propre place.' using errcode = 'P0001';
+  end if;
+  select action_id into l_action from public.poles where id = ancienne.pole_id;
+  if exists (
+    select 1 from public.inscriptions_creneaux i join public.poles p on p.id = i.pole_id
+     where i.membre = auth.uid() and i.debut = ancienne.debut and i.annulee_le is null and p.action_id = l_action
+  ) then
+    raise exception 'Vous êtes déjà inscrit à cette heure-là.' using errcode = 'P0001';
+  end if;
+  -- D'abord libérer, puis inscrire : la garde des places compte les inscriptions en cours.
+  -- annulation_notifiee reste vrai : le référent n'a rien à apprendre, la place est tenue.
+  update public.inscriptions_creneaux
+     set annulee_le = now(), annulation_notifiee = true, reprise_par = auth.uid(), reprise_notifiee = false
+   where id = ancienne.id;
+  insert into public.inscriptions_creneaux (pole_id, debut, membre) values (ancienne.pole_id, ancienne.debut, auth.uid())
+  returning id into nouvelle;
+  return nouvelle;
+end $$;
+
+revoke all on function public.chercher_remplacant(bigint) from public, anon;
+revoke all on function public.annuler_recherche_de_remplacant(bigint) from public, anon;
+revoke all on function public.reprendre_creneau(bigint) from public, anon;
+grant execute on function public.chercher_remplacant(bigint) to authenticated;
+grant execute on function public.annuler_recherche_de_remplacant(bigint) to authenticated;
+grant execute on function public.reprendre_creneau(bigint) to authenticated;
