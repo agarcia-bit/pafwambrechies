@@ -31,7 +31,7 @@ export function VueParPole({ planning, tranches, dureeMinutes, moi }: Props) {
       {planning.poles.map((pole) => (
         <article key={pole.id} className="carte-pole">
           <Jauge pole={pole} tranches={tranches} planning={planning} />
-          <div className="carte-pole-tranches" style={{ gridTemplateColumns: `repeat(${Math.min(tranches.length, 4)}, minmax(0, 1fr))` }}>
+          <div className="carte-pole-tranches">
             {tranches.map((heure) => (
               <PlacesDuCreneau key={heure} pole={pole} heure={heure} planning={planning} moi={moi} libelle={libelleDeTranche(heure, dureeMinutes)} />
             ))}
