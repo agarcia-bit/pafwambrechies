@@ -47,3 +47,14 @@ export function zoneDeRecadrage(cadre: Cadre, reglage: Reglage): Zone {
     hauteur,
   };
 }
+
+/**
+ * Le même cadrage dans un cadre d'une autre taille (iPhone Duo qu'on ouvre ou ferme) : le zoom est
+ * relatif au cadre, il ne bouge pas ; le décalage, en points d'écran, suit la taille du cadre.
+ * Ainsi la partie visible de la photo reste la même.
+ */
+export function adapterReglageAuCadre(ancien: Cadre, nouveau: Cadre, reglage: Reglage): Reglage {
+  'worklet';
+  const rapport = nouveau.largeurCadre / ancien.largeurCadre;
+  return limiterReglage(nouveau, { zoom: reglage.zoom, x: reglage.x * rapport, y: reglage.y * rapport });
+}
