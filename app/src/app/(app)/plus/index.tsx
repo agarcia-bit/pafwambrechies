@@ -15,6 +15,7 @@ import { openTour } from '@/lib/tour';
 import { useMember } from '@/lib/session';
 import { useTenantConfig } from '@/lib/tenant-config';
 import { useBandListStyle, useTheme } from '@/theme';
+import { useMargeDeLecture } from '@/components/zone-de-lecture';
 import { useEspaceSousOnglets } from '@/hooks/use-espace-sous-onglets';
 
 // Three kinds of things, kept apart: what the association offers beyond the tabs ("Communauté",
@@ -22,6 +23,7 @@ import { useEspaceSousOnglets } from '@/hooks/use-espace-sous-onglets';
 // bureau's tools, on a dark block of their own that only the bureau and the admins see.
 export default function PlusScreen() {
   const espaceSousOnglets = useEspaceSousOnglets();
+  const marges = useMargeDeLecture();
   const { profile, isBureau, isPlatformAdmin, branding } = useMember();
   const { modules } = useTenantConfig();
   const bandStyle = useBandListStyle();
@@ -29,8 +31,8 @@ export default function PlusScreen() {
   const unread = useBureauUnread();
   const { colors } = useTheme();
   return (
-    <ScrollView style={bandStyle} contentInsetAdjustmentBehavior="never" contentContainerStyle={{ paddingBottom: espaceSousOnglets - 40 }}>
-      <BrandBand title="Plus" subtitle="Mon espace">
+    <ScrollView style={bandStyle} contentInsetAdjustmentBehavior="never" contentContainerStyle={{ paddingBottom: espaceSousOnglets - 40, paddingLeft: marges.gauche, paddingRight: marges.droite }}>
+      <BrandBand dansLaListe title="Plus" subtitle="Mon espace">
         <BandPill label={associationName(branding)} />
       </BrandBand>
       <View style={styles.content}>
