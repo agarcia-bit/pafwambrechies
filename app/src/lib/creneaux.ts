@@ -96,3 +96,26 @@ export function etatPourLeBureau(besoin: number, pris: number): EtatPourLeBureau
   if (besoin === 0) return 'ferme';
   return pris >= besoin ? 'rempli' : 'manque';
 }
+
+type InscritDuPlanning = { id: number; pole_id: number; debut: string; membre: string | null; nom: string };
+
+/** Les places d'un créneau, dans l'ordre : les inscrits, puis une case vide par place libre. */
+export function placesDuCreneau<T extends InscritDuPlanning>(besoin: number, inscrits: T[]): (T | null)[] {
+  return [...inscrits, ...Array.from({ length: Math.max(0, besoin - inscrits.length) }, () => null)];
+}
+
+/** Les créneaux d'une personne, dans l'ordre de la journée, avec le prénom des autres présents. */
+export function billetsDeLaPersonne<T extends InscritDuPlanning>(poles: Pole[], inscrits: T[], moi: string) {
+  return inscrits
+    .filter((i) => i.membre === moi)
+    .map((i) => ({
+      inscrit: i,
+      nomDuPole: poles.find((p) => p.id === i.pole_id)?.nom ?? '',
+      avec: inscrits.filter((autre) => autre.id !== i.id && autre.pole_id === i.pole_id && autre.debut === i.debut).map((autre) => autre.nom),
+    }))
+    .sort((a, b) => a.inscrit.debut.localeCompare(b.inscrit.debut));
+}
+
+/** Vrai quand la personne tient déjà un poste à cette heure-là (on ne peut pas être à deux pôles à la fois). */
+export const estDejaPrisALHeure = (inscrits: InscritDuPlanning[], moi: string, heure: string) =>
+  inscrits.some((i) => i.membre === moi && i.debut === heure);
