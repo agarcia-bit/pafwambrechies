@@ -13,6 +13,7 @@ import { Message } from './pages/Message';
 import { Moderation } from './pages/Moderation';
 import { SentOverlay } from './Compose';
 import { ChatPanel, useUnread } from './Discussion';
+import { PagePlanning } from './pages/PagePlanning';
 import { Overview } from './pages/Overview';
 import { Pilotage } from './pages/Pilotage';
 import { Reglages } from './pages/Reglages';
@@ -26,10 +27,12 @@ import { EcranDePreparation, useEspacePrepare } from './EcranDePreparation';
 import { applyBranding } from './theme';
 import { Toasts } from './Toasts';
 
-type Page = { path: string; label: string; icon: string; sub: string; el: (p: PageProps) => JSX.Element; section?: string; admin?: boolean; plateforme?: boolean };
+// cache : page atteinte par un lien (pas dans le menu) ; enTetePropre : la page affiche son propre titre.
+type Page = { path: string; label: string; icon: string; sub: string; el: (p: PageProps) => JSX.Element; section?: string; admin?: boolean; plateforme?: boolean; cache?: boolean; enTetePropre?: boolean };
 const PAGES: Page[] = [
   { path: 'accueil', label: 'Vue d’ensemble', icon: 'home', sub: 'L’essentiel de votre association en un coup d’œil', el: Overview },
   { path: 'pilotage', label: 'Pilotage', icon: 'tasks', sub: 'Les actions du bureau et la liste des choses à faire', el: Pilotage },
+  { path: 'planning', label: 'Planning', icon: 'tasks', sub: '', el: PagePlanning, cache: true, enTetePropre: true },
   { path: 'adherents', label: 'Adhérents', icon: 'users', sub: 'Qui fait partie de l’association, leurs rôles et leur accès à l’app', el: Adherents, section: 'Association' },
   { path: 'engagement', label: 'Engagement', icon: 'pulse', sub: 'Qui ouvre l’app, lit, réagit et propose, pour savoir avec qui reprendre contact', el: Engagement },
   { path: 'cotisations', label: 'Cotisations', icon: 'euro', sub: 'Qui est à jour, les paiements et les relances', el: Cotisations },
@@ -255,9 +258,9 @@ function Shell({ userId }: { userId: string }) {
         onMenu={() => setMenuOuvert(true)}
         discussion={<button className="icon-btn" onClick={() => setChatOpen(true)} aria-label="Discussion du bureau"><Icon name="chat" size={20} /><UnreadDot tenant={profile.tenant_id} /></button>}
       />
-      <NavigationDuBureau pages={pages} pageActive={page.path} association={association} logo={logo} profile={profile} estOuvert={menuOuvert} onFermer={() => setMenuOuvert(false)} />
+      <NavigationDuBureau pages={pages.filter((p) => !p.cache)} pageActive={page.cache ? 'pilotage' : page.path} association={association} logo={logo} profile={profile} estOuvert={menuOuvert} onFermer={() => setMenuOuvert(false)} />
       <main>
-        <header className="page-head">
+        {!page.enTetePropre && <header className="page-head">
           <div>
             <h1>{page.label}</h1>
             <p className="muted">{page.sub}</p>
@@ -267,7 +270,7 @@ function Shell({ userId }: { userId: string }) {
               <Icon name="chat" size={16} /> Discussion<UnreadDot tenant={profile.tenant_id} />
             </button>
           )}
-        </header>
+        </header>}
         <div className="page" key={page.path}>
           <FiletDErreur cle={page.path}>
             <Page profile={profile} association={association} />

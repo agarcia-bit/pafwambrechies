@@ -1,13 +1,13 @@
 import { billetsDeLaPersonne, libelleDeTranche } from '../creneaux';
 import type { PlanningEtat } from './usePlanning';
 
-type Props = { planning: PlanningEtat; moi: string; dureeMinutes: number; dateLongue: string };
+type Props = { planning: PlanningEtat; moi: string; dureeMinutes: number };
 
 /**
- * Les créneaux du membre du bureau connecté, en billets, comme dans l'app (DESIGN.md,
- * « Créneaux de présence ») : ce qu'il doit faire passe avant le reste du planning.
+ * Les créneaux du membre du bureau connecté, en billets compacts sur une ligne (DESIGN.md,
+ * « Créneaux de présence ») : ce qu'il s'est engagé à faire, sans prendre la place du planning.
  */
-export function BilletsDuBureau({ planning, moi, dureeMinutes, dateLongue }: Props) {
+export function BilletsDuBureau({ planning, moi, dureeMinutes }: Props) {
   const billets = billetsDeLaPersonne(planning.poles, planning.inscrits, moi);
   return billets.map(({ inscrit, nomDuPole, avec }) => {
     function seRetirer() {
@@ -16,14 +16,11 @@ export function BilletsDuBureau({ planning, moi, dureeMinutes, dateLongue }: Pro
     return (
       <div key={inscrit.id} className="billet">
         <div className="billet-gauche">
-          <div className="billet-sur-titre">Votre créneau · {dateLongue}</div>
-          <div className="billet-heure">{libelleDeTranche(inscrit.debut, dureeMinutes)}</div>
-          <div className="billet-pole">{nomDuPole} · {avec.length ? `avec ${avec.join(', ')}` : 'personne d’autre pour l’instant'}</div>
+          <div className="billet-sur-titre">Votre créneau</div>
+          <div className="billet-heure">{nomDuPole} · {libelleDeTranche(inscrit.debut, dureeMinutes)}</div>
+          {avec.length > 0 && <div className="billet-avec">avec {avec.join(', ')}</div>}
         </div>
-        <div className="billet-droite">
-          <span>Rappel la veille</span>
-          <button className="billet-lien" onClick={seRetirer}>Je ne peux plus venir</button>
-        </div>
+        <button className="billet-lien" onClick={seRetirer}>Je ne peux plus venir</button>
       </div>
     );
   });

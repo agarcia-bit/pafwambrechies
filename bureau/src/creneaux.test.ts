@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  besoinDuCreneau, billetsDeLaPersonne, bilanDesPlaces, changerLeBesoin, estDejaPrisALHeure, placesDuCreneau, etatDuCreneau, etatPourLeBureau, libelleDeLEtat, libelleDeTranche, tranchesDeLaJournee,
+  besoinDuCreneau, billetsDeLaPersonne, creneauxDuPlanning, resumeDesTrous, trousDuPlanning, bilanDesPlaces, changerLeBesoin, estDejaPrisALHeure, etatDuCreneau, etatPourLeBureau, libelleDeLEtat, libelleDeTranche, tranchesDeLaJournee,
 } from './creneaux';
 
 const cafe = { id: 1, nom: 'Café', personnes: 2, besoins_par_creneau: { '10:00': 0 }, ordre: 0 };
@@ -47,12 +47,6 @@ describe('créneaux de présence', () => {
     expect(etatPourLeBureau(0, 0)).toBe('ferme');
   });
 
-  it('montre les places d’un créneau : les inscrits puis les cases vides', () => {
-    const lea = { id: 1, pole_id: 1, debut: '10:00', membre: null, nom: 'Léa' };
-    expect(placesDuCreneau(3, [lea])).toEqual([lea, null, null]);
-    expect(placesDuCreneau(1, [lea, { ...lea, id: 2 }])).toHaveLength(2);
-  });
-
   it('fait les billets d’un membre du bureau, avec ceux qui sont là en même temps', () => {
     const inscrits = [
       { id: 1, pole_id: 1, debut: '12:00', membre: 'andy', nom: 'Andy' },
@@ -63,5 +57,21 @@ describe('créneaux de présence', () => {
     expect(billets.map((b) => [b.inscrit.debut, b.nomDuPole, b.avec])).toEqual([['10:00', 'Café', []], ['12:00', 'Café', ['Léa']]]);
     expect(estDejaPrisALHeure(inscrits, 'andy', '12:00')).toBe(true);
     expect(estDejaPrisALHeure(inscrits, 'andy', '14:00')).toBe(false);
+  });
+
+  it('liste les trous du plus urgent au moins urgent, et résume le pôle qui manque le plus', () => {
+    const buvette = { id: 2, nom: 'Buvette', personnes: 2, besoins_par_creneau: {}, ordre: 1 };
+    const inscrits = [
+      { id: 1, pole_id: 1, debut: '12:00', membre: null, nom: 'Léa' },
+      { id: 2, pole_id: 2, debut: '10:00', membre: null, nom: 'Tom' },
+    ];
+    const trous = trousDuPlanning([cafe, buvette], ['10:00', '12:00'], inscrits);
+    expect(trous.map((t) => `${t.pole.nom} ${t.heure} ${t.manque}`)).toEqual(['Buvette 12:00 2', 'Buvette 10:00 1', 'Café 12:00 1']);
+    expect(trous[2].presents).toEqual(['Léa']);
+    expect(resumeDesTrous(trous)).toEqual({ manque: 4, poleLePlusEnManque: 'Buvette' });
+    expect(resumeDesTrous(trous.slice(1))).toEqual({ manque: 2, poleLePlusEnManque: null });
+    // Tous les créneaux, complets compris, sauf ceux qui ne demandent personne (le café à 10 h).
+    expect(creneauxDuPlanning([cafe, buvette], ['10:00', '12:00'], inscrits).map((c) => `${c.pole.nom} ${c.heure} ${c.manque}`))
+      .toEqual(['Café 12:00 1', 'Buvette 10:00 1', 'Buvette 12:00 2']);
   });
 });

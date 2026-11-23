@@ -98,11 +98,6 @@ export function etatPourLeBureau(besoin: number, pris: number): EtatPourLeBureau
 
 type InscritDuPlanning = { id: number; pole_id: number; debut: string; membre: string | null; nom: string };
 
-/** Les places d'un créneau, dans l'ordre : les inscrits, puis une case vide par place libre. */
-export function placesDuCreneau<T extends InscritDuPlanning>(besoin: number, inscrits: T[]): (T | null)[] {
-  return [...inscrits, ...Array.from({ length: Math.max(0, besoin - inscrits.length) }, () => null)];
-}
-
 /** Les créneaux d'une personne, dans l'ordre de la journée, avec le prénom des autres présents. */
 export function billetsDeLaPersonne<T extends InscritDuPlanning>(poles: Pole[], inscrits: T[], moi: string) {
   return inscrits
@@ -118,3 +113,36 @@ export function billetsDeLaPersonne<T extends InscritDuPlanning>(poles: Pole[], 
 /** Vrai quand la personne tient déjà un poste à cette heure-là (on ne peut pas être à deux pôles à la fois). */
 export const estDejaPrisALHeure = (inscrits: InscritDuPlanning[], moi: string, heure: string) =>
   inscrits.some((i) => i.membre === moi && i.debut === heure);
+
+export type Trou = { pole: Pole; heure: string; manque: number; presents: string[] };
+
+/** Tous les créneaux qui demandent du monde, pôle par pôle dans l'ordre de la journée, avec ce qui manque (0 si complet). */
+export function creneauxDuPlanning<T extends InscritDuPlanning>(poles: Pole[], tranches: string[], inscrits: T[]): Trou[] {
+  const creneaux: Trou[] = [];
+  for (const pole of poles) {
+    for (const heure of tranches) {
+      const besoin = besoinDuCreneau(pole, heure);
+      if (besoin === 0) continue;
+      const ici = inscrits.filter((i) => i.pole_id === pole.id && i.debut === heure);
+      creneaux.push({ pole, heure, manque: Math.max(0, besoin - ici.length), presents: ici.map((i) => i.nom) });
+    }
+  }
+  return creneaux;
+}
+
+/** Les créneaux où il manque du monde, du plus urgent (le plus de places vides) au moins urgent, puis dans l'ordre de la journée. */
+export function trousDuPlanning<T extends InscritDuPlanning>(poles: Pole[], tranches: string[], inscrits: T[]): Trou[] {
+  return creneauxDuPlanning(poles, tranches, inscrits)
+    .filter((c) => c.manque > 0)
+    .sort((a, b) => b.manque - a.manque || minutesDe(a.heure) - minutesDe(b.heure));
+}
+
+/** « Il manque 8 personnes, surtout à la Buvette » : le total des places vides et le pôle qui en a le plus. */
+export function resumeDesTrous(trous: Trou[]): { manque: number; poleLePlusEnManque: string | null } {
+  const parPole = new Map<string, number>();
+  for (const t of trous) parPole.set(t.pole.nom, (parPole.get(t.pole.nom) ?? 0) + t.manque);
+  const classement = [...parPole.entries()].sort((a, b) => b[1] - a[1]);
+  // « Surtout » n'a de sens que si un pôle se détache des autres.
+  const seDetache = classement.length > 1 && classement[0][1] > classement[1][1];
+  return { manque: trous.reduce((total, t) => total + t.manque, 0), poleLePlusEnManque: seDetache ? classement[0][0] : null };
+}
