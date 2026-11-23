@@ -3,8 +3,10 @@ import { useEffect, useState } from 'react';
 import type { PageProps } from '../App';
 import { creneauxDuPlanning, messageDeRelance, resumeDesTrous, tranchesDeLaJournee, trousDuPlanning } from '../creneaux';
 import { Drawer } from '../Drawer';
+import { Icon } from '../Icon';
 import { hashParam } from '../lib';
 import { BilletsDuBureau } from './BilletDuBureau';
+import { FeuilleDeRoute } from './FeuilleDeRoute';
 import { dateLongue, DemarrerLePlanning, ListeDesPoles, ReglagesDuPlanning, resumeDesHoraires, StatutDuPlanning } from './PlanningDeLAction';
 import { DerniereRelance, FenetreDeRelance } from './RelanceDuPlanning';
 import { usePlanning, type PlanningEtat } from './usePlanning';
@@ -27,15 +29,19 @@ function useEstEtroit() {
   return estEtroit;
 }
 
-/** L'action de l'adresse (#planning?action=12), relue quand on passe d'un planning à un autre sans quitter la page. */
-function useActionDeLAdresse() {
-  const [actionId, setActionId] = useState(() => Number(hashParam('action')));
+/**
+ * L'action de l'adresse (#planning?action=12) et si l'on regarde sa feuille de route (&feuille=1),
+ * relues quand l'adresse change sans quitter la page (autre planning, aller-retour vers la feuille).
+ */
+function useAdresseDuPlanning() {
+  const lire = () => ({ actionId: Number(hashParam('action')), estFeuille: hashParam('feuille') === '1' });
+  const [adresse, setAdresse] = useState(lire);
   useEffect(() => {
-    const surChangement = () => setActionId(Number(hashParam('action')));
+    const surChangement = () => setAdresse(lire());
     addEventListener('hashchange', surChangement);
     return () => removeEventListener('hashchange', surChangement);
   }, []);
-  return actionId;
+  return adresse;
 }
 
 /**
@@ -44,18 +50,19 @@ function useActionDeLAdresse() {
  * grille ou seulement ce qui manque. Les horaires et les pôles se règlent dans un tiroir.
  */
 export function PagePlanning({ profile }: PageProps) {
-  const actionId = useActionDeLAdresse();
+  const { actionId, estFeuille } = useAdresseDuPlanning();
   if (!actionId) return <div className="card muted">Choisissez une action dans le Pilotage pour voir son planning.</div>;
-  return <PlanningDUneAction key={actionId} actionId={actionId} moi={profile.id} />;
+  return <PlanningDUneAction key={actionId} actionId={actionId} moi={profile.id} estFeuille={estFeuille} />;
 }
 
-function PlanningDUneAction({ actionId, moi }: { actionId: number; moi: string }) {
+function PlanningDUneAction({ actionId, moi, estFeuille }: { actionId: number; moi: string; estFeuille: boolean }) {
   const planning = usePlanning(actionId);
   const estEtroit = useEstEtroit();
   const [filtre, setFiltre] = useState<Filtre | null>(null);
   const [reglagesOuverts, setReglagesOuverts] = useState(false);
   const relance = useRelance(actionId);
   if (!planning.estCharge) return <div className="card"><div className="skeleton" /></div>;
+  if (estFeuille) return <FeuilleDeRoute planning={planning} actionId={actionId} />;
   const tranches = planning.horaires ? tranchesDeLaJournee(planning.horaires) : [];
   const estPret = tranches.length > 0 && planning.poles.length > 0;
   const trous = trousDuPlanning(planning.poles, tranches, planning.inscrits, moi);
@@ -84,6 +91,7 @@ function PlanningDUneAction({ actionId, moi }: { actionId: number; moi: string }
           <div className="planning-pied">
             <span>{resumeDesHoraires(planning.horaires)} · {planning.poles.length} pôle{planning.poles.length > 1 ? 's' : ''}</span>
             <button className="link" onClick={() => setReglagesOuverts(true)}>Horaires et pôles</button>
+            <a className="planning-imprimer" href={`#planning?action=${actionId}&feuille=1`}><Icon name="printer" size={15} /> Imprimer la feuille de route</a>
           </div>
         </>
       )}

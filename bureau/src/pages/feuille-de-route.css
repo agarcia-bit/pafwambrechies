@@ -1,0 +1,55 @@
+/* La feuille de route du jour J : à l'écran, une page A4 posée sur le fond du bureau ; à
+   l'impression, la feuille seule, en noir sur blanc. La feuille reste blanche même en mode
+   sombre : c'est l'aperçu d'un papier. */
+.feuille-page { display: grid; gap: 16px; }
+.feuille-outils { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.feuille-outils .grow { flex: 1; }
+.feuille-outils .button, .feuille-outils button { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; }
+.feuille-case { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 550; cursor: pointer; }
+.feuille-case input { width: 18px; height: 18px; margin: 0; accent-color: var(--brand); }
+.feuille-avertissement { margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--warn-soft); color: color-mix(in srgb, var(--warn) 82%, #000); font-size: 13px; }
+
+.feuille {
+  width: min(210mm, 100%); box-sizing: border-box; margin: 0 auto; padding: 16mm 14mm 12mm;
+  background: #fff; color: #111; border-radius: 6px; box-shadow: var(--shadow-2);
+  font-size: 11pt; line-height: 1.35;
+}
+.feuille-tete { padding-bottom: 5mm; border-bottom: .5pt solid #999; }
+/* La seule touche de couleur : la marque de l'association, foncée pour rester lisible sur le blanc. */
+.feuille-surtitre { margin: 0 0 1mm; font-size: 9pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: color-mix(in srgb, var(--brand) 55%, #000); }
+.feuille h1 { margin: 0; font-family: var(--display); font-size: 21pt; line-height: 1.15; color: #111; }
+.feuille-infos { margin: 1.5mm 0 0; color: #333; }
+.feuille-infos strong { color: #111; }
+
+.feuille-pole { margin-top: 7mm; break-inside: avoid; page-break-inside: avoid; }
+.feuille-pole h2 { margin: 0 0 1mm; padding-bottom: 1.5mm; border-bottom: 1.5pt solid #111; font-family: var(--display); font-size: 13pt; color: #111; }
+/* Largeurs fixes : l'horaire étroit, le nom et les coordonnées se partagent le reste. */
+.feuille table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.feuille th, .feuille td { padding: 2.4mm 2mm; border-bottom: .5pt solid #c8c8c8; text-align: left; vertical-align: top; background: none; }
+/* Les titres de ligne du bureau sont en petites capitales grises : ici l'horaire se lit d'abord. */
+.feuille .feuille-heure { width: 28mm; font-size: inherit; font-weight: 600; text-transform: none; letter-spacing: normal; white-space: nowrap; color: #111; }
+.feuille tr.fin-de-tranche td, .feuille tr.fin-de-tranche th, .feuille .feuille-heure { border-bottom-color: #555; }
+/* Une place vide garde la hauteur d'une écriture au stylo. */
+.feuille .a-pourvoir { height: 7mm; color: #666; font-style: italic; font-size: 9.5pt; }
+.feuille .feuille-contact { color: #333; font-size: 9.5pt; overflow-wrap: anywhere; }
+.feuille-vide { margin: 8mm 0; color: #444; }
+.feuille-pied { margin-top: 8mm; font-size: 8.5pt; color: #555; }
+
+@media (max-width: 720px) {
+  .feuille { padding: 20px 16px; font-size: 10pt; }
+  .feuille h1 { font-size: 18pt; }
+  .feuille .feuille-heure { width: 24mm; padding-left: 0; }
+  .feuille-outils .button { flex: 1 1 100%; justify-content: center; }
+}
+
+/* À l'impression : la feuille seule. Limité aux pages qui montrent une feuille, pour ne pas
+   changer l'impression des autres pages du bureau. */
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body:has(.feuille) { background: #fff !important; }
+  body:has(.feuille) .shell > :not(main), .feuille-outils, .feuille-avertissement { display: none !important; }
+  body:has(.feuille) .shell, body:has(.feuille) main, body:has(.feuille) .page {
+    display: block !important; margin: 0 !important; padding: 0 !important; max-width: none !important; background: none !important; box-shadow: none !important;
+  }
+  .feuille { width: auto; padding: 0; border-radius: 0; box-shadow: none; }
+}

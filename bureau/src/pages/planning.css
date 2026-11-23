@@ -127,6 +127,7 @@
 
 .planning-pied { display: flex; align-items: center; gap: 16px; color: var(--muted); font-size: 13px; }
 .planning-pied .link { min-height: 44px; }
+.planning-imprimer { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-weight: 550; }
 
 @media (max-width: 720px) {
   .planning-tete { flex-direction: column; gap: 14px; }
