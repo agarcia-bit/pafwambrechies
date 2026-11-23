@@ -51,6 +51,8 @@
 
   /* Les panneaux latéraux (fiches, réglages, discussion) prennent tout l'écran. */
   .drawer, .drawer.wide { width: 100%; border-radius: 0; }
+  /* Trois boutons en bas d'un panneau ne tiennent pas sur une ligne : ils passent à la ligne. */
+  .drawer-foot { flex-wrap: wrap; }
   .chat-panel { width: 100vw; height: 100dvh; }
 
   /* Formulaires : 16 px évite que l'iPhone zoome à chaque champ ; un champ par ligne. */

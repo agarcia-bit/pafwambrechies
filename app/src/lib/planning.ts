@@ -9,9 +9,10 @@ import { supabase } from '@/lib/supabase';
 // complet ou une heure qui n'existe pas : son message s'affiche tel quel.
 
 export type Inscrit = { id: number; pole_id: number; debut: string; membre: string | null; nom: string; a_compte: boolean };
-export type Planning = { horaires: Horaires | null; ouvert: boolean; poles: Pole[]; inscrits: Inscrit[] };
+export type Planning = { titre: string; date: string; horaires: Horaires | null; ouvert: boolean; poles: Pole[]; inscrits: Inscrit[] };
 
 type LigneAction = {
+  titre: string; date_action: string;
   ouvert_aux_membres: boolean; creneau_debut: string | null; creneau_fin: string | null; creneau_duree_minutes: number | null;
 };
 
@@ -27,14 +28,14 @@ export function usePlanning(actionId: number) {
     queryKey: clePlanning(actionId),
     queryFn: async (): Promise<Planning> => {
       const [action, poles, inscrits] = await Promise.all([
-        supabase.from('actions').select('ouvert_aux_membres, creneau_debut, creneau_fin, creneau_duree_minutes').eq('id', actionId).single(),
+        supabase.from('actions').select('titre, date_action, ouvert_aux_membres, creneau_debut, creneau_fin, creneau_duree_minutes').eq('id', actionId).single(),
         supabase.from('poles').select('id, nom, personnes, besoins_par_creneau, ordre').eq('action_id', actionId).order('ordre').order('id'),
         supabase.rpc('inscrits_de_l_action', { p_action: actionId }),
       ]);
       const erreur = action.error ?? poles.error ?? inscrits.error;
       if (erreur) throw erreur;
       const ligne = action.data as LigneAction;
-      return { horaires: versHoraires(ligne), ouvert: ligne.ouvert_aux_membres, poles: poles.data as Pole[], inscrits: inscrits.data as Inscrit[] };
+      return { titre: ligne.titre, date: ligne.date_action, horaires: versHoraires(ligne), ouvert: ligne.ouvert_aux_membres, poles: poles.data as Pole[], inscrits: inscrits.data as Inscrit[] };
     },
   });
 }

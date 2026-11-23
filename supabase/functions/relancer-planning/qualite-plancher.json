@@ -1,0 +1,18 @@
+{
+ "version": 1,
+ "seuils": {
+  "fonction": 80,
+  "profondeur": 4,
+  "doublon": 8,
+  "langue": "fr"
+ },
+ "dossiers": [],
+ "fonctions": [],
+ "doublons": {
+  "total": 0,
+  "parFichier": {}
+ },
+ "anglais": {
+  "noms": []
+ }
+}

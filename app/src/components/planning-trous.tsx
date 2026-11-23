@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ListRow, ListSection } from '@/components/ui/list';
 import { Text } from '@/components/ui/text';
-import { estDejaPrisALHeure, libelleDeTranche, resumeDesTrous, type Trou } from '@/lib/creneaux';
+import { estDejaPrisALHeure, libelleDeTranche, quandEstCe, resumeDesTrous, type Relance, type Trou } from '@/lib/creneaux';
 import type { Planning, useModifierLePlanning } from '@/lib/planning';
 import { useTheme } from '@/theme';
 import { tint } from '@/theme/colors';
@@ -16,7 +16,14 @@ type Modifier = ReturnType<typeof useModifierLePlanning>['mutate'];
  * Le haut du planning, comme sur la page de l'espace bureau : une phrase qui dit ce qui manque,
  * le statut, et le bouton pour ouvrir le planning aux membres (ou le réserver au bureau).
  */
-export function EnteteDuPlanning({ trous, ouvert, modifier, enCours }: { trous: Trou[]; ouvert: boolean; modifier: Modifier; enCours: boolean }) {
+type PropsDEntete = {
+  trous: Trou[]; ouvert: boolean; modifier: Modifier; enCours: boolean;
+  /** La dernière relance, pour la ligne « Dernière relance : hier à 18 h ». */
+  derniereRelance: Relance | null;
+  onPrevenir: () => void;
+};
+
+export function EnteteDuPlanning({ trous, ouvert, modifier, enCours, derniereRelance, onPrevenir }: PropsDEntete) {
   const { colors, scheme } = useTheme();
   const { manque, poleLePlusEnManque } = resumeDesTrous(trous);
   // L'ambre du système est trop clair pour du texte sur fond clair : sa version foncée reste lisible.
@@ -34,9 +41,16 @@ export function EnteteDuPlanning({ trous, ouvert, modifier, enCours }: { trous: 
       <View style={styles.statut}>
         <Badge label={ouvert ? 'Ouvert aux membres' : 'Réservé au bureau'} hue={ouvert ? colors.success : undefined} />
       </View>
+      {/* Un seul bouton principal : « Prévenir les membres » quand il manque du monde. */}
+      {manque > 0 && <Button title="Prévenir les membres" icon="send" onPress={onPrevenir} />}
+      {derniereRelance && (
+        <Text variant="footnote" tone="secondary">
+          Dernière relance : {quandEstCe(derniereRelance.created_at)} · {derniereRelance.nb_notifications + derniereRelance.nb_emails} personnes prévenues
+        </Text>
+      )}
       {ouvert
-        ? <Button title="Réserver au bureau" variant="secondary" loading={enCours} onPress={() => modifier({ type: 'ouverture', ouvert: false })} />
-        : <Button title="Ouvrir aux membres" loading={enCours} onPress={() => modifier({ type: 'ouverture', ouvert: true })} />}
+        ? <Button title="Réserver au bureau" variant="plain" loading={enCours} onPress={() => modifier({ type: 'ouverture', ouvert: false })} />
+        : <Button title="Ouvrir aux membres" variant={manque > 0 ? 'secondary' : 'primary'} loading={enCours} onPress={() => modifier({ type: 'ouverture', ouvert: true })} />}
     </View>
   );
 }

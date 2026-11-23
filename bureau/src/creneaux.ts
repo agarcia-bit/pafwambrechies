@@ -150,3 +150,44 @@ export function resumeDesTrous(trous: Trou[]): { manque: number; poleLePlusEnMan
   const seDetache = classement.length > 1 && classement[0][1] > classement[1][1];
   return { manque: trous.reduce((total, t) => total + t.manque, 0), poleLePlusEnManque: seDetache ? classement[0][0] : null };
 }
+
+/**
+ * Le message proposé pour relancer les membres, que le bureau peut retoucher : quoi, quand, combien
+ * il manque, et le créneau le plus urgent. « Marché de Noël samedi 12 décembre : il manque 8
+ * personnes, surtout au pôle Buvette (12 h – 14 h). Un créneau vous tente ? »
+ */
+export function messageDeRelance(titre: string, quand: string, trous: Trou[], dureeMinutes: number): string {
+  const { manque, poleLePlusEnManque } = resumeDesTrous(trous);
+  if (!manque) return `${titre} ${quand} : tous les créneaux sont pris, merci à tous !`;
+  const plusUrgent = poleLePlusEnManque ? trous.find((t) => t.pole.nom === poleLePlusEnManque) : trous[0];
+  const ou = poleLePlusEnManque && plusUrgent ? `, surtout au pôle ${poleLePlusEnManque} (${libelleDeTranche(plusUrgent.heure, dureeMinutes)})` : '';
+  return `${titre} ${quand} : il manque ${manque} personne${manque > 1 ? 's' : ''}${ou}. Un créneau vous tente ?`;
+}
+
+/** Une relance déjà partie (supabase/relances_planning.sql). */
+export type Relance = { created_at: string; nb_notifications: number; nb_emails: number };
+
+const UN_JOUR_MS = 24 * 60 * 60 * 1000;
+
+/** Vrai si la relance a moins de 24 h : la fenêtre demande alors confirmation avant de relancer. */
+export const estRecente = (relance: Relance | null, maintenant = Date.now()) =>
+  !!relance && maintenant - new Date(relance.created_at).getTime() < UN_JOUR_MS;
+
+/** Ce que dit l'écran après « M'envoyer un essai », selon les voies par lesquelles il est parti. */
+export function texteDeLEssai({ nb_notifications: notification, nb_emails: email }: { nb_notifications: number; nb_emails: number }): string {
+  if (notification && email) return 'Essai envoyé : regardez votre téléphone et votre boîte mail.';
+  if (notification) return 'Essai envoyé sur votre téléphone.';
+  if (email) return 'Essai envoyé par e-mail (pas d’app enregistrée sur votre téléphone).';
+  return 'L’essai n’a pas pu partir : ni téléphone ni e-mail connus pour votre compte.';
+}
+
+/** « hier à 18 h », « aujourd'hui à 9 h 05 », « le 3 décembre à 18 h » */
+export function quandEstCe(iso: string, maintenant = new Date()): string {
+  const date = new Date(iso);
+  const jour = (d: Date) => d.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' });
+  const hier = new Date(maintenant.getTime() - UN_JOUR_MS);
+  const heure = date.toLocaleTimeString('fr-FR', { hour: 'numeric', minute: '2-digit', timeZone: 'Europe/Paris' }).replace(':', ' h ').replace(' h 00', ' h');
+  if (jour(date) === jour(maintenant)) return `aujourd’hui à ${heure}`;
+  if (jour(date) === jour(hier)) return `hier à ${heure}`;
+  return `le ${date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' })} à ${heure}`;
+}
