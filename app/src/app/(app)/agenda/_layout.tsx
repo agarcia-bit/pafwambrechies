@@ -10,6 +10,7 @@ export default function AgendaLayout() {
   return (
     <Stack screenOptions={{ ...header, headerShown: false }} screenLayout={entourerDUneZoneDeLecture}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="creneaux/[action]" options={{ headerShown: true, title: 'Planning' }} />
       <Stack.Screen
         name="[id]"
         options={{ presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: colors.card } }}

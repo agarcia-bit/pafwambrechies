@@ -1,0 +1,36 @@
+/* Planning des présences d'une action (PlanningDeLAction, GrilleDuPlanning). Les couleurs de case
+   suivent le sens fixe du DESIGN.md, vu du bureau : vert = rempli, ambre = il manque du monde, gris = pas besoin. */
+.planning .form { margin-bottom: 14px; }
+.planning-horaires { align-items: flex-end; }
+.planning-vide { display: grid; gap: 12px; justify-items: start; padding: 4px 0; }
+.planning-poles h4 { margin: 6px 0 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; font-size: 11px; }
+.planning-nombre { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.planning-nombre input { width: 62px; }
+
+.planning-grille-cadre { overflow-x: auto; margin-top: 14px; border: 1px solid var(--line); border-radius: var(--r); }
+.planning-grille { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; }
+.planning-grille th { text-align: left; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.planning-grille tbody th { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; padding: 10px 14px; position: sticky; left: 0; background: var(--panel); z-index: 1; }
+.planning-grille td, .planning-grille tbody th { border-top: 1px solid var(--line); vertical-align: top; }
+.planning-case { min-width: 112px; padding: 8px 10px; }
+.planning-case.rempli { background: var(--ok-soft); }
+.planning-case.manque { background: var(--warn-soft); }
+.planning-case.ferme { background: var(--neutral-soft); }
+.planning-besoin { display: flex; align-items: center; gap: 4px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.planning-case.rempli .planning-besoin { color: var(--ok); }
+.planning-case.manque .planning-besoin { color: var(--warn); }
+.planning-case.ferme .planning-besoin { color: var(--muted); }
+.planning-besoin .icon-btn { width: 26px; height: 26px; padding: 0; font-size: 15px; line-height: 1; }
+.planning-noms { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 2px; }
+.planning-noms li { display: flex; align-items: center; justify-content: space-between; gap: 4px; color: var(--text); }
+.planning-noms .icon-btn { width: 24px; height: 24px; padding: 0; opacity: .55; }
+.planning-noms li:hover .icon-btn, .planning-noms .icon-btn:focus-visible { opacity: 1; }
+.planning-ajout { margin-top: 4px; padding: 4px 8px; font-size: 12px; }
+.planning-ajout-champ { margin-top: 4px; width: 100%; padding: 5px 8px; font-size: 13px; }
+.planning-grille thead th { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; color: var(--text-2); padding: 10px; }
+.planning-horaires input, .planning-horaires select { height: 40px; box-sizing: border-box; }
+/* Au doigt, chaque bouton de la grille garde une zone de 44 px. */
+@media (pointer: coarse) {
+  .planning-besoin .icon-btn, .planning-noms .icon-btn { width: 44px; height: 44px; opacity: 1; }
+  .planning-ajout { min-height: 44px; }
+}

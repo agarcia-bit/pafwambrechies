@@ -8,7 +8,8 @@ import { useEffect } from 'react';
  * where the poll or the reminder is pinned, or the reports screen for a new report
  * (data.signalement_id, for the bureau and the admins), or the thread of a bureau message
  * (data.bureau_fil: 0 = general thread, otherwise the action's id), or a Pilotage task confiée or due
- * (data.bureau_action, sent by notify-taches: the action, or 0 = the bureau's task list).
+ * (data.bureau_action, sent by notify-taches: the action, or 0 = the bureau's task list), or the
+ * planning of an action a member signed up for (data.planning_action, the reminder the day before).
  */
 export function NotificationObserver() {
   const response = Notifications.useLastNotificationResponse();
@@ -29,6 +30,7 @@ const CIBLES: { reconnait: (d: Donnees) => unknown; ouvre: (d: Donnees) => void 
   { reconnait: (d) => d.evenement_id, ouvre: (d) => router.push({ pathname: '/agenda/[id]', params: { id: String(d.evenement_id) } }) },
   { reconnait: (d) => d.signalement_id, ouvre: () => router.push('/plus/admin/signalements') },
   { reconnait: (d) => d.bureau_fil !== undefined, ouvre: (d) => router.push({ pathname: '/plus/bureau/discussion', params: { fil: String(d.bureau_fil) } }) },
+  { reconnait: (d) => d.planning_action, ouvre: (d) => router.push({ pathname: '/agenda/creneaux/[action]', params: { action: String(d.planning_action) } }) },
   { reconnait: (d) => d.bureau_action, ouvre: (d) => router.push({ pathname: '/plus/bureau/action/[id]', params: { id: String(d.bureau_action) } }) },
   { reconnait: (d) => d.bureau_action !== undefined, ouvre: () => router.push('/plus/bureau') },
   { reconnait: (d) => d.sondage_id || d.cotisation, ouvre: () => router.navigate('/') },

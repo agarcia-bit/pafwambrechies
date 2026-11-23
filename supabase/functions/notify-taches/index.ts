@@ -2,7 +2,9 @@
 // (supabase/taches_notifications.sql) avec la clé de service :
 //  1. « Andy vous a confié … » dès qu'une tâche est confiée à quelqu'un d'autre que soi, regroupé
 //     par personne et par action ;
-//  2. à partir de 9 h (Paris), un rappel la veille de l'échéance puis le jour même.
+//  2. à partir de 9 h (Paris), un rappel la veille de l'échéance puis le jour même ;
+//  3. les créneaux de présence (creneaux.ts) : le référent prévenu d'une désinscription, et un
+//     rappel aux inscrits la veille de l'action.
 // Chaque message part une fois : la tâche le note (confiee_notifiee, rappel_veille_le, rappel_jour_le),
 // même quand la personne n'a pas de téléphone enregistré. Un toucher ouvre l'action dans l'app.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -11,6 +13,9 @@ import {
   actionAOuvrir, annoncesAEnvoyer, HEURE_DES_RAPPELS, lendemain, rappelsAEnvoyer, texteDeLAnnonce, texteDuRappel,
   type TacheANotifier,
 } from "./regles.ts";
+import {
+  desistementsAPrevenir, rappelsDeLaVeille, texteDuDesistement, texteDuRappelDeLaVeille, type InscriptionANotifier,
+} from "./creneaux.ts";
 
 const EXPO_ACCESS_TOKEN = Deno.env.get("EXPO_ACCESS_TOKEN");
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
@@ -42,7 +47,7 @@ async function nomDeLAssociation(tenantId: string): Promise<string> {
 }
 
 /** Envoie un message sur tous les téléphones d'une personne ; oublie ceux qui n'existent plus. */
-async function envoyerA(tenantId: string, personne: string, texte: string, actionId: number): Promise<number> {
+async function envoyerA(tenantId: string, personne: string, texte: string, donnees: Record<string, unknown>): Promise<number> {
   const { data: appareils } = await sb.from("device_tokens").select("id, token").eq("tenant_id", tenantId).eq("user_id", personne);
   if (!appareils?.length) return 0;
   const titre = await nomDeLAssociation(tenantId);
@@ -54,7 +59,7 @@ async function envoyerA(tenantId: string, personne: string, texte: string, actio
         "Content-Type": "application/json",
         ...(EXPO_ACCESS_TOKEN ? { "Authorization": `Bearer ${EXPO_ACCESS_TOKEN}` } : {}),
       },
-      body: JSON.stringify(appareils.map((a) => ({ to: a.token, title: titre, body: texte, sound: "default", data: { bureau_action: actionId } }))),
+      body: JSON.stringify(appareils.map((a) => ({ to: a.token, title: titre, body: texte, sound: "default", data: donnees }))),
     });
     const json = await res.json();
     if (!res.ok || !Array.isArray(json.data)) throw new Error(`HTTP ${res.status}`);
@@ -78,7 +83,7 @@ async function envoyerLesAnnonces(taches: TacheANotifier[]): Promise<number> {
   for (const a of annonces) {
     const prenom = profils?.find((p) => p.id === a.confieePar)?.prenom ?? null;
     const titre = actions?.find((x) => x.id === a.actionId)?.titre ?? null;
-    envoyes += await envoyerA(a.tenantId, a.responsable, texteDeLAnnonce(prenom, titre, a.libelles), a.actionId);
+    envoyes += await envoyerA(a.tenantId, a.responsable, texteDeLAnnonce(prenom, titre, a.libelles), { bureau_action: a.actionId });
     await sb.from("taches").update({ confiee_notifiee: true }).in("id", a.ids);
   }
   return envoyes;
@@ -88,11 +93,46 @@ async function envoyerLesRappels(taches: TacheANotifier[], aujourdhui: string): 
   let envoyes = 0;
   const maintenant = new Date().toISOString();
   for (const personne of rappelsAEnvoyer(taches, aujourdhui)) {
-    envoyes += await envoyerA(personne.tenantId, personne.responsable, texteDuRappel(personne.rappels), actionAOuvrir(personne.rappels));
+    envoyes += await envoyerA(personne.tenantId, personne.responsable, texteDuRappel(personne.rappels), { bureau_action: actionAOuvrir(personne.rappels) });
     for (const jalon of ["jour", "veille"] as const) {
       const ids = personne.rappels.filter((r) => r.jalon === jalon).map((r) => r.id);
       if (ids.length) await sb.from("taches").update({ [`rappel_${jalon}_le`]: maintenant }).in("id", ids);
     }
+  }
+  return envoyes;
+}
+
+const COLONNES_CRENEAUX =
+  "id, tenant_id, debut, membre, annulee_le, annulation_notifiee, rappel_veille_le, poles!inner(nom, actions!inner(id, titre, date_action, referent, creneau_duree_minutes))";
+
+/** Le référent apprend qu'une place s'est libérée ; chaque désinscription n'est annoncée qu'une fois. */
+async function envoyerLesDesistements(): Promise<number> {
+  const { data, error } = await sb.from("inscriptions_creneaux").select(COLONNES_CRENEAUX).eq("annulation_notifiee", false);
+  if (error) throw error;
+  const inscriptions = (data ?? []) as unknown as InscriptionANotifier[];
+  if (!inscriptions.length) return 0;
+  const desistements = desistementsAPrevenir(inscriptions);
+  const { data: profils } = await sb.from("profiles").select("id, prenom").in("id", desistements.map((d) => d.membre).filter(Boolean) as string[]);
+  let envoyes = 0;
+  for (const d of desistements) {
+    const prenom = profils?.find((p) => p.id === d.membre)?.prenom ?? null;
+    const titre = inscriptions.find((i) => i.poles.actions.id === d.actionId)!.poles.actions.titre;
+    envoyes += await envoyerA(d.tenantId, d.referent, texteDuDesistement(prenom, titre, d.texteDuCreneau), { bureau_action: d.actionId });
+  }
+  await sb.from("inscriptions_creneaux").update({ annulation_notifiee: true }).in("id", inscriptions.map((i) => i.id));
+  return envoyes;
+}
+
+/** La veille de l'action, chaque inscrit reçoit un rappel de ses créneaux, une seule fois. */
+async function envoyerLesRappelsDeCreneaux(aujourdhui: string): Promise<number> {
+  const demain = lendemain(aujourdhui);
+  const { data, error } = await sb.from("inscriptions_creneaux").select(COLONNES_CRENEAUX)
+    .eq("poles.actions.date_action", demain).is("annulee_le", null).is("rappel_veille_le", null).not("membre", "is", null);
+  if (error) throw error;
+  let envoyes = 0;
+  for (const rappel of rappelsDeLaVeille((data ?? []) as unknown as InscriptionANotifier[], demain)) {
+    envoyes += await envoyerA(rappel.tenantId, rappel.membre, texteDuRappelDeLaVeille(rappel), { planning_action: rappel.actionId });
+    await sb.from("inscriptions_creneaux").update({ rappel_veille_le: new Date().toISOString() }).in("id", rappel.ids);
   }
   return envoyes;
 }
@@ -114,8 +154,12 @@ Deno.serve(async (req) => {
     const annonces = await envoyerLesAnnonces(taches);
     // Les tâches tout juste annoncées attendent le prochain passage pour leur rappel.
     const rappels = avecRappels ? await envoyerLesRappels(taches, aujourdhui) : 0;
-    if (annonces || rappels) console.log(`[notify-taches] ${aujourdhui}: ${annonces} annonce(s), ${rappels} rappel(s)`);
-    return Response.json({ annonces, rappels });
+    const desistements = await envoyerLesDesistements();
+    const rappelsDeCreneaux = avecRappels ? await envoyerLesRappelsDeCreneaux(aujourdhui) : 0;
+    if (annonces || rappels || desistements || rappelsDeCreneaux) {
+      console.log(`[notify-taches] ${aujourdhui}: ${annonces} annonce(s), ${rappels} rappel(s), ${desistements} désistement(s), ${rappelsDeCreneaux} rappel(s) de créneau`);
+    }
+    return Response.json({ annonces, rappels, desistements, rappelsDeCreneaux });
   } catch (err) {
     console.error("[notify-taches] Erreur", err);
     return new Response("Internal error", { status: 500 });

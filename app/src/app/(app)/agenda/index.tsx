@@ -2,12 +2,14 @@ import { router } from 'expo-router';
 import { RefreshControl, SectionList, StyleSheet, View } from 'react-native';
 
 import { DateTile } from '@/components/actu-visual';
+import { BesoinDeBras } from '@/components/besoin-de-bras';
 import { BandPill, BrandBand } from '@/components/brand-band';
 import { PressableCard } from '@/components/ui/card';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useEvenements } from '@/lib/data';
+import { usePlanningsOuverts } from '@/lib/mes-creneaux';
 import { dayParts, monthLabel } from '@/lib/format';
 import { detailsEvenement } from '@/lib/periode';
 import type { Evenement } from '@/lib/types';
@@ -29,17 +31,22 @@ export default function AgendaScreen() {
   const espaceSousOnglets = useEspaceSousOnglets();
   const events = useEvenements();
   const bandStyle = useBandListStyle();
-  const { refreshing, onRefresh } = usePullToRefresh(events.refetch);
+  const plannings = usePlanningsOuverts();
+  // Tirer pour rafraîchir relit aussi les plannings : un créneau a pu se remplir entre-temps.
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([events.refetch(), plannings.refetch()]));
 
   return (
     <SectionList
       style={bandStyle}
       ListHeaderComponent={
-        <BrandBand title="Agenda" subtitle="Les prochains rendez-vous">
-          {events.data && (
-            <BandPill label={events.data.length === 1 ? '1 événement à venir' : `${events.data.length} événements à venir`} />
-          )}
-        </BrandBand>
+        <>
+          <BrandBand title="Agenda" subtitle="Les prochains rendez-vous">
+            {events.data && (
+              <BandPill label={events.data.length === 1 ? '1 événement à venir' : `${events.data.length} événements à venir`} />
+            )}
+          </BrandBand>
+          <BesoinDeBras />
+        </>
       }
       sections={byMonth(events.data ?? [])}
       keyExtractor={(ev) => String(ev.id)}

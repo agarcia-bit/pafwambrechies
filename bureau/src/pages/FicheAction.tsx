@@ -7,6 +7,7 @@ import { Drawer } from '../Drawer';
 import { Icon } from '../Icon';
 import { ACTION_STATUTS, dueLabel, isOverdue, nameOf, PRIORITES, type Action, type BureauMember, type Tache } from '../lib';
 import { MODELES, type BrouillonAction, type Priorite } from '../modeles-actions';
+import { PlanningDeLAction } from './PlanningDeLAction';
 import { TONE } from './PilotageViews';
 import { useFicheAction, type FicheActionEtat, type NouvelleTache } from './useFicheAction';
 
@@ -38,6 +39,7 @@ export function FicheAction({ action, depart, taches, members, profile, onClose,
       {id
         ? <TachesDeLAction fiche={fiche} taches={taches} members={members} moi={profile.id} />
         : <TachesPrevues fiche={fiche} />}
+      {id && <PlanningDeLAction actionId={id} />}
       {id && (
         <section className="drawer-section">
           <div className="section-head"><h3>Discussion</h3><span className="muted small">Bureau uniquement</span></div>
