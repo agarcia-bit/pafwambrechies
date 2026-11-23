@@ -10,6 +10,7 @@ export type StatutDeProposition = 'en_attente' | 'acceptee' | 'refusee';
 export type Proposition = {
   id: number;
   auteur: string;
+  auteur_nom?: string | null;
   type: TypeDeProposition;
   titre: string;
   description: string;

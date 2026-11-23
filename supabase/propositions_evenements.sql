@@ -43,6 +43,9 @@ create table if not exists public.propositions_evenements (
   -- Seul un événement personnel se répète, et toujours pour une durée donnée.
   constraint repetition_coherente check (repetition = 'aucune' or (type = 'personnel' and nb_mois is not null))
 );
+-- Le nom de l'auteur, noté à l'envoi : un membre du bureau qui n'est pas administrateur ne lit pas
+-- les fiches des adhérents, mais doit savoir qui propose.
+alter table public.propositions_evenements add column if not exists auteur_nom text;
 create index if not exists propositions_evenements_tenant_idx on public.propositions_evenements (tenant_id, statut, created_at desc);
 create index if not exists propositions_evenements_auteur_idx on public.propositions_evenements (auteur, created_at desc);
 alter table public.propositions_evenements enable row level security;
@@ -99,8 +102,8 @@ begin
   if p_type = 'personnel' and p_date < (now() at time zone 'Europe/Paris')::date then
     raise exception 'La date de l''événement est déjà passée.' using errcode = 'P0001';
   end if;
-  insert into public.propositions_evenements (tenant_id, auteur, type, titre, description, periode, date, heure, lieu, repetition, nb_mois)
-  values (moi.tenant_id, moi.id, p_type, trim(p_titre), trim(p_description), nullif(trim(p_periode), ''), p_date,
+  insert into public.propositions_evenements (tenant_id, auteur, auteur_nom, type, titre, description, periode, date, heure, lieu, repetition, nb_mois)
+  values (moi.tenant_id, moi.id, nullif(trim(concat_ws(' ', moi.prenom, moi.nom)), ''), p_type, trim(p_titre), trim(p_description), nullif(trim(p_periode), ''), p_date,
           nullif(trim(p_heure), ''), nullif(trim(p_lieu), ''), coalesce(p_repetition, 'aucune'),
           case when coalesce(p_repetition, 'aucune') = 'aucune' then null else p_nb_mois end)
   returning id into nouvelle;
@@ -124,7 +127,7 @@ create or replace function public.accepter_proposition(p_proposition bigint, p_d
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   p public.propositions_evenements;
-  nom text;
+  nom_auteur text;
   la_serie uuid;
   premier bigint;
   nouvelle_action bigint;
@@ -137,7 +140,9 @@ begin
   if p.statut <> 'en_attente' then
     raise exception 'Le bureau a déjà répondu à cette proposition.' using errcode = 'P0001';
   end if;
-  select nullif(trim(concat_ws(' ', prenom, nom)), '') into nom from public.profiles where id = p.auteur;
+  -- Le nom noté à l'envoi, sinon celui de la fiche (« nom_auteur » : « nom » est aussi une colonne).
+  select coalesce(p.auteur_nom, nullif(trim(concat_ws(' ', pr.prenom, pr.nom)), '')) into nom_auteur
+    from public.profiles pr where pr.id = p.auteur;
   devenir := case when p.type = 'personnel' then 'evenement' else p_devenir end;
   if devenir not in ('evenement', 'action') then
     raise exception 'Choisissez : un événement de l''Agenda ou une action du Pilotage.' using errcode = 'P0001';
@@ -154,7 +159,7 @@ begin
     la_serie := case when p.repetition <> 'aucune' then gen_random_uuid() end;
     with seances as (
       insert into public.evenements (tenant_id, titre, date, heure, lieu, description, participation, propose_par, propose_par_nom, serie)
-      select p.tenant_id, p.titre, d, p.heure, p.lieu, p.description, true, p.auteur, nom, la_serie
+      select p.tenant_id, p.titre, d, p.heure, p.lieu, p.description, true, p.auteur, nom_auteur, la_serie
         from public.seances_de_la_serie(coalesce(p.date, p_date), p.repetition, p.nb_mois) as d
       returning id, date
     )
