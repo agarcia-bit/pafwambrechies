@@ -8,6 +8,7 @@ import { hashParam } from '../lib';
 import { BilletsDuBureau } from './BilletDuBureau';
 import { FeuilleDeRoute } from './FeuilleDeRoute';
 import { dateLongue, DemarrerLePlanning, ListeDesPoles, ReglagesDuPlanning, resumeDesHoraires, StatutDuPlanning } from './PlanningDeLAction';
+import { PlusieursCreneaux } from './PlusieursCreneaux';
 import { DerniereRelance, FenetreDeRelance } from './RelanceDuPlanning';
 import { usePlanning, type PlanningEtat } from './usePlanning';
 import { useRelance, type RelanceEtat } from './useRelance';
@@ -110,6 +111,7 @@ function ReglagesEnLigne({ planning }: { planning: PlanningEtat }) {
     <div className="planning-reglages">
       <ReglagesDuPlanning key={`${planning.horaires.debut}-${planning.horaires.fin}-${planning.horaires.dureeMinutes}`} planning={planning} horaires={planning.horaires} />
       <ListeDesPoles planning={planning} />
+      <PlusieursCreneaux planning={planning} horaires={planning.horaires} />
     </div>
   );
 }

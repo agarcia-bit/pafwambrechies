@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  besoinDuCreneau, billetsDeLaPersonne, creneauxDuPlanning, estRecente, quandEstCe, texteDeLEssai, messageDeRelance, resumeDesTrous, trousDuPlanning, bilanDesPlaces, changerLeBesoin, estDejaPrisALHeure, etatDuCreneau, etatPourLeBureau, libelleDeLEtat, libelleDeTranche, tranchesDeLaJournee,
+  besoinDuCreneau, billetsDeLaPersonne, creneauxDuPlanning, estRecente, quandEstCe, texteDeLEssai, messageDeRelance, resumeDesTrous, trousDuPlanning, bilanDesPlaces, changerLeBesoin, changerLesBesoins, estDejaPrisALHeure, etatDuCreneau, etatPourLeBureau, libelleDeLEtat, libelleDeTranche, tranchesDeLaJournee,
 } from './creneaux';
 
 const cafe = { id: 1, nom: 'Café', personnes: 2, besoins_par_creneau: { '10:00': 0 }, ordre: 0 };
@@ -108,5 +108,13 @@ describe('relance : quand et à quel rythme', () => {
     expect(estRecente(relance('2026-11-23T08:00:00Z'), maintenant.getTime())).toBe(true);
     expect(estRecente(relance('2026-11-22T16:00:00Z'), maintenant.getTime())).toBe(false);
     expect(estRecente(null, maintenant.getTime())).toBe(false);
+  });
+});
+
+describe('préparer plus vite', () => {
+  it('change plusieurs tranches d’un coup, et revenir au nombre du pôle efface les exceptions', () => {
+    const buvette = { personnes: 2, besoins_par_creneau: { '10:00': 0 } };
+    expect(changerLesBesoins(buvette, ['10:00', '12:00'], 3)).toEqual({ '10:00': 3, '12:00': 3 });
+    expect(changerLesBesoins(buvette, ['10:00', '12:00'], 2)).toEqual({});
   });
 });

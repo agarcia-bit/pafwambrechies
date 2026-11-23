@@ -16,6 +16,15 @@
 
 /* Réglages (tiroir « Horaires et pôles ») */
 .planning-reglages { display: grid; gap: 18px; }
+/* Préparer plus vite : une ligne « pôle · de · à · personnes », puis Appliquer. */
+.plusieurs-creneaux { display: grid; gap: 10px; margin: 0; padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
+.plusieurs-creneaux legend { padding: 0 6px; font-weight: 600; font-size: 14px; }
+.plusieurs-ligne { display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: 10px; }
+.plusieurs-ligne label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
+.plusieurs-ligne select, .plusieurs-ligne input { min-height: 44px; }
+.plusieurs-creneaux p { margin: 0; }
+.plusieurs-creneaux button { justify-self: start; min-height: 44px; }
+@media (max-width: 720px) { .plusieurs-ligne { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .planning-vide { display: grid; gap: 12px; justify-items: start; }
 .planning-a-finir { display: grid; gap: 14px; }
 .planning-horaires { align-items: flex-end; }

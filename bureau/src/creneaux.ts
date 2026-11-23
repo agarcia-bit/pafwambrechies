@@ -51,6 +51,11 @@ export function changerLeBesoin(pole: Pick<Pole, 'personnes' | 'besoins_par_cren
   return exceptions;
 }
 
+/** Plusieurs tranches d'un coup (« de 10 h à 14 h : 3 personnes ») : les exceptions qui en résultent. */
+export function changerLesBesoins(pole: Pick<Pole, 'personnes' | 'besoins_par_creneau'>, heures: string[], besoin: number): Record<string, number> {
+  return heures.reduce((exceptions, heure) => changerLeBesoin({ personnes: pole.personnes, besoins_par_creneau: exceptions }, heure, besoin), pole.besoins_par_creneau);
+}
+
 /** L'état d'une case, du point de vue d'une personne : la sienne, des places, la dernière, complet, ou pas ouverte. */
 export function etatDuCreneau({ besoin, pris, estAMoi }: { besoin: number; pris: number; estAMoi: boolean }): EtatDuCreneau {
   if (estAMoi) return 'vous';
