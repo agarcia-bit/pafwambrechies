@@ -7,6 +7,7 @@ import { ActuPhoto, PostMeta, useCategoryHue } from '@/components/actu-visual';
 import { Entrance } from '@/components/entrance';
 import { CommentCount, LIKED_COLOR, LikeButton, ShareButton } from '@/components/social';
 import { Avatar } from '@/components/ui/avatar';
+import { BadgeDeProposition } from '@/components/proposer-un-evenement';
 import { Badge } from '@/components/ui/badge';
 import { Icon } from '@/components/ui/icon';
 import { PressableCard } from '@/components/ui/card';
@@ -168,6 +169,7 @@ export function IdeeCard({ idee, index = 99 }: { idee: Idee; index?: number }) {
             </Text>
           </View>
           <Badge label={idee.categorie} />
+          <BadgeDeProposition statut={idee.proposition_statut} />
         </View>
         {!!idee.titre && (
           <Text variant="title" style={styles.postTitle}>

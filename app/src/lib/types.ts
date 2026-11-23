@@ -117,6 +117,8 @@ export type Evenement = {
   description: string | null;
   /** The bureau asks the members whether they come (supabase/evenements_participation.sql). */
   participation?: boolean;
+  /** Un événement proposé par un membre (supabase/propositions_evenements.sql) : « Proposé par Julien ». */
+  propose_par_nom?: string | null;
 };
 
 export type Idee = {
@@ -127,6 +129,8 @@ export type Idee = {
   titre: string | null;
   texte: string;
   created_at: string;
+  /** Une proposition d'événement à organiser : où en est la réponse du bureau (null = idée ordinaire). */
+  proposition_statut?: 'en_attente' | 'acceptee' | 'refusee' | null;
   idees_likes: Count;
   idees_commentaires: Count;
   my_like: MyLike;

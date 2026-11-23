@@ -34,7 +34,7 @@ export type SocialKind = keyof typeof SOCIAL;
 const ACTU_FIELDS =
   'id, titre, date, created_at, categorie, excerpt, contenu, image_url, auteur_id, date_evenement, actus_likes(count), actus_commentaires(count), my_like:actus_likes(user_id)';
 const IDEE_FIELDS =
-  'id, user_id, prenom, categorie, titre, texte, created_at, idees_likes(count), idees_commentaires(count), my_like:idees_likes(user_id)';
+  'id, user_id, prenom, categorie, titre, texte, created_at, proposition_statut, idees_likes(count), idees_commentaires(count), my_like:idees_likes(user_id)';
 
 /** An item already loaded in one of the infinite lists (instant detail screen). */
 function findInLists<T extends { id: number }>(client: QueryClient, list: string, id: number): T | undefined {

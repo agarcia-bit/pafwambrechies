@@ -3,6 +3,7 @@ import { RefreshControl, SectionList, StyleSheet, View } from 'react-native';
 
 import { DateTile } from '@/components/actu-visual';
 import { BesoinDeBras } from '@/components/besoin-de-bras';
+import { CarteProposerUnEvenement } from '@/components/proposer-un-evenement';
 import { BandPill, BrandBand } from '@/components/brand-band';
 import { PressableCard } from '@/components/ui/card';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -48,6 +49,7 @@ export default function AgendaScreen() {
             )}
           </BrandBand>
           <BesoinDeBras />
+          <CarteProposerUnEvenement />
         </>
       }
       sections={byMonth(events.data ?? [])}
