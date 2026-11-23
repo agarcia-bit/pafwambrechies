@@ -44,7 +44,7 @@ function PlanningDUneAction({ actionId, moi }: { actionId: number; moi: string }
   if (!planning.estCharge) return <div className="card"><div className="skeleton" /></div>;
   const tranches = planning.horaires ? tranchesDeLaJournee(planning.horaires) : [];
   const estPret = tranches.length > 0 && planning.poles.length > 0;
-  const trous = trousDuPlanning(planning.poles, tranches, planning.inscrits);
+  const trous = trousDuPlanning(planning.poles, tranches, planning.inscrits, moi);
   const filtreActif = filtre ?? (estEtroit ? 'manque' : 'tout');
   return (
     <div className="page-planning">
@@ -65,7 +65,7 @@ function PlanningDUneAction({ actionId, moi }: { actionId: number; moi: string }
           {filtreActif === 'tout' && !estEtroit && <GrilleDuPlanning planning={planning} tranches={tranches} moi={moi} />}
           {/* Sur téléphone, « Tout » est une liste : la grille ne tient pas sur un petit écran. */}
           {(filtreActif === 'manque' || estEtroit) && (
-            <ListeDesTrous trous={filtreActif === 'manque' ? trous : creneauxDuPlanning(planning.poles, tranches, planning.inscrits)} planning={planning} moi={moi} />
+            <ListeDesTrous trous={filtreActif === 'manque' ? trous : creneauxDuPlanning(planning.poles, tranches, planning.inscrits, moi)} planning={planning} moi={moi} />
           )}
           <div className="planning-pied">
             <span>{resumeDesHoraires(planning.horaires)} · {planning.poles.length} pôle{planning.poles.length > 1 ? 's' : ''}</span>

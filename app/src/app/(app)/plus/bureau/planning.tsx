@@ -34,7 +34,7 @@ export default function PlanningScreen() {
   if (planning.isError) return <ErrorState onRetry={planning.refetch} />;
   const { horaires, ouvert, poles } = planning.data;
   const estPret = !!horaires && poles.length > 0;
-  const trous = horaires ? trousDuPlanning(poles, tranchesDeLaJournee(horaires), planning.data.inscrits) : [];
+  const trous = horaires ? trousDuPlanning(poles, tranchesDeLaJournee(horaires), planning.data.inscrits, profile.id) : [];
   async function seRetirer(inscrit: Inscrit) {
     const ok = await confirmAction({ title: 'Vous ne pouvez plus venir ?', message: 'La place redeviendra libre.', confirmLabel: 'Me désinscrire', destructive: true });
     if (ok) modification.mutate({ type: 'je-me-retire', inscrit });
@@ -50,7 +50,7 @@ export default function PlanningScreen() {
             <EnteteDuPlanning trous={trous} ouvert={ouvert} modifier={modification.mutate} enCours={modification.isPending} />
             {billetsDeLaPersonne(poles, planning.data.inscrits, profile.id).map(({ inscrit, nomDuPole, avec }) => (
               <BilletDeCreneau key={inscrit.id} nomDuPole={nomDuPole} heure={inscrit.debut} dureeMinutes={horaires.dureeMinutes}
-                autres={avec.length} estNouveau={false} enCours={modification.isPending} onLiberer={() => seRetirer(inscrit)} />
+                autres={avec.length} estNouveau={false} enCours={modification.isPending} onLiberer={() => seRetirer(inscrit)} compact />
             ))}
             <ChipBar options={VUES} value={vue} onChange={setVue} />
             {vue === 'Ce qui manque'
