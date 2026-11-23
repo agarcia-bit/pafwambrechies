@@ -193,10 +193,12 @@ table.clickable tbody tr { cursor: pointer; transition: background .1s; } table.
 .timeline { display: grid; gap: 24px; min-width: 0; }
 .tl-group { display: flex; gap: 8px; align-items: center; margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); } .tl-group span { background: var(--neutral-soft); padding: 0 7px; border-radius: 99px; font-size: 11px; }
 .tl-group.bad { color: var(--bad); } .tl-group.bad span { background: var(--bad-soft); } .tl-group.brand { color: var(--brand); } .tl-group.brand span { background: var(--brand-soft); }
-.tl-item { display: grid; grid-template-columns: 52px 1fr; gap: 12px; margin-bottom: 10px; } .tl-item.is-done { opacity: .65; }
+.tl-item { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; margin-bottom: 10px; } .tl-item.is-done { opacity: .65; }
 .tl-date { text-align: center; background: var(--brand-soft); color: var(--brand); border-radius: 12px; padding: 7px 0; height: fit-content; font-size: 11px; text-transform: uppercase; font-weight: 600; line-height: 1.1; } .tl-date b { display: block; font-size: 20px; } .tl-date.late { background: var(--bad-soft); color: var(--bad); }
-.tl-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px 18px 12px; box-shadow: var(--shadow-1); display: grid; gap: 8px; min-width: 0; transition: border-color .12s; } .tl-card:hover { border-color: var(--line-2); }
+.tl-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px 18px 12px; box-shadow: var(--shadow-1); display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; transition: border-color .12s; } .tl-card:hover { border-color: var(--line-2); }
 .tl-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; } .tl-row.sub { font-size: 12.5px; }
+/* Sur téléphone, un long titre d'action doit passer à la ligne plutôt que d'élargir la carte (et le tiroir fixe avec elle). */
+.tl-row > * { min-width: 0; } .tl-row .action-title { white-space: normal; overflow-wrap: anywhere; }
 .tl-card .task-list { margin-top: 4px; border-top: 1px dashed var(--line); padding-top: 4px; }
 
 /* Équipe */
@@ -228,7 +230,7 @@ ul.names { columns: 2 220px; margin-top: 10px; list-style: none; padding: 0; } u
 @media (max-width: 860px) {
   .login-page { grid-template-columns: 1fr; } .login-brand { padding: 32px 24px; } .login-brand h1 { font-size: 30px; } .login-brand ul { display: none; }
   /* Structure du téléphone (barre, menu glissant, largeurs) : voir mobile.css. */
-  .tl-item { grid-template-columns: 44px 1fr; }
+  .tl-item { grid-template-columns: 44px minmax(0, 1fr); }
   .kpi { min-width: 110px; padding: 12px 14px; }
 }
 
