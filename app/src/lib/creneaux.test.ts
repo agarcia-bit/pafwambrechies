@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  besoinDuCreneau, billetsDeLaPersonne, creneauxDuPlanning, estRecente, quandEstCe, messageDeRelance, resumeDesTrous, trousDuPlanning, bilanDesPlaces, changerLeBesoin, estDejaPrisALHeure, etatDuCreneau, etatPourLeBureau, libelleDeLEtat, libelleDeTranche, tranchesDeLaJournee,
+  besoinDuCreneau, billetsDeLaPersonne, creneauxDuPlanning, estRecente, quandEstCe, texteDeLEssai, messageDeRelance, resumeDesTrous, trousDuPlanning, bilanDesPlaces, changerLeBesoin, estDejaPrisALHeure, etatDuCreneau, etatPourLeBureau, libelleDeLEtat, libelleDeTranche, tranchesDeLaJournee,
 } from './creneaux';
 
 const cafe = { id: 1, nom: 'Café', personnes: 2, besoins_par_creneau: { '10:00': 0 }, ordre: 0 };
@@ -89,6 +89,13 @@ describe('créneaux de présence', () => {
 
 describe('relance : quand et à quel rythme', () => {
   const maintenant = new Date('2026-11-23T17:00:00Z'); // 18 h à Paris
+
+  it("dit par où l'essai est parti", () => {
+    expect(texteDeLEssai({ nb_notifications: 1, nb_emails: 1 })).toContain('téléphone et votre boîte mail');
+    expect(texteDeLEssai({ nb_notifications: 1, nb_emails: 0 })).toBe('Essai envoyé sur votre téléphone.');
+    expect(texteDeLEssai({ nb_notifications: 0, nb_emails: 1 })).toContain('par e-mail');
+    expect(texteDeLEssai({ nb_notifications: 0, nb_emails: 0 })).toContain('n’a pas pu partir');
+  });
 
   it('dit quand est partie la dernière relance', () => {
     expect(quandEstCe('2026-11-23T08:05:00Z', maintenant)).toBe('aujourd’hui à 9 h 05');

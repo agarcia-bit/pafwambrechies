@@ -173,6 +173,14 @@ const UN_JOUR_MS = 24 * 60 * 60 * 1000;
 export const estRecente = (relance: Relance | null, maintenant = Date.now()) =>
   !!relance && maintenant - new Date(relance.created_at).getTime() < UN_JOUR_MS;
 
+/** Ce que dit l'écran après « M'envoyer un essai », selon les voies par lesquelles il est parti. */
+export function texteDeLEssai({ nb_notifications: notification, nb_emails: email }: { nb_notifications: number; nb_emails: number }): string {
+  if (notification && email) return 'Essai envoyé : regardez votre téléphone et votre boîte mail.';
+  if (notification) return 'Essai envoyé sur votre téléphone.';
+  if (email) return 'Essai envoyé par e-mail (pas d’app enregistrée sur votre téléphone).';
+  return 'L’essai n’a pas pu partir : ni téléphone ni e-mail connus pour votre compte.';
+}
+
 /** « hier à 18 h », « aujourd'hui à 9 h 05 », « le 3 décembre à 18 h » */
 export function quandEstCe(iso: string, maintenant = new Date()): string {
   const date = new Date(iso);

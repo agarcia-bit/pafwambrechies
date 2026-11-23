@@ -6,9 +6,9 @@ import { FormScreen } from '@/components/form-screen';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
-import { estRecente, quandEstCe } from '@/lib/creneaux';
+import { estRecente, quandEstCe, texteDeLEssai } from '@/lib/creneaux';
 import { showMessage } from '@/lib/confirm';
-import { messageDeLaRelance, useApercuDeRelance, useDerniereRelance, useEnvoyerLaRelance } from '@/lib/relance';
+import { messageDeLaRelance, useApercuDeRelance, useDerniereRelance, useEnvoyerLaRelance, useEssayerLaRelance } from '@/lib/relance';
 import { useTheme } from '@/theme';
 import { tint } from '@/theme/colors';
 
@@ -24,6 +24,7 @@ export default function RelanceScreen() {
   const apercu = useApercuDeRelance(actionId);
   const derniere = useDerniereRelance(actionId);
   const envoi = useEnvoyerLaRelance(actionId);
+  const essai = useEssayerLaRelance(actionId);
   const total = apercu.data ? apercu.data.nb_notifications + apercu.data.nb_emails : null;
 
   function envoyer() {
@@ -34,6 +35,10 @@ export default function RelanceScreen() {
         router.back();
       },
     });
+  }
+
+  function essayer() {
+    essai.mutate(message, { onSuccess: (parti) => showMessage(texteDeLEssai(parti)) });
   }
 
   return (
@@ -50,8 +55,9 @@ export default function RelanceScreen() {
       {ouvert !== '1' && <Alerte neutre texte="Le planning est réservé au bureau : il sera ouvert aux membres à l’envoi." />}
       <TextField label="Message" value={message} onChangeText={setMessage} multiline maxLength={1000} />
       <Text variant="footnote" tone="secondary">Par e-mail, on ajoute comment s’inscrire : ouvrir l’app Allianceo, onglet Agenda.</Text>
-      {envoi.isError && <Text tone="danger" accessibilityLiveRegion="polite">{messageDeLaRelance(envoi.error)}</Text>}
+      {(envoi.isError || essai.isError) && <Text tone="danger" accessibilityLiveRegion="polite">{messageDeLaRelance(envoi.error ?? essai.error)}</Text>}
       <Button title="Envoyer" icon="send" loading={envoi.isPending} disabled={!message.trim() || !total} onPress={envoyer} />
+      <Button title="M’envoyer un essai" variant="secondary" loading={essai.isPending} disabled={!message.trim() || envoi.isPending} onPress={essayer} />
     </FormScreen>
   );
 }

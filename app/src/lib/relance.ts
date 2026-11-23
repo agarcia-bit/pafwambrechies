@@ -49,6 +49,11 @@ export function useEnvoyerLaRelance(actionId: number) {
   });
 }
 
+/** M'envoie le message à moi seul : rien n'est ouvert ni noté, il n'y a donc rien à relire. */
+export function useEssayerLaRelance(actionId: number) {
+  return useMutation({ mutationFn: (message: string) => appelerLaRelance({ action_id: actionId, message, essai: true }) });
+}
+
 /** Le message à afficher quand la relance n'a pas pu partir. */
 export function messageDeLaRelance(erreur: unknown): string {
   const code = (erreur as Error)?.message;

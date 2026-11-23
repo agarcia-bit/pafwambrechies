@@ -30,6 +30,22 @@ export function destinatairesDeLaRelance(
   return { parNotification, parEmail: [...emails] };
 }
 
+/**
+ * L'essai « M'envoyer un essai » : seul celui qui relance est prévenu, et par les deux voies à la
+ * fois (notification s'il a l'app, et e-mail), pour voir le message tel que chaque membre le recevra.
+ */
+export function destinatairesDeLEssai(moi: Membre | null, appareils: Appareil[]): Destinataires {
+  if (!moi) return { parNotification: [], parEmail: [] };
+  const siens = appareils.filter((a) => a.user_id === moi.id);
+  return {
+    parNotification: siens.length ? [{ userId: moi.id, appareils: siens }] : [],
+    parEmail: estUnEmail(moi.email) ? [moi.email.trim().toLowerCase()] : [],
+  };
+}
+
+/** Un essai se reconnaît dès l'objet ou le titre de la notification. */
+export const marquerLEssai = (texte: string, essai: boolean) => (essai ? `[Essai] ${texte}` : texte);
+
 /** L'objet de l'e-mail : « Marché de Noël : on a besoin de vous ». */
 export const sujetDeLaRelance = (titre: string) => `${titre.trim() || 'Notre prochaine action'} : on a besoin de vous`;
 

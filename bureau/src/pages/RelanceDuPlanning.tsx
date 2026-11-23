@@ -32,6 +32,7 @@ export function FenetreDeRelance({ relance, messagePropose, estOuvert, onFermer,
       footer={<>
         <span className="grow" />
         <button className="ghost" onClick={onFermer}>Annuler</button>
+        <button disabled={!message.trim() || relance.enCours} onClick={() => relance.essayer(message)}>M’envoyer un essai</button>
         <button className="primary" disabled={!message.trim() || relance.enCours || !total} onClick={envoyer}>
           <Icon name="send" size={15} /> {relance.enCours ? 'Envoi…' : 'Envoyer'}
         </button>

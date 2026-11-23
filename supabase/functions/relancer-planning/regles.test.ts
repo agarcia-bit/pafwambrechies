@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { destinatairesDeLaRelance, sujetDeLaRelance, texteDeLaNotification, texteDeLEmail } from "./regles";
+import { destinatairesDeLaRelance, destinatairesDeLEssai, marquerLEssai, sujetDeLaRelance, texteDeLaNotification, texteDeLEmail } from "./regles";
 
 describe("relance d'un planning", () => {
   const membres = [
@@ -23,5 +23,15 @@ describe("relance d'un planning", () => {
     expect(sujetDeLaRelance("Marché de Noël")).toBe("Marché de Noël : on a besoin de vous");
     expect(texteDeLEmail("Il manque 8 personnes.")).toContain("onglet Agenda");
     expect(texteDeLaNotification("a ".repeat(200))).toHaveLength(180);
+  });
+
+  it("l'essai ne prévient que celui qui relance, par notification s'il a l'app et par e-mail", () => {
+    expect(destinatairesDeLEssai({ id: "lea", email: "lea@exemple.fr" }, appareils))
+      .toEqual({ parNotification: [{ userId: "lea", appareils }], parEmail: ["lea@exemple.fr"] });
+    expect(destinatairesDeLEssai({ id: "andy", email: " Andy@Exemple.fr " }, appareils))
+      .toEqual({ parNotification: [], parEmail: ["andy@exemple.fr"] });
+    expect(destinatairesDeLEssai(null, appareils)).toEqual({ parNotification: [], parEmail: [] });
+    expect(marquerLEssai("Marché", true)).toBe("[Essai] Marché");
+    expect(marquerLEssai("Marché", false)).toBe("Marché");
   });
 });

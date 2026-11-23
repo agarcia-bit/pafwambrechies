@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { type Relance } from '../creneaux';
+import { texteDeLEssai, type Relance } from '../creneaux';
 import { supabase, toast } from '../lib';
 
 export { estRecente, quandEstCe, type Relance } from '../creneaux';
@@ -37,19 +37,32 @@ export function useRelance(actionId: number) {
     return data as Apercu;
   }
 
+  /** Appelle la fonction d'envoi ; rend ce qui est parti, ou null après avoir dit l'erreur. */
+  async function expedier(message: string, essai: boolean): Promise<Apercu | null> {
+    setEnCours(true);
+    const { data, error } = await supabase.functions.invoke('relancer-planning', { body: { action_id: actionId, message, essai } });
+    setEnCours(false);
+    if (error) { toast(await messageDErreur(error), 'error'); return null; }
+    return data as Apercu;
+  }
+
   /** Envoie la relance ; rend vrai si elle est partie. */
   async function envoyer(message: string): Promise<boolean> {
-    setEnCours(true);
-    const { data, error } = await supabase.functions.invoke('relancer-planning', { body: { action_id: actionId, message } });
-    setEnCours(false);
-    if (error) { toast(await messageDErreur(error), 'error'); return false; }
-    const { nb_notifications: notifications, nb_emails: emails } = data as Apercu;
-    toast(`${notifications + emails} personne${notifications + emails > 1 ? 's' : ''} prévenue${notifications + emails > 1 ? 's' : ''}`);
+    const parti = await expedier(message, false);
+    if (!parti) return false;
+    const total = parti.nb_notifications + parti.nb_emails;
+    toast(`${total} personne${total > 1 ? 's' : ''} prévenue${total > 1 ? 's' : ''}`);
     await charger();
     return true;
   }
 
-  return { derniere, enCours, apercu, envoyer };
+  /** M'envoie le message à moi seul, pour le voir tel que les membres le recevront. */
+  async function essayer(message: string): Promise<void> {
+    const parti = await expedier(message, true);
+    if (parti) toast(texteDeLEssai(parti));
+  }
+
+  return { derniere, enCours, apercu, envoyer, essayer };
 }
 
 export type RelanceEtat = ReturnType<typeof useRelance>;

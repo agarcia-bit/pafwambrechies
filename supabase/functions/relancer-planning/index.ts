@@ -10,7 +10,7 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { expediteurDe, htmlDuTexte } from "./expediteur.ts";
-import { destinatairesDeLaRelance, sujetDeLaRelance, texteDeLaNotification, texteDeLEmail, type Appareil, type Destinataires } from "./regles.ts";
+import { destinatairesDeLaRelance, destinatairesDeLEssai, marquerLEssai, sujetDeLaRelance, texteDeLaNotification, texteDeLEmail, type Appareil, type Destinataires } from "./regles.ts";
 
 const EXPO_ACCESS_TOKEN = Deno.env.get("EXPO_ACCESS_TOKEN");
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -26,7 +26,8 @@ const reponse = (corps: unknown, statut = 200) =>
   new Response(JSON.stringify(corps), { status: statut, headers: { ...CORS, "Content-Type": "application/json" } });
 
 // apercu : ne rien envoyer, seulement dire combien de personnes seraient prévenues (fenêtre du bureau).
-type Demande = { tenantId: string; moi: string; actionId: number; message: string; apercu: boolean };
+// essai : n'envoyer le message qu'à celui qui relance, sans ouvrir le planning ni noter de relance.
+type Demande = { tenantId: string; moi: string; actionId: number; message: string; apercu: boolean; essai: boolean };
 type Action = { id: number; tenant_id: string; titre: string; date_action: string; ouvert_aux_membres: boolean; creneau_debut: string | null };
 
 /** Qui relance, et pour quelle action ; sinon la réponse d'erreur à renvoyer telle quelle. */
@@ -38,11 +39,11 @@ async function lireLaDemande(req: Request): Promise<Demande | Response> {
   if (!user) return reponse({ error: "unauthorized" }, 401);
   const { data: profil } = await asUser.from("profiles").select("role, tenant_id").eq("id", user.id).single();
   if (!profil || !["bureau", "admin"].includes(profil.role)) return reponse({ error: "forbidden" }, 403);
-  const corps = await req.json().catch(() => ({})) as { action_id?: number; message?: string; apercu?: boolean };
+  const corps = await req.json().catch(() => ({})) as { action_id?: number; message?: string; apercu?: boolean; essai?: boolean };
   const message = (corps.message ?? "").trim();
   const apercu = corps.apercu === true;
   if (!corps.action_id || (!apercu && !message) || message.length > 1000) return reponse({ error: "missing_fields" }, 400);
-  return { tenantId: profil.tenant_id, moi: user.id, actionId: Number(corps.action_id), message, apercu };
+  return { tenantId: profil.tenant_id, moi: user.id, actionId: Number(corps.action_id), message, apercu, essai: corps.essai === true };
 }
 
 /** Les membres à prévenir : tous ceux de l'association, moins les inscrits et celui qui relance. */
@@ -59,6 +60,16 @@ async function chercherLesDestinataires(sb: SupabaseClient, d: Demande): Promise
   return destinatairesDeLaRelance(membres.data ?? [], (invites.data ?? []).map((i) => i.email), dejaInscrits, (appareils.data ?? []) as Appareil[], d.moi);
 }
 
+/** L'essai : seulement celui qui relance, avec son téléphone s'il en a un. */
+async function chercherLeDestinataireDeLEssai(sb: SupabaseClient, d: Demande): Promise<Destinataires> {
+  const [moi, appareils] = await Promise.all([
+    sb.from("profiles").select("id, email").eq("id", d.moi).single(),
+    sb.from("device_tokens").select("id, user_id, token").eq("user_id", d.moi),
+  ]);
+  if (appareils.error) throw appareils.error;
+  return destinatairesDeLEssai(moi.data ?? null, (appareils.data ?? []) as Appareil[]);
+}
+
 /** Envoie la notification ; oublie les téléphones qui n'existent plus. Rend le nombre de personnes prévenues. */
 async function envoyerLesNotifications(sb: SupabaseClient, d: Demande, titre: string, destinataires: Destinataires["parNotification"]): Promise<number> {
   const appareils = destinataires.flatMap((p) => p.appareils);
@@ -69,7 +80,7 @@ async function envoyerLesNotifications(sb: SupabaseClient, d: Demande, titre: st
       const res = await fetch("https://exp.host/--/api/v2/push/send", {
         method: "POST",
         headers: { Accept: "application/json", "Content-Type": "application/json", ...(EXPO_ACCESS_TOKEN ? { Authorization: `Bearer ${EXPO_ACCESS_TOKEN}` } : {}) },
-        body: JSON.stringify(lot.map((a) => ({ to: a.token, title: titre, body: texteDeLaNotification(d.message), sound: "default", data: { planning_action: d.actionId } }))),
+        body: JSON.stringify(lot.map((a) => ({ to: a.token, title: marquerLEssai(titre, d.essai), body: texteDeLaNotification(d.message), sound: "default", data: { planning_action: d.actionId } }))),
       });
       const json = await res.json();
       if (!Array.isArray(json.data)) throw new Error(`HTTP ${res.status}`);
@@ -102,7 +113,7 @@ async function envoyerLesEmails(sb: SupabaseClient, d: Demande, action: Action, 
       headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify(lot.map((email) => ({
         from: expediteurDe(nom, association?.slug ?? ""), to: [email], ...(contact ? { reply_to: contact } : {}),
-        subject: sujetDeLaRelance(action.titre), text: texte, html: htmlDuTexte(texte),
+        subject: marquerLEssai(sujetDeLaRelance(action.titre), d.essai), text: texte, html: htmlDuTexte(texte),
       }))),
     });
     if (res.ok) envoyes += lot.length;
@@ -125,12 +136,14 @@ Deno.serve(async (req) => {
       return reponse({ nb_notifications: prevus.parNotification.length, nb_emails: Math.min(prevus.parEmail.length, MAX_EMAILS) });
     }
     // Relancer un planning que les membres ne voient pas n'aurait pas de sens : on l'ouvre d'abord.
-    if (!action.ouvert_aux_membres) await sb.from("actions").update({ ouvert_aux_membres: true }).eq("id", action.id);
-    const destinataires = await chercherLesDestinataires(sb, demande);
+    // Un essai, lui, ne touche à rien : ni au planning, ni à l'historique des relances.
+    if (!demande.essai && !action.ouvert_aux_membres) await sb.from("actions").update({ ouvert_aux_membres: true }).eq("id", action.id);
+    const destinataires = demande.essai ? await chercherLeDestinataireDeLEssai(sb, demande) : await chercherLesDestinataires(sb, demande);
     const { data: nomAsso } = await sb.rpc("branding_for_tenant", { p_tenant: demande.tenantId });
     const titre = (nomAsso?.tenant_name || nomAsso?.name || action.titre).trim();
     const nbNotifications = await envoyerLesNotifications(sb, demande, titre, destinataires.parNotification);
     const nbEmails = await envoyerLesEmails(sb, demande, action as Action, destinataires.parEmail);
+    if (demande.essai) return reponse({ nb_notifications: nbNotifications, nb_emails: nbEmails, essai: true });
     await sb.from("relances_planning").insert({
       tenant_id: demande.tenantId, action_id: action.id, envoye_par: demande.moi, message: demande.message,
       nb_notifications: nbNotifications, nb_emails: nbEmails,
