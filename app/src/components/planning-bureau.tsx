@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ChoiceField, TimeField } from '@/components/form-fields';
 import { Badge } from '@/components/ui/badge';
@@ -33,8 +33,7 @@ export function DemarrerLePlanning({ modifier }: { modifier: Modifier }) {
   );
 }
 
-export function ReglagesDuPlanning({ horaires, ouvert, modifier }: { horaires: Horaires; ouvert: boolean; modifier: Modifier }) {
-  const { colors } = useTheme();
+export function ReglagesDuPlanning({ horaires, modifier }: { horaires: Horaires; modifier: Modifier }) {
   const [brouillon, setBrouillon] = useState(horaires);
   const estModifie = brouillon.debut !== horaires.debut || brouillon.fin !== horaires.fin;
   const estValide = minutesDe(brouillon.fin) - minutesDe(brouillon.debut) >= brouillon.dureeMinutes;
@@ -44,22 +43,15 @@ export function ReglagesDuPlanning({ horaires, ouvert, modifier }: { horaires: H
         <View style={styles.colonne}><TimeField label="De" value={brouillon.debut} onChange={(debut) => setBrouillon({ ...brouillon, debut })} /></View>
         <View style={styles.colonne}><TimeField label="À" value={brouillon.fin} onChange={(fin) => setBrouillon({ ...brouillon, fin })} /></View>
       </View>
-      {estModifie && !estValide && <Text tone="danger">L’heure de fin doit laisser la place à au moins une tranche.</Text>}
+      {estModifie && !estValide && <Text tone="danger">L’heure de fin doit laisser la place à au moins un créneau.</Text>}
       {estModifie && <Button title="Enregistrer les horaires" disabled={!estValide} onPress={() => modifier({ type: 'horaires', horaires: brouillon })} />}
       <ChoiceField
-        label="Tranches de"
+        label="Créneaux de"
         options={DUREES_DE_TRANCHE.map(String)}
         value={String(horaires.dureeMinutes)}
         format={(option) => libelleDeDuree(Number(option))}
         onChange={(option) => modifier({ type: 'horaires', horaires: { ...horaires, dureeMinutes: Number(option) } })}
       />
-      <ListSection footer={ouvert ? 'Les adhérents voient ce planning dans l’app et peuvent s’inscrire.' : 'Seul le bureau voit ce planning pour l’instant.'}>
-        <ListRow
-          icon="people"
-          title="Ouvert aux membres"
-          right={<Switch accessibilityLabel="Ouvert aux membres" value={ouvert} onValueChange={(valeur) => modifier({ type: 'ouverture', ouvert: valeur })} trackColor={{ true: colors.primary }} />}
-        />
-      </ListSection>
     </View>
   );
 }

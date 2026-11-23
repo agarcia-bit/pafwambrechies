@@ -17,6 +17,8 @@ type Props = {
   estNouveau: boolean;
   enCours: boolean;
   onLiberer: () => void;
+  /** Une seule ligne (Pilotage du bureau) : ses créneaux sans prendre la place du planning. */
+  compact?: boolean;
 };
 
 /**
@@ -24,31 +26,48 @@ type Props = {
  * présence ») : ce qu'elle doit faire passe avant ce qu'elle peut encore prendre. Il apparaît
  * avec un léger rebond quand elle vient de s'inscrire : le seul effet de l'écran.
  */
-export function BilletDeCreneau({ nomDuPole, heure, dureeMinutes, autres, estNouveau, enCours, onLiberer }: Props) {
+export function BilletDeCreneau({ nomDuPole, heure, dureeMinutes, autres, estNouveau, enCours, onLiberer, compact = false }: Props) {
   const { colors } = useTheme();
   const moinsDAnimations = useReducedMotion();
-  const encre = colors.onPrimary;
-  const pale = mix(colors.primary, encre, 0.75);
+  // La couleur de la bande de l'association : toujours assez foncée pour du blanc, en clair comme
+  // en sombre (la couleur principale, elle, s'éclaircit en mode sombre). Même choix que l'espace bureau.
+  const fond = colors.banner;
+  const encre = '#FFFFFF';
+  const pale = mix(fond, encre, 0.8);
   const compagnie = autres ? `avec ${plural(autres, 'autre bénévole', 'autres bénévoles')}` : 'personne d’autre pour l’instant';
+  const lien = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Je ne peux plus venir : ${nomDuPole}, ${libelleDeTranche(heure, dureeMinutes)}`}
+      disabled={enCours}
+      onPress={onLiberer}
+      hitSlop={8}
+      style={({ pressed }) => [styles.lien, { opacity: pressed || enCours ? 0.6 : 1 }]}>
+      <Text variant="footnote" style={{ color: encre, fontWeight: '600', textDecorationLine: 'underline' }}>Je ne peux plus venir</Text>
+    </Pressable>
+  );
+  if (compact) {
+    return (
+      <View style={[styles.billetCompact, { backgroundColor: fond }]}>
+        <View style={styles.grandit}>
+          <Text variant="caption" style={{ color: pale, fontWeight: '600' }}>Votre créneau</Text>
+          <Text variant="headline" style={{ color: encre }}>{nomDuPole} · {libelleDeTranche(heure, dureeMinutes)}</Text>
+        </View>
+        {lien}
+      </View>
+    );
+  }
   return (
     <Animated.View
       entering={estNouveau && !moinsDAnimations ? ZoomIn.springify().damping(14).duration(260) : undefined}
-      style={[styles.billet, { backgroundColor: colors.primary }]}>
+      style={[styles.billet, { backgroundColor: fond }]}>
       <Text variant="caption" style={{ color: pale, fontWeight: '600' }}>Votre créneau</Text>
       <Text variant="title" style={{ color: encre }}>{libelleDeTranche(heure, dureeMinutes)}</Text>
       <Text variant="subhead" style={{ color: encre, fontWeight: '600' }}>{nomDuPole} · {compagnie}</Text>
       <Perforation fond={colors.background} trait={pale} />
       <View style={styles.pied}>
         <Text variant="footnote" style={[styles.grandit, { color: pale }]}>Rappel la veille</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Je ne peux plus venir : ${nomDuPole}, ${libelleDeTranche(heure, dureeMinutes)}`}
-          disabled={enCours}
-          onPress={onLiberer}
-          hitSlop={8}
-          style={({ pressed }) => [styles.lien, { opacity: pressed || enCours ? 0.6 : 1 }]}>
-          <Text variant="footnote" style={{ color: encre, fontWeight: '600', textDecorationLine: 'underline' }}>Je ne peux plus venir</Text>
-        </Pressable>
+        {lien}
       </View>
     </Animated.View>
   );
@@ -66,6 +85,7 @@ function Perforation({ fond, trait }: { fond: string; trait: string }) {
 }
 
 const styles = StyleSheet.create({
+  billetCompact: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 8 },
   billet: { borderRadius: 20, paddingHorizontal: 18, paddingTop: 14, paddingBottom: 4, gap: 2, overflow: 'hidden' },
   perforation: { flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 2, marginHorizontal: -18 },
   // Une boîte d'un point de haut, bordée en entier : iOS ne dessine pas un pointillé sur un seul côté.

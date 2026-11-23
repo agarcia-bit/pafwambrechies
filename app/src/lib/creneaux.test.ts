@@ -68,6 +68,9 @@ describe('créneaux de présence', () => {
     const trous = trousDuPlanning([cafe, buvette], ['10:00', '12:00'], inscrits);
     expect(trous.map((t) => `${t.pole.nom} ${t.heure} ${t.manque}`)).toEqual(['Buvette 12:00 2', 'Buvette 10:00 1', 'Café 12:00 1']);
     expect(trous[2].presents).toEqual(['Léa']);
+    // Pour soi : « vous » dans la liste, et le créneau est marqué comme le sien.
+    const avecMoi = trousDuPlanning([cafe], ['12:00'], [{ id: 3, pole_id: 1, debut: '12:00', membre: 'andy', nom: 'Andy' }], 'andy');
+    expect(avecMoi[0]).toMatchObject({ presents: ['vous'], estMoi: true, manque: 1 });
     expect(resumeDesTrous(trous)).toEqual({ manque: 4, poleLePlusEnManque: 'Buvette' });
     expect(resumeDesTrous(trous.slice(1))).toEqual({ manque: 2, poleLePlusEnManque: null });
     // Tous les créneaux, complets compris, sauf ceux qui ne demandent personne (le café à 10 h).

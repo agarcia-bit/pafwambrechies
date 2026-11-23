@@ -20,6 +20,8 @@ import {
 } from '@/lib/bureau';
 import { useBureauUnread } from '@/lib/bureau-chat';
 import { confirmAction } from '@/lib/confirm';
+import { resumeDesTrous, tranchesDeLaJournee, trousDuPlanning } from '@/lib/creneaux';
+import { usePlanning } from '@/lib/planning';
 
 function editable(a: Action): ActionInput {
   return {
@@ -51,6 +53,7 @@ function ActionEditor({ action, data }: { action: Action; data: BureauData }) {
   const dirty = JSON.stringify(values) !== JSON.stringify(editable(action));
   const taches = tachesOf(data.taches, action.id);
   const unread = useBureauUnread().counts.get(action.id) ?? 0;
+  const etatDuPlanning = useEtatDuPlanning(action.id);
 
   function submit() {
     if (!values.titre.trim()) {
@@ -101,7 +104,7 @@ function ActionEditor({ action, data }: { action: Action; data: BureauData }) {
         <ListRow
           icon="calendar"
           title="Planning des présences"
-          subtitle="Créneaux, pôles et qui vient le jour J"
+          subtitle={etatDuPlanning}
           onPress={() => router.push({ pathname: '/plus/bureau/planning', params: { action: String(action.id), titre: action.titre } })}
         />
       </ListSection>
@@ -123,3 +126,14 @@ function ActionEditor({ action, data }: { action: Action; data: BureauData }) {
 const styles = StyleSheet.create({
   tasks: { gap: 12, marginVertical: 8 },
 });
+
+/** Une ligne pour la fiche : où en est le planning (« Il manque 8 personnes »), comme dans l'espace bureau. */
+function useEtatDuPlanning(actionId: number): string {
+  const planning = usePlanning(actionId);
+  if (!planning.data) return 'Créneaux, pôles et qui vient le jour J';
+  const { horaires, poles, inscrits } = planning.data;
+  if (!horaires) return 'Préparer un planning';
+  if (!poles.length) return 'Planning à terminer : ajoutez les pôles';
+  const { manque } = resumeDesTrous(trousDuPlanning(poles, tranchesDeLaJournee(horaires), inscrits));
+  return manque ? `Il manque ${manque} personne${manque > 1 ? 's' : ''}` : 'Tout est rempli';
+}

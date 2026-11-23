@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BilletDeCreneau } from '@/components/billet-de-creneau';
@@ -23,10 +23,18 @@ export default function CreneauxDeLActionScreen() {
   const { action } = useLocalSearchParams<{ action: string }>();
   const plannings = usePlanningsOuverts();
   const planning = plannings.data?.find((p) => p.id === Number(action));
+  // Ouvert depuis une notification ou un lien : la liste gardée en mémoire peut dater d'avant
+  // l'ouverture du planning. On la relit une fois avant de dire qu'il n'est plus ouvert.
+  const dejaRelu = useRef(false);
+  useEffect(() => {
+    if (!plannings.data || planning || dejaRelu.current) return;
+    dejaRelu.current = true;
+    plannings.refetch();
+  }, [plannings, planning]);
 
   let contenu;
   if (planning?.poles.length) contenu = <ChoixDuCreneau planning={planning} />;
-  else if (plannings.isPending) contenu = <LoadingState />;
+  else if (plannings.isPending || (!planning && plannings.isFetching)) contenu = <LoadingState />;
   else if (plannings.isError) contenu = <ErrorState onRetry={plannings.refetch} />;
   else if (planning) contenu = <EmptyState icon="calendar" title="Le planning n’est pas encore prêt" message="Le bureau prépare les créneaux : revenez un peu plus tard." />;
   else contenu = <EmptyState icon="calendar" title="Ce planning n’est plus ouvert" message="L’action est peut-être passée, ou le bureau l’a refermé." />;

@@ -2,22 +2,25 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import { BilletDeCreneau } from '@/components/billet-de-creneau';
-
 import { FormScreen } from '@/components/form-screen';
 import { DemarrerLePlanning, GrilleDuPlanning, PolesDuPlanning, ReglagesDuPlanning } from '@/components/planning-bureau';
-import { Badge } from '@/components/ui/badge';
+import { EnteteDuPlanning, ListeDesTrous } from '@/components/planning-trous';
+import { ChipBar } from '@/components/ui/chip-bar';
 import { ListRow, ListSection } from '@/components/ui/list';
 import { ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { confirmAction } from '@/lib/confirm';
-import { billetsDeLaPersonne } from '@/lib/creneaux';
+import { billetsDeLaPersonne, tranchesDeLaJournee, trousDuPlanning } from '@/lib/creneaux';
 import { messageDuPlanning, useModifierLePlanning, usePlanning, type Inscrit } from '@/lib/planning';
 import { useMember } from '@/lib/session';
 
 /**
- * Le planning des présences d'une action, sur le téléphone d'un membre du bureau : ses créneaux
- * en billets, puis la grille, puis les réglages (horaires, pôles) repliés une fois prêts.
+ * Le planning des présences d'une action, sur le téléphone d'un membre du bureau, comme la page de
+ * l'espace bureau : ce qui manque d'abord (phrase, « Ouvrir aux membres », liste des trous), ses
+ * créneaux en billets, tout le planning à la demande, et les réglages repliés une fois prêts.
  */
+const VUES = ['Ce qui manque', 'Tout le planning'] as const;
+
 export default function PlanningScreen() {
   const { action, titre } = useLocalSearchParams<{ action: string; titre?: string }>();
   const actionId = Number(action);
@@ -25,11 +28,13 @@ export default function PlanningScreen() {
   const planning = usePlanning(actionId);
   const modification = useModifierLePlanning(actionId);
   const [reglagesOuverts, setReglagesOuverts] = useState(false);
+  const [vue, setVue] = useState<(typeof VUES)[number]>('Ce qui manque');
 
   if (planning.isPending) return <LoadingState />;
   if (planning.isError) return <ErrorState onRetry={planning.refetch} />;
   const { horaires, ouvert, poles } = planning.data;
   const estPret = !!horaires && poles.length > 0;
+  const trous = horaires ? trousDuPlanning(poles, tranchesDeLaJournee(horaires), planning.data.inscrits, profile.id) : [];
   async function seRetirer(inscrit: Inscrit) {
     const ok = await confirmAction({ title: 'Vous ne pouvez plus venir ?', message: 'La place redeviendra libre.', confirmLabel: 'Me désinscrire', destructive: true });
     if (ok) modification.mutate({ type: 'je-me-retire', inscrit });
@@ -42,12 +47,15 @@ export default function PlanningScreen() {
         {!horaires && <DemarrerLePlanning modifier={modification.mutate} />}
         {horaires && estPret && (
           <>
-            <Badge label={ouvert ? 'Ouvert aux membres' : 'Réservé au bureau'} />
+            <EnteteDuPlanning trous={trous} ouvert={ouvert} modifier={modification.mutate} enCours={modification.isPending} />
             {billetsDeLaPersonne(poles, planning.data.inscrits, profile.id).map(({ inscrit, nomDuPole, avec }) => (
               <BilletDeCreneau key={inscrit.id} nomDuPole={nomDuPole} heure={inscrit.debut} dureeMinutes={horaires.dureeMinutes}
-                autres={avec.length} estNouveau={false} enCours={modification.isPending} onLiberer={() => seRetirer(inscrit)} />
+                autres={avec.length} estNouveau={false} enCours={modification.isPending} onLiberer={() => seRetirer(inscrit)} compact />
             ))}
-            <GrilleDuPlanning actionId={actionId} moi={profile.id} planning={{ ...planning.data, horaires }} />
+            <ChipBar options={VUES} value={vue} onChange={setVue} />
+            {vue === 'Ce qui manque'
+              ? <ListeDesTrous actionId={actionId} trous={trous} planning={planning.data} moi={profile.id} modifier={modification.mutate} />
+              : <GrilleDuPlanning actionId={actionId} moi={profile.id} planning={{ ...planning.data, horaires }} />}
           </>
         )}
         {horaires && (estPret && !reglagesOuverts ? (
@@ -56,7 +64,7 @@ export default function PlanningScreen() {
           </ListSection>
         ) : (
           <>
-            <ReglagesDuPlanning key={`${horaires.debut}-${horaires.fin}`} horaires={horaires} ouvert={ouvert} modifier={modification.mutate} />
+            <ReglagesDuPlanning key={`${horaires.debut}-${horaires.fin}`} horaires={horaires} modifier={modification.mutate} />
             <PolesDuPlanning poles={poles} modifier={modification.mutate} />
           </>
         ))}

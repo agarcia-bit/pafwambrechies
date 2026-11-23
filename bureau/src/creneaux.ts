@@ -114,25 +114,29 @@ export function billetsDeLaPersonne<T extends InscritDuPlanning>(poles: Pole[], 
 export const estDejaPrisALHeure = (inscrits: InscritDuPlanning[], moi: string, heure: string) =>
   inscrits.some((i) => i.membre === moi && i.debut === heure);
 
-export type Trou = { pole: Pole; heure: string; manque: number; presents: string[] };
+/** Un créneau d'un pôle : ce qui manque, qui est là (« vous » pour soi) et si l'on y est soi-même. */
+export type Trou = { pole: Pole; heure: string; manque: number; presents: string[]; estMoi: boolean };
 
 /** Tous les créneaux qui demandent du monde, pôle par pôle dans l'ordre de la journée, avec ce qui manque (0 si complet). */
-export function creneauxDuPlanning<T extends InscritDuPlanning>(poles: Pole[], tranches: string[], inscrits: T[]): Trou[] {
+export function creneauxDuPlanning<T extends InscritDuPlanning>(poles: Pole[], tranches: string[], inscrits: T[], moi?: string): Trou[] {
   const creneaux: Trou[] = [];
   for (const pole of poles) {
     for (const heure of tranches) {
       const besoin = besoinDuCreneau(pole, heure);
       if (besoin === 0) continue;
       const ici = inscrits.filter((i) => i.pole_id === pole.id && i.debut === heure);
-      creneaux.push({ pole, heure, manque: Math.max(0, besoin - ici.length), presents: ici.map((i) => i.nom) });
+      creneaux.push({
+        pole, heure, manque: Math.max(0, besoin - ici.length),
+        presents: ici.map((i) => (moi && i.membre === moi ? 'vous' : i.nom)), estMoi: ici.some((i) => !!moi && i.membre === moi),
+      });
     }
   }
   return creneaux;
 }
 
 /** Les créneaux où il manque du monde, du plus urgent (le plus de places vides) au moins urgent, puis dans l'ordre de la journée. */
-export function trousDuPlanning<T extends InscritDuPlanning>(poles: Pole[], tranches: string[], inscrits: T[]): Trou[] {
-  return creneauxDuPlanning(poles, tranches, inscrits)
+export function trousDuPlanning<T extends InscritDuPlanning>(poles: Pole[], tranches: string[], inscrits: T[], moi?: string): Trou[] {
+  return creneauxDuPlanning(poles, tranches, inscrits, moi)
     .filter((c) => c.manque > 0)
     .sort((a, b) => b.manque - a.manque || minutesDe(a.heure) - minutesDe(b.heure));
 }
