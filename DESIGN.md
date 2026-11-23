@@ -244,7 +244,7 @@ Un créneau est une pastille arrondie qui donne l'heure et l'état. L'état est 
 - **« N places libres »** : fond vert pâle (ok-soft), texte vert (ok).
 - **« Dernière place »** : fond ambre pâle (warn-soft), texte ambre (warn).
 - **« Complet »** : fond gris (neutral-soft), texte gris (bureau-muted). On ne peut pas le toucher.
-- **Vu du bureau** (espace bureau) : ses propres créneaux en billets, puis deux vues au choix, « Par pôle » (une carte par pôle avec sa jauge) ou « Grille » (heures × pôles). Chaque place est un nom ou une case en pointillés « + Je viens » ; le nombre de places et « + Nom » apparaissent au survol. On regarde les trous. Une case remplie est verte, une case où il manque du monde est ambre et affiche « 1/2 », une tranche sans besoin est grise.
+- **Vu du bureau** (espace bureau) : le planning a sa propre page (#planning?action=…), la fiche de l'action n'en montre qu'une carte « Il manque N personnes → Ouvrir le planning ». En tête de page, une phrase qui dit ce qui manque et le bouton « Ouvrir aux membres ». Puis ses créneaux en billets compacts, et au choix « Tout le planning » (grille heures × pôles, colonne des heures fixe) ou « Ce qui manque » (liste, du plus urgent au moins urgent ; vue par défaut sur téléphone). Chaque personne manquante est une case en pointillés « + Place libre » ; un clic ouvre, sur place, « Je viens », « Ajouter quelqu'un » et le nombre de places. On regarde les trous.
 - **Le seul effet de l'écran** : quand l'adhérent prend un créneau, son billet apparaît avec un léger rebond (moins de 300 ms) et une petite vibration du téléphone. Les deux se coupent quand l'utilisateur a demandé moins d'animations.
 
 ## Do's and Don'ts

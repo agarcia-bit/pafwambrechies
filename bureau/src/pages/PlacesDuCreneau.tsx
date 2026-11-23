@@ -1,47 +1,34 @@
-import { useState, type FocusEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { besoinDuCreneau, estDejaPrisALHeure, type Pole } from '../creneaux';
+import { besoinDuCreneau, estDejaPrisALHeure, libelleDeTranche, type Pole } from '../creneaux';
 import { Avatar, Icon } from '../Icon';
 import type { Inscrit, PlanningEtat } from './usePlanning';
 
-type Props = { pole: Pole; heure: string; planning: PlanningEtat; moi: string; libelle?: string };
+export type Creneau = { pole: Pole; heure: string; planning: PlanningEtat; moi: string };
 
 /**
- * Un créneau d'un pôle, partagé par la vue par pôle (une ligne) et la grille (une case) : qui
- * vient, puis un seul état lisible (« Complet », « 2 places libres ») avec « Je viens » quand on
- * peut le prendre. Le reste (ajouter un nom, changer le nombre de places) est rangé dans le menu
- * « ⋯ », pour que rien ne déborde sur le créneau voisin.
+ * Une case de la grille : qui vient, puis une case en pointillés par personne manquante. Un clic
+ * sur une place libre ouvre, sur place, le choix « Je viens » ou « Ajouter quelqu'un ».
  */
-export function PlacesDuCreneau({ pole, heure, planning, moi, libelle }: Props) {
+export function CaseDuCreneau({ pole, heure, planning, moi }: Creneau) {
+  const [estOuvert, setEstOuvert] = useState(false);
   const besoin = besoinDuCreneau(pole, heure);
   const inscrits = planning.inscrits.filter((i) => i.pole_id === pole.id && i.debut === heure);
   const libres = Math.max(0, besoin - inscrits.length);
   return (
-    <div className={'creneau' + (besoin === 0 ? ' ferme' : libres ? ' manque' : ' rempli')}>
-      {libelle && <span className="creneau-heure">{libelle}</span>}
-      <div className="creneau-gens">
+    <div className="case-creneau">
+      <div className="case-gens">
         {inscrits.map((inscrit) => <Personne key={inscrit.id} inscrit={inscrit} estMoi={inscrit.membre === moi} planning={planning} />)}
-        {!inscrits.length && besoin > 0 && <span className="creneau-vide">Personne pour l’instant</span>}
+        {Array.from({ length: libres }, (_, rang) => (
+          <button key={rang} className={'siege' + (estOuvert && rang === 0 ? ' actif' : '')} aria-haspopup="dialog"
+            aria-label={`Place libre, ${pole.nom}, ${libelleDeTranche(heure, planning.horaires?.dureeMinutes ?? 60)}`}
+            onClick={() => setEstOuvert(true)}>+ Place libre</button>
+        ))}
       </div>
-      <div className="creneau-etat">
-        <EtatDuCreneau besoin={besoin} libres={libres} dejaPris={estDejaPrisALHeure(planning.inscrits, moi, heure)}
-          onVenir={() => planning.jeViens(pole, heure, moi)} />
-        <MenuDuCreneau pole={pole} heure={heure} besoin={besoin} planning={planning} />
-      </div>
+      {besoin === 0 && <span className="case-etat muted">Pas besoin</span>}
+      {besoin > 0 && !libres && <span className="case-etat rempli"><Icon name="check" size={13} /> Complet</span>}
+      {estOuvert && <ChoixDUnePlace pole={pole} heure={heure} planning={planning} moi={moi} onFermer={() => setEstOuvert(false)} />}
     </div>
-  );
-}
-
-function EtatDuCreneau({ besoin, libres, dejaPris, onVenir }: { besoin: number; libres: number; dejaPris: boolean; onVenir: () => void }) {
-  if (besoin === 0) return <span className="etat ferme">Pas besoin</span>;
-  if (!libres) return <span className="etat rempli"><Icon name="check" size={13} /> Complet</span>;
-  return (
-    <>
-      <span className="etat manque">{libres} place{libres > 1 ? 's' : ''} libre{libres > 1 ? 's' : ''}</span>
-      {dejaPris
-        ? <span className="etat-aide" title="Vous tenez déjà un poste à cette heure-là">Vous êtes ailleurs</span>
-        : <button className="je-viens" onClick={onVenir}>Je viens</button>}
-    </>
   );
 }
 
@@ -52,52 +39,56 @@ function Personne({ inscrit, estMoi, planning }: { inscrit: Inscrit; estMoi: boo
     } else if (confirm(`Retirer ${inscrit.nom} de ce créneau ?`)) planning.retirerInscrit(inscrit);
   }
   return (
-    <span className={'personne' + (estMoi ? ' moi' : '')} title={inscrit.a_compte ? 'Inscrit depuis l’app ou l’espace bureau' : 'Ajouté à la main'}>
-      <Avatar name={inscrit.nom} size={20} />
+    <span className={'qui' + (estMoi ? ' moi' : '')} title={inscrit.a_compte ? 'Inscrit depuis l’app ou l’espace bureau' : 'Ajouté à la main'}>
+      <span aria-hidden="true"><Avatar name={inscrit.nom} size={24} /></span>
       {estMoi ? 'Vous' : inscrit.nom}
-      <button className="personne-retirer" onClick={retirer} aria-label={estMoi ? 'Je ne peux plus venir' : `Retirer ${inscrit.nom}`}><Icon name="x" size={11} /></button>
+      <button className="qui-retirer" onClick={retirer} aria-label={estMoi ? 'Je ne peux plus venir sur ce créneau' : `Retirer ${inscrit.nom}`}><Icon name="x" size={12} /></button>
     </span>
   );
 }
 
-/** Le menu « ⋯ » d'un créneau : ajouter un nom à la main, changer le nombre de places. */
-function MenuDuCreneau({ pole, heure, besoin, planning }: { pole: Pole; heure: string; besoin: number; planning: PlanningEtat }) {
-  const [estOuvert, setEstOuvert] = useState(false);
+/**
+ * Le petit panneau d'une place libre, posé sur la case : il rappelle le pôle et l'heure, propose
+ * « Je viens » (sauf si l'on tient déjà un poste à cette heure-là), l'ajout d'un nom et le nombre
+ * de places. Échap ou un clic à côté le ferment, sans fermer le reste de la page.
+ */
+export function ChoixDUnePlace({ pole, heure, planning, moi, onFermer }: Creneau & { onFermer: () => void }) {
   const [nom, setNom] = useState('');
-  // Le menu se ferme dès que le focus en sort (clic ailleurs, touche Tab).
-  const fermerSiDehors = (evenement: FocusEvent<HTMLDivElement>) => {
-    if (!evenement.currentTarget.contains(evenement.relatedTarget as Node | null)) setEstOuvert(false);
-  };
+  const panneau = useRef<HTMLDivElement>(null);
+  const besoin = besoinDuCreneau(pole, heure);
+  const dejaPris = estDejaPrisALHeure(planning.inscrits, moi, heure);
+  useEffect(() => {
+    const siDehors = (evenement: MouseEvent) => { if (!panneau.current?.contains(evenement.target as Node)) onFermer(); };
+    document.addEventListener('mousedown', siDehors);
+    return () => document.removeEventListener('mousedown', siDehors);
+  }, [onFermer]);
   function ajouter() {
     if (!nom.trim()) return;
     planning.ajouterUnNom(pole, heure, nom);
-    setNom('');
-    setEstOuvert(false);
+    onFermer();
   }
   return (
-    <div className="creneau-menu" onBlur={fermerSiDehors}>
-      <button className="icon-btn" aria-label={`Plus d’options pour ${pole.nom} à ${heure}`} aria-expanded={estOuvert} onClick={() => setEstOuvert(!estOuvert)}>
-        <Icon name="dots" size={16} />
-      </button>
-      {estOuvert && (
-        <div className="creneau-menu-panneau" role="dialog" aria-label="Options du créneau">
-          <label className="small muted">Ajouter quelqu’un
-            <span className="creneau-menu-ligne">
-              <input autoFocus value={nom} placeholder="Prénom Nom" onChange={(e) => setNom(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') ajouter(); if (e.key === 'Escape') setEstOuvert(false); }} />
-              <button className="primary" disabled={!nom.trim()} onClick={ajouter}>Ajouter</button>
-            </span>
-          </label>
-          <div className="creneau-menu-ligne">
-            <span className="small muted">Places sur ce créneau</span>
-            <span className="creneau-compteur">
-              <button className="icon-btn" disabled={besoin === 0} onClick={() => planning.changerBesoin(pole, heure, besoin - 1)} aria-label="Une place de moins">−</button>
-              <b>{besoin}</b>
-              <button className="icon-btn" disabled={besoin >= 50} onClick={() => planning.changerBesoin(pole, heure, besoin + 1)} aria-label="Une place de plus">+</button>
-            </span>
-          </div>
-        </div>
-      )}
+    <div ref={panneau} className="choix-place" role="dialog" aria-label={`${pole.nom}, ${libelleDeTranche(heure, planning.horaires?.dureeMinutes ?? 60)}`}
+      onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); onFermer(); } }}>
+      <div className="choix-titre">{pole.nom} <span>· {libelleDeTranche(heure, planning.horaires?.dureeMinutes ?? 60)}</span></div>
+      {dejaPris
+        ? <p className="small muted">Vous tenez déjà un poste à cette heure-là.</p>
+        : <button className="primary choix-venir" autoFocus onClick={() => { planning.jeViens(pole, heure, moi); onFermer(); }}>Je viens</button>}
+      <label className="choix-ajout">
+        <span className="small muted">Ajouter quelqu’un sans l’app</span>
+        <span className="choix-ligne">
+          <input value={nom} placeholder="Prénom Nom" autoFocus={dejaPris} onChange={(e) => setNom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && ajouter()} />
+          <button disabled={!nom.trim()} onClick={ajouter}>Ajouter</button>
+        </span>
+      </label>
+      <div className="choix-ligne choix-places">
+        <span className="small muted">Places sur ce créneau</span>
+        <span className="choix-compteur">
+          <button className="icon-btn" disabled={besoin === 0} onClick={() => planning.changerBesoin(pole, heure, besoin - 1)} aria-label="Une place de moins">−</button>
+          <b>{besoin}</b>
+          <button className="icon-btn" disabled={besoin >= 50} onClick={() => planning.changerBesoin(pole, heure, besoin + 1)} aria-label="Une place de plus">+</button>
+        </span>
+      </div>
     </div>
   );
 }

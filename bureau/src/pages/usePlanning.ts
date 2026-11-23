@@ -10,6 +10,7 @@ import { supabase, toast } from '../lib';
 export type Inscrit = { id: number; pole_id: number; debut: string; membre: string | null; nom: string; a_compte: boolean };
 
 type LigneAction = {
+  titre: string; emoji: string | null; date_action: string;
   ouvert_aux_membres: boolean; creneau_debut: string | null; creneau_fin: string | null; creneau_duree_minutes: number | null;
 };
 
@@ -31,18 +32,21 @@ export function usePlanning(actionId: number) {
   const [poles, setPoles] = useState<Pole[]>([]);
   const [inscrits, setInscrits] = useState<Inscrit[]>([]);
   const [estCharge, setEstCharge] = useState(false);
+  const [action, setAction] = useState<{ titre: string; emoji: string | null; date: string } | null>(null);
 
   const charger = useCallback(async () => {
-    const [action, lesPoles, lesInscrits] = await Promise.all([
-      supabase.from('actions').select('ouvert_aux_membres, creneau_debut, creneau_fin, creneau_duree_minutes').eq('id', actionId).single(),
+    const [ligne, lesPoles, lesInscrits] = await Promise.all([
+      supabase.from('actions').select('titre, emoji, date_action, ouvert_aux_membres, creneau_debut, creneau_fin, creneau_duree_minutes').eq('id', actionId).single(),
       supabase.from('poles').select('id, nom, personnes, besoins_par_creneau, ordre').eq('action_id', actionId).order('ordre').order('id'),
       supabase.rpc('inscrits_de_l_action', { p_action: actionId }),
     ]);
-    const erreur = action.error ?? lesPoles.error ?? lesInscrits.error;
+    const erreur = ligne.error ?? lesPoles.error ?? lesInscrits.error;
     if (erreur) toast(erreur.message, 'error');
-    if (action.data) {
-      setHoraires(versHoraires(action.data as LigneAction));
-      setOuvert((action.data as LigneAction).ouvert_aux_membres);
+    if (ligne.data) {
+      const donnees = ligne.data as LigneAction;
+      setHoraires(versHoraires(donnees));
+      setOuvert(donnees.ouvert_aux_membres);
+      setAction({ titre: donnees.titre, emoji: donnees.emoji, date: donnees.date_action });
     }
     setPoles((lesPoles.data as Pole[] | null) ?? []);
     setInscrits((lesInscrits.data as Inscrit[] | null) ?? []);
@@ -58,7 +62,7 @@ export function usePlanning(actionId: number) {
   const surLAction = (changement: Partial<LigneAction>) => supabase.from('actions').update(changement).eq('id', actionId);
 
   return {
-    horaires, ouvert, poles, inscrits, estCharge,
+    action, horaires, ouvert, poles, inscrits, estCharge,
     enregistrerHoraires: (h: Horaires) => ecrireEtRecharger(surLAction({
       creneau_debut: h.debut, creneau_fin: h.fin, creneau_duree_minutes: h.dureeMinutes,
     })),

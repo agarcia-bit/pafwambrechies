@@ -1,78 +1,55 @@
 import { useState } from 'react';
 
-import { bilanDesPlaces, DUREES_DE_TRANCHE, libelleDeTranche, minutesDe, tranchesDeLaJournee, type Horaires, type Pole } from '../creneaux';
+import { DUREES_DE_TRANCHE, libelleDeTranche, minutesDe, resumeDesTrous, tranchesDeLaJournee, trousDuPlanning, type Horaires, type Pole } from '../creneaux';
 import { Icon } from '../Icon';
-import { BilletsDuBureau } from './BilletDuBureau';
-import { VueEnGrille, VueParPole } from './VuesDuPlanning';
 import { usePlanning, type PlanningEtat } from './usePlanning';
 import './planning.css';
 
 const HORAIRES_PROPOSES: Horaires = { debut: '10:00', fin: '18:00', dureeMinutes: 120 };
 
-type Vue = 'poles' | 'grille';
+/** L'adresse de la page Planning d'une action. */
+export const adresseDuPlanning = (actionId: number) => `#planning?action=${actionId}`;
 
 /**
- * Le planning des présences d'une action : les créneaux du membre connecté en billets, puis tout
- * le planning, par pôle ou en grille (heures × pôles), avec les noms, les places libres et
- * « + Je viens ». Les horaires et les pôles se règlent dans un panneau replié une fois prêts.
+ * Dans la fiche d'une action, le planning tient en une carte : où il en est (« Il manque
+ * 8 personnes ») et un lien vers sa page, où l'on a la place de le remplir.
  */
-export function PlanningDeLAction({ actionId, moi, dateAction }: { actionId: number; moi: string; dateAction: string }) {
+export function PlanningDeLAction({ actionId }: { actionId: number }) {
   const planning = usePlanning(actionId);
-  const [vue, setVue] = useState<Vue>('poles');
   if (!planning.estCharge) return null;
   const tranches = planning.horaires ? tranchesDeLaJournee(planning.horaires) : [];
-  const estPret = !!planning.horaires && planning.poles.length > 0 && tranches.length > 0;
+  const estPret = tranches.length > 0 && planning.poles.length > 0;
+  const { manque } = resumeDesTrous(trousDuPlanning(planning.poles, tranches, planning.inscrits));
+  const etat = !planning.horaires ? 'Pas encore de planning' : !estPret ? 'Planning à terminer : ajoutez les pôles' : manque ? `Il manque ${manque} personne${manque > 1 ? 's' : ''}` : 'Tout est rempli';
   return (
-    <section className="drawer-section planning">
-      <EnteteDuPlanning planning={planning} tranches={tranches} estPret={estPret} />
-      {!planning.horaires && <DemarrerLePlanning onDemarrer={planning.enregistrerHoraires} />}
-      {planning.horaires && (
-        <details className="planning-reglages" open={!estPret}>
-          <summary>{resumeDesReglages(planning.horaires, planning.poles.length)}<span className="planning-modifier">Modifier</span></summary>
-          <ReglagesDuPlanning planning={planning} horaires={planning.horaires} />
-          <ListeDesPoles planning={planning} />
-        </details>
-      )}
-      {estPret && planning.horaires && (
-        <>
-          <BilletsDuBureau planning={planning} moi={moi} dureeMinutes={planning.horaires.dureeMinutes} dateLongue={dateLongue(dateAction)} />
-          <div className="seg" role="group" aria-label="Présentation du planning">
-            <button className={vue === 'poles' ? 'on' : ''} aria-pressed={vue === 'poles'} onClick={() => setVue('poles')}>Par pôle</button>
-            <button className={vue === 'grille' ? 'on' : ''} aria-pressed={vue === 'grille'} onClick={() => setVue('grille')}>Grille</button>
-          </div>
-          {vue === 'poles'
-            ? <VueParPole planning={planning} tranches={tranches} dureeMinutes={planning.horaires.dureeMinutes} moi={moi} />
-            : <VueEnGrille planning={planning} tranches={tranches} dureeMinutes={planning.horaires.dureeMinutes} moi={moi} />}
-        </>
-      )}
+    <section className="drawer-section">
+      <div className="section-head"><h3>Planning des présences</h3>{planning.horaires && <StatutDuPlanning ouvert={planning.ouvert} />}</div>
+      <a className={'carte-planning' + (estPret && manque ? ' manque' : '')} href={adresseDuPlanning(actionId)}>
+        <span className="carte-planning-etat">{etat}</span>
+        <span className="carte-planning-lien">{planning.horaires ? 'Ouvrir le planning' : 'Préparer un planning'} <Icon name="right" size={15} /></span>
+      </a>
     </section>
   );
 }
 
-/** « samedi 12 décembre » */
-const dateLongue = (jour: string) =>
-  new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${jour}T12:00:00Z`));
-
-/** « De 10 h à 18 h · tranches de 2 h · 3 pôles » */
-function resumeDesReglages(h: Horaires, nombreDePoles: number) {
-  const heure = (hhmm: string) => libelleDeTranche(hhmm, 0).split(' – ')[0];
-  const duree = h.dureeMinutes < 60 ? `${h.dureeMinutes} min` : `${Math.floor(h.dureeMinutes / 60)} h${h.dureeMinutes % 60 ? ' 30' : ''}`;
-  return `De ${heure(h.debut)} à ${heure(h.fin)} · tranches de ${duree} · ${nombreDePoles} pôle${nombreDePoles > 1 ? 's' : ''}`;
+/** « Réservé au bureau » ou « Ouvert aux membres », avec une pastille de couleur. */
+export function StatutDuPlanning({ ouvert }: { ouvert: boolean }) {
+  return <span className={'statut-planning' + (ouvert ? ' ouvert' : '')}><i aria-hidden="true" />{ouvert ? 'Ouvert aux membres' : 'Réservé au bureau'}</span>;
 }
 
-function EnteteDuPlanning({ planning, tranches, estPret }: { planning: PlanningEtat; tranches: string[]; estPret: boolean }) {
-  const pris = (pole: number, heure: string) => planning.inscrits.filter((i) => i.pole_id === pole && i.debut === heure).length;
-  const bilan = bilanDesPlaces(planning.poles, tranches, pris);
-  return (
-    <div className="section-head">
-      <h3>Planning des présences {planning.horaires && <span className={'tag' + (planning.ouvert ? ' ouvert' : '')}>{planning.ouvert ? 'Ouvert aux membres' : 'Réservé au bureau'}</span>}</h3>
-      {estPret && <span className="muted small">{bilan.libres ? `${bilan.libres} place${bilan.libres > 1 ? 's' : ''} libre${bilan.libres > 1 ? 's' : ''} sur ${bilan.places}` : 'Tout est rempli'}</span>}
-    </div>
-  );
+/** « samedi 12 décembre » */
+export const dateLongue = (jour: string) =>
+  new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${jour}T12:00:00Z`));
+
+/** « de 10 h à 18 h · créneaux de 2 h » */
+export function resumeDesHoraires(h: Horaires) {
+  const heure = (hhmm: string) => libelleDeTranche(hhmm, 0).split(' – ')[0];
+  const duree = h.dureeMinutes < 60 ? `${h.dureeMinutes} min` : `${Math.floor(h.dureeMinutes / 60)} h${h.dureeMinutes % 60 ? ' 30' : ''}`;
+  return `de ${heure(h.debut)} à ${heure(h.fin)} · créneaux de ${duree}`;
 }
 
 /** Pas encore de planning : une phrase qui dit à quoi il sert, et des horaires proposés. */
-function DemarrerLePlanning({ onDemarrer }: { onDemarrer: (h: Horaires) => void }) {
+export function DemarrerLePlanning({ onDemarrer }: { onDemarrer: (h: Horaires) => void }) {
   return (
     <div className="planning-vide">
       <p className="muted small">Besoin de bras le jour J ? Découpez la journée en créneaux, ajoutez les pôles (stand, buvette…), puis ouvrez le planning aux membres pour qu’ils s’inscrivent depuis l’app.</p>
@@ -81,7 +58,7 @@ function DemarrerLePlanning({ onDemarrer }: { onDemarrer: (h: Horaires) => void 
   );
 }
 
-function ReglagesDuPlanning({ planning, horaires }: { planning: PlanningEtat; horaires: Horaires }) {
+export function ReglagesDuPlanning({ planning, horaires }: { planning: PlanningEtat; horaires: Horaires }) {
   const [brouillon, setBrouillon] = useState(horaires);
   const estModifie = brouillon.debut !== horaires.debut || brouillon.fin !== horaires.fin || brouillon.dureeMinutes !== horaires.dureeMinutes;
   const estValide = !!brouillon.debut && !!brouillon.fin && minutesDe(brouillon.fin) - minutesDe(brouillon.debut) >= brouillon.dureeMinutes;
@@ -90,24 +67,19 @@ function ReglagesDuPlanning({ planning, horaires }: { planning: PlanningEtat; ho
       <div className="form-row planning-horaires">
         <label>De<input type="time" value={brouillon.debut} onChange={(e) => setBrouillon({ ...brouillon, debut: e.target.value })} /></label>
         <label>À<input type="time" value={brouillon.fin} onChange={(e) => setBrouillon({ ...brouillon, fin: e.target.value })} /></label>
-        <label>Tranches de
+        <label>Créneaux de
           <select value={brouillon.dureeMinutes} onChange={(e) => setBrouillon({ ...brouillon, dureeMinutes: Number(e.target.value) })}>
             {DUREES_DE_TRANCHE.map((d) => <option key={d} value={d}>{d < 60 ? `${d} min` : `${d / 60} h`.replace('.5 h', ' h 30')}</option>)}
           </select>
         </label>
         {estModifie && <button className="primary" disabled={!estValide} onClick={() => planning.enregistrerHoraires(brouillon)}>Enregistrer les horaires</button>}
       </div>
-      {estModifie && !estValide && <p className="small error">L’heure de fin doit laisser la place à au moins une tranche.</p>}
-      <label className="switch">
-        <input type="checkbox" checked={planning.ouvert} onChange={(e) => planning.basculerOuverture(e.target.checked)} />
-        <span className="track" />
-        <span><strong>Ouvert aux membres</strong><br /><span className="muted small">{planning.ouvert ? 'Les adhérents voient ce planning dans l’app et peuvent s’inscrire.' : 'Seul le bureau voit ce planning pour l’instant.'}</span></span>
-      </label>
+      {estModifie && !estValide && <p className="small error">L’heure de fin doit laisser la place à au moins un créneau.</p>}
     </div>
   );
 }
 
-function ListeDesPoles({ planning }: { planning: PlanningEtat }) {
+export function ListeDesPoles({ planning }: { planning: PlanningEtat }) {
   const [nom, setNom] = useState('');
   const [personnes, setPersonnes] = useState(1);
   function ajouter() {
