@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Modal, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { GestureDetector, GestureHandlerRootView, usePanGesture, usePinchGesture, useSimultaneousGestures } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import type { PhotoChoisie } from '@/lib/photos';
-import { echelleDAffichage, limiterReglage, ZOOM_MAX, zoneDeRecadrage, type Cadre, type Zone } from '@/lib/recadrage';
+import { adapterReglageAuCadre, echelleDAffichage, limiterReglage, ZOOM_MAX, zoneDeRecadrage, type Cadre, type Zone } from '@/lib/recadrage';
 
 const RATIO = 4 / 3;
 
@@ -31,7 +31,11 @@ function CadreDeRecadrage({ photo, onValider, onAnnuler }: { photo: PhotoChoisie
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const largeurCadre = Math.min(width - 32, 520);
-  const [cadre] = useState<Cadre>(() => ({ largeurImage: photo.largeur, hauteurImage: photo.hauteur, largeurCadre, hauteurCadre: largeurCadre / RATIO }));
+  // Recalculé quand l'écran change de taille (iPhone Duo qu'on ouvre ou ferme).
+  const cadre = useMemo<Cadre>(
+    () => ({ largeurImage: photo.largeur, hauteurImage: photo.hauteur, largeurCadre, hauteurCadre: largeurCadre / RATIO }),
+    [photo.largeur, photo.hauteur, largeurCadre],
+  );
   const { gestes, style, lireReglage } = useGestesDeRecadrage(cadre);
   const echelle = echelleDAffichage(cadre, 1);
 
@@ -83,6 +87,15 @@ function useGestesDeRecadrage(cadre: Cadre) {
     },
   });
   const gestes = useSimultaneousGestures(glisser, pincer);
+
+  // Le cadre a changé de taille : on garde la même partie de la photo à l'intérieur. Vérifié à
+  // chaque affichage, mais n'agit que si le cadre est vraiment différent.
+  const cadrePrecedent = useRef(cadre);
+  useEffect(() => {
+    if (cadrePrecedent.current === cadre) return;
+    appliquer(adapterReglageAuCadre(cadrePrecedent.current, cadre, { zoom: zoom.value, x: x.value, y: y.value }));
+    cadrePrecedent.current = cadre;
+  });
   const style = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }, { translateY: y.value }, { scale: zoom.value }] }));
   const lireReglage = () => ({ zoom: zoom.value, x: x.value, y: y.value });
   return { gestes, style, lireReglage };
