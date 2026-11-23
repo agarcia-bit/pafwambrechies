@@ -1,9 +1,10 @@
 import * as Haptics from 'expo-haptics';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BilletDeCreneau } from '@/components/billet-de-creneau';
+import { EchangesDuPlanning } from '@/components/echanges-du-planning';
 import { PastilleDeCreneau } from '@/components/pastille-de-creneau';
 import { PlacesAReprendre, useGestesDuBillet } from '@/components/places-a-reprendre';
 import { Button } from '@/components/ui/button';
@@ -85,8 +86,10 @@ function ChoixDuCreneau({ planning }: { planning: PlanningOuvert }) {
           <BilletDeCreneau key={billet.inscription} nomDuPole={billet.nomDuPole} heure={billet.heure} dureeMinutes={planning.duree_minutes}
             autres={billet.autres} estNouveau={billet.inscription === nouvelle} enCours={liberer.isPending || gestes.enCours}
             onLiberer={() => gestes.nePlusVenir(billet)} remplacantRecherche={billet.remplacantRecherche}
-            onPartager={() => gestes.partager(billet)} onRevenir={() => gestes.revenir(billet)} />
+            onPartager={() => gestes.partager(billet)} onRevenir={() => gestes.revenir(billet)}
+            onEchanger={() => router.push({ pathname: '/agenda/creneaux/echange', params: { action: String(planning.id), inscription: String(billet.inscription) } })} />
         ))}
+        <EchangesDuPlanning planning={planning} />
         <PlacesAReprendre planning={planning} enCours={gestes.enCours} onReprendre={reprendreLaPlace} />
         <Text variant="headline">{billets.length ? 'Donner encore un coup de main' : 'Choisissez votre créneau'}</Text>
         {planning.poles.map((pole) => {

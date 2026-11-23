@@ -200,3 +200,93 @@ grant execute on function public.proposer_evenement(text, text, text, text, date
 grant execute on function public.accepter_proposition(bigint, text, date) to authenticated;
 grant execute on function public.refuser_proposition(bigint, text) to authenticated;
 grant execute on function public.seances_de_la_serie(date, text, smallint) to authenticated;
+
+-- 7. Modifier, retirer, et retirer les prochaines séances ────────────────────────────────────────
+-- Tant que le bureau n'a pas répondu, l'auteur corrige sa proposition ou la retire (« retiree » :
+-- elle disparaît de l'encadré du bureau, et l'idée liée de la boîte à idées). Une fois son
+-- événement publié, il peut en retirer les séances à venir (une soirée qui s'arrête).
+alter table public.propositions_evenements drop constraint if exists propositions_evenements_statut_check;
+alter table public.propositions_evenements add constraint propositions_evenements_statut_check
+  check (statut in ('en_attente', 'acceptee', 'refusee', 'retiree'));
+alter table public.idees drop constraint if exists idees_proposition_statut_check;
+alter table public.idees add constraint idees_proposition_statut_check
+  check (proposition_statut in ('en_attente', 'acceptee', 'refusee', 'retiree'));
+
+/** La proposition de l'auteur connecté, encore en attente ; sinon une erreur claire. */
+create or replace function public.ma_proposition_en_attente(p_proposition bigint)
+returns public.propositions_evenements language plpgsql security definer set search_path = public as $$
+declare
+  p public.propositions_evenements;
+begin
+  select * into p from public.propositions_evenements where id = p_proposition and auteur = auth.uid() for update;
+  if p.id is null then
+    raise exception 'Cette proposition n''existe plus.' using errcode = 'P0001';
+  end if;
+  if p.statut <> 'en_attente' then
+    raise exception 'Le bureau a déjà répondu : elle ne se modifie plus.' using errcode = 'P0001';
+  end if;
+  return p;
+end $$;
+revoke all on function public.ma_proposition_en_attente(bigint) from public, anon, authenticated;
+
+create or replace function public.modifier_proposition(
+  p_proposition bigint, p_titre text, p_description text,
+  p_periode text default null, p_date date default null, p_heure text default null, p_lieu text default null,
+  p_repetition text default 'aucune', p_nb_mois smallint default null
+) returns void language plpgsql security definer set search_path = public as $$
+declare
+  p public.propositions_evenements;
+begin
+  p := public.ma_proposition_en_attente(p_proposition);
+  if p.type = 'personnel' and p_date < (now() at time zone 'Europe/Paris')::date then
+    raise exception 'La date de l''événement est déjà passée.' using errcode = 'P0001';
+  end if;
+  update public.propositions_evenements
+     set titre = trim(p_titre), description = trim(p_description), periode = nullif(trim(p_periode), ''),
+         date = p_date, heure = nullif(trim(p_heure), ''), lieu = nullif(trim(p_lieu), ''),
+         repetition = coalesce(p_repetition, 'aucune'),
+         nb_mois = case when coalesce(p_repetition, 'aucune') = 'aucune' then null else p_nb_mois end
+   where id = p.id;
+  update public.idees
+     set titre = trim(p_titre),
+         texte = trim(p_description) || case when nullif(trim(p_periode), '') is not null then E'\n\nQuand : ' || trim(p_periode) else '' end
+   where id = p.idee_id;
+end $$;
+
+create or replace function public.retirer_proposition(p_proposition bigint)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  p public.propositions_evenements;
+begin
+  p := public.ma_proposition_en_attente(p_proposition);
+  update public.propositions_evenements set statut = 'retiree', decide_le = now() where id = p.id;
+  update public.idees set visible = false, proposition_statut = 'retiree' where id = p.idee_id;
+end $$;
+
+-- Les séances à venir de son événement publié ; les séances passées restent, pour l'historique.
+create or replace function public.retirer_seances_a_venir(p_proposition bigint)
+returns integer language plpgsql security definer set search_path = public as $$
+declare
+  p public.propositions_evenements;
+  la_serie uuid;
+  retirees integer;
+begin
+  select * into p from public.propositions_evenements
+   where id = p_proposition and auteur = auth.uid() and statut = 'acceptee' and devenue = 'evenement';
+  if p.id is null then
+    raise exception 'Cet événement n''est pas le vôtre, ou n''est pas publié.' using errcode = 'P0001';
+  end if;
+  select serie into la_serie from public.evenements where id = p.evenement_id;
+  delete from public.evenements
+   where propose_par = auth.uid() and date >= (now() at time zone 'Europe/Paris')::date
+     and (id = p.evenement_id or (la_serie is not null and serie = la_serie));
+  get diagnostics retirees = row_count;
+  return retirees;
+end $$;
+
+revoke all on function public.modifier_proposition(bigint, text, text, text, date, text, text, text, smallint) from public, anon;
+revoke all on function public.retirer_proposition(bigint) from public, anon;
+revoke all on function public.retirer_seances_a_venir(bigint) from public, anon;
+grant execute on function public.modifier_proposition(bigint, text, text, text, date, text, text, text, smallint) to authenticated;
+grant execute on function public.retirer_proposition(bigint) to authenticated;
+grant execute on function public.retirer_seances_a_venir(bigint) to authenticated;

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { changerLeBesoin, type Horaires, type Pole } from '../creneaux';
+import { changerLeBesoin, changerLesBesoins, type Horaires, type Pole } from '../creneaux';
 import { supabase, toast } from '../lib';
 
 // Le planning des présences d'une action, côté bureau (supabase/creneaux.sql) : les horaires
@@ -73,6 +73,15 @@ export function usePlanning(actionId: number) {
     modifierPole: (pole: Pole, changement: Partial<Pick<Pole, 'nom' | 'personnes'>>) =>
       ecrireEtRecharger(supabase.from('poles').update(changement).eq('id', pole.id)),
     supprimerPole: (pole: Pole) => ecrireEtRecharger(supabase.from('poles').delete().eq('id', pole.id)),
+    /** « De 10 h à 14 h : 3 personnes », sur un ou plusieurs pôles, en une fois. */
+    changerPlusieursBesoins: async (lesPoles: Pole[], heures: string[], besoin: number) => {
+      const reponses = await Promise.all(lesPoles.map((pole) =>
+        supabase.from('poles').update({ besoins_par_creneau: changerLesBesoins(pole, heures, besoin) }).eq('id', pole.id)));
+      const erreur = reponses.find((r) => r.error)?.error;
+      if (erreur) toast(erreur.message, 'error');
+      await charger();
+      return !erreur;
+    },
     changerBesoin: (pole: Pole, heure: string, besoin: number) =>
       ecrireEtRecharger(supabase.from('poles').update({ besoins_par_creneau: changerLeBesoin(pole, heure, besoin) }).eq('id', pole.id)),
     ajouterUnNom: (pole: Pole, heure: string, nom: string) =>

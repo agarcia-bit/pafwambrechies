@@ -7,6 +7,7 @@ import { Text } from '@/components/ui/text';
 import { libelleDeTranche } from '@/lib/creneaux';
 import { plural } from '@/lib/format';
 import { resumeDuPlanning, usePlanningsOuverts, type PlanningOuvert } from '@/lib/mes-creneaux';
+import { useMesEchanges } from '@/lib/echanges-creneaux';
 import { placesAReprendre } from '@/lib/remplacement-creneau';
 import { useTheme } from '@/theme';
 
@@ -30,8 +31,10 @@ function CarteDePlanning({ planning }: { planning: PlanningOuvert }) {
   const { colors } = useTheme();
   const { libres, mesCreneaux } = resumeDuPlanning(planning);
   const aReprendre = placesAReprendre(planning).length;
-  // Une place à reprendre passe avant le reste : quelqu'un attend une réponse pour se libérer.
-  const resume = aReprendre ? `${plural(aReprendre, 'place à reprendre', 'places à reprendre')} · Je la prends`
+  const echangesRecus = (useMesEchanges().data ?? []).filter((e) => e.action === planning.id && e.sens === 'recu').length;
+  // Ce qui attend une réponse passe avant le reste : un échange proposé, puis une place à reprendre.
+  const resume = echangesRecus ? `${plural(echangesRecus, 'proposition d’échange', 'propositions d’échange')} pour vous`
+    : aReprendre ? `${plural(aReprendre, 'place à reprendre', 'places à reprendre')} · Je la prends`
     : mesCreneaux.length ? `Vous : ${mesCreneaux.map((c) => `${c.pole}, ${libelleDeTranche(c.heure, planning.duree_minutes)}`).join(' · ')}`
     : libres ? `${plural(libres, 'place libre', 'places libres')} · Choisir un créneau` : 'Complet, merci à tous !';
   return (
