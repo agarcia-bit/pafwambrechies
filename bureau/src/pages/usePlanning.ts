@@ -7,7 +7,7 @@ import { supabase, toast } from '../lib';
 // communs à tous les pôles, les pôles, et qui est inscrit où. Chaque geste s'enregistre aussitôt,
 // comme les tâches de la fiche ; la base refuse elle-même un créneau complet.
 
-export type Inscrit = { id: number; pole_id: number; debut: string; membre: string | null; nom: string; a_compte: boolean };
+export type Inscrit = { id: number; pole_id: number; debut: string; membre: string | null; nom: string; a_compte: boolean; a_reprendre?: boolean };
 
 type LigneAction = {
   titre: string; emoji: string | null; date_action: string;

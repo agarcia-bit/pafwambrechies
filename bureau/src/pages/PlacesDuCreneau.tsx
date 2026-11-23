@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { besoinDuCreneau, estDejaPrisALHeure, libelleDeTranche, type Pole } from '../creneaux';
+import { avecMentionDeReprise, besoinDuCreneau, estDejaPrisALHeure, libelleDeTranche, type Pole } from '../creneaux';
 import { Avatar, Icon } from '../Icon';
 import type { Inscrit, PlanningEtat } from './usePlanning';
 
@@ -41,7 +41,7 @@ function Personne({ inscrit, estMoi, planning }: { inscrit: Inscrit; estMoi: boo
   return (
     <span className={'qui' + (estMoi ? ' moi' : '')} title={inscrit.a_compte ? 'Inscrit depuis l’app ou l’espace bureau' : 'Ajouté à la main'}>
       <span aria-hidden="true"><Avatar name={inscrit.nom} size={24} /></span>
-      {estMoi ? 'Vous' : inscrit.nom}
+      {avecMentionDeReprise(estMoi ? 'Vous' : inscrit.nom, inscrit.a_reprendre)}
       <button className="qui-retirer" onClick={retirer} aria-label={estMoi ? 'Je ne peux plus venir sur ce créneau' : `Retirer ${inscrit.nom}`}><Icon name="x" size={12} /></button>
     </span>
   );

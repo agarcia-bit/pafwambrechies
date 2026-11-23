@@ -5,14 +5,14 @@ import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BilletDeCreneau } from '@/components/billet-de-creneau';
 import { PastilleDeCreneau } from '@/components/pastille-de-creneau';
+import { PlacesAReprendre, useGestesDuBillet } from '@/components/places-a-reprendre';
 import { Button } from '@/components/ui/button';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { useEspaceSousOnglets } from '@/hooks/use-espace-sous-onglets';
-import { confirmAction } from '@/lib/confirm';
 import { libelleDeTranche } from '@/lib/creneaux';
 import { formatDayLong } from '@/lib/format';
-import { billetsDuPlanning, casesDuPole, useMonCreneau, usePlanningsOuverts, type Billet, type PlanningOuvert } from '@/lib/mes-creneaux';
+import { billetsDuPlanning, casesDuPole, useMonCreneau, usePlanningsOuverts, type PlanningOuvert } from '@/lib/mes-creneaux';
 import { messageDuPlanning } from '@/lib/planning';
 import { useTheme } from '@/theme';
 
@@ -52,7 +52,8 @@ function ChoixDuCreneau({ planning }: { planning: PlanningOuvert }) {
   const [choix, setChoix] = useState<Choix | null>(null);
   const [nouvelle, setNouvelle] = useState<number | null>(null);
   const { prendre, liberer } = useMonCreneau();
-  const erreur = prendre.error ?? liberer.error;
+  const gestes = useGestesDuBillet(planning, (billet) => liberer.mutate(billet.inscription));
+  const erreur = prendre.error ?? liberer.error ?? gestes.erreur;
 
   // Un nouveau choix efface le message du précédent (« déjà inscrit à cette heure-là »).
   function choisir(c: Choix) {
@@ -69,10 +70,10 @@ function ChoixDuCreneau({ planning }: { planning: PlanningOuvert }) {
       },
     });
   }
-  async function libererLeCreneau(billet: Billet) {
-    const horaire = libelleDeTranche(billet.heure, planning.duree_minutes);
-    const ok = await confirmAction({ title: 'Vous ne pouvez plus venir ?', message: `${billet.nomDuPole}, ${horaire}. Le bureau sera prévenu et la place redeviendra libre.`, confirmLabel: 'Me désinscrire', destructive: true });
-    if (ok) liberer.mutate(billet.inscription);
+  function reprendreLaPlace(inscription: number) {
+    gestes.reprendre.mutate(inscription, {
+      onSuccess: () => { if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); },
+    });
   }
 
   const billets = billetsDuPlanning(planning);
@@ -82,8 +83,11 @@ function ChoixDuCreneau({ planning }: { planning: PlanningOuvert }) {
         <Text variant="subhead" tone="secondary">{formatDayLong(planning.date)}</Text>
         {billets.map((billet) => (
           <BilletDeCreneau key={billet.inscription} nomDuPole={billet.nomDuPole} heure={billet.heure} dureeMinutes={planning.duree_minutes}
-            autres={billet.autres} estNouveau={billet.inscription === nouvelle} enCours={liberer.isPending} onLiberer={() => libererLeCreneau(billet)} />
+            autres={billet.autres} estNouveau={billet.inscription === nouvelle} enCours={liberer.isPending || gestes.enCours}
+            onLiberer={() => gestes.nePlusVenir(billet)} remplacantRecherche={billet.remplacantRecherche}
+            onPartager={() => gestes.partager(billet)} onRevenir={() => gestes.revenir(billet)} />
         ))}
+        <PlacesAReprendre planning={planning} enCours={gestes.enCours} onReprendre={reprendreLaPlace} />
         <Text variant="headline">{billets.length ? 'Donner encore un coup de main' : 'Choisissez votre créneau'}</Text>
         {planning.poles.map((pole) => {
           const cases = casesDuPole(planning, pole).filter((c) => c.etat !== 'vous');

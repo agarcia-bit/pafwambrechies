@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 // communs à tous les pôles, les pôles, et qui est inscrit où. La base refuse elle-même un créneau
 // complet ou une heure qui n'existe pas : son message s'affiche tel quel.
 
-export type Inscrit = { id: number; pole_id: number; debut: string; membre: string | null; nom: string; a_compte: boolean };
+export type Inscrit = { id: number; pole_id: number; debut: string; membre: string | null; nom: string; a_compte: boolean; a_reprendre?: boolean };
 export type Planning = { titre: string; date: string; horaires: Horaires | null; ouvert: boolean; poles: Pole[]; inscrits: Inscrit[] };
 
 type LigneAction = {

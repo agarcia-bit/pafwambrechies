@@ -7,6 +7,7 @@ import { Text } from '@/components/ui/text';
 import { libelleDeTranche } from '@/lib/creneaux';
 import { plural } from '@/lib/format';
 import { resumeDuPlanning, usePlanningsOuverts, type PlanningOuvert } from '@/lib/mes-creneaux';
+import { placesAReprendre } from '@/lib/remplacement-creneau';
 import { useTheme } from '@/theme';
 
 /**
@@ -28,8 +29,10 @@ export function BesoinDeBras() {
 function CarteDePlanning({ planning }: { planning: PlanningOuvert }) {
   const { colors } = useTheme();
   const { libres, mesCreneaux } = resumeDuPlanning(planning);
-  const resume = mesCreneaux.length
-    ? `Vous : ${mesCreneaux.map((c) => `${c.pole}, ${libelleDeTranche(c.heure, planning.duree_minutes)}`).join(' · ')}`
+  const aReprendre = placesAReprendre(planning).length;
+  // Une place à reprendre passe avant le reste : quelqu'un attend une réponse pour se libérer.
+  const resume = aReprendre ? `${plural(aReprendre, 'place à reprendre', 'places à reprendre')} · Je la prends`
+    : mesCreneaux.length ? `Vous : ${mesCreneaux.map((c) => `${c.pole}, ${libelleDeTranche(c.heure, planning.duree_minutes)}`).join(' · ')}`
     : libres ? `${plural(libres, 'place libre', 'places libres')} · Choisir un créneau` : 'Complet, merci à tous !';
   return (
     <PressableCard

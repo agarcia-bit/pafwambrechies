@@ -12,7 +12,7 @@ import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
 import { confirmAction } from '@/lib/confirm';
 import {
-  besoinDuCreneau, DUREES_DE_TRANCHE, etatPourLeBureau, libelleDeTranche, minutesDe, tranchesDeLaJournee,
+  avecMentionDeReprise, besoinDuCreneau, DUREES_DE_TRANCHE, etatPourLeBureau, libelleDeTranche, minutesDe, tranchesDeLaJournee,
   type Horaires, type Pole,
 } from '@/lib/creneaux';
 import { inscritsDuCreneau, type Planning, type useModifierLePlanning } from '@/lib/planning';
@@ -111,7 +111,7 @@ export function GrilleDuPlanning({ actionId, moi, planning }: { actionId: number
         const besoin = besoinDuCreneau(pole, heure);
         const etat = etatPourLeBureau(besoin, inscrits.length);
         const manque = besoin - inscrits.length;
-        const detail = inscrits.length ? inscrits.map((i) => (i.membre === moi ? 'Vous' : i.nom)).join(', ') : besoin ? `Il manque ${manque} personne${manque > 1 ? 's' : ''}` : 'Pas besoin';
+        const detail = inscrits.length ? inscrits.map((i) => avecMentionDeReprise(i.membre === moi ? 'Vous' : i.nom, i.a_reprendre)).join(', ') : besoin ? `Il manque ${manque} personne${manque > 1 ? 's' : ''}` : 'Pas besoin';
         return (
           <ListRow
             key={heure}

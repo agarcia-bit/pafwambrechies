@@ -19,6 +19,10 @@ type Props = {
   onLiberer: () => void;
   /** Une seule ligne (Pilotage du bureau) : ses créneaux sans prendre la place du planning. */
   compact?: boolean;
+  /** La personne cherche un remplaçant : le billet le dit, avec « Partager le lien » et « Finalement, je viens ». */
+  remplacantRecherche?: boolean;
+  onPartager?: () => void;
+  onRevenir?: () => void;
 };
 
 /**
@@ -26,7 +30,7 @@ type Props = {
  * présence ») : ce qu'elle doit faire passe avant ce qu'elle peut encore prendre. Il apparaît
  * avec un léger rebond quand elle vient de s'inscrire : le seul effet de l'écran.
  */
-export function BilletDeCreneau({ nomDuPole, heure, dureeMinutes, autres, estNouveau, enCours, onLiberer, compact = false }: Props) {
+export function BilletDeCreneau({ nomDuPole, heure, dureeMinutes, autres, estNouveau, enCours, onLiberer, compact = false, remplacantRecherche = false, onPartager, onRevenir }: Props) {
   const { colors } = useTheme();
   const moinsDAnimations = useReducedMotion();
   // La couleur de la bande de l'association : toujours assez foncée pour du blanc, en clair comme
@@ -35,22 +39,19 @@ export function BilletDeCreneau({ nomDuPole, heure, dureeMinutes, autres, estNou
   const encre = '#FFFFFF';
   const pale = mix(fond, encre, 0.8);
   const compagnie = autres ? `avec ${plural(autres, 'autre bénévole', 'autres bénévoles')}` : 'personne d’autre pour l’instant';
-  const lien = (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Je ne peux plus venir : ${nomDuPole}, ${libelleDeTranche(heure, dureeMinutes)}`}
-      disabled={enCours}
-      onPress={onLiberer}
-      hitSlop={8}
-      style={({ pressed }) => [styles.lien, { opacity: pressed || enCours ? 0.6 : 1 }]}>
-      <Text variant="footnote" style={{ color: encre, fontWeight: '600', textDecorationLine: 'underline' }}>Je ne peux plus venir</Text>
-    </Pressable>
+  const creneau = `${nomDuPole}, ${libelleDeTranche(heure, dureeMinutes)}`;
+  const lienDuBillet = (libelle: string, onPress?: () => void) => (
+    <LienDuBillet key={libelle} libelle={libelle} detail={creneau} encre={encre} enCours={enCours} onPress={onPress} />
   );
+  const lien = remplacantRecherche
+    ? <View style={styles.liens}>{lienDuBillet('Partager le lien', onPartager)}{lienDuBillet('Finalement, je viens', onRevenir)}</View>
+    : lienDuBillet('Je ne peux plus venir', onLiberer);
+  const surtitre = remplacantRecherche ? 'Remplaçant recherché' : 'Votre créneau';
   if (compact) {
     return (
       <View style={[styles.billetCompact, { backgroundColor: fond }]}>
         <View style={styles.grandit}>
-          <Text variant="caption" style={{ color: pale, fontWeight: '600' }}>Votre créneau</Text>
+          <Text variant="caption" style={{ color: pale, fontWeight: '600' }}>{surtitre}</Text>
           <Text variant="headline" style={{ color: encre }}>{nomDuPole} · {libelleDeTranche(heure, dureeMinutes)}</Text>
         </View>
         {lien}
@@ -61,15 +62,30 @@ export function BilletDeCreneau({ nomDuPole, heure, dureeMinutes, autres, estNou
     <Animated.View
       entering={estNouveau && !moinsDAnimations ? ZoomIn.springify().damping(14).duration(260) : undefined}
       style={[styles.billet, { backgroundColor: fond }]}>
-      <Text variant="caption" style={{ color: pale, fontWeight: '600' }}>Votre créneau</Text>
+      <Text variant="caption" style={{ color: pale, fontWeight: '600' }}>{surtitre}</Text>
       <Text variant="title" style={{ color: encre }}>{libelleDeTranche(heure, dureeMinutes)}</Text>
       <Text variant="subhead" style={{ color: encre, fontWeight: '600' }}>{nomDuPole} · {compagnie}</Text>
       <Perforation fond={colors.background} trait={pale} />
       <View style={styles.pied}>
-        <Text variant="footnote" style={[styles.grandit, { color: pale }]}>Rappel la veille</Text>
+        <Text variant="footnote" style={[styles.grandit, { color: pale }]}>{remplacantRecherche ? 'Encore à votre nom' : 'Rappel la veille'}</Text>
         {lien}
       </View>
     </Animated.View>
+  );
+}
+
+/** Un lien souligné du billet (« Je ne peux plus venir »…), avec une zone de clic de 44 points. */
+function LienDuBillet({ libelle, detail, encre, enCours, onPress }: { libelle: string; detail: string; encre: string; enCours: boolean; onPress?: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${libelle} : ${detail}`}
+      disabled={enCours}
+      onPress={onPress}
+      hitSlop={8}
+      style={({ pressed }) => [styles.lien, { opacity: pressed || enCours ? 0.6 : 1 }]}>
+      <Text variant="footnote" style={{ color: encre, fontWeight: '600', textDecorationLine: 'underline' }}>{libelle}</Text>
+    </Pressable>
   );
 }
 
@@ -96,4 +112,5 @@ const styles = StyleSheet.create({
   pied: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   grandit: { flex: 1 },
   lien: { minHeight: 44, justifyContent: 'center' },
+  liens: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, justifyContent: 'flex-end' },
 });
