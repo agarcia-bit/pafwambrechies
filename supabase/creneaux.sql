@@ -299,3 +299,142 @@ revoke all on function public.reprendre_creneau(bigint) from public, anon;
 grant execute on function public.chercher_remplacant(bigint) to authenticated;
 grant execute on function public.annuler_recherche_de_remplacant(bigint) to authenticated;
 grant execute on function public.reprendre_creneau(bigint) to authenticated;
+
+-- 10. Échanger son créneau contre un autre ──────────────────────────────────────────────────────
+-- « Je prends ton 14 h, tu prends mon 10 h ». Depuis son billet, une personne propose d'échanger sa
+-- place contre un autre créneau de la même action. Les adhérents inscrits sur ce créneau voient la
+-- proposition (sans savoir qui la fait) ; le premier qui accepte échange sa place avec elle, en une
+-- seule fois. notify-taches prévient les personnes visées, puis celle qui proposait.
+create table if not exists public.echanges_creneaux (
+  id                 bigint generated always as identity primary key,
+  tenant_id          uuid not null references public.tenants(id) on delete cascade,
+  inscription_offerte bigint not null references public.inscriptions_creneaux(id) on delete cascade,
+  propose_par        uuid not null references public.profiles(id) on delete cascade,
+  pole_vise          bigint not null references public.poles(id) on delete cascade,
+  debut_vise         time not null,
+  statut             text not null default 'en_attente' check (statut in ('en_attente', 'accepte', 'annule')),
+  accepte_par        uuid references public.profiles(id) on delete set null,
+  vises_prevenus     boolean not null default false,
+  auteur_prevenu     boolean not null default true,
+  created_at         timestamptz not null default now()
+);
+create index if not exists echanges_creneaux_vise_idx on public.echanges_creneaux (pole_vise, debut_vise) where statut = 'en_attente';
+-- Une seule proposition en cours par place offerte.
+create unique index if not exists echanges_creneaux_un_seul on public.echanges_creneaux (inscription_offerte) where statut = 'en_attente';
+alter table public.echanges_creneaux enable row level security;
+-- Personne ne lit la table directement : les fonctions ci-dessous ne montrent que ce qui concerne
+-- la personne, sans le nom de l'autre. Le bureau, lui, lit tout.
+drop policy if exists "Échanges : le bureau lit" on public.echanges_creneaux;
+create policy "Échanges : le bureau lit" on public.echanges_creneaux for select to authenticated
+  using (tenant_id = public.current_tenant_id() and public.is_bureau_or_admin());
+
+create or replace function public.proposer_echange(p_inscription bigint, p_pole bigint, p_debut time)
+returns bigint language plpgsql security definer set search_path = public as $$
+declare
+  mienne public.inscriptions_creneaux;
+  l_action public.actions;
+  nouvel bigint;
+begin
+  select i.* into mienne from public.inscriptions_creneaux i
+   where i.id = p_inscription and i.membre = auth.uid() and i.annulee_le is null for update;
+  if mienne.id is null then
+    raise exception 'Cette inscription n''existe plus.' using errcode = 'P0001';
+  end if;
+  select a.* into l_action from public.actions a join public.poles p on p.action_id = a.id where p.id = mienne.pole_id;
+  if not exists (select 1 from public.poles where id = p_pole and action_id = l_action.id) then
+    raise exception 'Choisissez un créneau de la même action.' using errcode = 'P0001';
+  end if;
+  if not l_action.ouvert_aux_membres or l_action.date_action < (now() at time zone 'Europe/Paris')::date then
+    raise exception 'Ce planning n''est plus ouvert.' using errcode = 'P0001';
+  end if;
+  if p_pole = mienne.pole_id and p_debut = mienne.debut then
+    raise exception 'C''est déjà votre créneau.' using errcode = 'P0001';
+  end if;
+  -- Une proposition en cours à la fois par place : la nouvelle remplace l'ancienne.
+  update public.echanges_creneaux set statut = 'annule' where inscription_offerte = mienne.id and statut = 'en_attente';
+  insert into public.echanges_creneaux (tenant_id, inscription_offerte, propose_par, pole_vise, debut_vise)
+  values (l_action.tenant_id, mienne.id, auth.uid(), p_pole, p_debut)
+  returning id into nouvel;
+  return nouvel;
+end $$;
+
+create or replace function public.annuler_echange(p_echange bigint)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  update public.echanges_creneaux set statut = 'annule'
+   where id = p_echange and propose_par = auth.uid() and statut = 'en_attente';
+  if not found then
+    raise exception 'Cet échange a déjà été accepté ou annulé.' using errcode = 'P0001';
+  end if;
+end $$;
+
+-- Ce que voit un adhérent : ses propositions en cours, et celles qui visent un de ses créneaux.
+create or replace function public.mes_echanges()
+returns jsonb language sql stable security definer set search_path = public as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', e.id, 'action', p_off.action_id, 'sens', case when e.propose_par = auth.uid() then 'propose' else 'recu' end,
+    'inscription_offerte', e.inscription_offerte,
+    'offert', jsonb_build_object('pole', p_off.nom, 'debut', to_char(i_off.debut, 'HH24:MI')),
+    'vise', jsonb_build_object('pole', p_vis.nom, 'debut', to_char(e.debut_vise, 'HH24:MI')),
+    'mon_inscription', case when e.propose_par = auth.uid() then e.inscription_offerte else (
+      select i.id from public.inscriptions_creneaux i
+       where i.pole_id = e.pole_vise and i.debut = e.debut_vise and i.membre = auth.uid() and i.annulee_le is null limit 1) end
+  ) order by e.created_at), '[]'::jsonb)
+  from public.echanges_creneaux e
+  join public.inscriptions_creneaux i_off on i_off.id = e.inscription_offerte
+  join public.poles p_off on p_off.id = i_off.pole_id
+  join public.poles p_vis on p_vis.id = e.pole_vise
+  join public.actions a on a.id = p_off.action_id
+  where e.statut = 'en_attente' and e.tenant_id = public.current_tenant_id()
+    and i_off.annulee_le is null and a.date_action >= (now() at time zone 'Europe/Paris')::date
+    and (e.propose_par = auth.uid() or exists (
+      select 1 from public.inscriptions_creneaux i
+       where i.pole_id = e.pole_vise and i.debut = e.debut_vise and i.membre = auth.uid() and i.annulee_le is null));
+$$;
+
+-- Accepter : les deux personnes échangent leur place. On échange les personnes, pas les créneaux :
+-- chaque créneau garde le même nombre d'inscrits, la garde des places n'a rien à revérifier.
+create or replace function public.accepter_echange(p_echange bigint)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  e public.echanges_creneaux;
+  offerte public.inscriptions_creneaux;
+  mienne public.inscriptions_creneaux;
+  l_action bigint;
+begin
+  select * into e from public.echanges_creneaux where id = p_echange and statut = 'en_attente' for update;
+  if e.id is null then
+    raise exception 'Cet échange n''est plus proposé.' using errcode = 'P0001';
+  end if;
+  select * into offerte from public.inscriptions_creneaux where id = e.inscription_offerte and annulee_le is null for update;
+  select * into mienne from public.inscriptions_creneaux
+   where pole_id = e.pole_vise and debut = e.debut_vise and membre = auth.uid() and annulee_le is null for update;
+  if offerte.id is null or mienne.id is null then
+    raise exception 'Cet échange n''est plus possible.' using errcode = 'P0001';
+  end if;
+  select action_id into l_action from public.poles where id = e.pole_vise;
+  -- Personne ne doit se retrouver à deux endroits à la même heure.
+  if exists (select 1 from public.inscriptions_creneaux i join public.poles p on p.id = i.pole_id
+              where p.action_id = l_action and i.annulee_le is null and i.id <> mienne.id
+                and i.membre = auth.uid() and i.debut = offerte.debut)
+     or exists (select 1 from public.inscriptions_creneaux i join public.poles p on p.id = i.pole_id
+              where p.action_id = l_action and i.annulee_le is null and i.id <> offerte.id
+                and i.membre = offerte.membre and i.debut = mienne.debut) then
+    raise exception 'L''un de vous deux est déjà pris à cette heure-là.' using errcode = 'P0001';
+  end if;
+  update public.inscriptions_creneaux set membre = offerte.membre, remplacant_recherche_le = null where id = mienne.id;
+  update public.inscriptions_creneaux set membre = auth.uid(), remplacant_recherche_le = null where id = offerte.id;
+  update public.echanges_creneaux set statut = 'accepte', accepte_par = auth.uid(), auteur_prevenu = false where id = e.id;
+  -- Les autres propositions qui visaient l'une de ces deux places n'ont plus d'objet.
+  update public.echanges_creneaux set statut = 'annule'
+   where statut = 'en_attente' and id <> e.id and inscription_offerte in (offerte.id, mienne.id);
+end $$;
+
+revoke all on function public.proposer_echange(bigint, bigint, time) from public, anon;
+revoke all on function public.annuler_echange(bigint) from public, anon;
+revoke all on function public.mes_echanges() from public, anon;
+revoke all on function public.accepter_echange(bigint) from public, anon;
+grant execute on function public.proposer_echange(bigint, bigint, time) to authenticated;
+grant execute on function public.annuler_echange(bigint) to authenticated;
+grant execute on function public.mes_echanges() to authenticated;
+grant execute on function public.accepter_echange(bigint) to authenticated;
