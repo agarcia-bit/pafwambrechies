@@ -240,12 +240,12 @@ Le badge est un petit rectangle arrondi à 6 px, en 12 px gras, avec un fond pâ
 
 ### Créneaux de présence
 Un créneau est une pastille arrondie qui donne l'heure et l'état. L'état est toujours écrit, pour qu'on le comprenne sans la couleur :
-- **« Vous »** : la couleur de l'association en plein, avec le texte blanc.
+- **Ses propres créneaux** : pas une pastille mais un **billet** en haut de l'écran, à la couleur de l'association (rayon 20 px), avec l'horaire en Sora, le pôle et le nombre d'autres bénévoles, un pointillé à encoches, puis « Je ne peux plus venir ».
 - **« N places libres »** : fond vert pâle (ok-soft), texte vert (ok).
 - **« Dernière place »** : fond ambre pâle (warn-soft), texte ambre (warn).
 - **« Complet »** : fond gris (neutral-soft), texte gris (bureau-muted). On ne peut pas le toucher.
 - **Vu du bureau** (la grille de l'espace bureau) : on regarde les trous. Une case remplie est verte, une case où il manque du monde est ambre et affiche « 1/2 », une tranche sans besoin est grise.
-- **Le seul effet de l'écran** : quand l'adhérent prend un créneau, la pastille passe en « Vous » avec un léger rebond (moins de 300 ms) et une petite vibration du téléphone. Les deux se coupent quand l'utilisateur a demandé moins d'animations.
+- **Le seul effet de l'écran** : quand l'adhérent prend un créneau, son billet apparaît avec un léger rebond (moins de 300 ms) et une petite vibration du téléphone. Les deux se coupent quand l'utilisateur a demandé moins d'animations.
 
 ## Do's and Don'ts
 

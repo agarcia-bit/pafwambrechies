@@ -1,0 +1,79 @@
+import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { ZoomIn, useReducedMotion } from 'react-native-reanimated';
+
+import { Text } from '@/components/ui/text';
+import { libelleDeTranche } from '@/lib/creneaux';
+import { plural } from '@/lib/format';
+import { useTheme } from '@/theme';
+import { mix } from '@/theme/colors';
+
+type Props = {
+  nomDuPole: string;
+  heure: string;
+  dureeMinutes: number;
+  /** Les autres bénévoles déjà inscrits sur ce créneau. */
+  autres: number;
+  /** Vrai pour le billet qu'on vient de prendre : lui seul apparaît avec un rebond. */
+  estNouveau: boolean;
+  enCours: boolean;
+  onLiberer: () => void;
+};
+
+/**
+ * Un créneau de la personne, présenté comme un billet à garder (DESIGN.md, « Créneaux de
+ * présence ») : ce qu'elle doit faire passe avant ce qu'elle peut encore prendre. Il apparaît
+ * avec un léger rebond quand elle vient de s'inscrire : le seul effet de l'écran.
+ */
+export function BilletDeCreneau({ nomDuPole, heure, dureeMinutes, autres, estNouveau, enCours, onLiberer }: Props) {
+  const { colors } = useTheme();
+  const moinsDAnimations = useReducedMotion();
+  const encre = colors.onPrimary;
+  const pale = mix(colors.primary, encre, 0.75);
+  const compagnie = autres ? `avec ${plural(autres, 'autre bénévole', 'autres bénévoles')}` : 'personne d’autre pour l’instant';
+  return (
+    <Animated.View
+      entering={estNouveau && !moinsDAnimations ? ZoomIn.springify().damping(14).duration(260) : undefined}
+      style={[styles.billet, { backgroundColor: colors.primary }]}>
+      <Text variant="caption" style={{ color: pale, fontWeight: '600' }}>Votre créneau</Text>
+      <Text variant="title" style={{ color: encre }}>{libelleDeTranche(heure, dureeMinutes)}</Text>
+      <Text variant="subhead" style={{ color: encre, fontWeight: '600' }}>{nomDuPole} · {compagnie}</Text>
+      <Perforation fond={colors.background} trait={pale} />
+      <View style={styles.pied}>
+        <Text variant="footnote" style={[styles.grandit, { color: pale }]}>Rappel la veille</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Je ne peux plus venir : ${nomDuPole}, ${libelleDeTranche(heure, dureeMinutes)}`}
+          disabled={enCours}
+          onPress={onLiberer}
+          hitSlop={8}
+          style={({ pressed }) => [styles.lien, { opacity: pressed || enCours ? 0.6 : 1 }]}>
+          <Text variant="footnote" style={{ color: encre, fontWeight: '600', textDecorationLine: 'underline' }}>Je ne peux plus venir</Text>
+        </Pressable>
+      </View>
+    </Animated.View>
+  );
+}
+
+/** Le pointillé du billet, avec une encoche de chaque côté de la couleur du fond. */
+function Perforation({ fond, trait }: { fond: string; trait: string }) {
+  return (
+    <View style={styles.perforation}>
+      <View style={[styles.encoche, styles.encocheGauche, { backgroundColor: fond }]} />
+      <View style={[styles.pointilles, { borderColor: trait }]} />
+      <View style={[styles.encoche, styles.encocheDroite, { backgroundColor: fond }]} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  billet: { borderRadius: 20, paddingHorizontal: 18, paddingTop: 14, paddingBottom: 4, gap: 2, overflow: 'hidden' },
+  perforation: { flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 2, marginHorizontal: -18 },
+  // Une boîte d'un point de haut, bordée en entier : iOS ne dessine pas un pointillé sur un seul côté.
+  pointilles: { flex: 1, height: 1, borderWidth: 1, borderStyle: 'dashed', borderRadius: 1, marginHorizontal: 6 },
+  encoche: { width: 18, height: 18, borderRadius: 9 },
+  encocheGauche: { marginLeft: -9 },
+  encocheDroite: { marginRight: -9 },
+  pied: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  grandit: { flex: 1 },
+  lien: { minHeight: 44, justifyContent: 'center' },
+});
