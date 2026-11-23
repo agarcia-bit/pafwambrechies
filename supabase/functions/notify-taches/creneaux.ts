@@ -32,7 +32,7 @@ export function libelleDeTranche(debut: string, dureeMinutes: number): string {
   return `${ecrire(depart)} – ${ecrire(depart + dureeMinutes)}`;
 }
 
-const creneauDe = (i: InscriptionANotifier) =>
+export const creneauDe = (i: InscriptionANotifier) =>
   `${i.poles.nom}, ${libelleDeTranche(i.debut, i.poles.actions.creneau_duree_minutes ?? 60)}`;
 
 /** Les désinscriptions à annoncer au référent ; personne à prévenir quand il n'y a pas de référent ou qu'il s'agit de lui. */

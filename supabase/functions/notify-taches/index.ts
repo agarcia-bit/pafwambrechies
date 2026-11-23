@@ -6,7 +6,9 @@
 //  3. les créneaux de présence (creneaux.ts) : le référent prévenu d'une désinscription, et un
 //     rappel aux inscrits la veille de l'action ;
 //  4. les événements proposés par les membres (propositions.ts) : le bureau prévenu d'une
-//     proposition, puis l'auteur de la réponse du bureau.
+//     proposition, puis l'auteur de la réponse du bureau ;
+//  5. le remplacement d'un créneau (remplacements.ts) : la personne remplacée prévenue qu'elle est
+//     libérée, et le référent, la veille, des places restées sans remplaçant.
 // Chaque message part une fois : la tâche le note (confiee_notifiee, rappel_veille_le, rappel_jour_le),
 // même quand la personne n'a pas de téléphone enregistré. Un toucher ouvre l'action dans l'app.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -18,6 +20,7 @@ import {
 import {
   desistementsAPrevenir, rappelsDeLaVeille, texteDuDesistement, texteDuRappelDeLaVeille, type InscriptionANotifier,
 } from "./creneaux.ts";
+import { placesSansRemplacant, texteDeLaReprise, texteSansRemplacant, type InscriptionRemplacee } from "./remplacements.ts";
 import { bureauAPrevenir, reponseALAuteur, texteDeLaProposition, type PropositionANotifier } from "./propositions.ts";
 
 const EXPO_ACCESS_TOKEN = Deno.env.get("EXPO_ACCESS_TOKEN");
@@ -140,6 +143,43 @@ async function envoyerLesRappelsDeCreneaux(aujourdhui: string): Promise<number> 
   return envoyes;
 }
 
+const COLONNES_REMPLACEMENT = `${COLONNES_CRENEAUX}, remplacant_recherche_le, reprise_par, reprise_notifiee, sans_remplacant_signale_le`;
+
+/** Quelqu'un a repris une place : la personne remplacée l'apprend, une seule fois. */
+async function envoyerLesReprises(): Promise<number> {
+  const { data, error } = await sb.from("inscriptions_creneaux").select(COLONNES_REMPLACEMENT).eq("reprise_notifiee", false);
+  if (error) throw error;
+  const reprises = (data ?? []) as unknown as InscriptionRemplacee[];
+  if (!reprises.length) return 0;
+  const { data: profils } = await sb.from("profiles").select("id, prenom").in("id", reprises.map((r) => r.reprise_par).filter(Boolean) as string[]);
+  let envoyes = 0;
+  for (const r of reprises.filter((r) => r.membre)) {
+    const prenom = profils?.find((p) => p.id === r.reprise_par)?.prenom ?? null;
+    envoyes += await envoyerA(r.tenant_id, r.membre!, texteDeLaReprise(prenom, r), { planning_action: r.poles.actions.id });
+  }
+  await sb.from("inscriptions_creneaux").update({ reprise_notifiee: true }).in("id", reprises.map((r) => r.id));
+  return envoyes;
+}
+
+/** La veille de l'action, le référent apprend quelles places n'ont pas trouvé de remplaçant, une seule fois. */
+async function envoyerLesPlacesSansRemplacant(aujourdhui: string): Promise<number> {
+  const demain = lendemain(aujourdhui);
+  const { data, error } = await sb.from("inscriptions_creneaux").select(COLONNES_REMPLACEMENT)
+    .eq("poles.actions.date_action", demain).is("annulee_le", null).not("remplacant_recherche_le", "is", null).is("sans_remplacant_signale_le", null);
+  if (error) throw error;
+  const groupes = placesSansRemplacant((data ?? []) as unknown as InscriptionRemplacee[], demain);
+  if (!groupes.length) return 0;
+  const membres = groupes.flatMap((g) => g.places.map((p) => p.membre)).filter(Boolean) as string[];
+  const { data: profils } = await sb.from("profiles").select("id, prenom").in("id", membres);
+  const prenoms = new Map((profils ?? []).map((p) => [p.id as string, p.prenom as string | null]));
+  let envoyes = 0;
+  for (const groupe of groupes) {
+    envoyes += await envoyerA(groupe.tenantId, groupe.referent, texteSansRemplacant(groupe, prenoms), { bureau_action: groupe.actionId });
+    await sb.from("inscriptions_creneaux").update({ sans_remplacant_signale_le: new Date().toISOString() }).in("id", groupe.ids);
+  }
+  return envoyes;
+}
+
 const COLONNES_PROPOSITIONS = "id, tenant_id, auteur, type, titre, statut, devenue, evenement_id, mot_du_bureau, repetition";
 
 /** Une proposition arrive : le bureau de l'association est prévenu, une seule fois. */
@@ -198,10 +238,11 @@ Deno.serve(async (req) => {
     const desistements = await envoyerLesDesistements();
     const rappelsDeCreneaux = avecRappels ? await envoyerLesRappelsDeCreneaux(aujourdhui) : 0;
     const propositions = await envoyerLesPropositionsAuBureau() + await envoyerLesReponsesAuxAuteurs();
-    if (annonces || rappels || desistements || rappelsDeCreneaux || propositions) {
-      console.log(`[notify-taches] ${aujourdhui}: ${annonces} annonce(s), ${rappels} rappel(s), ${desistements} désistement(s), ${rappelsDeCreneaux} rappel(s) de créneau, ${propositions} message(s) de propositions`);
+    const remplacements = await envoyerLesReprises() + (avecRappels ? await envoyerLesPlacesSansRemplacant(aujourdhui) : 0);
+    if (annonces || rappels || desistements || rappelsDeCreneaux || propositions || remplacements) {
+      console.log(`[notify-taches] ${aujourdhui}: ${annonces} annonce(s), ${rappels} rappel(s), ${desistements} désistement(s), ${rappelsDeCreneaux} rappel(s) de créneau, ${propositions} message(s) de propositions, ${remplacements} message(s) de remplacement`);
     }
-    return Response.json({ annonces, rappels, desistements, rappelsDeCreneaux, propositions });
+    return Response.json({ annonces, rappels, desistements, rappelsDeCreneaux, propositions, remplacements });
   } catch (err) {
     console.error("[notify-taches] Erreur", err);
     return new Response("Internal error", { status: 500 });
