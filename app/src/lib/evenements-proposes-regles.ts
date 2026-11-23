@@ -5,7 +5,7 @@
 
 export type TypeDeProposition = 'a_organiser' | 'personnel';
 export type Repetition = 'aucune' | 'semaine' | 'mois';
-export type StatutDeProposition = 'en_attente' | 'acceptee' | 'refusee';
+export type StatutDeProposition = 'en_attente' | 'acceptee' | 'refusee' | 'retiree';
 
 export type Proposition = {
   id: number;
@@ -95,7 +95,7 @@ export function resumeDesSeances(seances: string[]): string {
 
 /** Le mot du statut, sur l'idée comme dans « Vos propositions ». */
 export function libelleDuStatut(statut: StatutDeProposition): string {
-  return { en_attente: 'En attente du bureau', acceptee: 'Acceptée', refusee: 'Pas retenue' }[statut];
+  return { en_attente: 'En attente du bureau', acceptee: 'Acceptée', refusee: 'Pas retenue', retiree: 'Retirée' }[statut];
 }
 
 /** Le type, dit pour le bureau. */
@@ -106,4 +106,12 @@ export function quandEtOu(p: Pick<Proposition, 'type' | 'periode' | 'date' | 'he
   if (p.type === 'a_organiser') return p.periode ? `Souhaité : ${p.periode}` : 'Date à choisir par le bureau';
   const seances = p.date ? seancesDeLaSerie(p.date, p.repetition, p.nb_mois ?? 3) : [];
   return [resumeDesSeances(seances), p.heure, p.lieu].filter(Boolean).join(' · ');
+}
+
+/** Les champs du formulaire, repris d'une proposition à modifier. */
+export function champsDeLaProposition(p: Proposition): ChampsDeProposition {
+  return {
+    type: p.type, titre: p.titre, description: p.description, periode: p.periode ?? '', date: p.date ?? '',
+    heure: p.heure ?? '', lieu: p.lieu ?? '', repetition: p.repetition, nbMois: p.nb_mois === 6 ? 6 : 3,
+  };
 }

@@ -27,23 +27,27 @@ export function useMesEvenementsProposes() {
   });
 }
 
+/** Les champs tels que la base les attend : une proposition à organiser n'a ni date ni lieu, un événement pas de période. */
+function argumentsDeLaProposition(champs: ChampsDeProposition) {
+  const estPersonnel = champs.type === 'personnel';
+  return {
+    p_titre: champs.titre.trim(),
+    p_description: champs.description.trim(),
+    p_periode: estPersonnel ? null : champs.periode.trim() || null,
+    p_date: estPersonnel ? champs.date : null,
+    p_heure: estPersonnel ? champs.heure.trim() || null : null,
+    p_lieu: estPersonnel ? champs.lieu.trim() : null,
+    p_repetition: estPersonnel ? champs.repetition : 'aucune',
+    p_nb_mois: estPersonnel && champs.repetition !== 'aucune' ? champs.nbMois : null,
+  };
+}
+
 /** Envoie la proposition ; une proposition à organiser apparaît aussi dans la boîte à idées. */
 export function useProposerUnEvenement() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (champs: ChampsDeProposition) => {
-      const estPersonnel = champs.type === 'personnel';
-      const { error } = await supabase.rpc('proposer_evenement', {
-        p_type: champs.type,
-        p_titre: champs.titre.trim(),
-        p_description: champs.description.trim(),
-        p_periode: estPersonnel ? null : champs.periode.trim() || null,
-        p_date: estPersonnel ? champs.date : null,
-        p_heure: estPersonnel ? champs.heure.trim() || null : null,
-        p_lieu: estPersonnel ? champs.lieu.trim() : null,
-        p_repetition: estPersonnel ? champs.repetition : 'aucune',
-        p_nb_mois: estPersonnel && champs.repetition !== 'aucune' ? champs.nbMois : null,
-      });
+      const { error } = await supabase.rpc('proposer_evenement', { p_type: champs.type, ...argumentsDeLaProposition(champs) });
       if (error) throw new Error(error.message);
     },
     onSettled: () => Promise.all([client.invalidateQueries({ queryKey: CLE }), client.invalidateQueries({ queryKey: ['idees'] })]),
@@ -84,4 +88,23 @@ export function useRepondreALaProposition() {
     },
     onSettled: () => Promise.all(['propositions-a-valider', 'bureau', 'evenements'].map((cle) => client.invalidateQueries({ queryKey: [cle] }))),
   });
+}
+
+/** Ce que l'auteur peut encore faire de sa proposition : la corriger ou la retirer (en attente), retirer les séances à venir (publiée). */
+export function useMaProposition() {
+  const client = useQueryClient();
+  const relire = () => Promise.all([CLE, ['idees'], ['evenements'], CLE_A_VALIDER].map((cle) => client.invalidateQueries({ queryKey: cle })));
+  const appeler = async (fonction: string, args: Record<string, unknown>) => {
+    const { data, error } = await supabase.rpc(fonction, args);
+    if (error) throw new Error(error.message);
+    return data as unknown;
+  };
+  const modifier = useMutation({
+    mutationFn: async ({ id, champs }: { id: number; champs: ChampsDeProposition }) => { await appeler('modifier_proposition', { p_proposition: id, ...argumentsDeLaProposition(champs) }); },
+    onSettled: relire,
+  });
+  const retirer = useMutation({ mutationFn: async (id: number) => { await appeler('retirer_proposition', { p_proposition: id }); }, onSettled: relire });
+  /** Rend le nombre de séances retirées de l'Agenda. */
+  const retirerLesSeances = useMutation({ mutationFn: async (id: number) => Number(await appeler('retirer_seances_a_venir', { p_proposition: id })), onSettled: relire });
+  return { modifier, retirer, retirerLesSeances };
 }

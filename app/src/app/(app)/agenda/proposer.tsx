@@ -1,4 +1,4 @@
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import { DateField, ChoiceField } from '@/components/form-fields';
@@ -7,46 +7,62 @@ import { HeaderButton } from '@/components/header-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
-import { showMessage } from '@/lib/confirm';
+import { confirmAction, showMessage } from '@/lib/confirm';
 import { todayISO } from '@/lib/format';
-import { useProposerUnEvenement } from '@/lib/evenements-proposes';
-import { erreurDeLaProposition, resumeDesSeances, seancesDeLaSerie, type ChampsDeProposition, type Repetition, type TypeDeProposition } from '@/lib/evenements-proposes-regles';
+import { useMaProposition, useMesEvenementsProposes, useProposerUnEvenement } from '@/lib/evenements-proposes';
+import { champsDeLaProposition, erreurDeLaProposition, resumeDesSeances, seancesDeLaSerie, type ChampsDeProposition, type Repetition, type TypeDeProposition } from '@/lib/evenements-proposes-regles';
 
 const TYPES: Record<TypeDeProposition, string> = { a_organiser: 'À organiser avec le bureau', personnel: 'Mon événement' };
 const REPETITIONS: Record<Repetition, string> = { aucune: 'Une seule fois', semaine: 'Chaque semaine', mois: 'Chaque mois' };
 const VIDE: ChampsDeProposition = { type: 'a_organiser', titre: '', description: '', periode: '', date: '', heure: '', lieu: '', repetition: 'aucune', nbMois: 3 };
 
-/**
- * « Proposer un événement », depuis l'Agenda. À organiser avec le bureau : il devient aussi une
- * idée que les autres peuvent soutenir. Mon événement (une soirée karaoké, un atelier…) : après
- * l'accord du bureau, il paraît dans l'Agenda avec toutes ses séances.
- */
-export default function ProposerScreen() {
-  const proposer = useProposerUnEvenement();
-  const [champs, setChamps] = useState<ChampsDeProposition>(VIDE);
-  const [erreur, setErreur] = useState<string | null>(null);
-  const changer = (changement: Partial<ChampsDeProposition>) => setChamps((avant) => ({ ...avant, ...changement }));
-  const estPersonnel = champs.type === 'personnel';
+/** Les messages de la base qui parlent au membre ; les autres erreurs sont des soucis de connexion. */
+const messageDeLEnvoi = (e: Error) => (/^(Vous avez|La date|Le bureau a déjà)/.test(e.message) ? e.message : 'La proposition n’a pas pu partir. Vérifiez votre connexion.');
 
-  function envoyer() {
+/** Envoyer une nouvelle proposition, corriger la sienne (id) ou la retirer. */
+function useEnvoi(id: number | null, setErreur: (e: string | null) => void) {
+  const proposer = useProposerUnEvenement();
+  const { modifier, retirer } = useMaProposition();
+  const fini = (titre: string, texte: string) => { router.back(); showMessage(titre, texte); };
+  function envoyer(champs: ChampsDeProposition) {
     const probleme = erreurDeLaProposition(champs, todayISO());
     setErreur(probleme);
     if (probleme) return;
+    const surErreur = { onError: (e: Error) => setErreur(messageDeLEnvoi(e)) };
+    if (id) return modifier.mutate({ id, champs }, { ...surErreur, onSuccess: () => fini('C’est corrigé', 'Le bureau verra la nouvelle version.') });
     proposer.mutate(champs, {
-      onSuccess: () => {
-        router.back();
-        showMessage('Merci !', estPersonnel ? 'Le bureau va regarder votre événement. Vous serez prévenu de sa réponse.' : 'Votre proposition est aussi dans la boîte à idées : les autres membres peuvent la soutenir.');
-      },
-      onError: (e) => setErreur(e.message.startsWith('Vous avez') || e.message.startsWith('La date') ? e.message : 'La proposition n’a pas pu partir. Vérifiez votre connexion.'),
+      ...surErreur,
+      onSuccess: () => fini('Merci !', champs.type === 'personnel' ? 'Le bureau va regarder votre événement. Vous serez prévenu de sa réponse.' : 'Votre proposition est aussi dans la boîte à idées : les autres membres peuvent la soutenir.'),
     });
   }
+  async function retirerLaProposition() {
+    if (!id || !(await confirmAction({ title: 'Retirer votre proposition ?', message: 'Le bureau ne la verra plus.', confirmLabel: 'Retirer', destructive: true }))) return;
+    retirer.mutate(id, { onError: (e) => setErreur(messageDeLEnvoi(e)), onSuccess: () => fini('Proposition retirée', 'Vous pourrez en proposer une autre quand vous voulez.') });
+  }
+  return { envoyer, retirerLaProposition, enCours: proposer.isPending || modifier.isPending || retirer.isPending };
+}
+
+/**
+ * « Proposer un événement », depuis l'Agenda, ou corriger la sienne tant que le bureau n'a pas
+ * répondu (?id=). À organiser avec le bureau : elle devient aussi une idée que les autres peuvent
+ * soutenir. Mon événement (une soirée karaoké…) : après l'accord du bureau, il paraît dans l'Agenda.
+ */
+export default function ProposerScreen() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const existante = useMesEvenementsProposes().data?.find((p) => p.id === Number(id) && p.statut === 'en_attente');
+  const [champs, setChamps] = useState<ChampsDeProposition>(() => (existante ? champsDeLaProposition(existante) : VIDE));
+  const [erreur, setErreur] = useState<string | null>(null);
+  const envoi = useEnvoi(existante?.id ?? null, setErreur);
+  const changer = (changement: Partial<ChampsDeProposition>) => setChamps((avant) => ({ ...avant, ...changement }));
+  const estPersonnel = champs.type === 'personnel';
 
   return (
     <>
-      <Stack.Screen options={{ headerLeft: () => <HeaderButton title="Annuler" onPress={() => router.back()} /> }} />
+      <Stack.Screen options={{ title: existante ? 'Ma proposition' : 'Proposer un événement', headerLeft: () => <HeaderButton title="Annuler" onPress={() => router.back()} /> }} />
       <FormScreen>
-        <ChoiceField label="C’est…" options={Object.keys(TYPES)} value={champs.type} format={(t) => TYPES[t as TypeDeProposition]}
-          onChange={(t) => changer({ type: t as TypeDeProposition })} />
+        {/* Le type ne change plus après l'envoi : une proposition à organiser a déjà son idée. */}
+        {!existante && <ChoiceField label="C’est…" options={Object.keys(TYPES)} value={champs.type} format={(t) => TYPES[t as TypeDeProposition]}
+          onChange={(t) => changer({ type: t as TypeDeProposition })} />}
         <Text variant="footnote" tone="secondary">
           {estPersonnel
             ? 'Un événement que vous organisez vous-même et que vous voulez faire connaître aux membres.'
@@ -59,7 +75,8 @@ export default function ProposerScreen() {
         <TextField label="Description" value={champs.description} onChangeText={(description) => changer({ description })}
           placeholder="Ce qu’on y fait, pour qui, ce qu’il faut prévoir…" multiline maxLength={2000} />
         {erreur && <Text tone="danger" accessibilityLiveRegion="polite">{erreur}</Text>}
-        <Button title="Envoyer au bureau" icon="send" onPress={envoyer} loading={proposer.isPending} />
+        <Button title={existante ? 'Enregistrer' : 'Envoyer au bureau'} icon="send" onPress={() => envoi.envoyer(champs)} loading={envoi.enCours} />
+        {existante && <Button title="Retirer ma proposition" variant="destructive" onPress={envoi.retirerLaProposition} disabled={envoi.enCours} />}
       </FormScreen>
     </>
   );
