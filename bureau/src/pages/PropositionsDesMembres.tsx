@@ -1,21 +1,10 @@
 import { useState } from 'react';
 
 import { Drawer } from '../Drawer';
-import { resumeDesSeances, seancesDeLaSerie, type Proposition } from '../evenements-proposes-regles';
+import { LIBELLE_DU_TYPE as TYPE, quandEtOu } from '../evenements-proposes-regles';
 import { Icon } from '../Icon';
-import { dateLongue } from './PlanningDeLAction';
 import type { Devenir, PropositionAvecSoutiens, PropositionsEtat } from './usePropositionsDesMembres';
 import './propositions.css';
-
-const TYPE: Record<Proposition['type'], string> = { a_organiser: 'À organiser avec le bureau', personnel: 'Son événement, à faire connaître' };
-
-/** Quand : « 3 séances : 14 janv., 14 févr., 14 mars · 20 h · Bar du Centre » ou la période souhaitée. */
-function quandEtOu(p: Proposition): string {
-  if (p.type === 'a_organiser') return p.periode ? `Souhaité : ${p.periode}` : 'Date à choisir par le bureau';
-  const seances = p.date ? seancesDeLaSerie(p.date, p.repetition, p.nb_mois ?? 3) : [];
-  const quand = seances.length > 1 ? resumeDesSeances(seances) : p.date ? dateLongue(p.date) : '';
-  return [quand, p.heure, p.lieu].filter(Boolean).join(' · ');
-}
 
 /** En haut du Pilotage : les propositions qui attendent une réponse. Rien quand il n'y en a pas. */
 export function EncadreDesPropositions({ etat, onRepondre }: { etat: PropositionsEtat; onRepondre: (p: PropositionAvecSoutiens) => void }) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { erreurDeLaProposition, libelleDuStatut, resumeDesSeances, seancesDeLaSerie, type ChampsDeProposition } from './evenements-proposes-regles';
+import { erreurDeLaProposition, libelleDuStatut, quandEtOu, resumeDesSeances, seancesDeLaSerie, type ChampsDeProposition } from './evenements-proposes-regles';
 
 describe('événements proposés par les membres', () => {
   it('calcule les séances comme la base : même jour du mois, ramené à la fin des mois courts', () => {
@@ -29,5 +29,8 @@ describe('événements proposés par les membres', () => {
     expect(resumeDesSeances(seancesDeLaSerie('2027-01-14', 'semaine', 3))).toBe('13 séances, du 14 janv. au 8 avr.');
     expect(resumeDesSeances(['2027-01-14'])).toBe('Le 14 janv.');
     expect(libelleDuStatut('refusee')).toBe('Pas retenue');
+    expect(quandEtOu({ type: 'personnel', periode: null, date: '2027-01-14', heure: '20 h', lieu: 'Bar du Centre', repetition: 'mois', nb_mois: 3 }))
+      .toBe('3 séances : 14 janv., 14 févr., 14 mars · 20 h · Bar du Centre');
+    expect(quandEtOu({ type: 'a_organiser', periode: 'courant mars', date: null, heure: null, lieu: null, repetition: 'aucune', nb_mois: null })).toBe('Souhaité : courant mars');
   });
 });

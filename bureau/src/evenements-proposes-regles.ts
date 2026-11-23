@@ -97,3 +97,13 @@ export function resumeDesSeances(seances: string[]): string {
 export function libelleDuStatut(statut: StatutDeProposition): string {
   return { en_attente: 'En attente du bureau', acceptee: 'Acceptée', refusee: 'Pas retenue' }[statut];
 }
+
+/** Le type, dit pour le bureau. */
+export const LIBELLE_DU_TYPE: Record<TypeDeProposition, string> = { a_organiser: 'À organiser avec le bureau', personnel: 'Son événement, à faire connaître' };
+
+/** Quand et où : « 3 séances : 14 janv., 14 févr., 14 mars · 20 h · Bar du Centre », ou la période souhaitée. */
+export function quandEtOu(p: Pick<Proposition, 'type' | 'periode' | 'date' | 'heure' | 'lieu' | 'repetition' | 'nb_mois'>): string {
+  if (p.type === 'a_organiser') return p.periode ? `Souhaité : ${p.periode}` : 'Date à choisir par le bureau';
+  const seances = p.date ? seancesDeLaSerie(p.date, p.repetition, p.nb_mois ?? 3) : [];
+  return [resumeDesSeances(seances), p.heure, p.lieu].filter(Boolean).join(' · ');
+}

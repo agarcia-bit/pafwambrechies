@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ActionCard, AnimatedTaskRow, openAction, StatutBadge } from '@/components/bureau';
+import { PropositionsAValider } from '@/components/propositions-a-valider';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -41,6 +42,7 @@ export default function BureauScreen() {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+        <PropositionsAValider />
         <ChipBar options={VIEWS} value={view} onChange={setView} />
         {bureau.isPending ? (
           <LoadingState />
