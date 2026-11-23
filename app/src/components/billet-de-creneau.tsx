@@ -23,6 +23,8 @@ type Props = {
   remplacantRecherche?: boolean;
   onPartager?: () => void;
   onRevenir?: () => void;
+  /** « Échanger » : proposer son créneau contre un autre de la même action. */
+  onEchanger?: () => void;
 };
 
 /**
@@ -30,7 +32,7 @@ type Props = {
  * présence ») : ce qu'elle doit faire passe avant ce qu'elle peut encore prendre. Il apparaît
  * avec un léger rebond quand elle vient de s'inscrire : le seul effet de l'écran.
  */
-export function BilletDeCreneau({ nomDuPole, heure, dureeMinutes, autres, estNouveau, enCours, onLiberer, compact = false, remplacantRecherche = false, onPartager, onRevenir }: Props) {
+export function BilletDeCreneau({ nomDuPole, heure, dureeMinutes, autres, estNouveau, enCours, onLiberer, compact = false, remplacantRecherche = false, onPartager, onRevenir, onEchanger }: Props) {
   const { colors } = useTheme();
   const moinsDAnimations = useReducedMotion();
   // La couleur de la bande de l'association : toujours assez foncée pour du blanc, en clair comme
@@ -45,6 +47,7 @@ export function BilletDeCreneau({ nomDuPole, heure, dureeMinutes, autres, estNou
   );
   const lien = remplacantRecherche
     ? <View style={styles.liens}>{lienDuBillet('Partager le lien', onPartager)}{lienDuBillet('Finalement, je viens', onRevenir)}</View>
+    : onEchanger ? <View style={styles.liens}>{lienDuBillet('Échanger', onEchanger)}{lienDuBillet('Je ne peux plus venir', onLiberer)}</View>
     : lienDuBillet('Je ne peux plus venir', onLiberer);
   const surtitre = remplacantRecherche ? 'Remplaçant recherché' : 'Votre créneau';
   if (compact) {

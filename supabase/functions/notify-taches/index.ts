@@ -8,7 +8,9 @@
 //  4. les événements proposés par les membres (propositions.ts) : le bureau prévenu d'une
 //     proposition, puis l'auteur de la réponse du bureau ;
 //  5. le remplacement d'un créneau (remplacements.ts) : la personne remplacée prévenue qu'elle est
-//     libérée, et le référent, la veille, des places restées sans remplaçant.
+//     libérée, et le référent, la veille, des places restées sans remplaçant ;
+//  6. l'échange d'un créneau contre un autre (echanges.ts) : les personnes visées prévenues, puis
+//     celle qui proposait quand c'est accepté.
 // Chaque message part une fois : la tâche le note (confiee_notifiee, rappel_veille_le, rappel_jour_le),
 // même quand la personne n'a pas de téléphone enregistré. Un toucher ouvre l'action dans l'app.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -20,6 +22,7 @@ import {
 import {
   desistementsAPrevenir, rappelsDeLaVeille, texteDuDesistement, texteDuRappelDeLaVeille, type InscriptionANotifier,
 } from "./creneaux.ts";
+import { texteDeLaPropositionDEchange, texteDeLEchangeAccepte, type EchangeANotifier } from "./echanges.ts";
 import { placesSansRemplacant, texteDeLaReprise, texteSansRemplacant, type InscriptionRemplacee } from "./remplacements.ts";
 import { bureauAPrevenir, reponseALAuteur, texteDeLaProposition, type PropositionANotifier } from "./propositions.ts";
 
@@ -180,6 +183,38 @@ async function envoyerLesPlacesSansRemplacant(aujourdhui: string): Promise<numbe
   return envoyes;
 }
 
+const COLONNES_ECHANGES =
+  "id, tenant_id, propose_par, pole_vise, debut_vise, statut, offerte:inscriptions_creneaux!inscription_offerte(debut, poles!inner(nom, actions!inner(id, titre, creneau_duree_minutes))), vise:poles!pole_vise(nom)";
+
+/** Un échange proposé : les adhérents inscrits sur le créneau visé l'apprennent, une seule fois. */
+async function envoyerLesPropositionsDEchange(): Promise<number> {
+  const { data, error } = await sb.from("echanges_creneaux").select(COLONNES_ECHANGES).eq("vises_prevenus", false);
+  if (error) throw error;
+  const echanges = (data ?? []) as unknown as EchangeANotifier[];
+  let envoyes = 0;
+  for (const e of echanges.filter((e) => e.statut === "en_attente")) {
+    const { data: vises } = await sb.from("inscriptions_creneaux").select("membre")
+      .eq("pole_id", e.pole_vise).eq("debut", e.debut_vise).is("annulee_le", null).not("membre", "is", null).neq("membre", e.propose_par);
+    for (const v of vises ?? []) {
+      envoyes += await envoyerA(e.tenant_id, v.membre as string, texteDeLaPropositionDEchange(e), { planning_action: e.offerte.poles.actions.id });
+    }
+  }
+  if (echanges.length) await sb.from("echanges_creneaux").update({ vises_prevenus: true }).in("id", echanges.map((e) => e.id));
+  return envoyes;
+}
+
+/** Un échange accepté : la personne qui proposait apprend son nouveau créneau, une seule fois. */
+async function envoyerLesEchangesAcceptes(): Promise<number> {
+  const { data, error } = await sb.from("echanges_creneaux").select(COLONNES_ECHANGES).eq("auteur_prevenu", false);
+  if (error) throw error;
+  let envoyes = 0;
+  for (const e of (data ?? []) as unknown as EchangeANotifier[]) {
+    envoyes += await envoyerA(e.tenant_id, e.propose_par, texteDeLEchangeAccepte(e), { planning_action: e.offerte.poles.actions.id });
+    await sb.from("echanges_creneaux").update({ auteur_prevenu: true }).eq("id", e.id);
+  }
+  return envoyes;
+}
+
 const COLONNES_PROPOSITIONS = "id, tenant_id, auteur, type, titre, statut, devenue, evenement_id, mot_du_bureau, repetition";
 
 /** Une proposition arrive : le bureau de l'association est prévenu, une seule fois. */
@@ -239,10 +274,11 @@ Deno.serve(async (req) => {
     const rappelsDeCreneaux = avecRappels ? await envoyerLesRappelsDeCreneaux(aujourdhui) : 0;
     const propositions = await envoyerLesPropositionsAuBureau() + await envoyerLesReponsesAuxAuteurs();
     const remplacements = await envoyerLesReprises() + (avecRappels ? await envoyerLesPlacesSansRemplacant(aujourdhui) : 0);
-    if (annonces || rappels || desistements || rappelsDeCreneaux || propositions || remplacements) {
-      console.log(`[notify-taches] ${aujourdhui}: ${annonces} annonce(s), ${rappels} rappel(s), ${desistements} désistement(s), ${rappelsDeCreneaux} rappel(s) de créneau, ${propositions} message(s) de propositions, ${remplacements} message(s) de remplacement`);
+    const echanges = await envoyerLesPropositionsDEchange() + await envoyerLesEchangesAcceptes();
+    if (annonces || rappels || desistements || rappelsDeCreneaux || propositions || remplacements || echanges) {
+      console.log(`[notify-taches] ${aujourdhui}: ${annonces} annonce(s), ${rappels} rappel(s), ${desistements} désistement(s), ${rappelsDeCreneaux} rappel(s) de créneau, ${propositions} message(s) de propositions, ${remplacements} message(s) de remplacement, ${echanges} message(s) d'échange`);
     }
-    return Response.json({ annonces, rappels, desistements, rappelsDeCreneaux, propositions, remplacements });
+    return Response.json({ annonces, rappels, desistements, rappelsDeCreneaux, propositions, remplacements, echanges });
   } catch (err) {
     console.error("[notify-taches] Erreur", err);
     return new Response("Internal error", { status: 500 });
