@@ -25,7 +25,8 @@ const CORS = {
 const reponse = (corps: unknown, statut = 200) =>
   new Response(JSON.stringify(corps), { status: statut, headers: { ...CORS, "Content-Type": "application/json" } });
 
-type Demande = { tenantId: string; moi: string; actionId: number; message: string };
+// apercu : ne rien envoyer, seulement dire combien de personnes seraient prévenues (fenêtre du bureau).
+type Demande = { tenantId: string; moi: string; actionId: number; message: string; apercu: boolean };
 type Action = { id: number; tenant_id: string; titre: string; date_action: string; ouvert_aux_membres: boolean; creneau_debut: string | null };
 
 /** Qui relance, et pour quelle action ; sinon la réponse d'erreur à renvoyer telle quelle. */
@@ -37,10 +38,11 @@ async function lireLaDemande(req: Request): Promise<Demande | Response> {
   if (!user) return reponse({ error: "unauthorized" }, 401);
   const { data: profil } = await asUser.from("profiles").select("role, tenant_id").eq("id", user.id).single();
   if (!profil || !["bureau", "admin"].includes(profil.role)) return reponse({ error: "forbidden" }, 403);
-  const corps = await req.json().catch(() => ({})) as { action_id?: number; message?: string };
+  const corps = await req.json().catch(() => ({})) as { action_id?: number; message?: string; apercu?: boolean };
   const message = (corps.message ?? "").trim();
-  if (!corps.action_id || !message || message.length > 1000) return reponse({ error: "missing_fields" }, 400);
-  return { tenantId: profil.tenant_id, moi: user.id, actionId: Number(corps.action_id), message };
+  const apercu = corps.apercu === true;
+  if (!corps.action_id || (!apercu && !message) || message.length > 1000) return reponse({ error: "missing_fields" }, 400);
+  return { tenantId: profil.tenant_id, moi: user.id, actionId: Number(corps.action_id), message, apercu };
 }
 
 /** Les membres à prévenir : tous ceux de l'association, moins les inscrits et celui qui relance. */
@@ -118,6 +120,10 @@ Deno.serve(async (req) => {
     const { data: action } = await sb.from("actions").select("id, tenant_id, titre, date_action, ouvert_aux_membres, creneau_debut").eq("id", demande.actionId).single();
     if (!action || action.tenant_id !== demande.tenantId) return reponse({ error: "not_found" }, 404);
     if (!action.creneau_debut) return reponse({ error: "no_planning" }, 400);
+    if (demande.apercu) {
+      const prevus = await chercherLesDestinataires(sb, demande);
+      return reponse({ nb_notifications: prevus.parNotification.length, nb_emails: Math.min(prevus.parEmail.length, MAX_EMAILS) });
+    }
     // Relancer un planning que les membres ne voient pas n'aurait pas de sens : on l'ouvre d'abord.
     if (!action.ouvert_aux_membres) await sb.from("actions").update({ ouvert_aux_membres: true }).eq("id", action.id);
     const destinataires = await chercherLesDestinataires(sb, demande);

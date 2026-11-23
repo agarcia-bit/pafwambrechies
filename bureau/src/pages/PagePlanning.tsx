@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 
 import type { PageProps } from '../App';
-import { creneauxDuPlanning, resumeDesTrous, tranchesDeLaJournee, trousDuPlanning } from '../creneaux';
+import { creneauxDuPlanning, messageDeRelance, resumeDesTrous, tranchesDeLaJournee, trousDuPlanning } from '../creneaux';
 import { Drawer } from '../Drawer';
 import { hashParam } from '../lib';
 import { BilletsDuBureau } from './BilletDuBureau';
 import { dateLongue, DemarrerLePlanning, ListeDesPoles, ReglagesDuPlanning, resumeDesHoraires, StatutDuPlanning } from './PlanningDeLAction';
+import { DerniereRelance, FenetreDeRelance } from './RelanceDuPlanning';
 import { usePlanning, type PlanningEtat } from './usePlanning';
+import { useRelance, type RelanceEtat } from './useRelance';
 import { GrilleDuPlanning, ListeDesTrous } from './VuesDuPlanning';
 import './planning.css';
 
@@ -25,13 +27,24 @@ function useEstEtroit() {
   return estEtroit;
 }
 
+/** L'action de l'adresse (#planning?action=12), relue quand on passe d'un planning à un autre sans quitter la page. */
+function useActionDeLAdresse() {
+  const [actionId, setActionId] = useState(() => Number(hashParam('action')));
+  useEffect(() => {
+    const surChangement = () => setActionId(Number(hashParam('action')));
+    addEventListener('hashchange', surChangement);
+    return () => removeEventListener('hashchange', surChangement);
+  }, []);
+  return actionId;
+}
+
 /**
  * La page Planning d'une action (#planning?action=12) : une phrase qui dit ce qui manque, le
  * bouton pour ouvrir le planning aux membres, ses propres créneaux, puis tout le planning en
  * grille ou seulement ce qui manque. Les horaires et les pôles se règlent dans un tiroir.
  */
 export function PagePlanning({ profile }: PageProps) {
-  const actionId = Number(hashParam('action'));
+  const actionId = useActionDeLAdresse();
   if (!actionId) return <div className="card muted">Choisissez une action dans le Pilotage pour voir son planning.</div>;
   return <PlanningDUneAction key={actionId} actionId={actionId} moi={profile.id} />;
 }
@@ -41,6 +54,7 @@ function PlanningDUneAction({ actionId, moi }: { actionId: number; moi: string }
   const estEtroit = useEstEtroit();
   const [filtre, setFiltre] = useState<Filtre | null>(null);
   const [reglagesOuverts, setReglagesOuverts] = useState(false);
+  const relance = useRelance(actionId);
   if (!planning.estCharge) return <div className="card"><div className="skeleton" /></div>;
   const tranches = planning.horaires ? tranchesDeLaJournee(planning.horaires) : [];
   const estPret = tranches.length > 0 && planning.poles.length > 0;
@@ -48,7 +62,7 @@ function PlanningDUneAction({ actionId, moi }: { actionId: number; moi: string }
   const filtreActif = filtre ?? (estEtroit ? 'manque' : 'tout');
   return (
     <div className="page-planning">
-      <EnteteDeLaPage planning={planning} actionId={actionId} trous={trous} estPret={estPret} />
+      <EnteteDeLaPage planning={planning} actionId={actionId} trous={trous} estPret={estPret} relance={relance} />
       {!planning.horaires && <DemarrerLePlanning onDemarrer={planning.enregistrerHoraires} />}
       {planning.horaires && !estPret && <div className="card planning-a-finir">Il reste à ajouter les pôles (stand, buvette…).<ReglagesEnLigne planning={planning} /></div>}
       {estPret && planning.horaires && (
@@ -92,11 +106,12 @@ function ReglagesEnLigne({ planning }: { planning: PlanningEtat }) {
   );
 }
 
-type PropsDEntete = { planning: PlanningEtat; actionId: number; trous: ReturnType<typeof trousDuPlanning>; estPret: boolean };
+type PropsDEntete = { planning: PlanningEtat; actionId: number; trous: ReturnType<typeof trousDuPlanning>; estPret: boolean; relance: RelanceEtat };
 
 /** Le fil d'Ariane, le titre, la phrase qui résume ce qui manque et le bouton d'ouverture aux membres. */
-function EnteteDeLaPage({ planning, actionId, trous, estPret }: PropsDEntete) {
+function EnteteDeLaPage({ planning, actionId, trous, estPret, relance }: PropsDEntete) {
   const { manque, poleLePlusEnManque } = resumeDesTrous(trous);
+  const [fenetreOuverte, setFenetreOuverte] = useState(false);
   const titre = planning.action ? `${planning.action.emoji ? `${planning.action.emoji} ` : ''}${planning.action.titre}` : 'Action';
   const inscrits = planning.inscrits.length;
   return (
@@ -114,14 +129,23 @@ function EnteteDeLaPage({ planning, actionId, trous, estPret }: PropsDEntete) {
         {planning.action && planning.horaires && (
           <p className="planning-sous">{dateLongue(planning.action.date)} · {resumeDesHoraires(planning.horaires)} · {inscrits} bénévole{inscrits > 1 ? 's' : ''}</p>
         )}
+        <DerniereRelance relance={relance.derniere} />
       </div>
       {planning.horaires && (
         <div className="planning-actions">
           <StatutDuPlanning ouvert={planning.ouvert} />
           {planning.ouvert
             ? <button onClick={() => planning.basculerOuverture(false)}>Réserver au bureau</button>
-            : <button className="primary" disabled={!estPret} onClick={() => planning.basculerOuverture(true)}>Ouvrir aux membres</button>}
+            : <button className={manque ? '' : 'primary'} disabled={!estPret} onClick={() => planning.basculerOuverture(true)}>Ouvrir aux membres</button>}
+          {/* Le geste du bureau quand il manque du monde : un seul bouton principal à la fois. */}
+          {estPret && manque > 0 && <button className="primary" onClick={() => setFenetreOuverte(true)}>Prévenir les membres</button>}
         </div>
+      )}
+      {fenetreOuverte && planning.action && planning.horaires && (
+        <FenetreDeRelance relance={relance} estOuvert={planning.ouvert}
+          messagePropose={messageDeRelance(planning.action.titre, dateLongue(planning.action.date), trous, planning.horaires.dureeMinutes)}
+          onFermer={() => setFenetreOuverte(false)}
+          onEnvoyee={() => { setFenetreOuverte(false); planning.recharger(); }} />
       )}
     </header>
   );

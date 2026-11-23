@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  besoinDuCreneau, billetsDeLaPersonne, creneauxDuPlanning, resumeDesTrous, trousDuPlanning, bilanDesPlaces, changerLeBesoin, estDejaPrisALHeure, etatDuCreneau, etatPourLeBureau, libelleDeLEtat, libelleDeTranche, tranchesDeLaJournee,
+  besoinDuCreneau, billetsDeLaPersonne, creneauxDuPlanning, messageDeRelance, resumeDesTrous, trousDuPlanning, bilanDesPlaces, changerLeBesoin, estDejaPrisALHeure, etatDuCreneau, etatPourLeBureau, libelleDeLEtat, libelleDeTranche, tranchesDeLaJournee,
 } from './creneaux';
 
 const cafe = { id: 1, nom: 'Café', personnes: 2, besoins_par_creneau: { '10:00': 0 }, ordre: 0 };
@@ -76,5 +76,13 @@ describe('créneaux de présence', () => {
     // Tous les créneaux, complets compris, sauf ceux qui ne demandent personne (le café à 10 h).
     expect(creneauxDuPlanning([cafe, buvette], ['10:00', '12:00'], inscrits).map((c) => `${c.pole.nom} ${c.heure} ${c.manque}`))
       .toEqual(['Café 12:00 1', 'Buvette 10:00 1', 'Buvette 12:00 2']);
+  });
+
+  it('propose un message de relance avec ce qui manque et le créneau le plus urgent', () => {
+    const buvette = { id: 2, nom: 'Buvette', personnes: 2, besoins_par_creneau: {}, ordre: 1 };
+    const trous = trousDuPlanning([cafe, buvette], ['10:00', '12:00'], []);
+    expect(messageDeRelance('Marché de Noël', 'samedi 12 décembre', trous, 120))
+      .toBe('Marché de Noël samedi 12 décembre : il manque 6 personnes, surtout au pôle Buvette (10 h – 12 h). Un créneau vous tente ?');
+    expect(messageDeRelance('Marché de Noël', 'samedi', [], 120)).toBe('Marché de Noël samedi : tous les créneaux sont pris, merci à tous !');
   });
 });

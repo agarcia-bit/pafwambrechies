@@ -151,3 +151,16 @@ export function resumeDesTrous(trous: Trou[]): { manque: number; poleLePlusEnMan
   const seDetache = classement.length > 1 && classement[0][1] > classement[1][1];
   return { manque: trous.reduce((total, t) => total + t.manque, 0), poleLePlusEnManque: seDetache ? classement[0][0] : null };
 }
+
+/**
+ * Le message proposé pour relancer les membres, que le bureau peut retoucher : quoi, quand, combien
+ * il manque, et le créneau le plus urgent. « Marché de Noël samedi 12 décembre : il manque 8
+ * personnes, surtout au pôle Buvette (12 h – 14 h). Un créneau vous tente ? »
+ */
+export function messageDeRelance(titre: string, quand: string, trous: Trou[], dureeMinutes: number): string {
+  const { manque, poleLePlusEnManque } = resumeDesTrous(trous);
+  if (!manque) return `${titre} ${quand} : tous les créneaux sont pris, merci à tous !`;
+  const plusUrgent = poleLePlusEnManque ? trous.find((t) => t.pole.nom === poleLePlusEnManque) : trous[0];
+  const ou = poleLePlusEnManque && plusUrgent ? `, surtout au pôle ${poleLePlusEnManque} (${libelleDeTranche(plusUrgent.heure, dureeMinutes)})` : '';
+  return `${titre} ${quand} : il manque ${manque} personne${manque > 1 ? 's' : ''}${ou}. Un créneau vous tente ?`;
+}

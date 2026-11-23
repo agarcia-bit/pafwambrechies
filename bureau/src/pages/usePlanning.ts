@@ -62,7 +62,7 @@ export function usePlanning(actionId: number) {
   const surLAction = (changement: Partial<LigneAction>) => supabase.from('actions').update(changement).eq('id', actionId);
 
   return {
-    action, horaires, ouvert, poles, inscrits, estCharge,
+    action, horaires, ouvert, poles, inscrits, estCharge, recharger: charger,
     enregistrerHoraires: (h: Horaires) => ecrireEtRecharger(surLAction({
       creneau_debut: h.debut, creneau_fin: h.fin, creneau_duree_minutes: h.dureeMinutes,
     })),

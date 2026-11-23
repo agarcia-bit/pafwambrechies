@@ -38,6 +38,16 @@
 .planning-actions { display: flex; align-items: center; gap: 10px; flex: none; }
 .planning-actions button { min-height: 44px; }
 
+/* Relance des membres */
+.planning-relance-info { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+.relance { display: grid; gap: 14px; }
+.relance-qui { margin: 0; font-size: 14px; }
+.relance-alerte { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--warn-soft); color: color-mix(in srgb, var(--warn) 82%, #000); font-size: 13px; }
+.relance-alerte.neutre { background: var(--neutral-soft); color: var(--text-2); }
+.relance-message { display: grid; gap: 6px; font-weight: 600; font-size: 13px; }
+.relance-message textarea { font-weight: 400; min-height: 120px; }
+@media (prefers-color-scheme: dark) { .relance-alerte { color: var(--warn); } }
+
 /* Bandeau : ses créneaux, puis le choix « Tout / Ce qui manque » */
 .planning-bandeau { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .planning-filtres { margin-left: auto; }
