@@ -174,7 +174,7 @@ export function DateField({
   );
 }
 
-function TimeField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+export function TimeField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   const { colors, scheme } = useTheme();
   if (Platform.OS === 'web') return <TextField label={label} value={value} onChangeText={onChange} placeholder="HH:MM" />;
 

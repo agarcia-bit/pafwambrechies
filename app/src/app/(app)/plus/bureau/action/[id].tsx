@@ -97,6 +97,15 @@ function ActionEditor({ action, data }: { action: Action; data: BureauData }) {
         <Button title="Nouvelle tâche" icon="plus" variant="secondary" onPress={() => openTache(action.id)} />
       </View>
 
+      <ListSection title="Présences">
+        <ListRow
+          icon="calendar"
+          title="Planning des présences"
+          subtitle="Créneaux, pôles et qui vient le jour J"
+          onPress={() => router.push({ pathname: '/plus/bureau/planning', params: { action: String(action.id), titre: action.titre } })}
+        />
+      </ListSection>
+
       <ListSection title="Discussion">
         <ListRow
           icon="comment"
