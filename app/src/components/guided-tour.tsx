@@ -1,14 +1,15 @@
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Platform, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { type LayoutChangeEvent, Modal, Platform, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, FadeInDown, useAnimatedStyle, useReducedMotion, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useEtapesDeLaVisite } from '@/components/etapes-visite-guidee';
+import { type EtapeDeLaVisite, useEtapesDeLaVisite } from '@/components/etapes-visite-guidee';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { ZoneDeLecture } from '@/components/zone-de-lecture';
 import { INTRO_HOLD_MS } from '@/lib/launch-state';
 import { useMember } from '@/lib/session';
 import { closeTour, markTourDone, openTour, tourDone, useTourOpen } from '@/lib/tour';
@@ -28,11 +29,9 @@ export function GuidedTour() {
   const { profile } = useMember();
   const visible = useTourOpen();
   const { colors } = useTheme();
-  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const reduceMotion = useReducedMotion();
-  const scroller = useRef<ScrollViewInstance>(null);
   const [page, setPage] = useState(0);
+  const { scroller, largeurPage, onMesurerLesPages } = useLargeurDesPages(page);
 
   // First launch on this account: wait for the opening animation, then show the tour.
   useEffect(() => {
@@ -58,13 +57,14 @@ export function GuidedTour() {
 
   function goTo(next: number) {
     if (Platform.OS !== 'web') Haptics.selectionAsync();
-    scroller.current?.scrollTo({ x: next * width, animated: true });
+    scroller.current?.scrollTo({ x: next * largeurPage, animated: true });
     setPage(next);
   }
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={finish}>
       <LinearGradient colors={[mix(colors.banner, '#FFFFFF', 0.12), colors.banner, mix(colors.banner, '#000000', 0.25)]} style={styles.screen}>
+        <ZoneDeLecture>
         <View
           style={[styles.screen, { paddingTop: Math.max(insets.top, 20), paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
           accessibilityViewIsModal>
@@ -74,48 +74,18 @@ export function GuidedTour() {
                 <Segment key={s.key} done={i <= page} />
               ))}
             </View>
-            {!last && (
-              <Pressable accessibilityRole="button" hitSlop={12} onPress={finish}>
-                <Text variant="subhead" style={styles.skip}>
-                  Passer
-                </Text>
-              </Pressable>
-            )}
           </View>
           <ScrollView
             ref={scroller}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / width))}
+            onLayout={onMesurerLesPages}
+            onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / largeurPage))}
             style={styles.flex}>
-            {steps.map((step, i) => {
-              const active = i === page;
-              return (
-                <View key={step.key} style={[styles.page, { width }]}>
-                  <View style={styles.art}>{step.art(active)}</View>
-                  <Animated.View
-                    key={active ? 'on' : 'off'}
-                    entering={active && !reduceMotion ? FadeInDown.delay(120).duration(420).easing(SETTLE) : undefined}
-                    style={styles.copy}>
-                    <Text variant="title" style={styles.title}>
-                      {step.title}
-                    </Text>
-                    <Text style={styles.text}>{step.text}</Text>
-                    {!!step.tip && (
-                      <View style={styles.tip}>
-                        <View style={styles.tipIcon}>
-                          <Icon name="lightbulb" size={14} color="#0B5F58" />
-                        </View>
-                        <Text variant="subhead" style={styles.tipText}>
-                          {step.tip}
-                        </Text>
-                      </View>
-                    )}
-                  </Animated.View>
-                </View>
-              );
-            })}
+            {steps.map((step, i) => (
+              <PageDeLaVisite key={step.key} etape={step} estActive={i === page} largeur={largeurPage} />
+            ))}
           </ScrollView>
           <View style={styles.footer}>
             {page > 0 && (
@@ -127,6 +97,9 @@ export function GuidedTour() {
                 <Icon name="chevronLeft" size={20} color="#FFFFFF" />
               </Pressable>
             )}
+            {/* En bas plutôt qu'en haut à droite : sur l'iPhone Duo, l'heure occupe ce coin et le
+                système ne réserve aucune marge pour elle dans une fenêtre plein écran. */}
+            {!last && <Button variant="lightPlain" compact title="Passer" onPress={finish} />}
             <Button
               variant="light"
               title={last ? 'C’est parti' : 'Suivant'}
@@ -135,8 +108,58 @@ export function GuidedTour() {
             />
           </View>
         </View>
+        </ZoneDeLecture>
       </LinearGradient>
     </Modal>
+  );
+}
+
+/**
+ * La largeur d'une page est celle mesurée du défileur, pas celle de la fenêtre : la zone de lecture
+ * la réduit (marges latérales, colonne centrée). Quand l'écran change de taille (iPhone Duo qu'on
+ * ouvre ou ferme), on réaligne sur la page en cours, sinon on resterait à cheval entre deux pages.
+ */
+function useLargeurDesPages(page: number) {
+  const { width } = useWindowDimensions();
+  const scroller = useRef<ScrollViewInstance>(null);
+  const [largeurPage, setLargeurPage] = useState(width);
+
+  function onMesurerLesPages(evenement: LayoutChangeEvent) {
+    const largeurMesuree = evenement.nativeEvent.layout.width;
+    if (largeurMesuree === largeurPage) return;
+    setLargeurPage(largeurMesuree);
+    scroller.current?.scrollTo({ x: page * largeurMesuree, animated: false });
+  }
+
+  return { scroller, largeurPage, onMesurerLesPages };
+}
+
+/** Une étape : la maquette de l'écran, puis le titre, le texte et l'astuce éventuelle. */
+function PageDeLaVisite({ etape, estActive, largeur }: { etape: EtapeDeLaVisite; estActive: boolean; largeur: number }) {
+  const reduceMotion = useReducedMotion();
+  return (
+    <View style={[styles.page, { width: largeur }]}>
+      <View style={styles.art}>{etape.art(estActive)}</View>
+      <Animated.View
+        key={estActive ? 'on' : 'off'}
+        entering={estActive && !reduceMotion ? FadeInDown.delay(120).duration(420).easing(SETTLE) : undefined}
+        style={styles.copy}>
+        <Text variant="title" style={styles.title}>
+          {etape.title}
+        </Text>
+        <Text style={styles.text}>{etape.text}</Text>
+        {!!etape.tip && (
+          <View style={styles.tip}>
+            <View style={styles.tipIcon}>
+              <Icon name="lightbulb" size={14} color="#0B5F58" />
+            </View>
+            <Text variant="subhead" style={styles.tipText}>
+              {etape.tip}
+            </Text>
+          </View>
+        )}
+      </Animated.View>
+    </View>
   );
 }
 
@@ -152,11 +175,10 @@ function Segment({ done }: { done: boolean }) {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   flex: { flex: 1 },
-  top: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 20, paddingTop: 8, minHeight: 44 },
+  top: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, minHeight: 44 },
   progress: { flex: 1, flexDirection: 'row', gap: 5 },
   segment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.25)', overflow: 'hidden' },
   segmentFill: { height: 4, borderRadius: 2, backgroundColor: '#FFFFFF' },
-  skip: { color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
   page: { flex: 1, paddingHorizontal: 24, paddingTop: 12 },
   art: { flex: 1, justifyContent: 'center' },
   copy: { gap: 10, paddingBottom: 12 },
