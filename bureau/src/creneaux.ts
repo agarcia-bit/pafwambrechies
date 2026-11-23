@@ -84,3 +84,14 @@ export function bilanDesPlaces(poles: Pole[], tranches: string[], prisPar: (pole
   }
   return { places, prises, libres: places - prises };
 }
+
+export type EtatPourLeBureau = 'rempli' | 'manque' | 'ferme';
+
+/**
+ * Le bureau regarde les trous, pas les places : une case remplie est une bonne nouvelle (vert),
+ * une case où il manque du monde est à surveiller (ambre), une case sans besoin reste grise.
+ */
+export function etatPourLeBureau(besoin: number, pris: number): EtatPourLeBureau {
+  if (besoin === 0) return 'ferme';
+  return pris >= besoin ? 'rempli' : 'manque';
+}

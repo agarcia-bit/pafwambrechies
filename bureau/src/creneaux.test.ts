@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  besoinDuCreneau, bilanDesPlaces, changerLeBesoin, etatDuCreneau, libelleDeLEtat, libelleDeTranche, tranchesDeLaJournee,
+  besoinDuCreneau, bilanDesPlaces, changerLeBesoin, etatDuCreneau, etatPourLeBureau, libelleDeLEtat, libelleDeTranche, tranchesDeLaJournee,
 } from './creneaux';
 
 const cafe = { id: 1, nom: 'Café', personnes: 2, besoins_par_creneau: { '10:00': 0 }, ordre: 0 };
@@ -39,5 +39,11 @@ describe('créneaux de présence', () => {
   it('fait le bilan des places sans compter deux fois un trop-plein', () => {
     const pris = (pole: number, heure: string) => (heure === '12:00' ? 5 : 0);
     expect(bilanDesPlaces([cafe], ['10:00', '12:00', '14:00'], pris)).toEqual({ places: 4, prises: 2, libres: 2 });
+  });
+
+  it('montre au bureau les trous plutôt que les places', () => {
+    expect(etatPourLeBureau(2, 2)).toBe('rempli');
+    expect(etatPourLeBureau(2, 1)).toBe('manque');
+    expect(etatPourLeBureau(0, 0)).toBe('ferme');
   });
 });

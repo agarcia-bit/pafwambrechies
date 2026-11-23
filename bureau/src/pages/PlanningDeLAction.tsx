@@ -93,7 +93,7 @@ function ListeDesPoles({ planning }: { planning: PlanningEtat }) {
       </ul>
       <div className="quick-add">
         <Icon name="plus" size={15} />
-        <input value={nom} onChange={(e) => setNom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && ajouter()} placeholder="Ajouter un pôle… (Entrée)" aria-label="Nom du nouveau pôle" />
+        <input className="grow" value={nom} onChange={(e) => setNom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && ajouter()} placeholder="Ajouter un pôle… (Entrée)" aria-label="Nom du nouveau pôle" />
         <label className="small muted planning-nombre"><input type="number" min="0" max="50" value={personnes} onChange={(e) => setPersonnes(Number(e.target.value))} aria-label="Personnes en même temps" /> pers. en même temps</label>
         {nom.trim() && <button className="ghost small" onClick={ajouter}>Ajouter</button>}
       </div>

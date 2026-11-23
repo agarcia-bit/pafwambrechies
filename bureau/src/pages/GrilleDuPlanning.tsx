@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { besoinDuCreneau, etatDuCreneau, libelleDeTranche, type Pole } from '../creneaux';
+import { besoinDuCreneau, etatPourLeBureau, libelleDeTranche, type Pole } from '../creneaux';
 import { Icon } from '../Icon';
 import type { Inscrit, PlanningEtat } from './usePlanning';
 
@@ -37,7 +37,7 @@ type PropsDeCase = { pole: Pole; heure: string; inscrits: Inscrit[]; planning: P
 
 function CaseDuPlanning({ pole, heure, inscrits, planning }: PropsDeCase) {
   const besoin = besoinDuCreneau(pole, heure);
-  const etat = etatDuCreneau({ besoin, pris: inscrits.length, estAMoi: false });
+  const etat = etatPourLeBureau(besoin, inscrits.length);
   return (
     <td className={'planning-case ' + etat}>
       <div className="planning-besoin">
