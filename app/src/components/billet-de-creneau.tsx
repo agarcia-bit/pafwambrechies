@@ -29,8 +29,11 @@ type Props = {
 export function BilletDeCreneau({ nomDuPole, heure, dureeMinutes, autres, estNouveau, enCours, onLiberer, compact = false }: Props) {
   const { colors } = useTheme();
   const moinsDAnimations = useReducedMotion();
-  const encre = colors.onPrimary;
-  const pale = mix(colors.primary, encre, 0.75);
+  // La couleur de la bande de l'association : toujours assez foncée pour du blanc, en clair comme
+  // en sombre (la couleur principale, elle, s'éclaircit en mode sombre). Même choix que l'espace bureau.
+  const fond = colors.banner;
+  const encre = '#FFFFFF';
+  const pale = mix(fond, encre, 0.8);
   const compagnie = autres ? `avec ${plural(autres, 'autre bénévole', 'autres bénévoles')}` : 'personne d’autre pour l’instant';
   const lien = (
     <Pressable
@@ -45,7 +48,7 @@ export function BilletDeCreneau({ nomDuPole, heure, dureeMinutes, autres, estNou
   );
   if (compact) {
     return (
-      <View style={[styles.billetCompact, { backgroundColor: colors.primary }]}>
+      <View style={[styles.billetCompact, { backgroundColor: fond }]}>
         <View style={styles.grandit}>
           <Text variant="caption" style={{ color: pale, fontWeight: '600' }}>Votre créneau</Text>
           <Text variant="headline" style={{ color: encre }}>{nomDuPole} · {libelleDeTranche(heure, dureeMinutes)}</Text>
@@ -57,7 +60,7 @@ export function BilletDeCreneau({ nomDuPole, heure, dureeMinutes, autres, estNou
   return (
     <Animated.View
       entering={estNouveau && !moinsDAnimations ? ZoomIn.springify().damping(14).duration(260) : undefined}
-      style={[styles.billet, { backgroundColor: colors.primary }]}>
+      style={[styles.billet, { backgroundColor: fond }]}>
       <Text variant="caption" style={{ color: pale, fontWeight: '600' }}>Votre créneau</Text>
       <Text variant="title" style={{ color: encre }}>{libelleDeTranche(heure, dureeMinutes)}</Text>
       <Text variant="subhead" style={{ color: encre, fontWeight: '600' }}>{nomDuPole} · {compagnie}</Text>
