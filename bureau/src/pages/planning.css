@@ -25,7 +25,8 @@
 .planning-nombre input { width: 62px; }
 
 /* Page Planning : tête */
-.page-planning { display: grid; gap: 18px; }
+/* minmax(0, 1fr) : sans lui, la colonne prend la largeur de son contenu le plus large et déborde sur téléphone. */
+.page-planning { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
 .planning-tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
 .planning-fil { font-size: 13px; color: var(--muted); margin: 0 0 8px; }
 .planning-fil a { color: var(--text-2); font-weight: 600; text-decoration: none; }
@@ -35,7 +36,7 @@
 .planning-phrase em { font-style: normal; color: var(--warn); }
 .planning-sous { color: var(--muted); font-size: 13.5px; margin: 4px 0 0; }
 .planning-sous::first-letter { text-transform: uppercase; }
-.planning-actions { display: flex; align-items: center; gap: 10px; flex: none; }
+.planning-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; flex: none; }
 .planning-actions button { min-height: 44px; }
 
 /* Relance des membres */
@@ -131,6 +132,10 @@
   .planning-tete { flex-direction: column; gap: 14px; }
   .planning-phrase { font-size: 17px; }
   .planning-actions { width: 100%; } .planning-actions button { flex: 1; }
+  /* Fenêtre de relance : « Envoyer » en pleine largeur, sous « Annuler » et « M'envoyer un essai ». */
+  .drawer:has(.relance) .drawer-foot .grow { display: none; }
+  .drawer:has(.relance) .drawer-foot button { flex: 1; justify-content: center; }
+  .drawer:has(.relance) .drawer-foot button.primary { flex-basis: 100%; }
   .planning-filtres { margin-left: 0; width: 100%; } .planning-filtres button { flex: 1; justify-content: center; }
   .billet { width: 100%; }
   .billet-gauche { flex: 1; }
