@@ -1,6 +1,7 @@
+import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GuidedTour } from '@/components/guided-tour';
@@ -18,6 +19,14 @@ import { useTheme } from '@/theme';
 
 // Five tabs at most (Apple's guideline, and Android's limit): the less used
 // sections (ideas, links, account, management) live in "Plus".
+// Sur Android, la barre d'onglets vibre d'elle-même ; sur iPhone, on ajoute ce petit clic pour
+// que changer d'onglet se sente pareil sur les deux téléphones.
+const VIBRER_AU_CHANGEMENT_D_ONGLET = {
+  tabPress: () => {
+    if (Platform.OS === 'ios') Haptics.selectionAsync();
+  },
+};
+
 export default function AppLayout() {
   const { membership, membershipError, reloadMembership } = useSession();
   const { colors } = useTheme();
@@ -42,7 +51,7 @@ export default function AppLayout() {
       <GuidedTour />
       <PollGate />
       <ParticipationGate />
-      <NativeTabs tintColor={colors.primary}>
+      <NativeTabs tintColor={colors.primary} screenListeners={VIBRER_AU_CHANGEMENT_D_ONGLET}>
         <NativeTabs.Trigger name="(actus)">
           <NativeTabs.Trigger.Label>Actus</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf={{ default: 'newspaper', selected: 'newspaper.fill' }} md="newspaper" />
