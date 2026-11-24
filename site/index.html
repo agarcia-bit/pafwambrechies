@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Allianceo — l’application de votre association</title>
-  <meta name="description" content="Allianceo réunit les adhérents de votre association dans une application à vos couleurs (actus, agenda, sondages, annuaire, offres) et donne au bureau un espace web pour tout piloter." />
+  <meta name="description" content="Allianceo réunit les adhérents de votre association dans une application à vos couleurs (actus, agenda, planning des bénévoles, sondages, annuaire, offres) et donne au bureau un espace web pour tout piloter." />
   <meta property="og:title" content="Allianceo — l’application de votre association" />
   <meta property="og:description" content="Une application pour les adhérents, un espace web pour le bureau. À vos couleurs, sans publicité." />
   <meta property="og:image" content="https://monallianceo.fr/img/partage.png" />
@@ -85,6 +85,29 @@
     .shot::before { content: ''; position: absolute; inset: 8% 6%; border-radius: 40px; background: linear-gradient(150deg, var(--teal-soft), #FEF3C7); transform: rotate(-3deg); }
     .shot .phone { position: relative; width: 280px; }
     .shot .phone + .phone { margin-left: -70px; margin-top: 70px; width: 250px; }
+    /* Écran des créneaux dessiné en HTML (pas de capture : l'exemple est fictif) */
+    .ecran { border-radius: 35px; aspect-ratio: 1320 / 2868; overflow: hidden; background: #F2F2F7; display: flex; flex-direction: column; font-size: 12px; color: var(--ink); }
+    .ecran-tete { background: var(--teal); color: #fff; padding: 46px 18px 18px; }
+    .ecran-tete small { display: block; opacity: .85; font-weight: 600; font-size: 11px; }
+    .ecran-tete b { display: block; font-family: var(--display); font-size: 20px; margin-top: 2px; }
+    .ecran-corps { padding: 14px 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-content: start; }
+    .ecran-phrase { font-family: var(--display); font-size: 15px; font-weight: 700; }
+    .ecran-phrase em { font-style: normal; color: #B45309; }
+    .billet { background: var(--teal); color: #fff; border-radius: 16px; padding: 12px 14px; display: grid; gap: 8px; }
+    .billet small { opacity: .85; font-size: 10.5px; } .billet b { font-size: 14px; }
+    .billet div { display: flex; flex-wrap: wrap; gap: 6px; } .billet span { background: rgba(255,255,255,.2); border-radius: 99px; padding: 5px 10px; font-size: 10.5px; font-weight: 600; }
+    .trou { background: #fff; border-radius: 14px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
+    .trou div { flex: 1; min-width: 0; } .trou b { display: block; font-size: 12.5px; } .trou small { color: var(--muted); font-size: 10.5px; }
+    .trou span { background: var(--teal-soft); color: var(--teal); border-radius: 99px; padding: 6px 11px; font-weight: 700; font-size: 11px; }
+    .trou.reprendre span { background: #FEF3C7; color: #92400E; }
+    .billet span, .trou span { white-space: nowrap; }
+    @media (max-width: 720px) {
+      .ecran { font-size: 10px; } .ecran-tete { padding: 34px 14px 14px; } .ecran-tete b { font-size: 16px; }
+      .ecran-phrase { font-size: 12.5px; } .billet b, .trou b { font-size: 11.5px; }
+      .billet span, .trou span { padding: 4px 8px; font-size: 9.5px; } .trou small, .billet small { font-size: 9.5px; }
+    }
+    /* Sur un petit téléphone, le cadre de l'écran dessiné reste assez large pour ses lignes. */
+    @media (max-width: 520px) { .shot .phone:has(.ecran) { width: 262px; } }
     .copy h2 { margin: 14px 0 16px; }
     .copy .lead { font-size: 18px; }
     .ticks { list-style: none; padding: 0; margin: 26px 0 0; display: grid; gap: 14px; }
@@ -165,7 +188,8 @@
     .cta-box { border-radius: 28px; padding: 64px 48px; color: #fff; text-align: center; background: radial-gradient(800px 300px at 50% 0%, rgba(20,184,166,.6), transparent 70%), linear-gradient(160deg, #0F766E, #0B4F49); }
     .cta-box h2 { color: #fff; } .cta-box p { color: rgba(255,255,255,.85); margin: 14px auto 30px; max-width: 560px; font-size: 18px; }
     .cta-box .btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-    .stores { display: flex; gap: 10px; justify-content: center; margin-top: 26px; font-size: 13.5px; color: rgba(255,255,255,.75); }
+    .stores { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 26px; font-size: 13.5px; color: rgba(255,255,255,.75); }
+    .stores a { color: #fff; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 
     footer { border-top: 1px solid var(--line); padding: 32px 0 44px; font-size: 14px; color: var(--muted); }
     footer .wrap { display: flex; gap: 12px 28px; flex-wrap: wrap; align-items: center; }
@@ -220,7 +244,7 @@
       <div>
         <span class="eyebrow" style="color:#fff">Pour les associations</span>
         <h1 style="margin-top:18px">Toute la vie de votre association, <em>dans la poche</em> de vos adhérents.</h1>
-        <p class="lead">Une application à vos couleurs pour vos membres, un espace web pour le bureau. Les actus, l’agenda, les sondages et les cotisations au même endroit, et fini les fils WhatsApp qui débordent.</p>
+        <p class="lead">Une application à vos couleurs pour vos membres, un espace web pour le bureau. Les actus, l’agenda, les bénévoles, les sondages et les cotisations au même endroit, et fini les fils WhatsApp qui débordent.</p>
         <div class="ctas">
           <a class="btn gold" href="mailto:contact@agalumy.fr?subject=Allianceo%20pour%20mon%20association">Équiper mon association</a>
           <a class="btn ghost" href="#adherents">Voir l’application</a>
@@ -281,6 +305,7 @@
               <li><span><strong>Ajout à l’agenda</strong> du téléphone en un clic</span></li>
               <li><span><strong>Liste des réponses</strong> en direct pour l’organisation</span></li>
               <li><span><strong>Événements sur plusieurs jours :</strong> chacun indique les jours où il vient</span></li>
+              <li><span><strong>Les membres proposent leurs événements,</strong> le bureau les publie dans l’agenda</span></li>
             </ul>
           </div>
         </div>
@@ -313,6 +338,34 @@
             </ul>
           </div>
         </div>
+
+        <div class="row reveal">
+          <div class="shot">
+            <div class="phone">
+              <div class="ecran" role="img" aria-label="Exemple : le planning des bénévoles d’un marché de Noël dans l’application">
+                <div class="ecran-tete"><small>Coup de main</small><b>Marché de Noël</b></div>
+                <div class="ecran-corps">
+                  <div class="ecran-phrase">Il manque <em>3 personnes</em>, surtout au café.</div>
+                  <div class="billet"><small>Votre créneau</small><b>Gaufres · 10 h – 12 h</b><div><span>Échanger</span><span>Je ne peux plus venir</span></div></div>
+                  <div class="trou"><div><b>Café · 14 h – 16 h</b><small>2 places libres</small></div><span>Je viens</span></div>
+                  <div class="trou reprendre"><div><b>Stand · 16 h – 18 h</b><small>Une place à reprendre</small></div><span>Je la prends</span></div>
+                  <div class="trou"><div><b>Café · 16 h – 18 h</b><small>1 place libre</small></div><span>Je viens</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="copy">
+            <span class="eyebrow">Bénévoles</span>
+            <h2>Un coup de main ? Un créneau en deux touchers</h2>
+            <p class="lead">Le bureau découpe la journée en créneaux et en pôles. Chaque membre choisit le sien dans l’app, et le bureau voit d’un coup d’œil ce qui manque.</p>
+            <ul class="ticks">
+              <li><span><strong>Un empêchement ?</strong> Le membre cherche un remplaçant ou échange son créneau, sans passer par le bureau</span></li>
+              <li><span><strong>Rappel la veille</strong> à chaque bénévole, avec ses horaires</span></li>
+              <li><span><strong>Il manque du monde ?</strong> Le bureau prévient les membres en un clic, par notification et par e-mail</span></li>
+              <li><span><strong>Un merci le lendemain,</strong> avec le bilan de la journée</span></li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -334,6 +387,7 @@
             <span class="on">Pilotage</span>
             <small>Association</small>
             <span>Adhérents</span>
+            <span>Bénévoles</span>
             <span>Engagement</span>
             <span>Cotisations</span>
             <span>Envoyer un message</span>
@@ -377,6 +431,9 @@
         <div class="card reveal"><div class="ico">⚑</div><h3>Modération</h3><p>Les contenus signalés et les actus proposées arrivent au bureau, qui décide. Chacun peut aussi bloquer un membre.</p></div>
         <div class="card reveal"><div class="ico">♥</div><h3>Engagement</h3><p>Qui ouvre l’app, lit, réagit et répond : une note par adhérent pour savoir avec qui reprendre contact.</p></div>
         <div class="card reveal"><div class="ico">☆</div><h3>Rôles du bureau</h3><p>Président, trésorier, secrétaire… La fonction de chacun s’affiche dans l’équipe et le pilotage.</p></div>
+        <div class="card reveal"><div class="ico">◷</div><h3>Planning des bénévoles</h3><p>Pôles, créneaux, nombre de personnes : on prépare la journée en quelques minutes, puis on imprime la feuille de route avec les contacts.</p></div>
+        <div class="card reveal"><div class="ico">✓</div><h3>Pointage le jour J</h3><p>Qui est vraiment venu, coché depuis le téléphone. Le lendemain, chaque bénévole reçoit un merci, et une actu de remerciement est prête à publier.</p></div>
+        <div class="card reveal"><div class="ico">★</div><h3>Bilan des bénévoles</h3><p>Qui a aidé combien de fois dans l’année, avec un mot de remerciement prêt à copier. Idéal pour l’assemblée générale.</p></div>
         <div class="card reveal"><div class="ico">▯</div><h3>Aussi sur téléphone</h3><p>L’espace bureau s’adapte à l’écran du téléphone, et il prend les couleurs et le logo de votre association.</p></div>
       </div>
     </div>
@@ -407,7 +464,7 @@
       <div class="steps">
         <div class="step reveal"><h3>On crée votre espace</h3><p>Nom, logo, couleurs et sections : votre association a son application à son image.</p></div>
         <div class="step reveal"><h3>Vous ajoutez vos adhérents</h3><p>Collez votre liste depuis Excel ou Google Sheets. Chacun reçoit une invitation par e-mail.</p></div>
-        <div class="step reveal"><h3>Ils téléchargent l’app</h3><p>Sur l’App Store ou Google Play, avec le code de votre association. C’est parti.</p></div>
+        <div class="step reveal"><h3>Ils téléchargent l’app</h3><p>Sur <a href="https://apps.apple.com/fr/app/id6829237313">l’App Store</a> ou <a href="https://play.google.com/store/apps/details?id=fr.agalumy.allianceo">Google Play</a>, avec le code de votre association. C’est parti.</p></div>
       </div>
     </div>
   </section>
@@ -438,6 +495,7 @@
         <details><summary>Comment nos membres rejoignent-ils l’application ?</summary><p>Le bureau importe la liste des adhérents et leur envoie une invitation. Ils téléchargent Allianceo et créent leur compte avec le code d’accès de l’association.</p></details>
         <details><summary>Peut-on activer seulement certaines fonctions ?</summary><p>Oui. Annuaire, offres, agenda, boîte à idées, documents, cotisations : chaque section s’active ou se masque dans les réglages.</p></details>
         <details><summary>Peut-on réserver l’application à nos seuls adhérents ?</summary><p>Oui. Le bureau peut demander que seules les personnes de sa liste d’adhérents puissent créer un compte, en plus du code d’accès de l’association.</p></details>
+        <details><summary>Peut-on organiser les bénévoles d’un événement ?</summary><p>Oui. Le bureau prépare un planning par créneaux et par pôles, les membres s’inscrivent depuis l’app, et le bureau suit ce qui manque, pointe les présences le jour J et retrouve le bilan de l’année.</p></details>
         <details><summary>Qui voit quoi ?</summary><p>Les adhérents voient le contenu de leur association, et seulement celui-là. Le pilotage, la discussion du bureau et l’administration sont réservés au bureau.</p></details>
         <details><summary>Et si un membre quitte l’association ?</summary><p>Chacun peut supprimer son compte et ses données à tout moment, depuis l’application ou sur <a href="/suppression-compte">cette page</a>.</p></details>
       </div>
@@ -453,7 +511,7 @@
           <a class="btn gold" href="mailto:contact@agalumy.fr?subject=Allianceo%20pour%20mon%20association">Équiper mon association</a>
           <a class="btn ghost" href="https://admin.monallianceo.fr">Accéder à l’espace bureau</a>
         </div>
-        <div class="stores">Bientôt sur l’App Store et Google Play</div>
+        <div class="stores">Disponible sur <a href="https://apps.apple.com/fr/app/id6829237313">l’App Store</a> et <a href="https://play.google.com/store/apps/details?id=fr.agalumy.allianceo">Google Play</a></div>
       </div>
     </div>
   </div>
