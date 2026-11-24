@@ -80,7 +80,7 @@ async function envoyerLesNotifications(sb: SupabaseClient, d: Demande, titre: st
       const res = await fetch("https://exp.host/--/api/v2/push/send", {
         method: "POST",
         headers: { Accept: "application/json", "Content-Type": "application/json", ...(EXPO_ACCESS_TOKEN ? { Authorization: `Bearer ${EXPO_ACCESS_TOKEN}` } : {}) },
-        body: JSON.stringify(lot.map((a) => ({ to: a.token, title: marquerLEssai(titre, d.essai), body: texteDeLaNotification(d.message), sound: "default", data: { planning_action: d.actionId } }))),
+        body: JSON.stringify(lot.map((a) => ({ to: a.token, title: marquerLEssai(titre, d.essai), body: texteDeLaNotification(d.message), sound: "default", channelId: "default", data: { planning_action: d.actionId } }))),
       });
       const json = await res.json();
       if (!Array.isArray(json.data)) throw new Error(`HTTP ${res.status}`);

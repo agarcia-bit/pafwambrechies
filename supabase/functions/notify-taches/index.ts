@@ -69,7 +69,7 @@ async function envoyerA(tenantId: string, personne: string, texte: string, donne
         "Content-Type": "application/json",
         ...(EXPO_ACCESS_TOKEN ? { "Authorization": `Bearer ${EXPO_ACCESS_TOKEN}` } : {}),
       },
-      body: JSON.stringify(appareils.map((a) => ({ to: a.token, title: titre, body: texte, sound: "default", data: donnees }))),
+      body: JSON.stringify(appareils.map((a) => ({ to: a.token, title: titre, body: texte, sound: "default", channelId: "default", data: donnees }))),
     });
     const json = await res.json();
     if (!res.ok || !Array.isArray(json.data)) throw new Error(`HTTP ${res.status}`);

@@ -104,6 +104,9 @@ async function sendExpoPush(tenantId: string, n: Notification, seulement?: strin
           title: n.title,
           body: n.body,
           sound: "default",
+          // La catégorie « Actualités » que crée l'app : sans elle, Android range la notification
+          // dans une catégorie de secours, sans bandeau en haut de l'écran.
+          channelId: "default",
           data: n.data,
         }))),
       });

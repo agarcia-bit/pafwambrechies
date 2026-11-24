@@ -41,6 +41,9 @@ async function pushTo(tokens: { id: number; token: string }[], title: string, bo
           title,
           body,
           sound: "default",
+          // La catégorie « Actualités » que crée l'app : sans elle, Android range la notification
+          // dans une catégorie de secours, sans bandeau en haut de l'écran.
+          channelId: "default",
           data: { cotisation: true },
         }))),
       });
