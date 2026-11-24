@@ -40,6 +40,18 @@
         "site"
       ],
       "port": 8090
+    },
+    {
+      "name": "site-public",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8090",
+        "--directory",
+        "site"
+      ],
+      "port": 8090
     }
   ]
 }
