@@ -2,7 +2,7 @@
   "expo": {
     "name": "Allianceo",
     "slug": "allianceo",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "allianceo",
@@ -45,7 +45,13 @@
         }
       ],
       "expo-sqlite",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#0F766E"
+        }
+      ],
       [
         "expo-calendar",
         {
@@ -75,9 +81,7 @@
       }
     },
     "owner": "agalumy",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/89e143c3-1fb5-4435-9c4e-5b6fba75012f"
     }

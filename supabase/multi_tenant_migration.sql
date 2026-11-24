@@ -257,6 +257,7 @@ create policy "Users insert own profile"
 create or replace function public.profiles_forbid_tenant_change()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   if new.tenant_id is distinct from old.tenant_id then
