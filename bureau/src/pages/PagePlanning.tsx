@@ -4,6 +4,7 @@ import type { PageProps } from '../App';
 import { creneauxDuPlanning, messageDeRelance, resumeDesTrous, tranchesDeLaJournee, trousDuPlanning } from '../creneaux';
 import { Drawer } from '../Drawer';
 import { Icon } from '../Icon';
+import { actuDeRemerciement, adresseDeLActuPreremplie } from '../actu-merci';
 import { hashParam } from '../lib';
 import { estActionPassee, jourLocal, peutPointer, phraseDuPointage, resumeDuPointage } from '../pointage';
 import { BilletsDuBureau } from './BilletDuBureau';
@@ -150,6 +151,14 @@ function EnteteDeLaPage({ planning, actionId, trous, estPret, relance, estPassee
         )}
         <DerniereRelance relance={relance.derniere} />
       </div>
+      {planning.horaires && estPassee && planning.action && inscrits > 0 && (
+        <div className="planning-actions">
+          {/* Le bureau relit l'actu préparée, puis la publie lui-même depuis la page Actus. */}
+          <button className="primary" onClick={() => { location.hash = adresseDeLActuPreremplie(actuDeRemerciement(planning.action!.titre, dateLongue(planning.action!.date), planning.inscrits)); }}>
+            Remercier dans une actu
+          </button>
+        </div>
+      )}
       {planning.horaires && !estPassee && (
         <div className="planning-actions">
           <StatutDuPlanning ouvert={planning.ouvert} />
