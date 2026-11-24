@@ -2,12 +2,17 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { changerLeBesoin, changerLesBesoins, type Horaires, type Pole } from '../creneaux';
 import { supabase, toast } from '../lib';
+import type { Presence } from '../pointage';
 
 // Le planning des présences d'une action, côté bureau (supabase/creneaux.sql) : les horaires
 // communs à tous les pôles, les pôles, et qui est inscrit où. Chaque geste s'enregistre aussitôt,
 // comme les tâches de la fiche ; la base refuse elle-même un créneau complet.
 
-export type Inscrit = { id: number; pole_id: number; debut: string; membre: string | null; nom: string; a_compte: boolean; a_reprendre?: boolean };
+export type Inscrit = {
+  id: number; pole_id: number; debut: string; membre: string | null; nom: string; a_compte: boolean; a_reprendre?: boolean;
+  /** Le pointage du jour J (supabase/presences_benevoles.sql) ; absent tant que personne n'a pointé. */
+  presence?: Presence | null;
+};
 
 type LigneAction = {
   titre: string; emoji: string | null; date_action: string;
@@ -93,6 +98,9 @@ export function usePlanning(actionId: number) {
     /** Comme « Je ne peux plus venir » dans l'app : la place se libère et le référent est prévenu. */
     jeMeRetire: (inscrit: Inscrit) => ecrireEtRecharger(supabase.from('inscriptions_creneaux')
       .update({ annulee_le: new Date().toISOString(), annulation_notifiee: false }).eq('id', inscrit.id)),
+    /** Le pointage du jour J : « venu », « absent », ou rien (annulé). */
+    pointer: (inscrit: Inscrit, presence: Presence | null) => ecrireEtRecharger(supabase.from('inscriptions_creneaux')
+      .update({ presence, pointe_le: presence ? new Date().toISOString() : null }).eq('id', inscrit.id)),
   };
 }
 

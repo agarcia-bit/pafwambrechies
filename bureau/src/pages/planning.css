@@ -164,3 +164,20 @@
 @media (prefers-color-scheme: dark) { .qui.moi { color: var(--text); } }
 @media (pointer: coarse) { .qui-retirer { opacity: 1; width: 32px; height: 32px; } }
 @media (prefers-reduced-motion: reduce) { .carte-planning { transition: none; } .carte-planning:hover { transform: none; } }
+
+/* Pointage du jour J : une ligne par bénévole, « Venu » en vert, « Absent » en rouge. */
+.pointage .pointage-tranche + .pointage-tranche { margin-top: 12px; }
+.pointage-tranche h3 { margin: 8px 0 4px; }
+.pointage-tranche ul { list-style: none; margin: 0; padding: 0; }
+.pointage-ligne { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.pointage-ligne button { min-height: 44px; min-width: 88px; }
+.pointage-venu.on { background: var(--ok); border-color: var(--ok); color: var(--panel); }
+.pointage-absent.on { background: var(--bad); border-color: var(--bad); color: var(--panel); }
+.pointage-venu:not(.on) { color: var(--ok); }
+.pointage-absent:not(.on) { color: var(--bad); }
+
+/* Fiche d'un bénévole (page Bénévoles) : le mot de remerciement et ses créneaux par action. */
+.mot-de-remerciement { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin: 0 0 10px; line-height: 1.5; }
+.fiche-benevole-actions { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.fiche-benevole-actions ul { margin: 4px 0 0; padding-left: 18px; }
+.fiche-benevole-actions .badge { margin-left: 6px; }

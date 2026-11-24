@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { periodesDuBilan, resumeDuBilan, type LigneDuBilan } from './bilan';
+import { actionsDuBenevole, motDeRemerciement, periodesDuBilan, resumeDuBilan, type CreneauDuBenevole, type LigneDuBilan } from './bilan';
 
 vi.mock('./lib', () => ({ supabase: {} }));
 
@@ -23,4 +23,22 @@ describe('bilan des bénévoles', () => {
   it('ne compte comme bénévole que qui a tenu au moins un créneau', () => {
     expect(resumeDuBilan([ligne('lea', 5), ligne('tom', 2, 1), ligne('max', 0, 2)])).toEqual({ benevoles: 2, creneaux: 7, absences: 3 });
   });
+
+  it('regroupe les créneaux d’un bénévole par action', () => {
+    const actions = actionsDuBenevole([creneau(7, 'Marché de Noël', '10:00'), creneau(7, 'Marché de Noël', '12:00'), creneau(3, 'Braderie', '09:00')]);
+    expect(actions.map((a) => [a.titre, a.creneaux.length])).toEqual([['Marché de Noël', 2], ['Braderie', 1]]);
+  });
+
+  it('écrit un mot de remerciement avec le prénom, sans compter les absences', () => {
+    const [annee] = periodesDuBilan('2026-11-24');
+    const actions = actionsDuBenevole([creneau(7, 'Marché de Noël', '10:00'), creneau(7, 'Marché de Noël', '12:00'), creneau(3, 'Braderie', '09:00', 'absent')]);
+    expect(motDeRemerciement('Léa Martin', actions, annee))
+      .toBe('Merci Léa ! En 2026, vous avez tenu 2 créneaux à « Marché de Noël ». Votre aide compte beaucoup pour l’association.');
+    expect(motDeRemerciement('Tom', actionsDuBenevole([creneau(3, 'Braderie', '09:00', 'absent')]), annee))
+      .toBe('Merci Tom pour votre engagement auprès de l’association !');
+  });
 });
+
+function creneau(action_id: number, titre: string, debut: string, presence: CreneauDuBenevole['presence'] = null): CreneauDuBenevole {
+  return { action_id, titre, emoji: null, date_action: '2026-06-01', pole: 'Gaufres', debut, presence };
+}

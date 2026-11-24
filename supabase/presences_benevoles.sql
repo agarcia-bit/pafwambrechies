@@ -66,3 +66,22 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public.bilan_des_benevoles(date, date) from public, anon;
 grant execute on function public.bilan_des_benevoles(date, date) to authenticated;
+
+-- 4. La fiche d'un bénévole ───────────────────────────────────────────────────────────────────────
+-- Ses créneaux sur la période (même clé que le bilan : l'adhérent, ou le nom écrit à la main), pour
+-- un mot de remerciement personnalisé. Réservé au bureau.
+create or replace function public.creneaux_du_benevole(p_cle text, p_debut date, p_fin date)
+returns table (action_id bigint, titre text, emoji text, date_action date, pole text, debut text, presence text)
+language sql stable security definer set search_path = public as $$
+  select a.id, a.titre, a.emoji, a.date_action, p.nom, to_char(i.debut, 'HH24:MI'), i.presence
+    from public.inscriptions_creneaux i
+    join public.poles p on p.id = i.pole_id
+    join public.actions a on a.id = p.action_id
+   where i.annulee_le is null
+     and coalesce(i.membre::text, 'libre:' || lower(trim(i.nom_libre))) = p_cle
+     and a.tenant_id = public.current_tenant_id() and public.is_bureau_or_admin()
+     and a.date_action between p_debut and least(p_fin, current_date)
+   order by a.date_action desc, i.debut;
+$$;
+revoke all on function public.creneaux_du_benevole(text, date, date) from public, anon;
+grant execute on function public.creneaux_du_benevole(text, date, date) to authenticated;
