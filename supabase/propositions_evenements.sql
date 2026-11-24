@@ -69,7 +69,7 @@ create index if not exists evenements_serie_idx on public.evenements (serie) whe
 -- garde le même jour du mois (le 31 devient le 28 ou le 30 les mois plus courts).
 -- Copie fidèle de seancesDeLaSerie (propositions.ts), testée côté app et bureau.
 create or replace function public.seances_de_la_serie(p_debut date, p_repetition text, p_nb_mois smallint)
-returns setof date language sql immutable as $$
+returns setof date language sql immutable set search_path = public as $$
   select (p_debut + case when p_repetition = 'semaine' then n * interval '7 days' else n * interval '1 month' end)::date
     from generate_series(0, 200) as n
    where p_repetition in ('semaine', 'mois')

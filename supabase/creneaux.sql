@@ -88,7 +88,7 @@ create policy "Créneaux : le bureau gère" on public.inscriptions_creneaux for 
 
 -- 4. Combien il faut de personnes sur un pôle à une heure donnée ───────────────────────────────────
 create or replace function public.besoin_du_creneau(p_pole public.poles, p_debut time)
-returns integer language sql immutable as $$
+returns integer language sql immutable set search_path = public as $$
   select coalesce((p_pole.besoins_par_creneau ->> to_char(p_debut, 'HH24:MI'))::integer, p_pole.personnes);
 $$;
 
