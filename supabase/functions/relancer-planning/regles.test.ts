@@ -22,6 +22,7 @@ describe("relance d'un planning", () => {
   it("écrit l'objet, l'e-mail et une notification courte", () => {
     expect(sujetDeLaRelance("Marché de Noël")).toBe("Marché de Noël : on a besoin de vous");
     expect(texteDeLEmail("Il manque 8 personnes.")).toContain("onglet Agenda");
+    expect(texteDeLEmail("Il manque 8 personnes.")).toContain("• Android : https://play.google.com/store/apps/details?id=fr.agalumy.allianceo");
     expect(texteDeLaNotification("a ".repeat(200))).toHaveLength(180);
   });
 

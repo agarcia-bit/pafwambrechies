@@ -15,6 +15,9 @@ const echapper = (texte: string) =>
   texte.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
 /** Le même texte en HTML simple, lisible dans toutes les messageries. */
+// Les adresses web deviennent des liens cliquables (les liens vers les stores, par exemple).
+const avecLiens = (html: string) => html.replace(/https?:\/\/[^\s<]+/g, (url) => `<a href="${url}" style="color:#3730a3">${url}</a>`);
+
 export const htmlDuTexte = (texte: string) =>
   `<div style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.55;color:#1f2937">` +
-  `<p>${echapper(texte).replace(/\n/g, "<br>")}</p></div>`;
+  `<p>${avecLiens(echapper(texte)).replace(/\n/g, "<br>")}</p></div>`;

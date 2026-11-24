@@ -49,10 +49,15 @@ export const marquerLEssai = (texte: string, essai: boolean) => (essai ? `[Essai
 /** L'objet de l'e-mail : « Marché de Noël : on a besoin de vous ». */
 export const sujetDeLaRelance = (titre: string) => `${titre.trim() || 'Notre prochaine action'} : on a besoin de vous`;
 
+// Les pages de l'app sur les stores (numéro App Store dans app/eas.json, nom Android dans app/app.json).
+export const LIEN_APP_STORE = 'https://apps.apple.com/fr/app/id6829237313';
+export const LIEN_GOOGLE_PLAY = 'https://play.google.com/store/apps/details?id=fr.agalumy.allianceo';
+
 /** Le texte de l'e-mail : le message du bureau, puis comment s'inscrire (le lien ne peut pas ouvrir l'app). */
 export function texteDeLEmail(message: string): string {
   return `${message.trim()}\n\nPour choisir votre créneau, ouvrez l’application Allianceo, onglet Agenda.\n` +
-    'Vous ne l’avez pas encore ? Elle se télécharge sur l’App Store et Google Play : cherchez « Allianceo ».';
+    `Vous ne l’avez pas encore ? Elle se télécharge gratuitement :\n` +
+    `• iPhone : ${LIEN_APP_STORE}\n• Android : ${LIEN_GOOGLE_PLAY}`;
 }
 
 /** Une notification tient sur quelques lignes : au-delà, le téléphone coupe le texte. */
