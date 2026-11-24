@@ -137,6 +137,9 @@ begin
   if p.id is null or p.tenant_id <> public.current_tenant_id() or not public.is_bureau_or_admin() then
     raise exception 'Seul le bureau peut répondre aux propositions.' using errcode = 'P0001';
   end if;
+  if p.statut = 'retiree' then
+    raise exception 'Son auteur a retiré cette proposition.' using errcode = 'P0001';
+  end if;
   if p.statut <> 'en_attente' then
     raise exception 'Le bureau a déjà répondu à cette proposition.' using errcode = 'P0001';
   end if;
@@ -184,6 +187,9 @@ begin
   if p.id is null or p.tenant_id <> public.current_tenant_id() or not public.is_bureau_or_admin() then
     raise exception 'Seul le bureau peut répondre aux propositions.' using errcode = 'P0001';
   end if;
+  if p.statut = 'retiree' then
+    raise exception 'Son auteur a retiré cette proposition.' using errcode = 'P0001';
+  end if;
   if p.statut <> 'en_attente' then
     raise exception 'Le bureau a déjà répondu à cette proposition.' using errcode = 'P0001';
   end if;
@@ -221,6 +227,9 @@ begin
   select * into p from public.propositions_evenements where id = p_proposition and auteur = auth.uid() for update;
   if p.id is null then
     raise exception 'Cette proposition n''existe plus.' using errcode = 'P0001';
+  end if;
+  if p.statut = 'retiree' then
+    raise exception 'Vous avez retiré cette proposition : elle ne se modifie plus.' using errcode = 'P0001';
   end if;
   if p.statut <> 'en_attente' then
     raise exception 'Le bureau a déjà répondu : elle ne se modifie plus.' using errcode = 'P0001';
