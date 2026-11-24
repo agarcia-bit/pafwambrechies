@@ -10,13 +10,14 @@
 //  5. le remplacement d'un créneau (remplacements.ts) : la personne remplacée prévenue qu'elle est
 //     libérée, et le référent, la veille, des places restées sans remplaçant ;
 //  6. l'échange d'un créneau contre un autre (echanges.ts) : les personnes visées prévenues, puis
-//     celle qui proposait quand c'est accepté.
+//     celle qui proposait quand c'est accepté ;
+//  7. le lendemain de l'action, à partir de 9 h, un merci à chaque bénévole venu (remerciements.ts).
 // Chaque message part une fois : la tâche le note (confiee_notifiee, rappel_veille_le, rappel_jour_le),
 // même quand la personne n'a pas de téléphone enregistré. Un toucher ouvre l'action dans l'app.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import {
-  actionAOuvrir, annoncesAEnvoyer, HEURE_DES_RAPPELS, lendemain, rappelsAEnvoyer, texteDeLAnnonce, texteDuRappel,
+  actionAOuvrir, annoncesAEnvoyer, HEURE_DES_RAPPELS, heureDeParis, lendemain, rappelsAEnvoyer, texteDeLAnnonce, texteDuRappel, veille,
   type TacheANotifier,
 } from "./regles.ts";
 import {
@@ -24,6 +25,7 @@ import {
 } from "./creneaux.ts";
 import { texteDeLaPropositionDEchange, texteDeLEchangeAccepte, type EchangeANotifier } from "./echanges.ts";
 import { placesSansRemplacant, texteDeLaReprise, texteSansRemplacant, type InscriptionRemplacee } from "./remplacements.ts";
+import { remerciementsAEnvoyer, texteDuRemerciement, type InscriptionTenue } from "./remerciements.ts";
 import { bureauAPrevenir, reponseALAuteur, texteDeLaProposition, type PropositionANotifier } from "./propositions.ts";
 
 const EXPO_ACCESS_TOKEN = Deno.env.get("EXPO_ACCESS_TOKEN");
@@ -44,7 +46,6 @@ function estLaCleDeService(req: Request): boolean {
 }
 
 const jourDeParis = (date: Date) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Paris" }).format(date);
-const heureDeParis = (date: Date) => Number(new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "numeric", hourCycle: "h23" }).format(date));
 
 const nomsDAssociation = new Map<string, string>();
 async function nomDeLAssociation(tenantId: string): Promise<string> {
@@ -215,6 +216,21 @@ async function envoyerLesEchangesAcceptes(): Promise<number> {
   return envoyes;
 }
 
+/** Le lendemain de l'action, chaque bénévole venu est remercié avec le bilan ; une seule fois par action. */
+async function envoyerLesRemerciements(aujourdhui: string): Promise<number> {
+  const hier = veille(aujourdhui);
+  const { data, error } = await sb.from("inscriptions_creneaux")
+    .select("tenant_id, membre, presence, poles!inner(actions!inner(id, titre, date_action, remerciement_envoye_le))")
+    .eq("poles.actions.date_action", hier).is("poles.actions.remerciement_envoye_le", null).is("annulee_le", null);
+  if (error) throw error;
+  let envoyes = 0;
+  for (const r of remerciementsAEnvoyer((data ?? []) as unknown as InscriptionTenue[], hier)) {
+    for (const membre of r.membres) envoyes += await envoyerA(r.tenantId, membre, texteDuRemerciement(r), { planning_action: r.actionId });
+    await sb.from("actions").update({ remerciement_envoye_le: new Date().toISOString() }).eq("id", r.actionId);
+  }
+  return envoyes;
+}
+
 const COLONNES_PROPOSITIONS = "id, tenant_id, auteur, type, titre, statut, devenue, evenement_id, mot_du_bureau, repetition";
 
 /** Une proposition arrive : le bureau de l'association est prévenu, une seule fois. */
@@ -275,10 +291,11 @@ Deno.serve(async (req) => {
     const propositions = await envoyerLesPropositionsAuBureau() + await envoyerLesReponsesAuxAuteurs();
     const remplacements = await envoyerLesReprises() + (avecRappels ? await envoyerLesPlacesSansRemplacant(aujourdhui) : 0);
     const echanges = await envoyerLesPropositionsDEchange() + await envoyerLesEchangesAcceptes();
-    if (annonces || rappels || desistements || rappelsDeCreneaux || propositions || remplacements || echanges) {
-      console.log(`[notify-taches] ${aujourdhui}: ${annonces} annonce(s), ${rappels} rappel(s), ${desistements} désistement(s), ${rappelsDeCreneaux} rappel(s) de créneau, ${propositions} message(s) de propositions, ${remplacements} message(s) de remplacement, ${echanges} message(s) d'échange`);
+    const remerciements = avecRappels ? await envoyerLesRemerciements(aujourdhui) : 0;
+    if (annonces || rappels || desistements || rappelsDeCreneaux || propositions || remplacements || echanges || remerciements) {
+      console.log(`[notify-taches] ${aujourdhui}: ${annonces} annonce(s), ${rappels} rappel(s), ${desistements} désistement(s), ${rappelsDeCreneaux} rappel(s) de créneau, ${propositions} message(s) de propositions, ${remplacements} message(s) de remplacement, ${echanges} message(s) d'échange, ${remerciements} remerciement(s)`);
     }
-    return Response.json({ annonces, rappels, desistements, rappelsDeCreneaux, propositions, remplacements, echanges });
+    return Response.json({ annonces, rappels, desistements, rappelsDeCreneaux, propositions, remplacements, echanges, remerciements });
   } catch (err) {
     console.error("[notify-taches] Erreur", err);
     return new Response("Internal error", { status: 500 });

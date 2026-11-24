@@ -8,7 +8,12 @@ import { supabase } from '@/lib/supabase';
 // communs à tous les pôles, les pôles, et qui est inscrit où. La base refuse elle-même un créneau
 // complet ou une heure qui n'existe pas : son message s'affiche tel quel.
 
-export type Inscrit = { id: number; pole_id: number; debut: string; membre: string | null; nom: string; a_compte: boolean; a_reprendre?: boolean };
+export type Presence = 'venu' | 'absent';
+export type Inscrit = {
+  id: number; pole_id: number; debut: string; membre: string | null; nom: string; a_compte: boolean; a_reprendre?: boolean;
+  /** Le pointage du jour J (supabase/presences_benevoles.sql) ; absent tant que personne n'a pointé. */
+  presence?: Presence | null;
+};
 export type Planning = { titre: string; date: string; horaires: Horaires | null; ouvert: boolean; poles: Pole[]; inscrits: Inscrit[] };
 
 type LigneAction = {
@@ -54,7 +59,8 @@ type Modification =
   | { type: 'ajouter-nom'; pole: Pole; heure: string; nom: string }
   | { type: 'retirer'; inscrit: Inscrit }
   | { type: 'je-viens'; pole: Pole; heure: string; moi: string }
-  | { type: 'je-me-retire'; inscrit: Inscrit };
+  | { type: 'je-me-retire'; inscrit: Inscrit }
+  | { type: 'pointer'; inscrit: Inscrit; presence: Presence | null };
 
 /** La requête qui correspond à chaque geste du bureau sur le planning. */
 function requeteDe(actionId: number, m: Modification) {
@@ -74,6 +80,8 @@ function requeteDe(actionId: number, m: Modification) {
     // Comme « Je ne peux plus venir » côté adhérent : la place se libère et le référent est prévenu.
     case 'je-me-retire': return supabase.from('inscriptions_creneaux')
       .update({ annulee_le: new Date().toISOString(), annulation_notifiee: false }).eq('id', m.inscrit.id);
+    case 'pointer': return supabase.from('inscriptions_creneaux')
+      .update({ presence: m.presence, pointe_le: m.presence ? new Date().toISOString() : null }).eq('id', m.inscrit.id);
   }
 }
 
