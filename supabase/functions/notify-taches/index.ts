@@ -17,7 +17,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import {
-  actionAOuvrir, annoncesAEnvoyer, HEURE_DES_RAPPELS, lendemain, rappelsAEnvoyer, texteDeLAnnonce, texteDuRappel, veille,
+  actionAOuvrir, annoncesAEnvoyer, HEURE_DES_RAPPELS, heureDeParis, lendemain, rappelsAEnvoyer, texteDeLAnnonce, texteDuRappel, veille,
   type TacheANotifier,
 } from "./regles.ts";
 import {
@@ -46,7 +46,6 @@ function estLaCleDeService(req: Request): boolean {
 }
 
 const jourDeParis = (date: Date) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Paris" }).format(date);
-const heureDeParis = (date: Date) => Number(new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "numeric", hourCycle: "h23" }).format(date));
 
 const nomsDAssociation = new Map<string, string>();
 async function nomDeLAssociation(tenantId: string): Promise<string> {

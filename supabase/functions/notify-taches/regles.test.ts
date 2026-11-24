@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { actionAOuvrir, annoncesAEnvoyer, lendemain, rappelsAEnvoyer, texteDeLAnnonce, texteDuRappel, veille, type TacheANotifier } from "./regles";
+import { actionAOuvrir, annoncesAEnvoyer, heureDeParis, lendemain, rappelsAEnvoyer, texteDeLAnnonce, texteDuRappel, veille, type TacheANotifier } from "./regles";
 
 const tache = (id: number, extra: Partial<TacheANotifier> = {}): TacheANotifier => ({
   id, tenant_id: "t", action_id: 1, libelle: `Tâche ${id}`, responsable: "anne", echeance: null, statut: "À faire",
@@ -49,6 +49,14 @@ describe("rappelsAEnvoyer", () => {
   it("revient au jour d'avant, d'un mois et d'une année à l'autre", () => {
     expect(veille("2026-03-01")).toBe("2026-02-28");
     expect(veille("2027-01-01")).toBe("2026-12-31");
+  });
+});
+
+describe("heureDeParis", () => {
+  it("donne l'heure de Paris en nombre, hiver comme été", () => {
+    expect(heureDeParis(new Date("2026-11-24T14:30:00Z"))).toBe(15);
+    expect(heureDeParis(new Date("2026-07-01T07:05:00Z"))).toBe(9);
+    expect(heureDeParis(new Date("2026-11-24T23:30:00Z"))).toBe(0);
   });
 });
 

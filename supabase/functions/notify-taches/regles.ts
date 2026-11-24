@@ -25,6 +25,15 @@ export const HEURE_DES_RAPPELS = 9;
 const estOuverte = (t: TacheANotifier) => t.statut !== "Terminé" && !!t.responsable;
 const tronquer = (texte: string) => (texte.length > LONGUEUR_MAX ? `${texte.slice(0, LONGUEUR_MAX - 1)}…` : texte);
 
+/**
+ * L'heure à Paris, de 0 à 23. On lit le seul nombre de l'heure : en français, le format complet
+ * donne « 15 h », que Number() ne sait pas lire (les rappels de 9 h ne partaient jamais).
+ */
+export function heureDeParis(date: Date): number {
+  const parties = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "numeric", hourCycle: "h23" }).formatToParts(date);
+  return Number(parties.find((p) => p.type === "hour")?.value ?? 0);
+}
+
 /** « AAAA-MM-JJ » du lendemain. */
 export function lendemain(jour: string): string {
   return decalerLeJour(jour, 1);
