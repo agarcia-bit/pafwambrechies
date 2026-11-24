@@ -14,6 +14,7 @@ import { billetsDeLaPersonne, messageDeRelance, tranchesDeLaJournee, trousDuPlan
 import { formatDayLong } from '@/lib/format';
 import { useDerniereRelance } from '@/lib/relance';
 import { messageDuPlanning, useModifierLePlanning, usePlanning, type Inscrit } from '@/lib/planning';
+import { phraseDuPointage, resumeDuPointage } from '@/lib/pointage';
 import { useMember } from '@/lib/session';
 
 /**
@@ -60,6 +61,12 @@ export default function PlanningScreen() {
               <BilletDeCreneau key={inscrit.id} nomDuPole={nomDuPole} heure={inscrit.debut} dureeMinutes={horaires.dureeMinutes}
                 autres={avec.length} estNouveau={false} enCours={modification.isPending} onLiberer={() => seRetirer(inscrit)} compact />
             ))}
+            {planning.data.inscrits.length > 0 && (
+              <ListSection>
+                <ListRow icon="check" title="Pointer les présences" subtitle={phraseDuPointage(resumeDuPointage(planning.data.inscrits))}
+                  onPress={() => router.push({ pathname: '/plus/bureau/pointage', params: { action: String(actionId) } })} />
+              </ListSection>
+            )}
             <ChipBar options={VUES} value={vue} onChange={setVue} />
             {vue === 'Ce qui manque'
               ? <ListeDesTrous actionId={actionId} trous={trous} planning={planning.data} moi={profile.id} modifier={modification.mutate} />

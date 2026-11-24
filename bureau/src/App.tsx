@@ -6,6 +6,7 @@ import { Adherents } from './pages/Adherents';
 import { Contenus } from './pages/Contenus';
 import { Cotisations } from './pages/Cotisations';
 import { Documents } from './pages/Documents';
+import { BilanDesBenevoles } from './pages/BilanDesBenevoles';
 import { Engagement } from './pages/Engagement';
 import { Evenements } from './pages/Evenements';
 import { Importer } from './pages/Importer';
@@ -34,6 +35,7 @@ const PAGES: Page[] = [
   { path: 'pilotage', label: 'Pilotage', icon: 'tasks', sub: 'Les actions du bureau et la liste des choses à faire', el: Pilotage },
   { path: 'planning', label: 'Planning', icon: 'tasks', sub: '', el: PagePlanning, cache: true, enTetePropre: true },
   { path: 'adherents', label: 'Adhérents', icon: 'users', sub: 'Qui fait partie de l’association, leurs rôles et leur accès à l’app', el: Adherents, section: 'Association' },
+  { path: 'benevoles', label: 'Bénévoles', icon: 'tasks', sub: 'Qui a aidé combien de fois, pour l’assemblée générale ou pour remercier les plus présents', el: BilanDesBenevoles },
   { path: 'engagement', label: 'Engagement', icon: 'pulse', sub: 'Qui ouvre l’app, lit, réagit et propose, pour savoir avec qui reprendre contact', el: Engagement },
   { path: 'cotisations', label: 'Cotisations', icon: 'euro', sub: 'Qui est à jour, les paiements et les relances', el: Cotisations },
   { path: 'message', label: 'Envoyer un message', icon: 'mail', sub: 'Un e-mail à tous les adhérents ou à quelques-uns, au nom de l’association', el: Message },

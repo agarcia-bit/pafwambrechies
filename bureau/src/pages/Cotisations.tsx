@@ -9,6 +9,7 @@ import {
   today, toast, useAsync, type CotisConfig, type MemberRow, type Recipient,
 } from '../lib';
 import { Kpi } from '../components/ui/Kpi';
+import { telechargerCsv } from '../csv';
 import { useCotisationDuMembre } from './useCotisationDuMembre';
 
 type Filter = 'tous' | 'a_jour' | 'a_relancer' | 'non_inscrits';
@@ -73,15 +74,8 @@ export function Cotisations({ profile }: PageProps) {
   const montant = Number((config.data?.montant ?? '').replace(',', '.')) || 0;
 
   function exportCsv() {
-    const esc = (v: string | null) => `"${(v ?? '').replace(/"/g, '""')}"`;
-    const lines = [['Prénom', 'Nom', 'E-mail', 'Cotisation jusqu’au', 'Inscrit', 'Dernière relance'].join(';'),
-      ...rows.map((m) => [esc(m.prenom), esc(m.nom), esc(m.email), esc(m.valide_jusqu), esc(m.inscrit ? 'oui' : 'non'), esc(m.email && last[m.email] ? last[m.email].slice(0, 10) : '')].join(';'))];
-    const url = URL.createObjectURL(new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `adherents-${today()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    telechargerCsv(`adherents-${today()}.csv`, ['Prénom', 'Nom', 'E-mail', 'Cotisation jusqu’au', 'Inscrit', 'Dernière relance'],
+      rows.map((m) => [m.prenom, m.nom, m.email, m.valide_jusqu, m.inscrit ? 'oui' : 'non', m.email && last[m.email] ? last[m.email].slice(0, 10) : '']));
   }
 
   // Pointage groupé : une cotisation par personne choisie, même date pour tous.

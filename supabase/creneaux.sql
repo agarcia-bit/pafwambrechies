@@ -210,6 +210,7 @@ grant execute on function public.liberer_creneau(bigint) to authenticated;
 -- Un membre du bureau qui n'est pas administrateur ne lit pas les fiches des adhérents : cette
 -- fonction ne lui donne que le prénom et le nom des inscrits de ses propres actions.
 -- Le type rendu a gagné une colonne (a_reprendre) : l'ancienne version doit disparaître d'abord.
+-- supabase/presences_benevoles.sql la remplace ensuite (colonne presence) : le rejouer après ce script.
 drop function if exists public.inscrits_de_l_action(bigint);
 create or replace function public.inscrits_de_l_action(p_action bigint)
 returns table (id bigint, pole_id bigint, debut text, membre uuid, nom text, a_compte boolean, a_reprendre boolean)

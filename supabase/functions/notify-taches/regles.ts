@@ -27,8 +27,17 @@ const tronquer = (texte: string) => (texte.length > LONGUEUR_MAX ? `${texte.slic
 
 /** « AAAA-MM-JJ » du lendemain. */
 export function lendemain(jour: string): string {
+  return decalerLeJour(jour, 1);
+}
+
+/** Le jour d'avant (« 2026-03-01 » → « 2026-02-28 ») : le remerciement part le lendemain de l'action. */
+export function veille(jour: string): string {
+  return decalerLeJour(jour, -1);
+}
+
+function decalerLeJour(jour: string, jours: number): string {
   const date = new Date(`${jour}T12:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + 1);
+  date.setUTCDate(date.getUTCDate() + jours);
   return date.toISOString().slice(0, 10);
 }
 
