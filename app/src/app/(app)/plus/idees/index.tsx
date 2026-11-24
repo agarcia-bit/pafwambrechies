@@ -1,9 +1,9 @@
 import { router, Stack } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { IdeeCard } from '@/components/cards';
 import { Button } from '@/components/ui/button';
-import { Icon } from '@/components/ui/icon';
+import { BoutonPlusDeLaBarre } from '@/components/header-button';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
@@ -21,11 +21,7 @@ export default function IdeesScreen() {
     <>
       <Stack.Screen
         options={{
-          headerRight: () => (
-            <Pressable accessibilityRole="button" accessibilityLabel="Proposer une idée" hitSlop={10} onPress={propose}>
-              <Icon name="plus" size={22} />
-            </Pressable>
-          ),
+          headerRight: () => <BoutonPlusDeLaBarre libelle={"Proposer une idée"} onPress={propose} />,
         }}
       />
       <FlatList

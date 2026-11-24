@@ -1,6 +1,6 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { createContext, use, type PropsWithChildren } from 'react';
-import { useColorScheme } from 'react-native';
+import { Platform, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { makePalette, type Palette, type Scheme } from '@/theme/colors';
@@ -72,5 +72,7 @@ export function useBrandHeader() {
 export function useBandListStyle() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  return { backgroundColor: colors.background, marginTop: -insets.top };
+  // Sur iPhone, l'écran d'onglet commence sous la barre d'état : on le remonte. Sur Android, il
+  // commence déjà tout en haut ; le remonter cachait le titre sous l'heure et la batterie.
+  return { backgroundColor: colors.background, marginTop: Platform.OS === 'ios' ? -insets.top : 0 };
 }
