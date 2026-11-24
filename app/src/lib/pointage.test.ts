@@ -1,13 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { phraseDuPointage, presenceApres, resumeDuPointage, tranchesAPointer } from './pointage';
-import type { Inscrit } from './planning';
+import { estActionPassee, jourLocal, peutPointer, phraseDuPointage, presenceApres, resumeDuPointage, tranchesAPointer } from './pointage';
 
-// vi.mock est remonté avant les imports : le vrai client Supabase n'est jamais créé.
-vi.mock('./supabase', () => ({ supabase: {} }));
-
-const inscrit = (id: number, pole_id: number, debut: string, presence: Inscrit['presence'] = null): Inscrit =>
-  ({ id, pole_id, debut, membre: null, nom: `Bénévole ${id}`, a_compte: false, presence });
+type Inscrit = { id: number; pole_id: number; debut: string; presence: 'venu' | 'absent' | null };
+const inscrit = (id: number, pole_id: number, debut: string, presence: Inscrit['presence'] = null): Inscrit => ({ id, pole_id, debut, presence });
 const poles = [
   { id: 2, nom: 'Gaufres', personnes: 2, besoins_par_creneau: {}, ordre: 0 },
   { id: 1, nom: 'Café', personnes: 2, besoins_par_creneau: {}, ordre: 1 },
@@ -26,11 +22,20 @@ describe('pointage du jour J', () => {
     expect(phraseDuPointage(resume)).toBe('1 venu · 1 absent · 1 à pointer');
     expect(phraseDuPointage({ venus: 12, absents: 2, aPointer: 0 })).toBe('Tout est pointé : 12 venus, 2 absents.');
     expect(phraseDuPointage({ venus: 0, absents: 0, aPointer: 5 })).toBe('5 personnes à pointer');
+    expect(phraseDuPointage({ venus: 3, absents: 0, aPointer: 1 })).toBe('3 venus · 1 à pointer');
   });
 
   it('annule le pointage quand on retouche le même bouton', () => {
     expect(presenceApres(null, 'venu')).toBe('venu');
     expect(presenceApres('venu', 'absent')).toBe('absent');
     expect(presenceApres('venu', 'venu')).toBeNull();
+  });
+
+  it('sait si l’action est passée et si l’on peut pointer, le jour J compris', () => {
+    expect(estActionPassee('2026-11-23', '2026-11-24')).toBe(true);
+    expect(estActionPassee('2026-11-24', '2026-11-24')).toBe(false);
+    expect(peutPointer('2026-11-24', '2026-11-24')).toBe(true);
+    expect(peutPointer('2026-11-25', '2026-11-24')).toBe(false);
+    expect(jourLocal(new Date(2026, 0, 5, 23, 30))).toBe('2026-01-05');
   });
 });

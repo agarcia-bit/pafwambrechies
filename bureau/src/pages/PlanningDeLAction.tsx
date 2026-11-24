@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { DUREES_DE_TRANCHE, libelleDeTranche, minutesDe, resumeDesTrous, tranchesDeLaJournee, trousDuPlanning, type Horaires, type Pole } from '../creneaux';
 import { Icon } from '../Icon';
+import { estActionPassee, jourLocal, phraseDuPointage, resumeDuPointage } from '../pointage';
 import { usePlanning, type PlanningEtat } from './usePlanning';
 import './planning.css';
 
@@ -20,16 +21,25 @@ export function PlanningDeLAction({ actionId }: { actionId: number }) {
   const tranches = planning.horaires ? tranchesDeLaJournee(planning.horaires) : [];
   const estPret = tranches.length > 0 && planning.poles.length > 0;
   const { manque } = resumeDesTrous(trousDuPlanning(planning.poles, tranches, planning.inscrits));
-  const etat = !planning.horaires ? 'Pas encore de planning' : !estPret ? 'Planning à terminer : ajoutez les pôles' : manque ? `Il manque ${manque} personne${manque > 1 ? 's' : ''}` : 'Tout est rempli';
+  const estPassee = !!planning.action && estActionPassee(planning.action.date, jourLocal());
+  const etat = etatDuPlanning(planning, estPret, estPassee, manque);
   return (
     <section className="drawer-section">
       <div className="section-head"><h3>Planning des présences</h3>{planning.horaires && <StatutDuPlanning ouvert={planning.ouvert} />}</div>
-      <a className={'carte-planning' + (estPret && manque ? ' manque' : '')} href={adresseDuPlanning(actionId)}>
+      <a className={'carte-planning' + (estPret && manque && !estPassee ? ' manque' : '')} href={adresseDuPlanning(actionId)}>
         <span className="carte-planning-etat">{etat}</span>
         <span className="carte-planning-lien">{planning.horaires ? 'Ouvrir le planning' : 'Préparer un planning'} <Icon name="right" size={15} /></span>
       </a>
     </section>
   );
+}
+
+/** La phrase de la carte : où en est le planning, ou le pointage une fois la journée passée. */
+function etatDuPlanning(planning: PlanningEtat, estPret: boolean, estPassee: boolean, manque: number): string {
+  if (!planning.horaires) return 'Pas encore de planning';
+  if (!estPret) return 'Planning à terminer : ajoutez les pôles';
+  if (estPassee) return `Journée passée · ${phraseDuPointage(resumeDuPointage(planning.inscrits))}`;
+  return manque ? `Il manque ${manque} personne${manque > 1 ? 's' : ''}` : 'Tout est rempli';
 }
 
 /** « Réservé au bureau » ou « Ouvert aux membres », avec une pastille de couleur. */

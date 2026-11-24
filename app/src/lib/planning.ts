@@ -2,13 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { adminErrorMessage } from '@/lib/admin';
 import { changerLeBesoin, type Horaires, type Pole } from '@/lib/creneaux';
+import type { Presence } from '@/lib/pointage';
 import { supabase } from '@/lib/supabase';
 
 // Le planning des présences d'une action, côté bureau (supabase/creneaux.sql) : les horaires
 // communs à tous les pôles, les pôles, et qui est inscrit où. La base refuse elle-même un créneau
 // complet ou une heure qui n'existe pas : son message s'affiche tel quel.
 
-export type Presence = 'venu' | 'absent';
 export type Inscrit = {
   id: number; pole_id: number; debut: string; membre: string | null; nom: string; a_compte: boolean; a_reprendre?: boolean;
   /** Le pointage du jour J (supabase/presences_benevoles.sql) ; absent tant que personne n'a pointé. */

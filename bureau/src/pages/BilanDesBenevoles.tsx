@@ -1,10 +1,12 @@
 import { useState } from 'react';
 
 import type { PageProps } from '../App';
-import { chargerLeBilan, periodesDuBilan, resumeDuBilan, telechargerLeBilan, type LigneDuBilan } from '../bilan';
+import { chargerLeBilan, periodesDuBilan, resumeDuBilan, telechargerLeBilan, type LigneDuBilan, type Periode } from '../bilan';
 import { Kpi } from '../components/ui/Kpi';
 import { Avatar, Empty, Icon, Skeleton } from '../Icon';
 import { formatDay, today, useAsync } from '../lib';
+import { FicheBenevole } from './FicheBenevole';
+import './planning.css';
 
 /** Qui a aidé combien de fois : pour l'assemblée générale, ou pour remercier les plus présents. */
 export function BilanDesBenevoles(_props: PageProps) {
@@ -39,14 +41,15 @@ export function BilanDesBenevoles(_props: PageProps) {
               <Kpi valeur={resume.creneaux} libelle="créneaux tenus" ton="ok" />
               <Kpi valeur={resume.absences} libelle="absences pointées" ton={resume.absences ? 'warn' : undefined} />
             </div>
-            <TableauDuBilan lignes={lignes} />
+            <TableauDuBilan lignes={lignes} periode={periode} />
           </>
         )}
     </>
   );
 }
 
-function TableauDuBilan({ lignes }: { lignes: LigneDuBilan[] }) {
+function TableauDuBilan({ lignes, periode }: { lignes: LigneDuBilan[]; periode: Periode }) {
+  const [ouverte, setOuverte] = useState<LigneDuBilan | null>(null);
   if (!lignes.length) return <Empty icon="users" title="Aucun bénévole sur cette période" />;
   return (
     <div className="card flush">
@@ -56,7 +59,8 @@ function TableauDuBilan({ lignes }: { lignes: LigneDuBilan[] }) {
         </thead>
         <tbody>
           {lignes.map((l) => (
-            <tr key={l.cle}>
+            <tr key={l.cle} className="ligne-cliquable" tabIndex={0} title="Voir ses créneaux"
+              onClick={() => setOuverte(l)} onKeyDown={(e) => e.key === 'Enter' && setOuverte(l)}>
               <td><span className="who"><Avatar name={l.nom} />{l.nom}{!l.a_compte && <span className="muted small"> · sans l’app</span>}</span></td>
               <td><strong>{l.creneaux}</strong></td>
               <td>{l.actions}</td>
@@ -66,6 +70,7 @@ function TableauDuBilan({ lignes }: { lignes: LigneDuBilan[] }) {
           ))}
         </tbody>
       </table>
+      {ouverte && <FicheBenevole ligne={ouverte} periode={periode} onClose={() => setOuverte(null)} />}
     </div>
   );
 }
