@@ -4,23 +4,13 @@ import type { PageProps } from '../App';
 import { Empty, Icon, Skeleton } from '../Icon';
 import { cotisStatus, daysUntil, dueLabel, formatDay, fullName, isOverdue, loadBureau, loadMembers, supabase, toast, today, useAsync } from '../lib';
 import { filtreNonTermines } from '../periode';
+import { chargerLEtatDesBenevoles, phraseDesBenevoles } from '../accueil-benevoles';
+import { BenevolesDeLAccueil } from './BenevolesDeLAccueil';
 
 export function Overview({ profile }: PageProps) {
   const members = useAsync(loadMembers, []);
   const bureau = useAsync(loadBureau, []);
-
-  // Cocher une tâche ici la termine, comme dans le Pilotage : elle reste cochée un instant, puis disparaît.
-  const [ticked, setTicked] = useState<Set<number>>(new Set());
-  async function finish(id: number) {
-    setTicked((s) => new Set(s).add(id));
-    const { error } = await supabase.from('taches').update({ statut: 'Terminé' }).eq('id', id);
-    if (error) {
-      setTicked((s) => { const n = new Set(s); n.delete(id); return n; });
-      return toast(error.message, 'error');
-    }
-    toast('Tâche terminée ✓');
-    setTimeout(bureau.reload, 700);
-  }
+  const benevoles = useAsync(chargerLEtatDesBenevoles, []);
 
   if (members.loading && !members.data) return <><div className="stats">{[0,1,2,3].map((i) => <div key={i} className="card stat"><Skeleton lines={2} /></div>)}</div><div className="card"><Skeleton lines={5} /></div></>;
   if (members.error) return <p className="error">{members.error}</p>;
@@ -31,16 +21,12 @@ export function Overview({ profile }: PageProps) {
   const never = all.length - upToDate - expired;
   const toChase = all.length - upToDate;
 
-  const b = bureau.data;
-  const openTasks = b?.taches.filter((t) => t.statut !== 'Terminé') ?? [];
-  const late = openTasks.filter((t) => isOverdue(t.echeance, t.statut));
-  const mine = openTasks.filter((t) => t.responsable === profile.id).sort((x, y) => (x.echeance ?? '9999').localeCompare(y.echeance ?? '9999'));
   const hour = new Date().getHours();
 
 
   return (
     <>
-      <p className="hello">{hour < 18 ? 'Bonjour' : 'Bonsoir'} {profile.prenom ?? ''} 👋</p>
+      <p className="hello">{hour < 18 ? 'Bonjour' : 'Bonsoir'} {profile.prenom ?? ''}. {benevoles.data ? phraseDesBenevoles(benevoles.data) : ''}</p>
       <div className="stats">
         <Stat icon="users" tone="brand" label="Adhérents" value={all.length} href="#adherents" />
         <Stat icon="check" tone="ok" label="Cotisations à jour" value={upToDate} href="#cotisations?filtre=a_jour" />
@@ -61,24 +47,9 @@ export function Overview({ profile }: PageProps) {
           </div>
         </section>
 
-        <section className="card">
-          <div className="head"><h2>Mes tâches</h2><a href="#pilotage">Ouvrir le pilotage →</a></div>
-          {bureau.loading && !b ? <Skeleton lines={3} /> : mine.length ? (
-            <ul className="todo compact">
-              {mine.slice(0, 5).map((t) => (
-                <li key={t.id} className={ticked.has(t.id) ? 'done row-out' : ''}>
-                  <button className={'check' + (ticked.has(t.id) ? ' on' : '')} aria-label="Terminer la tâche" title="Terminer la tâche" disabled={ticked.has(t.id)} onClick={() => finish(t.id)}>
-                    {ticked.has(t.id) && <Icon name="check" size={12} />}
-                  </button>
-                  <div className="grow"><div className="t-title">{t.libelle}</div></div>
-                  {t.echeance && <span className={'due' + (isOverdue(t.echeance, t.statut) ? ' late' : '')}>{dueLabel(t.echeance)}</span>}
-                </li>
-              ))}
-            </ul>
-          ) : <Empty icon="sparkle" title="Rien à faire pour vous" hint="Vos tâches du pilotage apparaîtront ici." />}
-          {late.length > 0 && <p className="note-bad"><Icon name="alert" size={15} /> {late.length} tâche{late.length > 1 ? 's' : ''} en retard dans le bureau</p>}
-        </section>
+        <MesTaches profile={profile} bureau={bureau} />
 
+        <BenevolesDeLAccueil etat={benevoles.data ?? null} enChargement={benevoles.loading} />
         <ProchainsEvenements />
 
         <section className="card">
@@ -93,6 +64,46 @@ export function Overview({ profile }: PageProps) {
         </section>
       </div>
     </>
+  );
+}
+
+/** Les tâches du Pilotage confiées à la personne connectée ; les cocher ici les termine. */
+function MesTaches({ profile, bureau }: { profile: PageProps['profile']; bureau: ReturnType<typeof useAsync<Awaited<ReturnType<typeof loadBureau>>>> }) {
+  // Cocher une tâche ici la termine, comme dans le Pilotage : elle reste cochée un instant, puis disparaît.
+  const [ticked, setTicked] = useState<Set<number>>(new Set());
+  async function finish(id: number) {
+    setTicked((s) => new Set(s).add(id));
+    const { error } = await supabase.from('taches').update({ statut: 'Terminé' }).eq('id', id);
+    if (error) {
+      setTicked((s) => { const n = new Set(s); n.delete(id); return n; });
+      return toast(error.message, 'error');
+    }
+    toast('Tâche terminée ✓');
+    setTimeout(bureau.reload, 700);
+  }
+
+  const b = bureau.data;
+  const openTasks = b?.taches.filter((t) => t.statut !== 'Terminé') ?? [];
+  const late = openTasks.filter((t) => isOverdue(t.echeance, t.statut));
+  const mine = openTasks.filter((t) => t.responsable === profile.id).sort((x, y) => (x.echeance ?? '9999').localeCompare(y.echeance ?? '9999'));
+  return (
+        <section className="card">
+      <div className="head"><h2>Mes tâches</h2><a href="#pilotage">Ouvrir le pilotage →</a></div>
+      {bureau.loading && !b ? <Skeleton lines={3} /> : mine.length ? (
+        <ul className="todo compact">
+          {mine.slice(0, 5).map((t) => (
+            <li key={t.id} className={ticked.has(t.id) ? 'done row-out' : ''}>
+              <button className={'check' + (ticked.has(t.id) ? ' on' : '')} aria-label="Terminer la tâche" title="Terminer la tâche" disabled={ticked.has(t.id)} onClick={() => finish(t.id)}>
+                {ticked.has(t.id) && <Icon name="check" size={12} />}
+              </button>
+              <div className="grow"><div className="t-title">{t.libelle}</div></div>
+              {t.echeance && <span className={'due' + (isOverdue(t.echeance, t.statut) ? ' late' : '')}>{dueLabel(t.echeance)}</span>}
+            </li>
+          ))}
+        </ul>
+      ) : <Empty icon="sparkle" title="Rien à faire pour vous" hint="Vos tâches du pilotage apparaîtront ici." />}
+      {late.length > 0 && <p className="note-bad"><Icon name="alert" size={15} /> {late.length} tâche{late.length > 1 ? 's' : ''} en retard dans le bureau</p>}
+    </section>
   );
 }
 

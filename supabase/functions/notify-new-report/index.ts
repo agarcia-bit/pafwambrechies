@@ -72,6 +72,9 @@ Deno.serve(async (req) => {
           title: assoc,
           body: `Contenu signalé : un membre a signalé ${what}. À examiner.`,
           sound: "default",
+          // La catégorie « Actualités » que crée l'app : sans elle, Android range la notification
+          // dans une catégorie de secours, sans bandeau en haut de l'écran.
+          channelId: "default",
           data: { signalement_id: record.id },
         }))),
       });

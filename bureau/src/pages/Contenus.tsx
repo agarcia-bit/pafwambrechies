@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 
 import type { PageProps } from '../App';
 import { categoriesUtilisees, reprendreCategorieExistante } from '../categories-libres';
@@ -8,7 +8,7 @@ import { ChampPhoto } from '../components/ui/ChampPhoto';
 import { PersonnesDeLEntreprise } from './PersonnesDeLEntreprise';
 import { Drawer } from '../Drawer';
 import { Empty, Icon, Skeleton } from '../Icon';
-import { loadTenantConfig, supabase, toast, useAsync } from '../lib';
+import { hashParam, loadTenantConfig, supabase, toast, useAsync } from '../lib';
 
 /** Une page par type de contenu (actus, offres, annuaire, liens) : liste, recherche, création, modification, suppression. */
 // Une fonction par sorte de contenu, toujours la même : useAsync et le préchargement la
@@ -33,7 +33,11 @@ export function Contenus({ kind, profile }: PageProps & { kind: keyof typeof COL
   const c = useMemo(() => (config.data ? withConfig(COLLECTIONS[kind], config.data) : COLLECTIONS[kind]), [kind, config.data]);
   const rows = useAsync(chargeurDeContenus(kind), [kind]);
   const [q, setQ] = useState('');
-  const [open, setOpen] = useState<number | 'new' | null>(null);
+  // Une actu préparée ailleurs (« Merci aux bénévoles » depuis un planning) : #actus?nouveau=1&titre=…&contenu=…
+  const [prerempli] = useState(() => (hashParam('nouveau') ? { titre: hashParam('titre') ?? '', contenu: hashParam('contenu') ?? '' } : null));
+  const [open, setOpen] = useState<number | 'new' | null>(prerempli ? 'new' : null);
+  // L'adresse redevient #actus : recharger la page ne rouvre pas le formulaire prérempli.
+  useEffect(() => { if (prerempli) history.replaceState(null, '', `#${kind}`); }, [prerempli, kind]);
 
   if ((rows.loading && !rows.data) || (config.loading && !config.data)) return <div className="card"><Skeleton lines={6} /></div>;
   if (rows.error) return <p className="error">{rows.error}</p>;
@@ -63,7 +67,7 @@ export function Contenus({ kind, profile }: PageProps & { kind: keyof typeof COL
         </div>
       )}
       {open !== null && current !== undefined && (
-        <ItemDrawer c={c} row={current} tenant={profile.tenant_id} categories={categoriesUtilisees(all.map((r) => r.categorie))} onClose={() => setOpen(null)} onChanged={rows.reload} />
+        <ItemDrawer c={c} row={current} prerempli={current === null ? prerempli : null} tenant={profile.tenant_id} categories={categoriesUtilisees(all.map((r) => r.categorie))} onClose={() => setOpen(null)} onChanged={rows.reload} />
       )}
     </>
   );
@@ -98,8 +102,10 @@ function LigneContenu({ c, r, onOuvrir, onPublie }: { c: Collection; r: Row; onO
   );
 }
 
-function ItemDrawer({ c, row, tenant, categories, onClose, onChanged }: { c: Collection; row: Row | null; tenant: string; categories: string[]; onClose: () => void; onChanged: () => void }) {
-  const [v, setV] = useState<Values>(() => ({ ...c.defaults(), ...(row ? c.toValues(row) : {}) }));
+type PropsDuTiroir = { c: Collection; row: Row | null; prerempli?: Values | null; tenant: string; categories: string[]; onClose: () => void; onChanged: () => void };
+
+function ItemDrawer({ c, row, prerempli, tenant, categories, onClose, onChanged }: PropsDuTiroir) {
+  const [v, setV] = useState<Values>(() => ({ ...c.defaults(), ...(prerempli ?? {}), ...(row ? c.toValues(row) : {}) }));
   const [busy, setBusy] = useState(false);
   const set = (k: string, val: string) => setV((s) => ({ ...s, [k]: val }));
 

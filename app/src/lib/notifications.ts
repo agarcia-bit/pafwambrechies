@@ -28,8 +28,11 @@ function projectId(): string | undefined {
   return Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
 }
 
+// Le simulateur iPhone ne reçoit pas de notifications ; un téléphone virtuel Android avec Google
+// Play, si : on peut donc les y tester.
 function pushAvailable(): boolean {
-  return Platform.OS !== 'web' && Device.isDevice && !!projectId();
+  const appareilCompatible = Platform.OS === 'android' || (Platform.OS === 'ios' && Device.isDevice);
+  return appareilCompatible && !!projectId();
 }
 
 async function registerToken(): Promise<void> {
