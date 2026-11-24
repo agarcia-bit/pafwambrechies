@@ -1,9 +1,10 @@
 import { router, Stack } from 'expo-router';
-import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PressableCard } from '@/components/ui/card';
+import { BoutonPlusDeLaBarre } from '@/components/header-button';
 import { Icon } from '@/components/ui/icon';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
@@ -23,11 +24,7 @@ export default function AdminSondagesScreen() {
     <>
       <Stack.Screen
         options={{
-          headerRight: () => (
-            <Pressable accessibilityRole="button" accessibilityLabel="Nouveau sondage" hitSlop={10} onPress={create}>
-              <Icon name="plus" size={22} />
-            </Pressable>
-          ),
+          headerRight: () => <BoutonPlusDeLaBarre libelle={"Nouveau sondage"} onPress={create} />,
         }}
       />
       <FlatList

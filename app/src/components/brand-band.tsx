@@ -1,10 +1,10 @@
 import type { PropsWithChildren } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui/text';
 import { useMargeDeLecture } from '@/components/zone-de-lecture';
+import { useMargeDuHaut } from '@/hooks/use-marge-du-haut';
 import { introDelay } from '@/lib/launch-state';
 import { useTheme } from '@/theme';
 
@@ -25,13 +25,13 @@ export function BrandBand({ title, subtitle, dansLaListe = false, children }: Pr
   dansLaListe?: boolean;
 }>) {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
+  const haut = useMargeDuHaut();
   const reduceMotion = useReducedMotion();
   // Sur grand écran, la couleur va d'un bord à l'autre mais le titre s'aligne sur les cartes.
   const marges = useMargeDeLecture();
   const debord = dansLaListe ? { marginLeft: -marges.gauche, marginRight: -marges.droite } : null;
   return (
-    <View style={[styles.band, { backgroundColor: colors.banner, paddingTop: insets.top + 12, paddingLeft: marges.gauche, paddingRight: marges.droite }, debord]}>
+    <View style={[styles.band, { backgroundColor: colors.banner, paddingTop: haut + 12, paddingLeft: marges.gauche, paddingRight: marges.droite }, debord]}>
       <View pointerEvents="none" style={[styles.overscroll, { backgroundColor: colors.banner }]} />
       <View style={styles.titles}>
         <Text variant="largeTitle" style={styles.title} numberOfLines={1} adjustsFontSizeToFit>

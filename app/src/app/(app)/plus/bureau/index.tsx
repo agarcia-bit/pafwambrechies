@@ -8,7 +8,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ChipBar } from '@/components/ui/chip-bar';
-import { Icon } from '@/components/ui/icon';
+import { BoutonPlusDeLaBarre } from '@/components/header-button';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
@@ -31,11 +31,7 @@ export default function BureauScreen() {
     <>
       <Stack.Screen
         options={{
-          headerRight: () => (
-            <Pressable accessibilityRole="button" accessibilityLabel="Nouvelle action" hitSlop={10} onPress={newAction}>
-              <Icon name="plus" size={22} />
-            </Pressable>
-          ),
+          headerRight: () => <BoutonPlusDeLaBarre libelle={"Nouvelle action"} onPress={newAction} />,
         }}
       />
       <ScrollView
