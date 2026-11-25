@@ -72,6 +72,7 @@
     .hero-fade { height: 80px; }
 
     /* Logos / for whom */
+    .film { display: block; width: 100%; max-width: 960px; aspect-ratio: 16 / 9; margin: 36px auto 0; border-radius: 24px; background: #F6F0E4; box-shadow: 0 30px 60px -30px rgba(11,79,73,.45), 0 4px 14px rgba(0,0,0,.08); }
     .for { padding: 36px 0; border-bottom: 1px solid var(--line); }
     .for .wrap { display: flex; align-items: center; gap: 14px 28px; flex-wrap: wrap; justify-content: center; }
     .for p { font-size: 14px; font-weight: 600; color: var(--muted); }
@@ -269,6 +270,18 @@
       <span class="chip">🏘️ Associations de quartier</span>
     </div>
   </div>
+
+  <section id="video" style="padding-bottom:0">
+    <div class="wrap">
+      <div class="center reveal">
+        <span class="eyebrow">En 30 secondes</span>
+        <h2 style="margin-top:14px">Le bazar en moins</h2>
+      </div>
+      <video class="film reveal" controls playsinline preload="none" poster="/img/video-affiche.jpg" aria-label="Présentation d’Allianceo en 30 secondes : avant et après">
+        <source src="/video/allianceo.mp4" type="video/mp4" />
+      </video>
+    </div>
+  </section>
 
   <section id="adherents">
     <div class="wrap">
