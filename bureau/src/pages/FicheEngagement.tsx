@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { Compose } from '../Compose';
 import { Drawer } from '../Drawer';
 import {
-  BAREME, JOURS_POUR_LE_MAXIMUM, PERIODE_JOURS, POINTS_PAR_ACTION, STATUTS,
-  calculerNote, classerEngagement, tonDeLaNote, type MembreEngagement,
+  BAREME, ETATS_DE_L_APP, JOURS_POUR_LE_MAXIMUM, PERIODE_JOURS, POINTS_PAR_ACTION, STATUTS,
+  calculerNote, classerEngagement, classerVersionDeLApp, tonDeLaNote, type MembreEngagement,
 } from '../engagement';
 import { Icon } from '../Icon';
 import { formatDay, fullName, supabase, toast, type Recipient } from '../lib';
@@ -20,7 +20,9 @@ export function BarreDeNote({ note }: { note: number }) {
 }
 
 /** Tout l'engagement d'un adhérent : sa note détaillée, chacune de ses actions, et de quoi lui écrire. */
-export function FicheEngagement({ membre, actusPubliees, onClose }: { membre: MembreEngagement; actusPubliees: number; onClose: () => void }) {
+type PropsDeFiche = { membre: MembreEngagement; actusPubliees: number; derniereVersionApp?: string | null; onClose: () => void };
+
+export function FicheEngagement({ membre, actusPubliees, derniereVersionApp, onClose }: PropsDeFiche) {
   const detail = calculerNote(membre, actusPubliees);
   const statut = STATUTS.find((s) => s.cle === classerEngagement(membre))!;
   const [destinataire, setDestinataire] = useState<Recipient[] | null>(null);
@@ -49,7 +51,7 @@ export function FicheEngagement({ membre, actusPubliees, onClose }: { membre: Me
           <PartDeLaNote libelle="Profil complet" points={detail.profil} sur={BAREME.profil} aide="Fiche dans l’annuaire, notifications activées" />
         </ul>
         <h3 className="fiche-titre">Ses actions</h3>
-        <ActionsDuMembre membre={membre} actusPubliees={actusPubliees} />
+        <ActionsDuMembre membre={membre} actusPubliees={actusPubliees} derniereVersionApp={derniereVersionApp} />
       </Drawer>
       {destinataire && <Compose to={destinataire} onClose={() => setDestinataire(null)} />}
     </>
@@ -65,7 +67,14 @@ function PartDeLaNote({ libelle, points, sur, aide }: { libelle: string; points:
   );
 }
 
-function ActionsDuMembre({ membre, actusPubliees }: { membre: MembreEngagement; actusPubliees: number }) {
+/** « À jour » ou « Ancienne version », avec la date de la mise à jour qui tourne sur son téléphone. */
+function versionDeLAppEnClair(versionDu: string | null | undefined, derniereVersion: string | null | undefined): string {
+  const etat = classerVersionDeLApp(versionDu, derniereVersion);
+  if (etat === 'inconnue' || !versionDu) return 'Inconnue';
+  return `${ETATS_DE_L_APP[etat].libelle} (mise à jour du ${formatDay(versionDu.slice(0, 10))})`;
+}
+
+function ActionsDuMembre({ membre, actusPubliees, derniereVersionApp }: { membre: MembreEngagement; actusPubliees: number; derniereVersionApp?: string | null }) {
   const points = (action: keyof typeof POINTS_PAR_ACTION) => `${POINTS_PAR_ACTION[action]} pt${POINTS_PAR_ACTION[action] > 1 ? 's' : ''} chacun`;
   const lignes: [string, string, string?][] = [
     ['Jours de visite', String(membre.jours_visite)],
@@ -79,6 +88,7 @@ function ActionsDuMembre({ membre, actusPubliees }: { membre: MembreEngagement; 
     ['Offres proposées', String(membre.offres), points('offres')],
     ['Fiche dans l’annuaire', membre.fiche_annuaire ? 'Oui' : 'Non'],
     ['Notifications', membre.notifications ? 'Activées' : 'Non'],
+    ['Version de l’app', versionDeLAppEnClair(membre.version_app_du, derniereVersionApp)],
     ['Inscrit le', formatDay(membre.inscrit_le.slice(0, 10))],
   ];
   return (
@@ -86,7 +96,7 @@ function ActionsDuMembre({ membre, actusPubliees }: { membre: MembreEngagement; 
       {lignes.map(([libelle, valeur, aide]) => (
         <li key={libelle} className="fiche-ligne">
           <span className="grow">{libelle}{aide && <small className="muted">{aide}</small>}</span>
-          <strong className={valeur === '0' || valeur === 'Non' || valeur === 'jamais' ? 'muted' : ''}>{valeur}</strong>
+          <strong className={valeur === '0' || valeur === 'Non' || valeur === 'jamais' || valeur === 'Inconnue' ? 'muted' : ''}>{valeur}</strong>
         </li>
       ))}
     </ul>

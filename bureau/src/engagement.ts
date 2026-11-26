@@ -15,6 +15,8 @@ export type MembreEngagement = {
   inscrit_le: string;
   jours_visite: number;
   derniere_visite: string | null;
+  /** Date de publication de la mise à jour qui tourne sur son téléphone ; absente tant que l'app ne l'a pas dite. */
+  version_app_du?: string | null;
   actus_lues: number;
   likes: number;
   commentaires: number;
@@ -28,6 +30,8 @@ export type MembreEngagement = {
 
 export type Engagement = {
   debut: string | null;
+  /** La mise à jour la plus récente vue sur un téléphone : la référence pour dire « à jour ». */
+  derniere_version_app?: string | null;
   actus_publiees: number;
   semaines: { semaine: string; actifs: number }[];
   membres: MembreEngagement[];
@@ -47,6 +51,20 @@ export function classerEngagement(membre: Pick<MembreEngagement, 'jours_visite' 
   if (membre.jours_visite >= SEUIL_ACTIF) return 'actif';
   if (membre.jours_visite >= 1) return 'occasionnel';
   return 'decroche';
+}
+
+export type EtatDeLApp = 'a_jour' | 'ancienne' | 'inconnue';
+
+export const ETATS_DE_L_APP: Record<EtatDeLApp, { libelle: string; ton: string; aide: string }> = {
+  a_jour: { libelle: 'À jour', ton: 'ok', aide: 'Son téléphone a la dernière mise à jour de l’app' },
+  ancienne: { libelle: 'Ancienne version', ton: 'warn', aide: 'La dernière mise à jour arrivera à sa prochaine ouverture de l’app' },
+  inconnue: { libelle: '—', ton: 'neutral', aide: 'N’a pas ouvert l’app depuis le début de ce suivi : sa version est ancienne ou inconnue' },
+};
+
+/** Compare la version du téléphone d'un adhérent à la plus récente vue chez qui que ce soit. */
+export function classerVersionDeLApp(versionDu: string | null | undefined, derniereVersion: string | null | undefined): EtatDeLApp {
+  if (!versionDu || !derniereVersion) return 'inconnue';
+  return new Date(versionDu).getTime() >= new Date(derniereVersion).getTime() ? 'a_jour' : 'ancienne';
 }
 
 /** Tout ce que l'adhérent a fait de lui-même, hors visites et lectures. */

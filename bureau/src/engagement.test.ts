@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('./lib', () => ({ supabase: {} }));
 
 import {
-  calculerNote, classerEngagement, compterInteractions, compterParStatut, completerSemaines, SEUIL_ACTIF, tonDeLaNote, type MembreEngagement,
+  calculerNote, classerEngagement, classerVersionDeLApp, compterInteractions, compterParStatut, completerSemaines, SEUIL_ACTIF, tonDeLaNote, type MembreEngagement,
 } from './engagement';
 
 const membre = (jours_visite: number, derniere_visite: string | null) => ({ jours_visite, derniere_visite });
@@ -87,5 +87,25 @@ describe('calculerNote', () => {
 describe('tonDeLaNote', () => {
   it('colore en vert, bleu ou orange', () => {
     expect([tonDeLaNote(60), tonDeLaNote(59), tonDeLaNote(30), tonDeLaNote(29)]).toEqual(['ok', 'info', 'info', 'warn']);
+  });
+});
+
+describe('classerVersionDeLApp', () => {
+  const derniere = '2026-11-26T22:30:00+00:00';
+
+  it('dit « à jour » quand le téléphone a la mise à jour la plus récente', () => {
+    expect(classerVersionDeLApp(derniere, derniere)).toBe('a_jour');
+    // La même date écrite autrement (fuseau) reste la même mise à jour.
+    expect(classerVersionDeLApp('2026-11-26T23:30:00+01:00', derniere)).toBe('a_jour');
+  });
+
+  it('dit « ancienne » quand une mise à jour plus récente existe', () => {
+    expect(classerVersionDeLApp('2026-11-24T10:00:00+00:00', derniere)).toBe('ancienne');
+  });
+
+  it('dit « inconnue » tant que l’app n’a pas donné sa version', () => {
+    expect(classerVersionDeLApp(null, derniere)).toBe('inconnue');
+    expect(classerVersionDeLApp(undefined, derniere)).toBe('inconnue');
+    expect(classerVersionDeLApp(derniere, null)).toBe('inconnue');
   });
 });
