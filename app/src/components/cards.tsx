@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Icon } from '@/components/ui/icon';
 import { PressableCard } from '@/components/ui/card';
 import { LinkedText } from '@/components/ui/linked-text';
+import { VideoYoutube } from '@/components/video-youtube';
 import { Text } from '@/components/ui/text';
 import { formatDayShort, formatRelative } from '@/lib/format';
 import { useReadActus } from '@/lib/read-actus';
@@ -122,6 +123,8 @@ function UnreadActuCard({ actu, index, onRead }: { actu: Actu; index: number; on
         <View style={styles.postBody}>
           {text}
           {!!actu.image_url && <ActuPhoto uri={actu.image_url} radius={12} minRatio={1.78} />}
+          {/* Sans photo, la vignette de la vidéo sert d'image à la carte. */}
+          {!actu.image_url && !!actu.video_url && <VideoYoutube lien={actu.video_url} rayon={12} estInerte />}
           <View style={[styles.footer, { borderTopColor: colors.separator }]}>
             <LikeButton
               kind="actu"

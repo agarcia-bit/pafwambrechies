@@ -49,6 +49,7 @@ const ICONS = {
   poll: { ios: 'chart.bar', android: 'bar_chart' },
   document: { ios: 'doc.text', android: 'description' },
   card: { ios: 'creditcard', android: 'credit_card' },
+  play: { ios: 'play.fill', android: 'play_arrow' },
 } satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol }>;
 
 export type IconName = keyof typeof ICONS;

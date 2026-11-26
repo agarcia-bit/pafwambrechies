@@ -9,6 +9,7 @@ import { formatDay, fullName, todayISO } from '@/lib/format';
 import { dernierJour, formatPeriode } from '@/lib/periode';
 import { uploadPhoto, type PickedPhoto } from '@/lib/photos';
 import { useMember } from '@/lib/session';
+import { erreurDeLienYoutube, normaliserLienYoutube } from '@/lib/youtube';
 import { DEFAULT_CATEGORY, parseList, useTenantConfig, type ModuleKey, type TenantConfig } from '@/lib/tenant-config';
 import { supabase } from '@/lib/supabase';
 
@@ -55,6 +56,8 @@ export type Collection = {
   colonneAuteur?: string;
   /** Shown under the form when creating. */
   createHint?: string;
+  /** Ce qui empêche d'enregistrer, dit en clair (un lien vidéo qui n'est pas YouTube) ; null si tout va bien. */
+  verifier?: (values: FormValues) => string | null;
   /** Recomputes dependent fields after a change. */
   derive?: (changed: string, values: FormValues) => FormValues;
 };
@@ -98,10 +101,12 @@ const actus: Collection = {
     { key: 'date_evenement', label: 'Date de l’événement (facultatif)', type: 'date' },
     { key: 'contenu', label: 'Contenu', type: 'multiline' },
     { key: 'image_url', label: 'Photo', type: 'photo' },
+    { key: 'video_url', label: 'Vidéo YouTube (facultatif)', type: 'url', placeholder: 'https://youtu.be/…' },
     STATUT_PROPOSITION,
   ],
   photo: { key: 'image_url', bucket: 'actus-photos', width: 1200, crop: false },
-  defaults: () => ({ titre: '', categorie: 'Actu Asso', date_evenement: '', contenu: '', date: todayISO(), image_url: '', statut: 'publiee' }),
+  verifier: (v) => erreurDeLienYoutube(v.video_url),
+  defaults: () => ({ titre: '', categorie: 'Actu Asso', date_evenement: '', contenu: '', date: todayISO(), image_url: '', video_url: '', statut: 'publiee' }),
   toValues: (r) => ({
     titre: str(r.titre),
     categorie: str(r.categorie),
@@ -109,6 +114,7 @@ const actus: Collection = {
     contenu: str(r.contenu),
     date: str(r.date),
     image_url: str(r.image_url),
+    video_url: str(r.video_url),
     statut: str(r.statut),
   }),
   // The date stays the publication day, as in the web app.
@@ -120,6 +126,7 @@ const actus: Collection = {
     contenu: orNull(v.contenu),
     date: v.date || todayISO(),
     image_url: orNull(v.image_url),
+    video_url: normaliserLienYoutube(v.video_url),
   }),
   describe: (r) => ({
     title: str(r.titre),

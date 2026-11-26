@@ -112,6 +112,8 @@ function ItemDrawer({ c, row, prerempli, tenant, categories, onClose, onChanged 
   async function save() {
     const missing = c.fields.find((f) => f.required && !v[f.key]?.trim());
     if (missing) return toast(`Le champ « ${missing.label} » est obligatoire.`, 'error');
+    const refus = c.verifier?.(v);
+    if (refus) return toast(refus, 'error');
     setBusy(true);
     // « matinale expert » rejoint « Matinale Expert » au lieu de créer une catégorie de plus.
     const valeurs = Object.fromEntries(Object.entries(v).map(([cle, val]) => [cle, c.fields.find((f) => f.key === cle)?.type === 'categorie' ? reprendreCategorieExistante(val, categories) : val]));

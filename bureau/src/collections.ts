@@ -1,4 +1,5 @@
 import { DEFAULT_CATEGORY, formatDay, today, type TenantConfig } from './lib';
+import { erreurDeLienYoutube, normaliserLienYoutube } from './youtube';
 
 // Les contenus de l'application (actus, offres, annuaire, liens), décrits une fois pour
 // toutes : même liste de champs et même format d'enregistrement que l'écran admin de l'app.
@@ -23,6 +24,8 @@ export type Collection = {
   describe: (row: Row) => { title: string; subtitle: string; image?: string | null; flag?: string; flagTone?: string };
   photo?: { key: string; bucket: string; width: number; crop: boolean };
   createHint?: string;
+  /** Ce qui empêche d'enregistrer, dit en clair (un lien vidéo qui n'est pas YouTube) ; null si tout va bien. */
+  verifier?: (values: Values) => string | null;
 };
 
 const str = (v: unknown) => (v == null ? '' : String(v));
@@ -41,13 +44,15 @@ const actus: Collection = {
     { key: 'date_evenement', label: 'Date de l’événement (facultatif)', type: 'date', half: true },
     { key: 'contenu', label: 'Contenu', type: 'multiline' },
     { key: 'image_url', label: 'Photo', type: 'photo' },
+    { key: 'video_url', label: 'Vidéo YouTube (facultatif)', type: 'url', placeholder: 'https://youtu.be/…' },
     STATUT_PROPOSITION,
   ],
   photo: { key: 'image_url', bucket: 'actus-photos', width: 1200, crop: false },
-  defaults: () => ({ titre: '', categorie: 'Actu Asso', date_evenement: '', contenu: '', date: today(), image_url: '', statut: 'publiee' }),
-  toValues: (r) => ({ titre: str(r.titre), categorie: str(r.categorie), date_evenement: str(r.date_evenement), contenu: str(r.contenu), date: str(r.date), image_url: str(r.image_url), statut: str(r.statut) }),
+  verifier: (v) => erreurDeLienYoutube(v.video_url),
+  defaults: () => ({ titre: '', categorie: 'Actu Asso', date_evenement: '', contenu: '', date: today(), image_url: '', video_url: '', statut: 'publiee' }),
+  toValues: (r) => ({ titre: str(r.titre), categorie: str(r.categorie), date_evenement: str(r.date_evenement), contenu: str(r.contenu), date: str(r.date), image_url: str(r.image_url), video_url: str(r.video_url), statut: str(r.statut) }),
   // La date reste le jour de publication.
-  toPayload: (v) => ({ ...(v.statut ? { statut: v.statut } : {}), titre: v.titre.trim(), categorie: v.categorie, date_evenement: orNull(v.date_evenement), contenu: orNull(v.contenu), date: v.date || today(), image_url: orNull(v.image_url) }),
+  toPayload: (v) => ({ ...(v.statut ? { statut: v.statut } : {}), titre: v.titre.trim(), categorie: v.categorie, date_evenement: orNull(v.date_evenement), contenu: orNull(v.contenu), date: v.date || today(), image_url: orNull(v.image_url), video_url: normaliserLienYoutube(v.video_url) }),
   describe: (r) => ({
     title: str(r.titre), subtitle: `${formatDay(str(r.date))} · ${str(r.categorie)}`, image: r.image_url ? str(r.image_url) : undefined,
     flag: r.statut === 'en_attente' ? 'Proposée par un adhérent · à valider' : undefined, flagTone: 'warn',

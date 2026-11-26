@@ -18,6 +18,7 @@ import {
   type FormValues,
   type Row,
 } from '@/lib/admin';
+import { erreurDuFormulaire } from '@/lib/verifier-formulaire';
 import { usePhotoDuFormulaire } from '@/hooks/use-photo-du-formulaire';
 import { confirmAction } from '@/lib/confirm';
 
@@ -66,9 +67,9 @@ export function EditForm({
   }
 
   function submit() {
-    const missing = c.fields.find((f) => f.required && !values[f.key]?.trim());
-    if (missing) {
-      setError(`Le champ « ${missing.label} » est obligatoire.`);
+    const refus = erreurDuFormulaire(c, values);
+    if (refus) {
+      setError(refus);
       return;
     }
     setError(null);

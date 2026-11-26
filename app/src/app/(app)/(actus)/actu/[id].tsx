@@ -8,11 +8,13 @@ import { ActuPhoto, DateTile, useCategoryHue } from '@/components/actu-visual';
 import { BackButton, layoutTitle } from '@/components/full-screen-detail';
 import { CommentComposer, CommentCount, CommentsSection, LikeButton } from '@/components/social';
 import { LinkedText } from '@/components/ui/linked-text';
+import { VideoYoutube } from '@/components/video-youtube';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Text } from '@/components/ui/text';
 import { useActu, useAuteurs } from '@/lib/data';
 import { useNoterLecture } from '@/lib/engagement';
 import { formatDayLong } from '@/lib/format';
+import type { Actu } from '@/lib/types';
 import { useClavierOuvert } from '@/hooks/use-clavier-ouvert';
 import { useTheme } from '@/theme';
 import { mix } from '@/theme/colors';
@@ -88,22 +90,7 @@ export default function ActuScreen() {
           </Animated.View>
         </View>
         <View style={[styles.sheet, { backgroundColor: colors.card }]}>
-          <View style={styles.article}>
-          {!!a.image_url && (
-            <Animated.View entering={FadeInDown.delay(320).duration(500)}>
-              <ActuPhoto uri={a.image_url} radius={16} />
-            </Animated.View>
-          )}
-          {!!a.contenu && (
-            <Animated.View entering={FadeInDown.delay(380).duration(500)}>
-              <LinkedText>{a.contenu}</LinkedText>
-            </Animated.View>
-          )}
-          <View style={styles.actions}>
-            <LikeButton kind="actu" id={a.id} liked={a.my_like.length > 0} count={a.actus_likes[0]?.count ?? 0} />
-            <CommentCount count={a.actus_commentaires[0]?.count ?? 0} />
-          </View>
-          </View>
+          <CorpsDeLActu actu={a} />
           {/* The comments sit on their own grey ground, apart from the post. */}
           <View style={[styles.comments, { backgroundColor: colors.background }]}>
             <CommentsSection kind="actu" parentId={a.id} hideComposer />
@@ -124,6 +111,33 @@ export default function ActuScreen() {
       </View>
       <BackButton />
     </KeyboardAvoidingView>
+  );
+}
+
+/** Ce qu'on lit sous le bandeau : la photo, la vidéo, le texte, puis les « j'aime » et les commentaires. */
+function CorpsDeLActu({ actu }: { actu: Actu }) {
+  return (
+    <View style={styles.article}>
+      {!!actu.image_url && (
+        <Animated.View entering={FadeInDown.delay(320).duration(500)}>
+          <ActuPhoto uri={actu.image_url} radius={16} />
+        </Animated.View>
+      )}
+      {!!actu.video_url && (
+        <Animated.View entering={FadeInDown.delay(350).duration(500)}>
+          <VideoYoutube lien={actu.video_url} />
+        </Animated.View>
+      )}
+      {!!actu.contenu && (
+        <Animated.View entering={FadeInDown.delay(380).duration(500)}>
+          <LinkedText>{actu.contenu}</LinkedText>
+        </Animated.View>
+      )}
+      <View style={styles.actions}>
+        <LikeButton kind="actu" id={actu.id} liked={actu.my_like.length > 0} count={actu.actus_likes[0]?.count ?? 0} />
+        <CommentCount count={actu.actus_commentaires[0]?.count ?? 0} />
+      </View>
+    </View>
   );
 }
 
