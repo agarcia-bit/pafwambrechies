@@ -55,6 +55,8 @@ export type Actu = {
   excerpt: string | null;
   contenu: string | null;
   image_url: string | null;
+  /** Lien YouTube joint à l'actu, toujours sous la forme https://www.youtube.com/watch?v=… */
+  video_url: string | null;
   /** Day of the event the actu announces (not its publication day), if any. */
   date_evenement: string | null;
   /** Bureau member or admin who published it (null for older posts). */
