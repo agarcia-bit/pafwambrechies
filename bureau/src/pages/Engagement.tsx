@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type { PageProps } from '../App';
 import { Kpi } from '../components/ui/Kpi';
 import {
-  calculerNote, chargerEngagement, classerEngagement, compterParStatut, completerSemaines, PERIODE_JOURS, STATUTS,
+  calculerNote, chargerEngagement, classerEngagement, classerVersionDeLApp, compterParStatut, completerSemaines, ETATS_DE_L_APP, PERIODE_JOURS, STATUTS,
   type Engagement as Donnees, type MembreEngagement, type Statut,
 } from '../engagement';
 import { Avatar, Empty, Skeleton } from '../Icon';
@@ -87,25 +87,29 @@ function TableauMembres({ donnees, filtre }: { donnees: Donnees; filtre: Statut 
     <div className="card flush engagement-tableau">
       <table>
         <thead>
-          <tr><th>Adhérent</th><th>Note</th><th>Statut</th><th>Dernière visite</th></tr>
+          <tr><th>Adhérent</th><th>Note</th><th>Statut</th><th>Dernière visite</th><th>App</th></tr>
         </thead>
         <tbody>
-          {lignes.map(({ membre, statut, note }) => <LigneMembre key={membre.id} membre={membre} statut={statut} note={note} onOuvrir={() => setOuvert(membre)} />)}
+          {lignes.map(({ membre, statut, note }) => <LigneMembre key={membre.id} membre={membre} statut={statut} note={note} derniereVersionApp={donnees.derniere_version_app} onOuvrir={() => setOuvert(membre)} />)}
         </tbody>
       </table>
-      {ouvert && <FicheEngagement membre={ouvert} actusPubliees={donnees.actus_publiees} onClose={() => setOuvert(null)} />}
+      {ouvert && <FicheEngagement membre={ouvert} actusPubliees={donnees.actus_publiees} derniereVersionApp={donnees.derniere_version_app} onClose={() => setOuvert(null)} />}
     </div>
   );
 }
 
-function LigneMembre({ membre, statut, note, onOuvrir }: { membre: MembreEngagement; statut: Statut; note: number; onOuvrir: () => void }) {
+type PropsDeLigne = { membre: MembreEngagement; statut: Statut; note: number; derniereVersionApp?: string | null; onOuvrir: () => void };
+
+function LigneMembre({ membre, statut, note, derniereVersionApp, onOuvrir }: PropsDeLigne) {
   const info = infoStatut(statut);
+  const app = ETATS_DE_L_APP[classerVersionDeLApp(membre.version_app_du, derniereVersionApp)];
   return (
     <tr className="ligne-cliquable" tabIndex={0} onClick={onOuvrir} onKeyDown={(e) => e.key === 'Enter' && onOuvrir()} title="Voir le détail">
       <td><span className="who"><Avatar name={fullName(membre)} />{fullName(membre)}</span></td>
       <td><BarreDeNote note={note} /></td>
       <td><span className={'badge ' + info.ton} title={info.aide}>{info.libelle}</span></td>
       <td className="muted">{membre.derniere_visite ? formatDay(membre.derniere_visite) : '—'}</td>
+      <td>{app.libelle === '—' ? <span className="muted" title={app.aide}>—</span> : <span className={'badge ' + app.ton} title={app.aide}>{app.libelle}</span>}</td>
     </tr>
   );
 }

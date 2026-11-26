@@ -1,3 +1,4 @@
+import * as Updates from 'expo-updates';
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 
@@ -18,6 +19,10 @@ function noterVisiteDuJour() {
   supabase.rpc('noter_visite').then(({ error }) => {
     if (error) dernierJourNote = null;
   });
+  // La date de la mise à jour qui tourne : le bureau y voit qui n'a pas encore reçu une nouveauté.
+  // Absente en développement et sur le web, où il n'y a pas de mise à jour à suivre.
+  const versionDu = Updates.createdAt?.toISOString();
+  if (versionDu) supabase.rpc('noter_version_app', { p_version_du: versionDu }).then(() => undefined);
   // Les notifications coupées dans les réglages du téléphone ne se voient qu'à l'ouverture de l'app.
   syncPush().catch(() => undefined);
 }

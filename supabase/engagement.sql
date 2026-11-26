@@ -29,9 +29,19 @@ create table if not exists public.actus_lectures (
 );
 create index if not exists actus_lectures_tenant on public.actus_lectures (tenant_id, lu_le);
 
+-- La version de l'app qui tourne chez chacun : la date de publication de sa dernière mise à jour.
+-- Le bureau y voit qui n'a pas encore reçu une nouveauté (une vidéo dans une actu, par exemple).
+create table if not exists public.versions_app (
+  user_id    uuid primary key references auth.users(id) on delete cascade,
+  tenant_id  uuid not null references public.tenants(id) on delete cascade,
+  version_du timestamptz not null,
+  vue_le     timestamptz not null default now()
+);
+
 -- Pas de politique : personne ne lit ni n'écrit directement, tout passe par les fonctions.
 alter table public.visites enable row level security;
 alter table public.actus_lectures enable row level security;
+alter table public.versions_app enable row level security;
 
 -- Le jour compte à l'heure de Paris : une ouverture à 0 h 30 compte pour le nouveau jour.
 create or replace function public.noter_visite()
@@ -61,7 +71,25 @@ as $$
   on conflict do nothing;
 $$;
 
+-- Fonction à part de noter_visite : les apps pas encore à jour appellent toujours l'ancienne, sans paramètre.
+create or replace function public.noter_version_app(p_version_du timestamptz)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  -- Jamais dans le futur : une date inventée ferait passer tous les autres pour « pas à jour ».
+  insert into public.versions_app (user_id, tenant_id, version_du)
+  select p.id, p.tenant_id, least(p_version_du, now())
+    from public.profiles p
+   where p.id = auth.uid() and p_version_du is not null
+  on conflict (user_id) do update
+    set version_du = excluded.version_du, tenant_id = excluded.tenant_id, vue_le = now();
+$$;
+
 revoke all on function public.noter_visite() from public, anon;
+revoke all on function public.noter_version_app(timestamptz) from public, anon;
+grant execute on function public.noter_version_app(timestamptz) to authenticated;
 revoke all on function public.noter_lecture(bigint) from public, anon;
 grant execute on function public.noter_visite() to authenticated;
 grant execute on function public.noter_lecture(bigint) to authenticated;
@@ -85,6 +113,8 @@ begin
   end if;
   return jsonb_build_object(
     'debut', (select min(jour) from public.visites where tenant_id = v_tenant),
+    -- Toutes associations confondues : c'est la même app pour tout le monde.
+    'derniere_version_app', (select max(version_du) from public.versions_app),
     'actus_publiees', (select count(*) from public.actus where tenant_id = v_tenant and created_at >= v_depuis),
     'semaines', coalesce((
       select jsonb_agg(jsonb_build_object('semaine', s.semaine, 'actifs', s.actifs) order by s.semaine)
@@ -99,6 +129,7 @@ begin
         'id', p.id, 'prenom', p.prenom, 'nom', p.nom, 'role', p.role, 'inscrit_le', p.created_at,
         'jours_visite', (select count(*) from public.visites v where v.user_id = p.id and v.tenant_id = v_tenant and v.jour >= v_jour_depuis),
         'derniere_visite', (select max(jour) from public.visites v where v.user_id = p.id and v.tenant_id = v_tenant),
+        'version_app_du', (select x.version_du from public.versions_app x where x.user_id = p.id),
         -- Parmi les actus publiées sur la période, pour comparer à actus_publiees.
         'actus_lues', (select count(*) from public.actus_lectures l join public.actus a on a.id = l.actu_id
                         where l.user_id = p.id and l.tenant_id = v_tenant and a.created_at >= v_depuis),
@@ -127,5 +158,6 @@ select cron.schedule(
   'engagement-retention',
   '45 3 * * *',
   $$ delete from public.visites where jour < current_date - interval '13 months';
-     delete from public.actus_lectures where lu_le < now() - interval '13 months' $$
+     delete from public.actus_lectures where lu_le < now() - interval '13 months';
+     delete from public.versions_app where vue_le < now() - interval '13 months' $$
 );
