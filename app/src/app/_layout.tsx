@@ -5,6 +5,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 
 import { AUTH_HEADER_COLOR } from '@/components/auth-screen';
+import { EcranMiseAJour } from '@/components/ecran-mise-a-jour';
+import { useMiseAJour } from '@/hooks/use-mise-a-jour';
 import { queryClient } from '@/lib/query';
 import { SessionProvider, useSession } from '@/lib/session';
 import { AppThemeProvider } from '@/theme';
@@ -33,6 +35,7 @@ export default function RootLayout() {
 function RootNavigator() {
   const { session, isLoading, recovery, membership, membershipError } = useSession();
   const [fontsLoaded, fontError] = useFonts({ Sora_700Bold, Sora_800ExtraBold });
+  const miseAJour = useMiseAJour();
   // Keep the splash screen until we know the screen to show, its colors and the title font.
   const ready =
     !isLoading && (fontsLoaded || !!fontError) && (!session || membership !== undefined || membershipError);
@@ -59,6 +62,7 @@ function RootNavigator() {
           <Stack.Screen name="mot-de-passe-oublie" options={{ ...authHeader, title: 'Mot de passe oublié' }} />
         </Stack.Protected>
       </Stack>
+      <EcranMiseAJour etat={miseAJour.etat} onContinuer={miseAJour.onContinuer} />
     </AppThemeProvider>
   );
 }
